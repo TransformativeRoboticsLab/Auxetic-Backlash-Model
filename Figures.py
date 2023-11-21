@@ -37,5 +37,18 @@ def figure_1():
     return 0
 
 
+def figure_3():
+    x_3 = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    y_3 = [0, 0.1, 0.3, 0.4, 0.44, 0.43, 0.4, 0.2, 0.0]
+    plt.plot(x_3, y_3, 'b', label="Frustrated cells")
+    plt.title("Frustated N Joints to Curve")
+    plt.legend()
+    plt.ylabel("Distance (y)")
+    plt.xlabel("Distance (x)")
+    plt.ylim([0,8])
+    plt.show()
+    return 0
+
 if __name__ == '__main__':
-    figure_1()
+    # figure_1()
+    figure_3()
