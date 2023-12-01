@@ -452,7 +452,6 @@ def plot_N_masses_with_stiffness_in_between_with_RELU_gap_2D(m, k, w, l_gap):
     plt.close()
 
 
-
 if __name__ == '__main__':
     # Parameters for the scissor mechanism
     # LENGTH = 2.0  # Length of each linkage
