@@ -15,7 +15,7 @@ def get_airfoil_positions():
     x = []
     y = []
     # Get NACA0018 profile and set to x and y
-    with open("./naca0018.dat", 'rb') as file:
+    with open("./naca{}.dat".format(NACA_number), 'rb') as file:
         for line in file:
             x_value = str(line[0:6].decode("utf-8"))
             y_value = str(line[12:19].decode("utf-8"))
@@ -37,54 +37,59 @@ def get_airfoil_slope_function(x, y):
         else:
             slope = (y[count] - y[count-1])/(x[count] - x[count-1])
             a.append(slope)
-    print(a)
     return a, t
 
 
 def get_airfoil_alpha_function(x, y):
     """
-    Given a set of airfoil points, generates a slope function across airfoil
+    Given a set of airfoil points, generates an alpha function across airfoil
     :return:
     """
     points = len(x)
-    alpha_1_length = float(1/points)
+    alpha_1_length = float(2/points)
     alpha = []
     first = True
+    print(x)
+    print(y)
     for count, point in enumerate(x, 0):
         if first:
             first = False
         else:
-            alpha_value = np.cos(np.arctan(abs((y[count] - y[count-1])/(x[count] - x[count-1]))))*alpha_1_length*20+1
+            # New alpha calculation based on length change prop to expansion ratio
+            alpha_value = (np.sqrt((y[count] - y[count-1])**2+(x[count] - x[count-1])**2))/alpha_1_length + 1
             alpha.append(alpha_value)
-    print(alpha)
-    print(type(alpha))
     return alpha, t
 
 
 def plot_airfoil_slope(x, a, y, alpha):
     """
-    Generates plot of slope across NACA0018 airfoil
+    Generates plot of slope and alpha across an airfoil
     :param x:
     :param a:
     :return:
     """
     plt.figure(1)
-    plt.scatter(x=x, y=y, label="NACA0018 Airfoil")
+    plt.scatter(x=x, y=y, label="NACA{} Airfoil".format(NACA_number))
     plt.scatter(x=x[1:], y=a, label="Slope")
     plt.scatter(x=x[1:], y=alpha, label="Alpha")
-    plt.title("NACA0018 Airfoil a(x) (Tip on left, tail on right)")
+    plt.title("NACA{} Airfoil a(x) (Tip on left, tail on right)".format(NACA_number))
     plt.xlabel("Length of wing (a.u.)")
     plt.ylabel("Height of wing (a.u.)")
+    plt.ylim((-3, 3))
     plt.grid()
     plt.legend()
-    plt.savefig("NACA0018 Airfoil a(x)")
-    plt.show()
+    plt.savefig("NACA{} Airfoil a(x)".format(NACA_number))
+    # plt.show()
     plt.close()
 
+
 if __name__ == '__main__':
-    x_values, y_values, t = get_airfoil_positions()
-    a_values, t = get_airfoil_slope_function(x=x_values, y=y_values)
-    alpha_values, t = get_airfoil_alpha_function(x=x_values, y=y_values)
-    plot_airfoil_slope(x_values, a_values, y_values, alpha_values)
+    NACA_numbers = ["0018", "4412", "6412"]
+    for number in NACA_numbers:
+        NACA_number = number
+        x_values, y_values, t = get_airfoil_positions()
+        a_values, t = get_airfoil_slope_function(x=x_values, y=y_values)
+        alpha_values, t = get_airfoil_alpha_function(x=x_values, y=y_values)
+        plot_airfoil_slope(x_values, a_values, y_values, alpha_values)
 
 
