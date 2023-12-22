@@ -2,8 +2,16 @@
 # MIT License
 import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib
 import matplotlib.animation as animation
 import re
+
+font = {'family' : 'serif',
+        'size'   : 16}
+csfont = {'fontname':'Helvetica'}
+
+matplotlib.rc('font', **font)
+
 
 def get_airfoil_positions():
     """
@@ -89,8 +97,6 @@ def get_airfoil_alpha_function(x, y):
     alpha_1_length = float(2/points)
     alpha = []
     first = True
-    print(x)
-    print(y)
     for count, point in enumerate(x, 0):
         if first:
             first = False
@@ -101,6 +107,33 @@ def get_airfoil_alpha_function(x, y):
     return alpha, t
 
 
+def get_normalized_backlash(b, L):
+    """
+    For a revolute robotic joint, return normalized backlash value
+    :param b: outer radius minus inner radius of joint, backlash
+    :param L: Float for cell size
+    :return: Float between 0 and 1, typically far less than 0.1
+    """
+    # Init b_norm
+    b_norm = b/L
+    return b_norm
+
+
+def get_max_curvature(d, b, L):
+    """
+    Given a set of cells of thickness d, backlash b, and cell link length L, get max curvature.
+    All metrics need to be in the same units of length
+    :param d: Float for cell thickness
+    :param b: Float for cell backlash
+    :param L: Float for cell size
+    :return:
+    """
+    theta = np.arctan(b/d)
+    max_curvature = np.sin(theta)/L
+    print(max_curvature)
+    return max_curvature
+
+
 def plot_airfoil_slope(x, a, y, alpha):
     """
     Generates plot of slope and alpha across an airfoil
@@ -108,24 +141,99 @@ def plot_airfoil_slope(x, a, y, alpha):
     :param a:
     :return:
     """
-    plt.figure(1)
+    plt.figure(1, figsize=(8, 6), dpi=80)
     plt.scatter(x=x, y=y, label="NACA{} Airfoil".format(NACA_number))
     plt.scatter(x=x[1:], y=a, label="Slope")
     plt.scatter(x=x[1:], y=alpha, label="Alpha")
-    plt.title("NACA{} Airfoil a(x) (Tip on left, tail on right)".format(NACA_number))
-    plt.xlabel("Length of wing (a.u.)")
-    plt.ylabel("Height of wing (a.u.)")
+    plt.title("NACA{} Airfoil a(x) (Tip on left, tail on right)".format(NACA_number), **csfont)
+    plt.xlabel("Length of wing (a.u.)", **csfont)
+    plt.ylabel("Height of wing (a.u.)", **csfont)
     plt.ylim((-3, 3))
     plt.grid()
     plt.legend()
     plt.savefig("./figures/NACA{} Airfoil a(x)".format(NACA_number))
     # plt.show()
     plt.close()
+    plt.figure(2, figsize=(8, 6), dpi=80)
+    plt.scatter(x=x, y=y, label="NACA{} Airfoil".format(NACA_number))
+    plt.title("NACA{} Airfoil a(x) (Tip on left, tail on right)".format(NACA_number), **csfont)
+    plt.xlabel("Length of wing (a.u.)", **csfont)
+    plt.ylabel("Height of wing (a.u.)", **csfont)
+    plt.ylim((0, 0.2))
+    plt.grid()
+    plt.legend()
+    plt.savefig("./figures/NACA{} Airfoil".format(NACA_number))
+    # plt.show()
+    plt.close()
+
+
+def plot_b_L_maxK(b_list, L_list, max_K_list):
+    """
+    Takes in three lists, generated 3D plot
+    :param b_list:
+    :param L_list:
+    :param max_K_list:
+    :return:
+    """
+    fig = plt.figure(figsize=(12, 12))
+    ax = fig.add_subplot(projection='3d')
+    ax.scatter(b_list, L_list, max_K_list)
+    ax.set_title("Max Curvature as Function of Cell Size and Normalized Backlash")
+    ax.set_xlabel('Normalized Backlash [unitless]')
+    ax.set_ylabel('Cell Size [mm]')
+    ax.set_zlabel('Max Curvature [1/mm]')
+    ax.xaxis.labelpad = 30
+    ax.yaxis.labelpad = 30
+    ax.zaxis.labelpad = 30
+    ax.view_init(elev=30, azim=60, roll=0)
+    plt.savefig("./figures/max_curvature.png")
+    plt.show()
+    plt.close()
+    return 0
+
+
+def plot_b_L_dieoff(b_list, L_list, do_list):
+    """
+    Takes in three lists, generated 3D plot
+    :param b_list:
+    :param L_list:
+    :param max_K_list:
+    :return:
+    """
+    fig = plt.figure(figsize=(12, 12))
+    ax = fig.add_subplot(projection='3d')
+    ax.scatter(b_list, L_list, bnorm_list)
+    ax.set_title("Die-off as Function of Cell Size and Normalized Backlash")
+    ax.set_xlabel('Normalized Backlash')
+    ax.set_ylabel('Cell Size')
+    ax.set_zlabel('Max Curvature')
+    plt.show()
+    plt.savefig("./figures/max_curvature.png")
+    return 0
 
 
 if __name__ == '__main__':
+    print("TRL Airfoil Functions")
     NACA_numbers = ["0006", "0009", "0018", "0021", "0024", "1408", "1410", "2408", "4412",
                     "4415", "6409", "6412"]
+
+    # Determine characteristic relationships
+    # Take ranges for thickness, backlash, cell size
+    d_values = np.linspace(0.1, 1.1, 10)
+    b_values = np.linspace(0.1, 2.1, 10)
+    L_values = np.linspace(10, 50, 100)
+    data = []
+    # run through range of reasonable values for b, d, and L
+    for thickness in d_values:
+        for backlash in b_values:
+            for cell_size in L_values:
+                b_norm = get_normalized_backlash(b= backlash, L=cell_size)
+                max_k = get_max_curvature(d=thickness, b=backlash, L=cell_size)
+                data.append([thickness, backlash, cell_size, b_norm, max_k])
+    data_array = np.array(data)
+    # Generate plots from the data
+    plot_b_L_maxK(b_list=data_array[:, 3], L_list=data_array[:, 2], max_K_list=data_array[:, 4])
+    # plot_b_L_dieoff()
 
     data = False
     if data:
@@ -135,7 +243,7 @@ if __name__ == '__main__':
             a_values, t = get_airfoil_slope_function(x=x_values, y=y_values)
             alpha_values, t = get_airfoil_alpha_function(x=x_values, y=y_values)
             plot_airfoil_slope(x_values, a_values, y_values, alpha_values)
-    generated = True
+    generated = False
     if generated:
         for number in NACA_numbers:
             NACA_number = number
