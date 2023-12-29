@@ -101,8 +101,10 @@ def get_airfoil_alpha_function(x, y):
         if first:
             first = False
         else:
-            # New alpha calculation based on length change prop to expansion ratio
-            alpha_value = (np.sqrt((y[count] - y[count-1])**2+(x[count] - x[count-1])**2))/alpha_1_length + 1
+            # Constrained alpha function, gives a(x) = 1 at tip and tail of airfoil
+            alpha_value = np.cos(np.arctan(abs((y[count] - y[count - 1]) / (x[count] - x[count - 1])))) * alpha_1_length + 1
+            # Non-constrained, alpha function based on length change prop to expansion ratio (projective)
+            # alpha_value = (np.sqrt((y[count] - y[count-1])**2+(x[count] - x[count-1])**2))/alpha_1_length + 1
             alpha.append(alpha_value)
     return alpha, t
 
@@ -130,8 +132,21 @@ def get_max_curvature(d, b, L):
     """
     theta = np.arctan(b/d)
     max_curvature = np.sin(theta)/L
-    print(max_curvature)
     return max_curvature
+
+def get_die_off(d, b, L, angle_range):
+    """
+    Given a set of cells of thickness d, backlash b, and cell link length L, get die off distance.
+    All metrics need to be in the same units of length
+    :param d: Float for cell thickness
+    :param b: Float for cell backlash
+    :param L: Float for cell size
+    :param angle_range: degrees of rotation on cell
+    :return:
+    """
+    delta_theta = np.arcsin(2*b/L)
+    res = np.floor(angle_range/delta_theta)
+    return res
 
 
 def plot_airfoil_slope(x, a, y, alpha):
@@ -194,22 +209,26 @@ def plot_b_L_maxK(b_list, L_list, max_K_list):
 
 def plot_b_L_dieoff(b_list, L_list, do_list):
     """
-    Takes in three lists, generated 3D plot
+    Takes in three lists, generated 3D plot of die-off distance
     :param b_list:
     :param L_list:
-    :param max_K_list:
+    :param do_list:
     :return:
     """
     fig = plt.figure(figsize=(12, 12))
     ax = fig.add_subplot(projection='3d')
-    ax.scatter(b_list, L_list, bnorm_list)
-    ax.set_title("Die-off as Function of Cell Size and Normalized Backlash")
+    ax.scatter(b_list, L_list, do_list)
+    ax.set_title("Die-off Distance as Function of Cell Size and Normalized Backlash")
     ax.set_xlabel('Normalized Backlash')
     ax.set_ylabel('Cell Size')
-    ax.set_zlabel('Max Curvature')
+    ax.set_zlabel('Die-Off Distance')
+    ax.xaxis.labelpad = 30
+    ax.yaxis.labelpad = 30
+    ax.zaxis.labelpad = 30
+    plt.savefig("./figures/DO_distance.png")
     plt.show()
-    plt.savefig("./figures/max_curvature.png")
-    return 0
+    plt.close()
+    return
 
 
 if __name__ == '__main__':
@@ -229,11 +248,12 @@ if __name__ == '__main__':
             for cell_size in L_values:
                 b_norm = get_normalized_backlash(b= backlash, L=cell_size)
                 max_k = get_max_curvature(d=thickness, b=backlash, L=cell_size)
-                data.append([thickness, backlash, cell_size, b_norm, max_k])
+                do = get_die_off(d=thickness, b=backlash, L=cell_size, angle_range=60)
+                data.append([thickness, backlash, cell_size, b_norm, max_k, do])
     data_array = np.array(data)
     # Generate plots from the data
     plot_b_L_maxK(b_list=data_array[:, 3], L_list=data_array[:, 2], max_K_list=data_array[:, 4])
-    # plot_b_L_dieoff()
+    plot_b_L_dieoff(b_list=data_array[:, 3], L_list=data_array[:, 2], do_list=data_array[:, 5], )
 
     data = False
     if data:
