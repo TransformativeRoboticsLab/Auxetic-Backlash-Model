@@ -207,13 +207,14 @@ def get_airfoil_error(m, p, th, c, cell_size):
         y_l.append(y_lower_value)
     # interpolation for error calculation
     y_interp = np.interp(x_cells, x, y_u[:1000])
-
-    plt.figure(1)
-    plt.plot(x_cells, y_interp, 'o')
-    plt.show()
-    plt.close()
-
-    return 0
+    # plt.figure(1)
+    # plt.plot(x_cells, y_interp, 'o')
+    # plt.show()
+    # plt.close()
+    y_interp_approx = np.interp(x, x_cells, y_interp)
+    for count, i in enumerate(y_interp_approx, 0):
+        y_error.append(y_interp_approx[count] - y_u[count])
+    return x, y_error
 
 
 def plot_airfoil_slope(x, a, y, alpha):
@@ -298,6 +299,26 @@ def plot_b_L_dieoff(b_list, L_list, do_list):
     return
 
 
+def plot_airfoil_error(x, y):
+    """
+    Plots the error between rigid cells and true airfoil shape
+    :param x:
+    :param y:
+    :return:
+    """
+    plt.figure(1, figsize=(8, 6), dpi=80)
+    plt.scatter(x=x, y=y, label="NACA{} Airfoil Error".format(NACA_number))
+    plt.title("NACA{} Airfoil Error with Rigid Cells".format(NACA_number), **csfont)
+    plt.xlabel("Length of wing (a.u.)", **csfont)
+    plt.ylabel("Error from True Airfoil (a.u.)", **csfont)
+    plt.grid()
+    plt.legend()
+    plt.savefig("./figures/NACA{} Airfoil error (5 cells)".format(NACA_number))
+    plt.show()
+    plt.close()
+    return 0
+
+
 if __name__ == '__main__':
     print("TRL Airfoil Functions")
     NACA_numbers = ["0018", "0024", "1408", "1410", "2408", "4412"]
@@ -307,8 +328,8 @@ if __name__ == '__main__':
     d_values = np.linspace(0.1, 1.1, 10)
     b_values = np.linspace(0.1, 2.1, 10)
     L_values = np.linspace(10, 50, 100)
-    # 10 mm default cell size
-    default_cell_size = L_values[0]
+    # 5 mm default cell size
+    default_cell_size = 5
     data = []
     # Run through range of reasonable values for b, d, and L
     for thickness in d_values:
@@ -352,6 +373,7 @@ if __name__ == '__main__':
             L_c = get_camber_length(x=x_values, y=y_values)
             print("Camber line length")
             print(L_c)
-            get_airfoil_error(m=m1, p=p1, th=th1, c=1, cell_size=default_cell_size)
+            x, y_err = get_airfoil_error(m=m1, p=p1, th=th1, c=1, cell_size=default_cell_size)
+            plot_airfoil_error(x, y_err)
 
 
