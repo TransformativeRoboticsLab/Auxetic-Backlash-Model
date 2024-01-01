@@ -109,6 +109,21 @@ def get_airfoil_alpha_function(x, y):
     return alpha, t
 
 
+def get_camber_length(x, y):
+    """
+    Returns float of the airfoil profiles camber length given x and y points along the airfoil
+    :param x: x values of airfoil points
+    :param y: y values of airfoil points
+    :return:
+    """
+    # Sum up floating point number
+    L_camber = 0.0
+    for count, i in enumerate(x[1:], 0):
+        L_i = np.sqrt((x[count] - x[count-1])**2 + (y[count] - y[count-1])**2)
+        L_camber += L_i
+    return L_camber
+
+
 def get_normalized_backlash(b, L):
     """
     For a revolute robotic joint, return normalized backlash value
@@ -134,6 +149,7 @@ def get_max_curvature(d, b, L):
     max_curvature = np.sin(theta)/L
     return max_curvature
 
+
 def get_die_off(d, b, L, angle_range):
     """
     Given a set of cells of thickness d, backlash b, and cell link length L, get die off distance.
@@ -147,6 +163,57 @@ def get_die_off(d, b, L, angle_range):
     delta_theta = np.arcsin(2*b/L)
     res = np.floor(angle_range/delta_theta)
     return res
+
+
+def get_airfoil_error(m, p, th, c, cell_size):
+    """
+    From the airfoil points and a cell size,
+    :param m: Max chamber in percentage
+    :param p: Position of max chamber in tenths of chord, less than c
+    :param t: Max thickness in percentage of chord
+    :param c: chord length (typically x=0 to x=1, i.e. 1)
+    :param cell_size: length of cell mechanism making the airfoil
+    Reference:
+    https://web.stanford.edu/~cantwell/AA200_Course_Material/The%20NACA%20airfoil%20series.pdf
+    :return:
+    """
+    y_error = []
+    # convert to decimal
+    m = float(m / 100)
+    p = float(p / 10)
+    th = float(th / 100)
+    # Set of 1000 x values from 0 to chord length
+    x = np.linspace(0, c, 1000)
+    # the x location of each cell
+    x_cells = np.linspace(0, c, int(round(cell_size)))
+    # y value of camber, start at origin
+    y_c = [0]
+    # y_value of upper profile
+    y_u = [0]
+    # y_value of lower profile
+    y_l = [0]
+    # thickness dist
+    y_t = [0]
+    for count, i in enumerate(x, 0):
+        theta = np.arctan((y_c[count] - y_c[count - 1]) / 0.001)
+        y_t.append((th / 0.2) * (0.2969 * np.sqrt(i) - 0.126 * i - 0.3516 * i ** 2 + 0.2843 * i ** 3 - 0.1015 * i ** 4))
+        if i < p:
+            y_c.append((m / p ** 2) * (2 * p * i - i ** 2))
+        if i >= p:
+            y_c.append((m / (1 - p) ** 2) * ((1 - 2 * p) + 2 * p * i - i ** 2))
+        y_upper_value = y_c[count] + y_t[count] * np.cos(theta)
+        y_u.append(y_upper_value)
+        y_lower_value = y_c[count] + y_t[count] * np.cos(theta)
+        y_l.append(y_lower_value)
+    # interpolation for error calculation
+    y_interp = np.interp(x_cells, x, y_u[:1000])
+
+    plt.figure(1)
+    plt.plot(x_cells, y_interp, 'o')
+    plt.show()
+    plt.close()
+
+    return 0
 
 
 def plot_airfoil_slope(x, a, y, alpha):
@@ -233,16 +300,17 @@ def plot_b_L_dieoff(b_list, L_list, do_list):
 
 if __name__ == '__main__':
     print("TRL Airfoil Functions")
-    NACA_numbers = ["0006", "0009", "0018", "0021", "0024", "1408", "1410", "2408", "4412",
-                    "4415", "6409", "6412"]
+    NACA_numbers = ["0018", "0024", "1408", "1410", "2408", "4412"]
 
     # Determine characteristic relationships
-    # Take ranges for thickness, backlash, cell size
+    # Take ranges for thickness, backlash, cell size [in millimeters]
     d_values = np.linspace(0.1, 1.1, 10)
     b_values = np.linspace(0.1, 2.1, 10)
     L_values = np.linspace(10, 50, 100)
+    # 10 mm default cell size
+    default_cell_size = L_values[0]
     data = []
-    # run through range of reasonable values for b, d, and L
+    # Run through range of reasonable values for b, d, and L
     for thickness in d_values:
         for backlash in b_values:
             for cell_size in L_values:
@@ -250,10 +318,11 @@ if __name__ == '__main__':
                 max_k = get_max_curvature(d=thickness, b=backlash, L=cell_size)
                 do = get_die_off(d=thickness, b=backlash, L=cell_size, angle_range=60)
                 data.append([thickness, backlash, cell_size, b_norm, max_k, do])
+    # Change data type for input array
     data_array = np.array(data)
     # Generate plots from the data
-    plot_b_L_maxK(b_list=data_array[:, 3], L_list=data_array[:, 2], max_K_list=data_array[:, 4])
-    plot_b_L_dieoff(b_list=data_array[:, 3], L_list=data_array[:, 2], do_list=data_array[:, 5], )
+    # plot_b_L_maxK(b_list=data_array[:, 3], L_list=data_array[:, 2], max_K_list=data_array[:, 4])
+    # plot_b_L_dieoff(b_list=data_array[:, 3], L_list=data_array[:, 2], do_list=data_array[:, 5], )
 
     data = False
     if data:
@@ -263,8 +332,10 @@ if __name__ == '__main__':
             a_values, t = get_airfoil_slope_function(x=x_values, y=y_values)
             alpha_values, t = get_airfoil_alpha_function(x=x_values, y=y_values)
             plot_airfoil_slope(x_values, a_values, y_values, alpha_values)
-    generated = False
+
+    generated = True
     if generated:
+        # Gather plots of NACA profile based on mathematical model and gather alpha funcs
         for number in NACA_numbers:
             NACA_number = number
             m1 = float(NACA_number[:1])
@@ -273,8 +344,14 @@ if __name__ == '__main__':
             t=1
             x_values, y_values = get_airfoil_from_NACA_values(m=m1, p=p1, th=th1, c=1)
             y_values = y_values[:1000]
-            a_values, t = get_airfoil_slope_function(x=x_values, y=y_values)
-            alpha_values, t = get_airfoil_alpha_function(x=x_values, y=y_values)
-            plot_airfoil_slope(x_values, a_values, y_values, alpha_values)
+            # a_values, t = get_airfoil_slope_function(x=x_values, y=y_values)
+            # alpha_values, t = get_airfoil_alpha_function(x=x_values, y=y_values)
+            # plot_airfoil_slope(x_values, a_values, y_values, alpha_values)
+
+            # for each NACA number of interest with chord line length = 1, set cell size and determine error
+            L_c = get_camber_length(x=x_values, y=y_values)
+            print("Camber line length")
+            print(L_c)
+            get_airfoil_error(m=m1, p=p1, th=th1, c=1, cell_size=default_cell_size)
 
 
