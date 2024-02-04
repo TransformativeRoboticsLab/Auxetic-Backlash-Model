@@ -311,6 +311,7 @@ def plot_airfoil_error(x, y):
     plt.title("NACA{} Airfoil Error with Rigid Cells".format(NACA_number), **csfont)
     plt.xlabel("Length of wing (a.u.)", **csfont)
     plt.ylabel("Error from True Airfoil (a.u.)", **csfont)
+    plt.ylim([-0.03, 0])
     plt.grid()
     plt.legend()
     plt.savefig("./figures/NACA{} Airfoil error (5 cells)".format(NACA_number))
