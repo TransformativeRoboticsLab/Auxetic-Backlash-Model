@@ -7,7 +7,7 @@ import matplotlib.animation as animation
 import re
 
 font = {'family' : 'serif',
-        'size'   : 16}
+        'size'   : 22}
 csfont = {'fontname':'Helvetica'}
 
 matplotlib.rc('font', **font)
@@ -262,12 +262,13 @@ def plot_b_L_maxK(b_list, L_list, max_K_list):
     ax = fig.add_subplot(projection='3d')
     ax.scatter(b_list, L_list, max_K_list)
     ax.set_title("Max Curvature as Function of Cell Size and Normalized Backlash")
-    ax.set_xlabel('Normalized Backlash [unitless]')
+    ax.set_xlabel('Normalized Backlash [n.d.]')
     ax.set_ylabel('Cell Size [mm]')
     ax.set_zlabel('Max Curvature [1/mm]')
     ax.xaxis.labelpad = 30
     ax.yaxis.labelpad = 30
     ax.zaxis.labelpad = 30
+    ax.tick_params(axis='both', which='major', pad=15)
     ax.view_init(elev=30, azim=60, roll=0)
     plt.savefig("./figures/max_curvature.png")
     plt.show()
@@ -286,13 +287,14 @@ def plot_b_L_dieoff(b_list, L_list, do_list):
     fig = plt.figure(figsize=(12, 12))
     ax = fig.add_subplot(projection='3d')
     ax.scatter(b_list, L_list, do_list)
-    ax.set_title("Die-off Distance as Function of Cell Size and Normalized Backlash")
-    ax.set_xlabel('Normalized Backlash')
-    ax.set_ylabel('Cell Size')
-    ax.set_zlabel('Die-Off Distance')
+    ax.set_title("Die-off Distance as Function of Cell Size and Backlash")
+    ax.set_xlabel('Normalized Backlash [n.d.]')
+    ax.set_ylabel('Cell Size [mm]')
+    ax.set_zlabel('Die-Off Distance [mm]')
     ax.xaxis.labelpad = 30
     ax.yaxis.labelpad = 30
     ax.zaxis.labelpad = 30
+    ax.tick_params(axis='both', which='major', pad=15)
     plt.savefig("./figures/DO_distance.png")
     plt.show()
     plt.close()
@@ -343,8 +345,8 @@ if __name__ == '__main__':
     # Change data type for input array
     data_array = np.array(data)
     # Generate plots from the data
-    # plot_b_L_maxK(b_list=data_array[:, 3], L_list=data_array[:, 2], max_K_list=data_array[:, 4])
-    # plot_b_L_dieoff(b_list=data_array[:, 3], L_list=data_array[:, 2], do_list=data_array[:, 5], )
+    plot_b_L_maxK(b_list=data_array[:, 3], L_list=data_array[:, 2], max_K_list=data_array[:, 4])
+    plot_b_L_dieoff(b_list=data_array[:, 3], L_list=data_array[:, 2], do_list=data_array[:, 5], )
 
     data = False
     if data:
@@ -355,7 +357,7 @@ if __name__ == '__main__':
             alpha_values, t = get_airfoil_alpha_function(x=x_values, y=y_values)
             plot_airfoil_slope(x_values, a_values, y_values, alpha_values)
 
-    generated = True
+    generated = False
     if generated:
         # Gather plots of NACA profile based on mathematical model and gather alpha funcs
         for number in NACA_numbers:
