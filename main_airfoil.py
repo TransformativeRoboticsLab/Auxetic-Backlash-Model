@@ -7,7 +7,7 @@ import matplotlib.animation as animation
 import re
 
 font = {'family' : 'serif',
-        'size'   : 22}
+        'size'   : 16}
 csfont = {'fontname':'Helvetica'}
 
 matplotlib.rc('font', **font)
@@ -258,19 +258,17 @@ def plot_b_L_maxK(b_list, L_list, max_K_list):
     :param max_K_list:
     :return:
     """
-    fig = plt.figure(figsize=(12, 12))
-    ax = fig.add_subplot(projection='3d')
-    ax.scatter(b_list, L_list, max_K_list)
-    ax.set_title("Max Curvature as Function of Cell Size and Normalized Backlash")
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot()
+    sc = ax.scatter(b_list, L_list, c=max_K_list)
+    ax.set_title("Max Curvature given Cell Size and Backlash")
     ax.set_xlabel('Normalized Backlash [n.d.]')
     ax.set_ylabel('Cell Size [mm]')
-    ax.set_zlabel('Max Curvature [1/mm]')
-    ax.xaxis.labelpad = 30
-    ax.yaxis.labelpad = 30
-    ax.zaxis.labelpad = 30
-    ax.tick_params(axis='both', which='major', pad=15)
-    ax.view_init(elev=30, azim=60, roll=0)
-    plt.savefig("./figures/max_curvature.png")
+    ax.xaxis.labelpad = 10
+    ax.yaxis.labelpad = 10
+    ax.tick_params(axis='both', which='major', pad=10)
+    plt.colorbar(sc, label="Max Curvature [1/mm]")
+    plt.savefig("./figures/max_curvature_2d.png")
     plt.show()
     plt.close()
     return 0
@@ -284,18 +282,17 @@ def plot_b_L_dieoff(b_list, L_list, do_list):
     :param do_list:
     :return:
     """
-    fig = plt.figure(figsize=(12, 12))
-    ax = fig.add_subplot(projection='3d')
-    ax.scatter(b_list, L_list, do_list)
-    ax.set_title("Die-off Distance as Function of Cell Size and Backlash")
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot()
+    sc = ax.scatter(b_list, L_list, c=do_list)
+    ax.set_title("Die-off Distance given Cell Size and Backlash")
     ax.set_xlabel('Normalized Backlash [n.d.]')
     ax.set_ylabel('Cell Size [mm]')
-    ax.set_zlabel('Die-Off Distance [mm]')
-    ax.xaxis.labelpad = 30
-    ax.yaxis.labelpad = 30
-    ax.zaxis.labelpad = 30
-    ax.tick_params(axis='both', which='major', pad=15)
-    plt.savefig("./figures/DO_distance.png")
+    ax.xaxis.labelpad = 10
+    ax.yaxis.labelpad = 10
+    ax.tick_params(axis='both', which='major', pad=10)
+    plt.colorbar(sc, label="Die-off [cells]")
+    plt.savefig("./figures/DO_distance_2d.png")
     plt.show()
     plt.close()
     return
@@ -329,7 +326,7 @@ if __name__ == '__main__':
     # Determine characteristic relationships
     # Take ranges for thickness, backlash, cell size [in millimeters]
     d_values = np.linspace(0.1, 1.1, 10)
-    b_values = np.linspace(0.1, 2.1, 10)
+    b_values = np.linspace(0.2, 2.1, 10)
     L_values = np.linspace(10, 50, 100)
     # 5 mm default cell size
     default_cell_size = 5
@@ -340,7 +337,7 @@ if __name__ == '__main__':
             for cell_size in L_values:
                 b_norm = get_normalized_backlash(b= backlash, L=cell_size)
                 max_k = get_max_curvature(d=thickness, b=backlash, L=cell_size)
-                do = get_die_off(d=thickness, b=backlash, L=cell_size, angle_range=60)
+                do = get_die_off(d=thickness, b=backlash, L=cell_size, angle_range=60)/cell_size
                 data.append([thickness, backlash, cell_size, b_norm, max_k, do])
     # Change data type for input array
     data_array = np.array(data)
