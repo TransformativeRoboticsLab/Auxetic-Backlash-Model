@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 # min(myList, key=lambda x:abs(x-myNumber))
 
 font = {'family': 'serif',
-        'size': 20}
+        'size': 18}
 csfont = {'fontname': 'Helvetica'}
 
 matplotlib.rc('font', **font)
@@ -66,7 +66,7 @@ def set_1D_chain(N, L_list, angle, fixed_dict, gap):
     for count2, i in enumerate(angles, 0):
         closest_fixed_cell = min(list(fixed_dict.keys()), key=lambda x: abs(x - count2))
         # Determine distance from each cell to fixed cell and add backlash according to ReLU relationship
-        distance_to_fixed = L_list[0]*abs(count2 - closest_fixed_cell)
+        distance_to_fixed = L_list[0] * abs(count2 - closest_fixed_cell)
 
         # set upper and lower angle bounds for each element
         if count2 not in fixed_dict.keys():
@@ -122,6 +122,11 @@ def plot_chain(x, y, top_angle_list, bottom_angle_list):
     # plt.ylabel("Z Coordinate")
 
 
+def dual_relu(x, b):
+    """ReLU returns 1 if x>0, else 0."""
+    dual_relu = np.maximum(0, x-b) + np.minimum(0, x+b)
+    return dual_relu
+
 if __name__ == '__main__':
     # set global variables in main function
     main()
@@ -131,7 +136,7 @@ if __name__ == '__main__':
     Ls_2 = [2 for i in range(20)]
     L2_3 = [3 for i in range(20)]
     angle = [10]
-    b = [1, 2, 3] # degrees
+    b = [0.5, 1, 1.5, 2, 2.5, 3]  # degrees
     fixs_dict = {0: 30, 19: 30}
     for backlash in b:
         x, y, a, ta, ba = set_1D_chain(N, Ls, angle, fixed_dict=fixs_dict, gap=backlash)
@@ -141,8 +146,8 @@ if __name__ == '__main__':
     print(dof_count)
     angle_settings = list(np.linspace(5, 55, 50))
 
-    dof_result = [[], [], []]
-    DO_number = []
+    dof_result = [[], [], [], [], [], []]
+    DO_number_at_b = []
     # run only one cell fixed
     for count, backlash in enumerate(b, 0):
         for angle in angle_settings:
@@ -154,6 +159,7 @@ if __name__ == '__main__':
             dof_count = get_DoF_from_chain(top_angle_list=ta, bottom_angle_list=ba)
             print("DoF Count: {}".format(dof_count))
             dof_result[count].append(dof_count)
+            DO_number_at_b.append([backlash, angle, dof_count])
     # DO distance
     a1 = 20 - max(dof_result[0])
     a2 = 20 - max(dof_result[1])
@@ -163,23 +169,82 @@ if __name__ == '__main__':
     # DOF result figure
     fig = plt.figure(4, figsize=(10, 10))
     ax = fig.add_subplot()
-    plt.stem(angle_settings, dof_result[0], 'r', label="dθ = 1 deg")
-    plt.stem(angle_settings, dof_result[1], 'b', label="dθ = 2 deg")
-    plt.stem(angle_settings, dof_result[2], 'g', label="dθ = 3 deg")
+    plt.stem(angle_settings, dof_result[1], 'r', label="dθ = 1 deg")
+    plt.stem(angle_settings, dof_result[3], 'b', label="dθ = 2 deg")
+    plt.stem(angle_settings, dof_result[5], 'g', label="dθ = 3 deg")
     plt.title("# of DOF of Revolute Joints in Series")
     plt.xlabel("Fixed Angle of 1st Cell in Chain ")
     plt.ylabel("# of DoF")
     plt.xlim((0, 60))
     plt.ylim((0, 20))
-    ax.xaxis.labelpad = 10
-    ax.yaxis.labelpad = 10
+    ax.xaxis.labelpad = 6
+    ax.yaxis.labelpad = 6
     plt.legend()
-    plt.xlim([0,30])
+    plt.xlim([0, 30])
     ax.tick_params(axis='both', which='major', pad=10)
     plt.grid()
     plt.savefig("dof_to_angle_relation 1 Ls.png")
 
-    # DO range
+    # DO at backlash and angle figure
+    backlash_list = [i[0] for i in DO_number_at_b]
+    angle_list = [i[1] for i in DO_number_at_b]
+    DO_list = [i[2] for i in DO_number_at_b]
+
+    DO_number_array = np.array(DO_number_at_b)
+    DO_number_array_ddx = np.gradient(DO_number_array)
+    print(DO_number_array_ddx)
+
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot()
+    sc = ax.scatter(angle_list, backlash_list, c=DO_list)
+    ax.set_title("Max DO Distance - Varying Backlash and Driven Angle")
+    ax.set_xlabel('Driven cell angle')
+    ax.set_ylabel('dθ [degrees]')
+    ax.xaxis.labelpad = 6
+    ax.yaxis.labelpad = 6
+    ax.tick_params(axis='both', which='major', pad=10)
+    plt.colorbar(sc, label="DO Distance")
+    plt.savefig("./figures/DO_mapping_to_b_and_angle.png")
+    plt.show()
+    plt.close()
+
+    #angle_list = [i[:, 0] for i in DO_number_array_ddx]
+    #backlash_list = [i[:, 1] for i in DO_number_array_ddx]
+    dDO_dx = [i[:, 2] for i in DO_number_array_ddx]
+    print(dDO_dx)
+
+
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot()
+    sc = ax.scatter(angle_list, backlash_list, c=dDO_dx[1])
+    ax.set_title("dDO/dx for b and drive angle")
+    ax.set_xlabel('Driven cell angle')
+    ax.set_ylabel('Normalized Backlash [n.d.]')
+    ax.xaxis.labelpad = 6
+    ax.yaxis.labelpad = 6
+    ax.tick_params(axis='both', which='major', pad=10)
+    plt.colorbar(sc, label="dDO/dx")
+    plt.savefig("./figures/DO_mapping_to_b_and_angle_ddx.png")
+    plt.show()
+    plt.close()
+
+    # ReLU plot
+    b = 10
+    X = np.arange(-60, 60, 1)
+    Y1 = dual_relu(X, 0)
+    Y2 = dual_relu(X, b)
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot()
+    sc = ax.plot(X, Y1, label="Linear")
+    sc = ax.plot(X, Y2, label="ReLU Stiffness")
+    ax.set_title("ReLU Function as Non-Linear Stiffness Model")
+    ax.set_xlabel('Driven Cell Angle')
+    ax.set_ylabel('Stiffness [N/mm]')
+    plt.legend()
+    plt.savefig("./figures/ReLU_demo_figure.png")
+    plt.show()
+    plt.close()
+
 
     # hardcoded example
     # fig = plt.figure(5, figsize=(10, 10))
