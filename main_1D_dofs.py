@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 # min(myList, key=lambda x:abs(x-myNumber))
 
 font = {'family': 'serif',
-        'size': 16}
+        'size': 20}
 csfont = {'fontname': 'Helvetica'}
 
 matplotlib.rc('font', **font)
@@ -24,7 +24,7 @@ def main():
     return 0
 
 
-def set_1D_chain(N, L_list, angle, fixed_dict):
+def set_1D_chain(N, L_list, angle, fixed_dict, gap):
     """
     Set a 1D chain of revolute joints with lengths L_list and initial angles angle_list
     :param N: Number of cells
@@ -34,10 +34,10 @@ def set_1D_chain(N, L_list, angle, fixed_dict):
     :return: x and y of each cell in chain, angle_list
     """
     # Assume fixed gap leading to 5 deg range between cells, full range is 60 deg
-    gap = 2  # degrees
+    # b = 2  # degrees
     full_range = 60
     # angle list is modified once the fixed_dict is parsed, starts fully collapsed at full_range
-    angle_list = [full_range for i in range(N)]
+    angle_list = [full_range for _ in range(N)]
     top_angle_list = []
     bottom_angle_list = []
     # Begin by setting full free chain, first cell at x=0, y=0
@@ -66,7 +66,7 @@ def set_1D_chain(N, L_list, angle, fixed_dict):
     for count2, i in enumerate(angles, 0):
         closest_fixed_cell = min(list(fixed_dict.keys()), key=lambda x: abs(x - count2))
         # Determine distance from each cell to fixed cell and add backlash according to ReLU relationship
-        distance_to_fixed = abs(count2 - closest_fixed_cell)
+        distance_to_fixed = L_list[0]*abs(count2 - closest_fixed_cell)
 
         # set upper and lower angle bounds for each element
         if count2 not in fixed_dict.keys():
@@ -128,36 +128,75 @@ if __name__ == '__main__':
     # Set specific case variables
     N = 20
     Ls = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    Ls_2 = [2 for i in range(20)]
+    L2_3 = [3 for i in range(20)]
     angle = [10]
+    b = [1, 2, 3] # degrees
     fixs_dict = {0: 30, 19: 30}
-    x, y, a, ta, ba = set_1D_chain(N, Ls, angle, fixed_dict=fixs_dict)
-    plot_chain(x=x, y=y, top_angle_list=ta, bottom_angle_list=ba)
+    for backlash in b:
+        x, y, a, ta, ba = set_1D_chain(N, Ls, angle, fixed_dict=fixs_dict, gap=backlash)
+        plot_chain(x=x, y=y, top_angle_list=ta, bottom_angle_list=ba)
     # Generate angle amplitude to DoF plot
     dof_count = get_DoF_from_chain(top_angle_list=ta, bottom_angle_list=ba)
     print(dof_count)
     angle_settings = list(np.linspace(5, 55, 50))
-    dof_result = []
-    # run only one cell fixed
-    for angle in angle_settings:
-        fixs_dict = {10: angle}
-        x, y, a, ta, ba = set_1D_chain(N, Ls, angle, fixed_dict=fixs_dict)
-        plot_chain(x=x, y=y, top_angle_list=ta, bottom_angle_list=ba)
-        # Generate angle amplitude to DoF plot
-        print("Angle of single, center cell in 20 cell chain: {}".format(angle))
-        dof_count = get_DoF_from_chain(top_angle_list=ta, bottom_angle_list=ba)
-        print("DoF Count: {}".format(dof_count))
-        dof_result.append(dof_count)
 
-    fig = plt.figure(4, figsize=(8, 8))
+    dof_result = [[], [], []]
+    DO_number = []
+    # run only one cell fixed
+    for count, backlash in enumerate(b, 0):
+        for angle in angle_settings:
+            fixs_dict = {10: angle}
+            x, y, a, ta, ba = set_1D_chain(N, Ls_2, angle, fixed_dict=fixs_dict, gap=backlash)
+            plot_chain(x=x, y=y, top_angle_list=ta, bottom_angle_list=ba)
+            # Generate angle amplitude to DoF plot
+            print("Angle of single, center cell in 20 cell chain: {}".format(angle))
+            dof_count = get_DoF_from_chain(top_angle_list=ta, bottom_angle_list=ba)
+            print("DoF Count: {}".format(dof_count))
+            dof_result[count].append(dof_count)
+    # DO distance
+    a1 = 20 - max(dof_result[0])
+    a2 = 20 - max(dof_result[1])
+    a3 = 20 - max(dof_result[2])
+    print(a1, a2, a3)
+
+    # DOF result figure
+    fig = plt.figure(4, figsize=(10, 10))
     ax = fig.add_subplot()
-    plt.stem(angle_settings, dof_result)
+    plt.stem(angle_settings, dof_result[0], 'r', label="dθ = 1 deg")
+    plt.stem(angle_settings, dof_result[1], 'b', label="dθ = 2 deg")
+    plt.stem(angle_settings, dof_result[2], 'g', label="dθ = 3 deg")
     plt.title("# of DOF of Revolute Joints in Series")
     plt.xlabel("Fixed Angle of 1st Cell in Chain ")
     plt.ylabel("# of DoF")
     plt.xlim((0, 60))
-    plt.ylim((0, 12))
+    plt.ylim((0, 20))
     ax.xaxis.labelpad = 10
     ax.yaxis.labelpad = 10
+    plt.legend()
+    plt.xlim([0,30])
     ax.tick_params(axis='both', which='major', pad=10)
     plt.grid()
-    plt.savefig("dof_to_angle_relation 20 deg 20 cells.png")
+    plt.savefig("dof_to_angle_relation 1 Ls.png")
+
+    # DO range
+
+    # hardcoded example
+    # fig = plt.figure(5, figsize=(10, 10))
+    # ax = fig.add_subplot()
+    # y1 = np.polyfit(angle_settings, [(9-i)/9 for i in dof_result[0]], 3)
+    # y2 = np.polyfit(angle_settings, [(9-i)/9 for i in dof_result[1]], 3)
+    # y3 = np.polyfit(angle_settings, [(9-i)/9 for i in dof_result[2]], 3)
+    # plt.plot(angle_settings, y1, 'r', label="dθ = 1 deg")
+    # plt.plot(angle_settings, y2, 'b', label="dθ = 2 deg")
+    # plt.plot(angle_settings, y3, 'g', label="dθ = 3 deg")
+    # plt.title("Effect on Range for Joints in Series")
+    # plt.xlabel("Distance from i=0")
+    # plt.ylabel("Range of Motion Remaining")
+    # ax.xaxis.labelpad = 10
+    # ax.yaxis.labelpad = 10
+    # plt.legend()
+    # plt.xlim([0,30])
+    # ax.tick_params(axis='both', which='major', pad=10)
+    # plt.grid()
+    # plt.savefig("dof_to_angle die off.png")
