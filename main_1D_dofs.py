@@ -3,7 +3,7 @@
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
-
+import csv
 # grabs closest number in myList to myNumber
 # min(myList, key=lambda x:abs(x-myNumber))
 
@@ -183,54 +183,61 @@ if __name__ == '__main__':
         # backlash_list = [i[:, 1] for i in DO_number_array_ddx]
         dDO_dx = [i[:, 2] for i in DO_number_array_ddx]
         print(dDO_dx)
+        # zip data in form of many lists to rows
+        rows = zip(angle_settings, dof_result, angle_list, backlash_list, DO_list)
+        data_path = "./data_from_1D_DOF.csv"
+        with open(data_path, "w") as f:
+            writer = csv.writer(f)
+            for row in rows:
+                writer.writerow(row)
 
-        # DOF result figures
-        fig = plt.figure(4, figsize=(10, 10))
-        ax = fig.add_subplot()
-        plt.stem(angle_settings, dof_result[1], 'r', label="dθ = 1 deg")
-        plt.stem(angle_settings, dof_result[3], 'b', label="dθ = 2 deg")
-        plt.stem(angle_settings, dof_result[5], 'g', label="dθ = 3 deg")
-        plt.title("# of DOF of Revolute Joints in Series")
-        plt.xlabel("Fixed Angle of 1st Cell in Chain ")
-        plt.ylabel("# of DoF")
-        plt.xlim((0, 60))
-        plt.ylim((0, 20))
-        ax.xaxis.labelpad = 6
-        ax.yaxis.labelpad = 6
-        plt.legend()
-        plt.xlim([0, 30])
-        ax.tick_params(axis='both', which='major', pad=10)
-        plt.grid()
-        plt.savefig("dof_to_angle_relation 1 Ls.png")
+    # DOF result figures
+    fig = plt.figure(4, figsize=(10, 10))
+    ax = fig.add_subplot()
+    plt.stem(angle_settings, dof_result[1], 'r', label="dθ = 1 deg")
+    plt.stem(angle_settings, dof_result[3], 'b', label="dθ = 2 deg")
+    plt.stem(angle_settings, dof_result[5], 'g', label="dθ = 3 deg")
+    plt.title("# of DOF of Revolute Joints in Series")
+    plt.xlabel("Fixed Angle of 1st Cell in Chain ")
+    plt.ylabel("# of DoF")
+    plt.xlim((0, 60))
+    plt.ylim((0, 20))
+    ax.xaxis.labelpad = 6
+    ax.yaxis.labelpad = 6
+    plt.legend()
+    plt.xlim([0, 30])
+    ax.tick_params(axis='both', which='major', pad=10)
+    plt.grid()
+    plt.savefig("dof_to_angle_relation 1 Ls.png")
 
-        fig = plt.figure(figsize=(8, 8))
-        ax = fig.add_subplot()
-        sc = ax.scatter(angle_list, backlash_list, c=DO_list)
-        # z_for_plot = np.array([[i*i + j*j for j in backlash_list for i in angle_list]])
-        ax.set_title("Max DO Distance - Varying Backlash and Driven Angle")
-        ax.set_xlabel('Driven cell angle')
-        ax.set_ylabel('dθ [degrees]')
-        ax.xaxis.labelpad = 6
-        ax.yaxis.labelpad = 6
-        ax.tick_params(axis='both', which='major', pad=10)
-        #plt.colorbar(sc, label="DO Distance")
-        plt.savefig("./figures/DO_mapping_to_b_and_angle.png")
-        plt.show()
-        plt.close()
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot()
+    sc = ax.scatter(angle_list, backlash_list, c=DO_list)
+    # z_for_plot = np.array([[i*i + j*j for j in backlash_list for i in angle_list]])
+    ax.set_title("Max DO Distance - Varying Backlash and Driven Angle")
+    ax.set_xlabel('Driven cell angle')
+    ax.set_ylabel('dθ [degrees]')
+    ax.xaxis.labelpad = 6
+    ax.yaxis.labelpad = 6
+    ax.tick_params(axis='both', which='major', pad=10)
+    # plt.colorbar(sc, label="DO Distance")
+    plt.savefig("./figures/DO_mapping_to_b_and_angle.png")
+    plt.show()
+    plt.close()
 
-        fig = plt.figure(figsize=(8, 8))
-        ax = fig.add_subplot()
-        sc = ax.scatter(angle_list, backlash_list, c=dDO_dx[1])
-        ax.set_title("dDO/dx for b and drive angle")
-        ax.set_xlabel('Driven cell angle')
-        ax.set_ylabel('Normalized Backlash [n.d.]')
-        ax.xaxis.labelpad = 6
-        ax.yaxis.labelpad = 6
-        ax.tick_params(axis='both', which='major', pad=10)
-        plt.colorbar(sc, label="dDO/dx")
-        plt.savefig("./figures/DO_mapping_to_b_and_angle_ddx.png")
-        plt.show()
-        plt.close()
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot()
+    sc = ax.scatter(angle_list, backlash_list, c=dDO_dx[1])
+    ax.set_title("dDO/dx for b and drive angle")
+    ax.set_xlabel('Driven cell angle')
+    ax.set_ylabel('Normalized Backlash [n.d.]')
+    ax.xaxis.labelpad = 6
+    ax.yaxis.labelpad = 6
+    ax.tick_params(axis='both', which='major', pad=10)
+    plt.colorbar(sc, label="dDO/dx")
+    plt.savefig("./figures/DO_mapping_to_b_and_angle_ddx.png")
+    plt.show()
+    plt.close()
 
     # ReLU plot
     b = 10
