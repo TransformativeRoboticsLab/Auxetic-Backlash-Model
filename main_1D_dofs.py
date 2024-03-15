@@ -3,17 +3,20 @@
 from numpy import genfromtxt
 import numpy as np
 import matplotlib
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import csv
-from matplotlib.ticker import MaxNLocator
+import itertools
 import ast
+from matplotlib.ticker import MaxNLocator
+import matplotlib.ticker as mticker
 
 # grabs closest number in myList to myNumber
 # min(myList, key=lambda x:abs(x-myNumber))
 
 
 font = {'family': 'serif',
-        'size': 18}
+        'size': 14}
 csfont = {'fontname': 'Helvetica'}
 
 matplotlib.rc('font', **font)
@@ -129,7 +132,7 @@ def plot_chain(x, y, top_angle_list, bottom_angle_list):
 
 def dual_relu(x, b):
     """ReLU returns 1 if x>0, else 0."""
-    dual_relu = np.maximum(0, x-b) + np.minimum(0, x+b)
+    dual_relu = np.maximum(0, x - b) + np.minimum(0, x + b)
     return dual_relu
 
 
@@ -146,7 +149,7 @@ if __name__ == '__main__':
     fixs_dict = {0: 30, 19: 30}
 
     # change to rerun 1D analysis, don't use when plotting
-    DOF_analysis = True
+    DOF_analysis = False
 
     if DOF_analysis:
         for backlash in b:
@@ -201,10 +204,11 @@ if __name__ == '__main__':
         # collect all modeling data into one
         count = 0
         for DOF_list in dof_result:
-            rows.append([angle_settings, DOF_list,
-                        angle_list[51*(count):51*(count+1)],
-                        backlash_list[51*(count):51*(count+1)],
-                        DO_list[51*(count):51*(count+1)]])
+            rows.append([angle_settings,
+                         DOF_list,
+                         angle_list[51 * (count):51 * (count + 1)],
+                         backlash_list[51 * (count):51 * (count + 1)],
+                         DO_list[51 * (count):51 * (count + 1)]])
             count += 1
 
         data_path = "./data_from_1D_DOF.csv"
@@ -234,19 +238,29 @@ if __name__ == '__main__':
     dof_result_3deg = data[5][1]
     dof_result_3deg = [float(i) for i in dof_result_3deg.strip('][').split(', ')]
 
+    angle_list = data[0][2] + ',' + data[1][2] + ',' + data[2][2] + ',' + data[3][2] + ',' + data[4][2] + ',' + data[5][
+        2]
+    backlash_list = data[0][3] + ',' + data[1][3] + ',' + data[2][3] + ',' + data[3][3] + ',' + data[4][3] + ',' + \
+                    data[5][3]
+    DO_list = data[0][4] + ',' + data[1][4] + ',' + data[2][4] + ',' + data[3][4] + ',' + data[4][4] + ',' + data[5][4]
+    angle_list = [float(i) for i in angle_list.replace('[', '').replace(']', '').split(',')]
+    backlash_list = [float(i) for i in backlash_list.replace('[', '').replace(']', '').split(',')]
+    DO_list = [float(i) for i in DO_list.replace('[', '').replace(']', '').split(',')]
+
     angle_settings = list(np.linspace(5, 55, 51))
 
+    colors = itertools.cycle(["r", "b", "g", "k"])
     # DOF result figures
     fig = plt.figure(4, figsize=(10, 10))
     ax = fig.add_subplot()
-    plt.stem(angle_settings, dof_result_0p75deg, 'o', label="dθ = 0.75 deg")
-    plt.stem(angle_settings, dof_result_1deg, 'r', label="dθ = 1 deg")
-    plt.stem(angle_settings, dof_result_2deg, 'b', label="dθ = 2 deg")
-    plt.stem(angle_settings, dof_result_3deg, 'g', label="dθ = 3 deg")
-    plt.title("# of DOF of Revolute Joints in Series")
+    plt.scatter(angle_settings, dof_result_0p75deg, s=30, color=next(colors), label="dθ = 0.75 deg")
+    plt.scatter(angle_settings, dof_result_1deg, s=30, color=next(colors), label="dθ = 1 deg")
+    plt.scatter(angle_settings, dof_result_2deg, s=30, color=next(colors), label="dθ = 2 deg")
+    plt.scatter(angle_settings, dof_result_3deg, s=30, color=next(colors), label="dθ = 3 deg")
+    plt.title("Varying DoF of Revolute Joints in Series")
     plt.xlabel("Fixed Angle of Cell i=0 in 1D Chain ")
-    plt.ylabel("# of DoF")
-    ax.yaxis.set_major_locator(MaxNLocator(integer=True)) # Force matplotlib to only use integers on axis markings
+    plt.ylabel("Number of Free Revolute Cells")
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))  # Force matplotlib to only use integers on axis markings
     plt.xlim([5, 30])
     plt.ylim((0, 20))
     ax.xaxis.labelpad = 6
@@ -254,30 +268,50 @@ if __name__ == '__main__':
     plt.legend()
     ax.tick_params(axis='both', which='major', pad=10)
     plt.grid()
-    plt.savefig("dof_to_angle_relation 1 Ls.png")
+    plt.savefig("dof_to_fixed_cell_angle_relation.png")
 
-    # fig = plt.figure(figsize=(8, 8))
-    # ax = fig.add_subplot()
-    # # for pcolormesh --> , shading='flat', vmin=DO_list.min(), vmax=DO_list.max()
-    # sc = ax.pcolormesh(angle_list, backlash_list, DO_list)
-    # # z_for_plot = np.array([[i*i + j*j for j in backlash_list for i in angle_list]])
-    # ax.set_title("Max DO Distance - Varying Backlash and Driven Angle")
-    # ax.set_xlabel('Driven cell angle')
-    # ax.set_ylabel('dθ [degrees]')
-    # ax.xaxis.labelpad = 6
-    # ax.yaxis.labelpad = 6
-    # ax.tick_params(axis='both', which='major', pad=10)
-    # # plt.colorbar(sc, label="DO Distance")
-    # plt.savefig("./figures/DO_mapping_to_b_and_angle.png")
-    # plt.show()
-    # plt.close()
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot()
+    # for pcolormesh --> , shading='flat', vmin=DO_list.min(), vmax=DO_list.max()
+    sc = ax.scatter(angle_list, backlash_list, c=DO_list)
+    # z_for_plot = np.array([[i*i + j*j for j in backlash_list for i in angle_list]])
+    ax.set_title("Max DO Distance - Varying Backlash and Driven Angle")
+    ax.set_xlabel('Fixed Angle of Cell i=0')
+    ax.set_ylabel(r"$\Delta \Theta_i$")
+    ax.xaxis.labelpad = 6
+    ax.yaxis.labelpad = 6
+    ax.tick_params(axis='both', which='major', pad=10)
+    plt.colorbar(sc, label="DO Distance")
+    plt.savefig("./figures/DO_mapping_to_b_and_angle.png")
+    plt.close()
+
+    # alternative contour plot
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot()
+    sc = plt.tricontourf(angle_list, backlash_list, DO_list)
+    ax.set_title("Max DO Distance - Varying Backlash and Driven Angle", pad=30)
+    ax.set_xlabel('Fixed Angle of Cell i=0')
+    ax.set_ylabel(r"$\Delta \Theta_i$")
+    ax.xaxis.labelpad = 6
+    ax.yaxis.labelpad = 6
+    ax.tick_params(axis='both', which='major', pad=10)
+    cbar = plt.colorbar(sc,
+                        ticks=[0, 2, 4, 6, 8, 10, 12, 14, 16],
+                        extend='both',
+                        label="Maximum Die-Off Distance in 1D Chain"
+                        )
+    # plt.colorbar(sc, label="DO Distance")
+    plt.savefig("./figures/DO_mapping_to_b_and_angle_contour.png")
+    plt.close()
+
+    quit()
 
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot()
     sc = ax.scatter(angle_list, backlash_list, c=dDO_dx[1])
-    ax.set_title("dDO/dx for b and drive angle")
-    ax.set_xlabel('Driven cell angle')
-    ax.set_ylabel('Normalized Backlash [n.d.]')
+    ax.set_title("dDO/dx for b and drive angle", pad=30)
+    ax.set_xlabel('Fixed Angle of Cell i=0')
+    ax.set_ylabel(r"$\Delta \Theta_i$")
     ax.xaxis.labelpad = 6
     ax.yaxis.labelpad = 6
     ax.tick_params(axis='both', which='major', pad=10)
@@ -305,23 +339,22 @@ if __name__ == '__main__':
     plt.savefig("./figures/ReLU_demo_figure.png")
     plt.close()
 
-
     # example
-    # fig = plt.figure(5, figsize=(10, 10))
-    # ax = fig.add_subplot()
-    # y1 = np.polyfit(angle_settings, [(9-i)/9 for i in dof_result[0]], 3)
-    # y2 = np.polyfit(angle_settings, [(9-i)/9 for i in dof_result[1]], 3)
-    # y3 = np.polyfit(angle_settings, [(9-i)/9 for i in dof_result[2]], 3)
-    # plt.plot(angle_settings, y1, 'r', label="dθ = 1 deg")
-    # plt.plot(angle_settings, y2, 'b', label="dθ = 2 deg")
-    # plt.plot(angle_settings, y3, 'g', label="dθ = 3 deg")
-    # plt.title("Effect on Range for Joints in Series")
-    # plt.xlabel("Distance from i=0")
-    # plt.ylabel("Range of Motion Remaining")
-    # ax.xaxis.labelpad = 10
-    # ax.yaxis.labelpad = 10
-    # plt.legend()
-    # plt.xlim([0,30])
-    # ax.tick_params(axis='both', which='major', pad=10)
-    # plt.grid()
-    # plt.savefig("dof_to_angle die off.png")
+    fig = plt.figure(5, figsize=(10, 10))
+    ax = fig.add_subplot()
+    y1 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[0]], 3)
+    y2 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[1]], 3)
+    y3 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[2]], 3)
+    plt.plot(angle_settings, y1, 'r', label="dθ = 1 deg")
+    plt.plot(angle_settings, y2, 'b', label="dθ = 2 deg")
+    plt.plot(angle_settings, y3, 'g', label="dθ = 3 deg")
+    plt.title("Effect on Range for Joints in Series")
+    plt.xlabel(r"Cell Index $i$")
+    plt.ylabel("Range of Motion Remaining")
+    ax.xaxis.labelpad = 10
+    ax.yaxis.labelpad = 10
+    plt.legend()
+    plt.xlim([0, 30])
+    ax.tick_params(axis='both', which='major', pad=10)
+    plt.grid()
+    plt.savefig("dof_to_angle die off.png")
