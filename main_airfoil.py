@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib
 import matplotlib.animation as animation
 import re
+import pandas as pd
 
 font = {'family' : 'serif',
         'size'   : 16}
@@ -23,7 +24,7 @@ def get_airfoil_positions():
     x = []
     y = []
     # Get NACA0018 profile and set to x and y
-    with open("./data/naca{}.dat".format(NACA_number), 'rb') as file:
+    with open("./data/naca_profiles/naca{}.dat".format(NACA_number), 'rb') as file:
         for line in file:
             line_as_list_of_strings = re.findall(r'\S+', line.decode("utf-8"))
             # x_value = str(line[0:6].decode("utf-8"))
@@ -102,11 +103,33 @@ def get_airfoil_alpha_function(x, y):
             first = False
         else:
             # Constrained alpha function, gives a(x) = 1 at tip and tail of airfoil
-            alpha_value = np.cos(np.arctan(abs((y[count] - y[count - 1]) / (x[count] - x[count - 1])))) * alpha_1_length + 1
+            alpha_value = np.cos(np.arctan(abs((y[count] - y[count - 1]) / (x[count] - x[count - 1])))) * (1-0.2*x[count]) * alpha_1_length + 1
             # Non-constrained, alpha function based on length change prop to expansion ratio (projective)
             # alpha_value = (np.sqrt((y[count] - y[count-1])**2+(x[count] - x[count-1])**2))/alpha_1_length + 1
             alpha.append(alpha_value)
     return alpha, t
+
+
+def get_airfoil_mocap():
+    """
+
+    :return:
+    """
+    df = pd.read_csv('./data/motion_capture/MLS 45s on column 4 20240319.csv', sep=',', header=None)
+    first_points = list(df.values[0])
+    # convert to normalized airfoil dims
+    xs = [(i/300)-0.425 for i in first_points[4::3]]
+    zs = [j/700 for j in first_points[3::3]]
+    plt.figure(0)
+    plt.scatter(xs, zs)
+    plt.savefig("./figures/motion_capture_test_20240319.png")
+    plt.close()
+    # data = zip(xs, zs)
+    # data = sorted(data, key=lambda k: [k[1], k[0]])
+    # xs = data[0:]
+    # zs = data[1:]
+    # print(xs)
+    return xs, zs
 
 
 def get_camber_length(x, y):
@@ -217,17 +240,17 @@ def get_airfoil_error(m, p, th, c, cell_size):
     return x, y_error
 
 
-def plot_airfoil_slope(x, a, y, alpha):
+def plot_airfoil_slope(x, a, y, alpha, x_exp, z_exp):
     """
     Generates plot of slope and alpha across an airfoil
     :param x:
     :param a:
     :return:
     """
-    plt.figure(1, figsize=(8, 6), dpi=80)
+    plt.figure(1, figsize=(9, 8), dpi=80)
     plt.scatter(x=x, y=y, label="NACA{} Airfoil".format(NACA_number))
     plt.scatter(x=x[1:], y=a, label="Slope")
-    plt.scatter(x=x[1:], y=alpha, label="Alpha")
+    plt.scatter(x=x[1:], y=alpha, label=r"$\alpha$ Function")
     plt.title("NACA{} Airfoil a(x) (Tip on left, tail on right)".format(NACA_number), **csfont)
     plt.xlabel("Length of wing (a.u.)", **csfont)
     plt.ylabel("Height of wing (a.u.)", **csfont)
@@ -237,11 +260,18 @@ def plot_airfoil_slope(x, a, y, alpha):
     plt.savefig("./figures/NACA{} Airfoil a(x)".format(NACA_number))
     # plt.show()
     plt.close()
-    plt.figure(2, figsize=(8, 6), dpi=80)
-    plt.scatter(x=x, y=y, label="NACA{} Airfoil".format(NACA_number))
-    plt.title("NACA{} Airfoil a(x) (Tip on left, tail on right)".format(NACA_number), **csfont)
+
+    # shift alpha linearly to plot
+    alpha = [(i-1)*130/20 -0.3 for i in alpha]
+
+    plt.figure(2, figsize=(9, 8), dpi=80)
+    plt.plot(x, y, '-o', c='r', label="NACA{} Airfoil".format(NACA_number))
+    plt.scatter(x[1:], alpha, label=r"$\alpha$ Function")
+    plt.scatter(x_exp, z_exp, c='b', label="Experimental Result")
+    plt.title(r"NACA{} Airfoil - Testing Result - $\alpha$(x) Function Comparison".format(NACA_number), **csfont)
     plt.xlabel("Length of wing (a.u.)", **csfont)
     plt.ylabel("Height of wing (a.u.)", **csfont)
+    plt.xlim((0, 1))
     plt.ylim((0, 0.2))
     plt.grid()
     plt.legend()
@@ -269,7 +299,7 @@ def plot_b_L_maxK(b_list, L_list, max_K_list):
     ax.tick_params(axis='both', which='major', pad=10)
     plt.colorbar(sc, label="Max Curvature [1/mm]")
     plt.savefig("./figures/max_curvature_2d.png")
-    plt.show()
+    # plt.show()
     plt.close()
     return 0
 
@@ -293,7 +323,7 @@ def plot_b_L_dieoff(b_list, L_list, do_list):
     ax.tick_params(axis='both', which='major', pad=10)
     plt.colorbar(sc, label="Die-off [cells]")
     plt.savefig("./figures/DO_distance_2d.png")
-    plt.show()
+    # plt.show()
     plt.close()
     return
 
@@ -331,6 +361,7 @@ if __name__ == '__main__':
     # 5 mm default cell size
     default_cell_size = 5
     data = []
+
     # Run through range of reasonable values for b, d, and L
     for thickness in d_values:
         for backlash in b_values:
@@ -345,14 +376,16 @@ if __name__ == '__main__':
     plot_b_L_maxK(b_list=data_array[:, 3], L_list=data_array[:, 2], max_K_list=data_array[:, 4])
     plot_b_L_dieoff(b_list=data_array[:, 3], L_list=data_array[:, 2], do_list=data_array[:, 5], )
 
-    data = False
+
+    data = True
     if data:
         for number in NACA_numbers:
             NACA_number = number
             x_values, y_values, t = get_airfoil_positions()
             a_values, t = get_airfoil_slope_function(x=x_values, y=y_values)
             alpha_values, t = get_airfoil_alpha_function(x=x_values, y=y_values)
-            plot_airfoil_slope(x_values, a_values, y_values, alpha_values)
+            x_experimental, z_experimental = get_airfoil_mocap()
+            plot_airfoil_slope(x_values, a_values, y_values, alpha_values, x_exp=x_experimental, z_exp=z_experimental)
 
     generated = False
     if generated:

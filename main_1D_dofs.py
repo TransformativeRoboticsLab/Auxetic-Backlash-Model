@@ -16,7 +16,7 @@ import matplotlib.ticker as mticker
 
 
 font = {'family': 'serif',
-        'size': 14}
+        'size': 20}
 csfont = {'fontname': 'Helvetica'}
 
 matplotlib.rc('font', **font)
@@ -275,7 +275,7 @@ if __name__ == '__main__':
     # for pcolormesh --> , shading='flat', vmin=DO_list.min(), vmax=DO_list.max()
     sc = ax.scatter(angle_list, backlash_list, c=DO_list)
     # z_for_plot = np.array([[i*i + j*j for j in backlash_list for i in angle_list]])
-    ax.set_title("Max DO Distance - Varying Backlash and Driven Angle")
+    ax.set_title("Max DO Distance - Varying Backlash and Angle")
     ax.set_xlabel('Fixed Angle of Cell i=0')
     ax.set_ylabel(r"$\Delta \Theta_i$")
     ax.xaxis.labelpad = 6
@@ -286,10 +286,10 @@ if __name__ == '__main__':
     plt.close()
 
     # alternative contour plot
-    fig = plt.figure(figsize=(8, 8))
+    fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot()
     sc = plt.tricontourf(angle_list, backlash_list, DO_list)
-    ax.set_title("Max DO Distance - Varying Backlash and Driven Angle", pad=30)
+    ax.set_title("Max DO Distance - Varying Backlash and Angle", pad=30)
     ax.set_xlabel('Fixed Angle of Cell i=0')
     ax.set_ylabel(r"$\Delta \Theta_i$")
     ax.xaxis.labelpad = 6
@@ -298,15 +298,14 @@ if __name__ == '__main__':
     cbar = plt.colorbar(sc,
                         ticks=[0, 2, 4, 6, 8, 10, 12, 14, 16],
                         extend='both',
-                        label="Maximum Die-Off Distance in 1D Chain"
+                        label="Die-Off Distance"
                         )
     # plt.colorbar(sc, label="DO Distance")
     plt.savefig("./figures/DO_mapping_to_b_and_angle_contour.png")
     plt.close()
 
     quit()
-
-    fig = plt.figure(figsize=(8, 8))
+    fig = plt.figure(figsize=(12, 12))
     ax = fig.add_subplot()
     sc = ax.scatter(angle_list, backlash_list, c=dDO_dx[1])
     ax.set_title("dDO/dx for b and drive angle", pad=30)
