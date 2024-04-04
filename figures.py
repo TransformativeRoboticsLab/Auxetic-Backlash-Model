@@ -6,8 +6,6 @@ import numpy as np
 import scipy.stats as stats
 import math
 
-
-
 def figure_1():
     mu = 0
     variance = 10

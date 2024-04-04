@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import comb
 
+# TODO: general class based object for auxetic linkages
 
 class auxetic_cell:
     # Class to describe an individual auxetic bilayer cell

@@ -268,7 +268,7 @@ if __name__ == '__main__':
     plt.legend()
     ax.tick_params(axis='both', which='major', pad=10)
     plt.grid()
-    plt.savefig("dof_to_fixed_cell_angle_relation.png")
+    plt.savefig("./figures/dof_to_fixed_cell_angle_relation.png")
 
     fig = plt.figure(figsize=(8, 8))
     ax = fig.add_subplot()
@@ -356,4 +356,4 @@ if __name__ == '__main__':
     plt.xlim([0, 30])
     ax.tick_params(axis='both', which='major', pad=10)
     plt.grid()
-    plt.savefig("dof_to_angle die off.png")
+    plt.savefig("./figures/dof_to_angle die off.png")

@@ -14,7 +14,7 @@ csfont = {'fontname':'Helvetica'}
 matplotlib.rc('font', **font)
 
 
-def get_airfoil_positions():
+def get_airfoil_positions(NACA_number):
     """
     Get x and y of airfoil shape
     :return:
@@ -110,9 +110,28 @@ def get_airfoil_alpha_function(x, y):
     return alpha, t
 
 
+def get_airfoil_alpha_function_slope(x, y):
+    """
+    Given a set of airfoil points, generates an alpha function across airfoil based on slope across the foil
+    :return:
+    """
+    points = len(x)
+    chord_width = float(max(x) - min(x))
+    flat_cell_width = chord_width/(2*float(points))
+    alpha = []
+    # for every x value except the last
+    for count, point in enumerate(x[:-1], 0):
+        slope = abs((y[count+1] - y[count])/(x[count+1] - x[count]))
+        # to find distance between cells when extended
+        arctan_angle = np.arctan(slope)
+        distance_to_next_cell = flat_cell_width/(np.cos(arctan_angle))
+        alpha.append(distance_to_next_cell/flat_cell_width)
+    return alpha, t
+
+
 def get_airfoil_mocap():
     """
-
+    From optitrack file, get the right x,y, and z values for each cell
     :return:
     """
     df = pd.read_csv('./data/motion_capture/MLS 45s on column 4 20240319.csv', sep=',', header=None)
@@ -188,6 +207,56 @@ def get_die_off(d, b, L, angle_range):
     return res
 
 
+def validate_alpha_function(x, y, alpha_list, number):
+    """
+    Given a list of alpha across a curve,
+    compare the resulting distance to true airfoil circumference
+    :param x: x positions of each cell
+    :param y: respective y positions of each cell, one to one lined up with x
+    :param alpha_list: alpha at each cell corresponding to x and y
+    :return:
+    """
+    points = len(x)
+    chord_width = float(max(x) - min(x))
+    flat_cell_width = 2*chord_width / (float(points))
+    print(flat_cell_width)
+    distance_contour = []
+    distance_alpha = []
+    length_of_airfoil_to_alpha = 0
+    length_of_airfoil_contour = 0
+    for count, i in enumerate(x[:-1], 0):
+        # for each point in ideal airfoil, calculate distance between two points and sum
+        distance_i = np.sqrt((y[count] - y[count + 1])**2 + (x[count] - x[count + 1])**2)
+        distance_contour.append(distance_i)
+        length_of_airfoil_contour += distance_i
+        # for each alpha, determine distance and sum
+        distance_i_alpha = flat_cell_width*alpha_list[count]
+        distance_alpha.append(distance_i_alpha)
+        length_of_airfoil_to_alpha += distance_i_alpha
+    # calculate error
+    flat_total_distace = len(x) * flat_cell_width
+    print(flat_total_distace)
+    error = length_of_airfoil_to_alpha - length_of_airfoil_contour
+    error_percentage = (error/length_of_airfoil_contour)*100
+    # Check difference visually
+    fig1, ax1 = plt.subplots()
+    ax1.scatter(x[:-1], distance_contour, label='Contour Distances')
+    ax1.scatter(x[:-1], distance_alpha, label='Alpha Distances')
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('alpha')
+    ax2.scatter(x[:-1], alpha_list)
+    fig1.set_figheight(9)
+    fig1.set_figwidth(9)
+    plt.title("Alpha Validation Function")
+    ax2.ylabel("Alpha(x) Function")
+    plt.xlabel("Chord Length of Foil (a.u.)")
+    plt.savefig("validate_alpha_{}.png".format(number))
+    plt.legend()
+    plt.close()
+
+    return error, error_percentage
+
+
 def get_airfoil_error(m, p, th, c, cell_size):
     """
     From the airfoil points and a cell size,
@@ -261,20 +330,24 @@ def plot_airfoil_slope(x, a, y, alpha, x_exp, z_exp):
     # plt.show()
     plt.close()
 
-    # shift alpha linearly to plot
-    alpha = [(i-1)*130/20 -0.3 for i in alpha]
-
-    plt.figure(2, figsize=(9, 8), dpi=80)
-    plt.plot(x, y, '-o', c='r', label="NACA{} Airfoil".format(NACA_number))
-    plt.scatter(x[1:], alpha, label=r"$\alpha$ Function")
-    plt.scatter(x_exp, z_exp, c='b', label="Experimental Result")
+    fig2, ax1 = plt.subplots()
+    fig2.set_figheight(9)
+    fig2.set_figwidth(9)
+    ax1.plot(x, y, '-o', c='r', label="NACA{} Airfoil".format(NACA_number))
+    ax1.scatter(x_exp, z_exp, c='b', label="Experimental Result")
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('alpha')
+    ax2.scatter(x[1:], alpha, label=r"$\alpha$ Function")
     plt.title(r"NACA{} Airfoil - Testing Result - $\alpha$(x) Function Comparison".format(NACA_number), **csfont)
     plt.xlabel("Length of wing (a.u.)", **csfont)
     plt.ylabel("Height of wing (a.u.)", **csfont)
     plt.xlim((0, 1))
-    plt.ylim((0, 0.2))
+    ax1.set_ylim((0, 0.2))
+    ax2.set_ylim((1, 2))
     plt.grid()
-    plt.legend()
+    h1, l1 = ax1.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax1.legend(h1 + h2, l1 + l2, loc=2)
     plt.savefig("./figures/NACA{} Airfoil".format(NACA_number))
     # plt.show()
     plt.close()
@@ -350,9 +423,9 @@ def plot_airfoil_error(x, y):
 
 
 if __name__ == '__main__':
-    print("TRL Airfoil Functions")
+    print("TRL Airfoil Study Model")
     NACA_numbers = ["0018", "0024", "1408", "1410", "2408", "4412"]
-
+    print("Examining airfoils: {}".format(str(NACA_numbers)))
     # Determine characteristic relationships
     # Take ranges for thickness, backlash, cell size [in millimeters]
     d_values = np.linspace(0.1, 1.1, 10)
@@ -361,8 +434,8 @@ if __name__ == '__main__':
     # 5 mm default cell size
     default_cell_size = 5
     data = []
-
     # Run through range of reasonable values for b, d, and L
+    print("For each thickness, backlash, and cell size - determining b_norm, DO, and dDO/dx")
     for thickness in d_values:
         for backlash in b_values:
             for cell_size in L_values:
@@ -381,9 +454,19 @@ if __name__ == '__main__':
     if data:
         for number in NACA_numbers:
             NACA_number = number
-            x_values, y_values, t = get_airfoil_positions()
+            print("Calculating Alpha(x) for airfoil: {}".format(number))
+            x_values, y_values, t = get_airfoil_positions(number)
             a_values, t = get_airfoil_slope_function(x=x_values, y=y_values)
-            alpha_values, t = get_airfoil_alpha_function(x=x_values, y=y_values)
+            # Original alpha function
+            # alpha_values, t = get_airfoil_alpha_function(x=x_values, y=y_values)
+            # Slope based alpha method
+            alpha_values, t = get_airfoil_alpha_function_slope(x=x_values, y=y_values)
+            # Recurive, optimal alpha function
+            # validate alpha function
+            e, ep = validate_alpha_function(x=x_values, y=y_values, alpha_list=alpha_values, number=number)
+            print("error and error percentage")
+            print(e)
+            print(ep)
             x_experimental, z_experimental = get_airfoil_mocap()
             plot_airfoil_slope(x_values, a_values, y_values, alpha_values, x_exp=x_experimental, z_exp=z_experimental)
 
