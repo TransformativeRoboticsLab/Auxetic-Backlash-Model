@@ -1,5 +1,7 @@
 # Jacob Miske
 # MIT License
+import os
+import glob
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib
@@ -137,7 +139,7 @@ def get_airfoil_mocap():
     df = pd.read_csv('./data/motion_capture/MLS 45s on column 4 20240319.csv', sep=',', header=None)
     first_points = list(df.values[0])
     # convert to normalized airfoil dims
-    xs = [(i/300)-0.425 for i in first_points[4::3]]
+    xs = [(i/300)-0.385 for i in first_points[4::3]]
     zs = [j/700 for j in first_points[3::3]]
     plt.figure(0)
     plt.scatter(xs, zs)
@@ -149,6 +151,46 @@ def get_airfoil_mocap():
     # zs = data[1:]
     # print(xs)
     return xs, zs
+
+
+def get_airfoil_mocap_multitest():
+    """
+    From optitrack files, get the right x, y, and z values for each cell
+    :return:
+    """
+    path = './data/motion_capture/multiform/'
+    extension = 'csv'
+    files = glob.glob(path+'*.{}'.format(extension))
+    print(files)
+    count = 1
+    xs_lists = []
+    zs_lists = []
+    filenames = []
+    for file in files:
+        df = pd.read_csv(str(file), sep=',', header=None)
+        # remove side points
+        # df = df.drop(df.columns[[2, 3, 4, 14, 15, 16, 35, 36, 37]], axis=1)
+        # take first row
+        first_points = list(df.values[0])
+        # convert to normalized airfoil dims
+        xs = [(i/300)-0.46 for i in first_points[2::3]]
+        zs = [(j/700)+0.011 for j in first_points[3::3]]
+        xs_measured = [i for i in first_points[2::3]]
+        zs_measured = [j for j in first_points[3::3]]
+        plt.figure(0)
+        plt.scatter(xs_measured, zs_measured)
+        plt.savefig("./motion_capture_multitest_{}.png".format(count))
+        plt.close()
+        # data = zip(xs, zs)
+        # data = sorted(data, key=lambda k: [k[1], k[0]])
+        # xs = data[0:]
+        # zs = data[1:]
+        # print(xs)
+        count += 1
+        xs_lists.append(xs)
+        zs_lists.append(zs)
+        filenames.append(str(file))
+    return xs_lists, zs_lists, filenames
 
 
 def get_camber_length(x, y):
@@ -240,18 +282,70 @@ def validate_alpha_function(x, y, alpha_list, number):
     error_percentage = (error/length_of_airfoil_contour)*100
     # Check difference visually
     fig1, ax1 = plt.subplots()
-    ax1.scatter(x[:-1], distance_contour, label='Contour Distances')
-    ax1.scatter(x[:-1], distance_alpha, label='Alpha Distances')
+    ax1.scatter(x[:-1], distance_contour, c='orange', label='Contour Distances')
+    ax1.scatter(x[:-1], distance_alpha, c='r', label='Alpha Distances')
     ax2 = ax1.twinx()
     ax2.set_ylabel('alpha')
     ax2.scatter(x[:-1], alpha_list)
     fig1.set_figheight(9)
     fig1.set_figwidth(9)
     plt.title("Alpha Validation Function")
-    ax2.ylabel("Alpha(x) Function")
+    ax2.set_ylabel("Alpha(x) Function")
     plt.xlabel("Chord Length of Foil (a.u.)")
-    plt.savefig("validate_alpha_{}.png".format(number))
+    plt.savefig("./figures/validate_alpha_{}.png".format(number))
     plt.legend()
+    plt.close()
+
+    # linear shift to alpha
+    distance_contour = [i*18 for i in distance_contour]
+
+    # Curve Validation figure visually
+    x_cells = [0, 0.090, 0.180, 0.272, 0.360, 0.45, 0.54, 0.63, 0.72, 0.81, 0.9, 1]
+    y_cells = [0, 0.0455, 0.071, 0.089, 0.085, 0.071, 0.061, 0.050, 0.0412, 0.032, 0.024, 0]
+    fig1, ax1 = plt.subplots()
+    ax1.scatter(x, y, label='Airfoil Points')
+    ax1.scatter(x_cells, y_cells, label='Measured Curve')
+    ax1.set_ylim([0, 0.2])
+    ax1.set_xlabel("Width of Airfoil (Arbitrary)")
+    ax1.set_ylabel("Height of Airfoil (Arbitrary)")
+    ax2 = ax1.twinx()
+    ax2.scatter(x[:-1], distance_contour, label="Conformal Alpha Function", c='r')
+    ax2.set_ylim([1, 2])
+    fig1.set_figheight(9)
+    fig1.set_figwidth(9)
+    plt.title("Alpha Validation - NACA 0018 Experiment")
+    ax2.set_ylabel("Alpha Function")
+    plt.xlabel("Chord Length of Foil (a.u.)")
+    h1, l1 = ax1.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax1.legend(h1 + h2, l1 + l2, loc=1)
+    plt.savefig("./figures/Experimental_alpha_{}.png".format(number))
+    plt.close()
+
+    # linear shift to angle
+    distance_contour = [round(i*35.5, 1) for i in distance_contour]
+
+    # Curve Validation figure visually
+    x_cells = [0, 0.090, 0.180, 0.272, 0.360, 0.45, 0.54, 0.63, 0.72, 0.81, 0.9, 1]
+    y_cells = [0, 0.0455, 0.071, 0.089, 0.085, 0.071, 0.061, 0.050, 0.0412, 0.032, 0.024, 0]
+    fig1, ax1 = plt.subplots()
+    ax1.scatter(x, y, label='Airfoil Points')
+    ax1.scatter(x_cells, y_cells, label='Measured Curve')
+    ax1.set_ylim([0, 0.2])
+    ax1.set_xlabel("Width of Airfoil (Arbitrary)")
+    ax1.set_ylabel("Height of Airfoil (Arbitrary)")
+    ax2 = ax1.twinx()
+    ax2.scatter(x[1:20], distance_contour[1:20], label="Conformal Alpha Angle", c='r')
+    ax2.set_ylim([15, 75])
+    fig1.set_figheight(9)
+    fig1.set_figwidth(9)
+    plt.title("Alpha Validation - NACA 0018 Experiment")
+    ax2.set_ylabel("Alpha Angle")
+    plt.xlabel("Chord Length of Foil (a.u.)")
+    h1, l1 = ax1.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax1.legend(h1 + h2, l1 + l2, loc=1)
+    plt.savefig("./figures/angle_alpha_{}.png".format(number))
     plt.close()
 
     return error, error_percentage
@@ -324,31 +418,41 @@ def plot_airfoil_slope(x, a, y, alpha, x_exp, z_exp):
     plt.xlabel("Length of wing (a.u.)", **csfont)
     plt.ylabel("Height of wing (a.u.)", **csfont)
     plt.ylim((-3, 3))
-    plt.grid()
     plt.legend()
     plt.savefig("./figures/NACA{} Airfoil a(x)".format(NACA_number))
     # plt.show()
     plt.close()
+    return 0
 
+
+def plot_airfoil_slope_experimental(x, a, y, alpha, x_exp, z_exp):
+    """
+    Generates plot of slope and alpha across an airfoil
+    :param x:
+    :param a:
+    :return:
+    """
+    # Plot to compare to experimental results
     fig2, ax1 = plt.subplots()
     fig2.set_figheight(9)
-    fig2.set_figwidth(9)
+    fig2.set_figwidth(2)
     ax1.plot(x, y, '-o', c='r', label="NACA{} Airfoil".format(NACA_number))
-    ax1.scatter(x_exp, z_exp, c='b', label="Experimental Result")
-    ax2 = ax1.twinx()
-    ax2.set_ylabel('alpha')
-    ax2.scatter(x[1:], alpha, label=r"$\alpha$ Function")
-    plt.title(r"NACA{} Airfoil - Testing Result - $\alpha$(x) Function Comparison".format(NACA_number), **csfont)
-    plt.xlabel("Length of wing (a.u.)", **csfont)
+    ax1.scatter(x_exp, z_exp, marker="^", s=50, c='b', label="Experimental Result")
     plt.ylabel("Height of wing (a.u.)", **csfont)
+    ax2 = ax1.twinx()
+    ax2.set_ylabel('Alpha Function (degrees)')
+    x_alpha = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    alpha = [48, 45, 42, 40, 38, 36, 35, 38, 43]
+    ax2.scatter(x_alpha, alpha, c='#000000', label=r"$\alpha$ Function")
+    plt.title(r"NACA{} Airfoil - Experiment and $\alpha$(x) Comparison".format(NACA_number), **csfont)
+    plt.xlabel("Length of wing (a.u.)", **csfont)
     plt.xlim((0, 1))
     ax1.set_ylim((0, 0.2))
-    ax2.set_ylim((1, 2))
-    plt.grid()
+    ax2.set_ylim((20, 60))
     h1, l1 = ax1.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
     ax1.legend(h1 + h2, l1 + l2, loc=2)
-    plt.savefig("./figures/NACA{} Airfoil".format(NACA_number))
+    plt.savefig("./figures/NACA{} Airfoil Count {}.png".format(NACA_number, count))
     # plt.show()
     plt.close()
 
@@ -443,6 +547,7 @@ if __name__ == '__main__':
                 max_k = get_max_curvature(d=thickness, b=backlash, L=cell_size)
                 do = get_die_off(d=thickness, b=backlash, L=cell_size, angle_range=60)/cell_size
                 data.append([thickness, backlash, cell_size, b_norm, max_k, do])
+
     # Change data type for input array
     data_array = np.array(data)
     # Generate plots from the data
@@ -464,12 +569,16 @@ if __name__ == '__main__':
             # Recurive, optimal alpha function
             # validate alpha function
             e, ep = validate_alpha_function(x=x_values, y=y_values, alpha_list=alpha_values, number=number)
-            print("error and error percentage")
-            print(e)
-            print(ep)
-            x_experimental, z_experimental = get_airfoil_mocap()
-            plot_airfoil_slope(x_values, a_values, y_values, alpha_values, x_exp=x_experimental, z_exp=z_experimental)
+            # print("error and error percentage")
+            # print(e)
+            # print(ep)
+            if NACA_number == "0018":
+                x_lists, z_lists, fnames = get_airfoil_mocap_multitest()
+                print(fnames)
+                for count, sample in enumerate(x_lists, 0):
+                    plot_airfoil_slope_experimental(x_values, a_values, y_values, alpha_values, x_exp=x_lists[count], z_exp=z_lists[count])
 
+    # Look at generate NACA profile from model
     generated = False
     if generated:
         # Gather plots of NACA profile based on mathematical model and gather alpha funcs

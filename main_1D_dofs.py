@@ -20,6 +20,7 @@ font = {'family': 'serif',
 csfont = {'fontname': 'Helvetica'}
 
 matplotlib.rc('font', **font)
+matplotlib.rcParams['axes.linewidth'] = 1
 
 
 def main():
@@ -133,6 +134,8 @@ def plot_chain(x, y, top_angle_list, bottom_angle_list):
 def dual_relu(x, b):
     """ReLU returns 1 if x>0, else 0."""
     dual_relu = np.maximum(0, x - b) + np.minimum(0, x + b)
+    dual_relu[0:9] = -100
+    dual_relu[71:80] = 100
     return dual_relu
 
 
@@ -240,6 +243,7 @@ if __name__ == '__main__':
 
     angle_list = data[0][2] + ',' + data[1][2] + ',' + data[2][2] + ',' + data[3][2] + ',' + data[4][2] + ',' + data[5][
         2]
+
     backlash_list = data[0][3] + ',' + data[1][3] + ',' + data[2][3] + ',' + data[3][3] + ',' + data[4][3] + ',' + \
                     data[5][3]
     DO_list = data[0][4] + ',' + data[1][4] + ',' + data[2][4] + ',' + data[3][4] + ',' + data[4][4] + ',' + data[5][4]
@@ -304,6 +308,29 @@ if __name__ == '__main__':
     plt.savefig("./figures/DO_mapping_to_b_and_angle_contour.png")
     plt.close()
 
+    # ReLU plot
+    b1 = 10
+    b2 = 20
+    X = np.arange(-40, 40, 1)
+    Y1 = dual_relu(X, 0)
+    Y2 = dual_relu(X, b1)
+    Y3 = dual_relu(X, b2)
+    fig = plt.figure(figsize=(12, 7))
+    ax = fig.add_subplot()
+    sc = ax.plot(X, Y1, label="Linear")
+    sc = ax.plot(X, Y2, label="ReLU Model 1")
+    sc = ax.plot(X, Y3, label="ReLU Model 2")
+    plt.xlim([-30, 30])
+    plt.ylim([-40, 40])
+    plt.grid()
+    ax.set_title("Unit Cell - Non-Linear Model Using ReLU")
+    ax.set_xlabel('Unit Cell Angle [degrees]')
+    ax.set_ylabel('Rotational Stiffness [(rev)(N/mm)]')
+    plt.legend()
+    plt.savefig("./figures/ReLU_demo_figure.png")
+    plt.close()
+
+
     quit()
     fig = plt.figure(figsize=(12, 12))
     ax = fig.add_subplot()
@@ -318,26 +345,9 @@ if __name__ == '__main__':
     plt.savefig("./figures/DO_mapping_to_b_and_angle_ddx.png")
     plt.close()
 
-    # ReLU plot
-    b1 = 10
-    b2 = 20
-    X = np.arange(-60, 60, 1)
-    Y1 = dual_relu(X, 0)
-    Y2 = dual_relu(X, b1)
-    Y3 = dual_relu(X, b2)
-    fig = plt.figure(figsize=(12, 6))
-    ax = fig.add_subplot()
-    sc = ax.plot(X, Y1, label="Linear")
-    sc = ax.plot(X, Y2, label="ReLU Model b1")
-    sc = ax.plot(X, Y3, label="ReLU Model b2")
-    plt.grid()
-    ax.set_title("ReLU Function as Non-Linear Stiffness Model")
-    ax.set_xlabel('Driven Cell Angle')
-    ax.set_ylabel('Stiffness [N/mm]')
-    plt.legend()
-    plt.savefig("./figures/ReLU_demo_figure.png")
-    plt.close()
 
+
+    quit()
     # example
     fig = plt.figure(5, figsize=(10, 10))
     ax = fig.add_subplot()
