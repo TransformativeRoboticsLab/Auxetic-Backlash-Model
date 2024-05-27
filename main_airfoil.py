@@ -433,10 +433,11 @@ def plot_airfoil_slope_experimental(x, a, y, alpha, x_exp, z_exp):
     :return:
     """
     # Plot to compare to experimental results
-    fig2, ax1 = plt.subplots()
-    fig2.set_figheight(9)
-    fig2.set_figwidth(2)
-    ax1.plot(x, y, '-o', c='r', label="NACA{} Airfoil".format(NACA_number))
+    fig, (ax1, ax3) = plt.subplots(2, 1)
+    fig.set_figheight(12)
+    fig.set_figwidth(12)
+    # TODO: smooth line and not linear interp
+    ax1.plot(x, y, '-', c='r', label="NACA{} Airfoil".format(NACA_number))
     ax1.scatter(x_exp, z_exp, marker="^", s=50, c='b', label="Experimental Result")
     plt.ylabel("Height of wing (a.u.)", **csfont)
     ax2 = ax1.twinx()
@@ -452,6 +453,9 @@ def plot_airfoil_slope_experimental(x, a, y, alpha, x_exp, z_exp):
     h1, l1 = ax1.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
     ax1.legend(h1 + h2, l1 + l2, loc=2)
+
+    ax3.plot(x, y, '-', c='m')
+
     plt.savefig("./figures/NACA{} Airfoil Count {}.png".format(NACA_number, count))
     # plt.show()
     plt.close()
@@ -572,7 +576,13 @@ if __name__ == '__main__':
             # print("error and error percentage")
             # print(e)
             # print(ep)
+            # For two particular profiles, get slope and alpha plots against experimental data
             if NACA_number == "0018":
+                x_lists, z_lists, fnames = get_airfoil_mocap_multitest()
+                print(fnames)
+                for count, sample in enumerate(x_lists, 0):
+                    plot_airfoil_slope_experimental(x_values, a_values, y_values, alpha_values, x_exp=x_lists[count], z_exp=z_lists[count])
+            if NACA_number == "2408":
                 x_lists, z_lists, fnames = get_airfoil_mocap_multitest()
                 print(fnames)
                 for count, sample in enumerate(x_lists, 0):
