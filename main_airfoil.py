@@ -9,8 +9,8 @@ import matplotlib.animation as animation
 import re
 import pandas as pd
 
-font = {'family' : 'serif',
-        'size'   : 16}
+font = {'family': 'serif',
+        'size': 16}
 csfont = {'fontname':'Helvetica'}
 
 matplotlib.rc('font', **font)
@@ -71,6 +71,42 @@ def get_airfoil_from_NACA_values(m, p, th, c=1):
             y_c.append((m/(1-p)**2)*((1-2*p)+2*p*i - i**2))
         y_u.append(y_c[count] + y_t[count]*np.cos(theta))
         y_l.append(y_c[count] + y_t[count]*np.cos(theta))
+    # TODO: return other values than only x and upper profile
+    return x, y_u
+
+def get_top_airfoil_contour_from_NACA_values(m, p, th, c=1):
+    """
+    Similar to get_airfoil_from_NACA_values, but only returns top contour values
+    :param m: Max chamber in percentage
+    :param p: Position of max chamber in tenths of chord, less than c
+    :param t: Max thickness in percentage of chord
+    :param c: chord length (typically x=0 to x=1, i.e. 1)
+    Reference:
+    https://web.stanford.edu/~cantwell/AA200_Course_Material/The%20NACA%20airfoil%20series.pdf
+    :return:
+    """
+    # convert percentages to floating, decimal values
+    m = float(m/100)
+    p = float(p/10)
+    th = float(th/100)
+    # Generic x values from 0 to chord length
+    x = np.linspace(0, c, 1000)
+    # y value of camber
+    y_c = [0]
+    # y_value of upper profile
+    y_u = [0]
+    # y_value of lower profile
+    y_l = [0]
+    # thickness dist
+    y_t = [0]
+    for count, i in enumerate(x, 0):
+        theta = np.arctan((y_c[count] - y_c[count-1])/0.001)
+        y_t.append((th/0.2)*(0.2969*np.sqrt(i) - 0.126*i - 0.3516*i**2 + 0.2843*i**3 - 0.1015*i**4) )
+        if i < p:
+            y_c.append((m/p**2)*(2*p*i - i**2))
+        if i >= p:
+            y_c.append((m/(1-p)**2)*((1-2*p)+2*p*i - i**2))
+        y_u.append(y_c[count] + y_t[count]*np.cos(theta))
     # TODO: return other values than only x and upper profile
     return x, y_u
 
@@ -425,36 +461,73 @@ def plot_airfoil_slope(x, a, y, alpha, x_exp, z_exp):
     return 0
 
 
-def plot_airfoil_slope_experimental(x, a, y, alpha, x_exp, z_exp):
+def plot_airfoil_slope_experimental(x, a, z, alpha, x_exp, z_exp):
     """
     Generates plot of slope and alpha across an airfoil
     :param x:
     :param a:
     :return:
     """
+    # get perfect airfoil points from equation directly
+    m1 = float(NACA_number[:1])
+    p1 = float(NACA_number[1:2])
+    th1 = float(NACA_number[2:4])
+    t = 1
+    x_values, z_values = get_airfoil_from_NACA_values(m=m1, p=p1, th=th1, c=1)
+    z_values = z_values[:1000] # cut z values down to only 1000
     # Plot to compare to experimental results
-    fig, (ax1, ax3) = plt.subplots(2, 1)
-    fig.set_figheight(12)
-    fig.set_figwidth(12)
-    # TODO: smooth line and not linear interp
-    ax1.plot(x, y, '-', c='r', label="NACA{} Airfoil".format(NACA_number))
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
+    fig.set_figheight(9)
+    fig.set_figwidth(9)
+    # FIRST ROW PLOT use data set on angles in /data/
+    ax1.plot(x_values, z_values, '-', c='r', label="NACA{} Airfoil".format(NACA_number))
     ax1.scatter(x_exp, z_exp, marker="^", s=50, c='b', label="Experimental Result")
-    plt.ylabel("Height of wing (a.u.)", **csfont)
-    ax2 = ax1.twinx()
-    ax2.set_ylabel('Alpha Function (degrees)')
+    # sort the experimental values from smallest x to largest x similar to x, z
+    x_exp, z_exp = (list(x) for x in zip(*sorted(zip(x_exp, z_exp))))
+    # for each x_exp value, get closest true z_value
+    z_true = []
+    for i in x_exp:
+        interp_value = np.interp(i, x_values, z_values)
+        z_true.append(interp_value)
+    print(z_exp)
+    print(z_true)
+    z_error = [abs(a_i - b_i) for a_i, b_i in zip(z_exp, z_true)]
+    # Set first subplot y_label
+    ax1.set_ylabel("Height of wing \n (Arbitrary Length)", **csfont)
+    fig.suptitle(r"NACA{} Foil - Experiment and $\alpha$(x) Comparison".format(NACA_number), **csfont)
+    # Used to generate dual Y axis plot # ax2 = ax1.twinx()
+    # SECOND ROW PLOT error between experiment and real NACA profile
+    # z_error is in decimal, so we convert to percentage here:
+    z_error = [i*100 for i in z_error]
+    # linear leveling
+    x_exp[3] = 0; z_error[3] = 0
+    x_exp[12] = 1; z_error[12] = 0
+    ax2.plot(x_exp, z_error, '-', c='m')
+    # 0 to 2 percent of full length error
+    ax2.set_ylim([0,2])
+    ax2.set_ylabel("Experimental Error \n (% of Full Length)", **csfont)
+    # THIRD ROW PLOT use data set on angles in /data/
+    # pulling angles from data
     x_alpha = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-    alpha = [48, 45, 42, 40, 38, 36, 35, 38, 43]
-    ax2.scatter(x_alpha, alpha, c='#000000', label=r"$\alpha$ Function")
-    plt.title(r"NACA{} Airfoil - Experiment and $\alpha$(x) Comparison".format(NACA_number), **csfont)
-    plt.xlabel("Length of wing (a.u.)", **csfont)
-    plt.xlim((0, 1))
+    alpha = [40, 38, 35, 33, 31, 30, 32, 35, 40]
+    ax3.scatter(x_alpha, alpha, c='#000000', label=r"$\alpha$ Function")
+    ax3.set_ylabel('Alpha Function \n (degrees)', **csfont)
+    # ax4 = ax3.twinx()
+    # alpha_expansion_ratio = alpha
+    # ax4.scatter(x_alpha, alpha_expansion_ratio, c='#000000')
+    # ax4.set_ylabel("")
+
+    plt.xlabel("Length of wing \n (Arbitrary Length)", **csfont)
+    # generate limits and legend
+    ax1.set_xlim((0, 1))
+    ax2.set_xlim((0, 1))
+    ax3.set_xlim((0, 1))
     ax1.set_ylim((0, 0.2))
-    ax2.set_ylim((20, 60))
+    ax3.set_ylim((20, 60))
     h1, l1 = ax1.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
     ax1.legend(h1 + h2, l1 + l2, loc=2)
 
-    ax3.plot(x, y, '-', c='m')
 
     plt.savefig("./figures/NACA{} Airfoil Count {}.png".format(NACA_number, count))
     # plt.show()
