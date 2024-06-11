@@ -123,19 +123,31 @@ def plot_scissor_mechanism(xs, ys, number_of_series):
 
 def draw_lattice_with_variable_dot_size(rows, cols, distance, dot_sizes):
     # Create a meshgrid for the lattice points
-    x = np.arange(0, cols * distance, distance)
-    y = np.arange(0, rows * distance, distance)
+    x = 3.5*np.arange(0, cols * distance, distance)
+    y = 3.5*np.arange(0, rows * distance, distance)
     X, Y = np.meshgrid(x, y)
+    # Experimental results
+    x_experimental = [0, 0, 0 ,0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4]
+    y_experimental = [-0.1, 0.95, 1.98, 3, 4,
+                          -0.15, 0.85, 1.9, 2.8, 4,
+                          -0.22, 0.88, 1.86, 2.79, 3.99,
+                          -0.22, 0.88, 1.86, 2.79, 3.99,
+                          -0.22, 0.88, 1.86, 2.79, 3.99]
+    # scaling and linear set
+    x_experimental = [3.5*i for i in x_experimental]
+    y_experimental = [3.5*j+0.35 for j in y_experimental]
+    plt.scatter(x_experimental, y_experimental, s=2, c='red', label="Experiment")
     # Plot the lattice points
-    plt.scatter(X, Y, s=dot_sizes, c='blue')
-    plt.xlim([-1, 5])
-    plt.ylim([-1, 5])
+    plt.scatter(X, Y, s=dot_sizes, c='blue', label="Configuration Space")
+    plt.xlim([-1, 15])
+    plt.ylim([-1, 15])
     plt.xlabel("Distance in X [cm]")
     plt.ylabel("Distance in Y [cm]")
-    plt.title("2D Lattice Cell Variance from Backlash")
+    plt.title("2D Lattice Cell Spacing with Backlash")
     # Setting equal scaling and showing the plot
+    plt.legend(bbox_to_anchor=(1, 0.95))
     plt.gca().set_aspect('equal', adjustable='box')
-    plt.show()
+    plt.savefig("./lattice.png")
 
 
 def plot_mass_on_spring(m, k, w):
@@ -193,7 +205,6 @@ def plot_N_masses_with_stiffness_in_between(m, k, w):
         y5.append(y5[-1] + 2 * y3_accel[count] * 1)
     # TODO: this is a hard code line solution for t
     t = np.linspace(0, 200, 2001)
-
     plt.figure(1)
     plt.scatter(t, y1, label="Joint 1 (Driving)")
     plt.scatter(t, y2, label="Joint 2")
@@ -458,15 +469,15 @@ if __name__ == '__main__':
     # ANGLE = np.pi / 4  # Angle between the links
     # NUMBER_OF_SERIES = 5  # Number of scissor mechanisms in series
     # xs, ys = scissor_position(LENGTH, ANGLE, number_of_links=20)
-    #
+
     # plot_scissor_mechanism(xs, ys, NUMBER_OF_SERIES)
-    #
-    # dot_sizes = np.array([[1, 5, 12, 5, 1],[5, 12, 17, 12, 5],[12, 17, 30, 17, 12],[5, 12, 17, 12, 5], [1, 5, 12, 5, 1]])
-    # draw_lattice_with_variable_dot_size(5, 5, 1, dot_sizes=dot_sizes)  # 5x5 lattice with points separated by 1 unit distance
-    #
+
+    dot_sizes = np.array([[1, 3, 5, 12, 17],[3, 5, 12, 17, 19],[5, 12, 17, 19, 20],[12, 17, 19, 20, 20], [17, 19, 20, 20, 20]])
+    draw_lattice_with_variable_dot_size(5, 5, 1, dot_sizes=dot_sizes)  # 5x5 lattice with points separated by 1 unit distance
+
     # dot_sizes = np.array([[30, 17, 12, 17, 30], [17, 12, 5, 12, 17], [12, 5, 1, 5, 12], [5, 12, 5, 12, 5], [1, 5, 12, 5, 1]])
     # draw_lattice_with_variable_dot_size(5, 5, 1, dot_sizes=dot_sizes)  # 5x5 lattice with points separated by 1 unit distance
     # plot_mass_on_spring(m=1, k=1, w=0.1)
-    plot_N_masses_with_stiffness_in_between(m=13, k=0.1, w=0.2)
-    plot_N_masses_with_stiffness_in_between_with_RELU_gap(m=13, k=0.1, w=0.2, l_gap=0.35)
-    plot_N_masses_with_stiffness_in_between_with_RELU_gap_fixed_BC(m=13, k=0.1, w=0.2, l_gap=0.35)
+    # plot_N_masses_with_stiffness_in_between(m=13, k=0.1, w=0.2)
+    # plot_N_masses_with_stiffness_in_between_with_RELU_gap(m=13, k=0.1, w=0.2, l_gap=0.35)
+    # plot_N_masses_with_stiffness_in_between_with_RELU_gap_fixed_BC(m=13, k=0.1, w=0.2, l_gap=0.35)
