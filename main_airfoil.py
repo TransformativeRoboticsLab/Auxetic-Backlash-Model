@@ -213,8 +213,9 @@ def get_airfoil_mocap_multitest():
         zs = [(j/700)+0.011 for j in first_points[3::3]]
         xs_measured = [i for i in first_points[2::3]]
         zs_measured = [j for j in first_points[3::3]]
-        plt.figure(0)
+        fig, ax = plt.figure(0)
         plt.scatter(xs_measured, zs_measured)
+        ax.grid(False)
         plt.savefig("./figures/airfoils/motion_capture_multitest_{}.png".format(count))
         plt.close()
         # data = zip(xs, zs)

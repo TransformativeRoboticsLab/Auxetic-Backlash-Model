@@ -16,7 +16,7 @@ import matplotlib.ticker as mticker
 
 
 font = {'family': 'serif',
-        'size': 20}
+        'size': 22}
 csfont = {'fontname': 'Helvetica'}
 
 matplotlib.rc('font', **font)
@@ -72,6 +72,7 @@ def set_1D_chain(N, L_list, angle, fixed_dict, gap):
         # set cell to the angle determined by nearest fixed cell
         angle_list[count] = fixed_dict[closest_fixed_cell]
     angles = angle_list
+    # Go through and find the closest fixed cell to determine range of cell i,j
     for count2, i in enumerate(angles, 0):
         closest_fixed_cell = min(list(fixed_dict.keys()), key=lambda x: abs(x - count2))
         # Determine distance from each cell to fixed cell and add backlash according to ReLU relationship
@@ -97,6 +98,7 @@ def get_DoF_from_chain(top_angle_list, bottom_angle_list):
     dof_range = 20  # degrees threshold for DOF
     count_dof = 0
     for count, cell in enumerate(top_angle_list, 0):
+        # if highest and lowest angle in range difference is greater than range, this cell is free
         if (top_angle_list[count] - bottom_angle_list[count]) > dof_range:
             count_dof += 1
     return count_dof
@@ -139,87 +141,11 @@ def dual_relu(x, b):
     return dual_relu
 
 
-if __name__ == '__main__':
-    # set global variables in main function
-    main()
-    # Set specific case variables
-    N = 20
-    Ls = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-    Ls_2 = [2 for i in range(20)]
-    L2_3 = [3 for i in range(20)]
-    angle = [10]
-    b = [0.75, 1, 1.5, 2, 2.5, 3]  # degrees
-    fixs_dict = {0: 30, 19: 30}
-
-    # change to rerun 1D analysis, don't use when plotting
-    DOF_analysis = False
-
-    if DOF_analysis:
-        for backlash in b:
-            x, y, a, ta, ba = set_1D_chain(N, Ls, angle, fixed_dict=fixs_dict, gap=backlash)
-            plot_chain(x=x, y=y, top_angle_list=ta, bottom_angle_list=ba)
-        # Generate angle amplitude to DoF plot
-        dof_count = get_DoF_from_chain(top_angle_list=ta, bottom_angle_list=ba)
-        print(dof_count)
-        angle_settings = list(np.linspace(5, 55, 51))
-
-        dof_result = [[], [], [], [], [], []]
-        DO_number_at_b = []
-        # run only one cell fixed
-        for count, backlash in enumerate(b, 0):
-            for angle in angle_settings:
-                fixs_dict = {10: angle}
-                x, y, a, ta, ba = set_1D_chain(N, Ls_2, angle, fixed_dict=fixs_dict, gap=backlash)
-                plot_chain(x=x, y=y, top_angle_list=ta, bottom_angle_list=ba)
-                # Generate angle amplitude to DoF plot
-                print("Angle of single, center cell in 20 cell chain: {}".format(angle))
-                dof_count = get_DoF_from_chain(top_angle_list=ta, bottom_angle_list=ba)
-                print("DoF Count: {}".format(dof_count))
-                dof_result[count].append(dof_count)
-                DO_number_at_b.append([backlash, angle, dof_count])
-        # DO distance
-        a1 = 20 - max(dof_result[0])
-        a2 = 20 - max(dof_result[1])
-        a3 = 20 - max(dof_result[2])
-        print(a1, a2, a3)
-
-        # DO at backlash and angle figure
-        backlash_list = [i[0] for i in DO_number_at_b]
-        angle_list = [i[1] for i in DO_number_at_b]
-        DO_list = [i[2] for i in DO_number_at_b]
-
-        DO_number_array = np.array(DO_number_at_b)
-        DO_number_array_ddx = np.gradient(DO_number_array)
-        print(DO_number_array_ddx)
-
-        # angle_list = [i[:, 0] for i in DO_number_array_ddx]
-        # backlash_list = [i[:, 1] for i in DO_number_array_ddx]
-        dDO_dx = [i[:, 2] for i in DO_number_array_ddx]
-        print(dDO_dx)
-        # zip data in form of many lists to rows
-
-        rows = []
-        # rows.append(angle_settings)
-        # rows.append(dof_result)
-        # rows.append(angle_list)
-        # rows.append(backlash_list)
-        # rows.append(DO_list)
-        # collect all modeling data into one
-        count = 0
-        for DOF_list in dof_result:
-            rows.append([angle_settings,
-                         DOF_list,
-                         angle_list[51 * (count):51 * (count + 1)],
-                         backlash_list[51 * (count):51 * (count + 1)],
-                         DO_list[51 * (count):51 * (count + 1)]])
-            count += 1
-
-        data_path = "./data_from_1D_DOF.csv"
-        with open(data_path, "w") as f:
-            writer = csv.writer(f)
-            for row in rows:
-                writer.writerow(row)
-
+def plot_figure_2():
+    """
+    Generate figure 2 based on modeling output
+    :return:
+    """
     # Use data from data_from_1D_DOF.csv, not directly calculated variables
     data = []
     with open('data_from_1D_DOF.csv', 'r') as csvfile:
@@ -254,59 +180,6 @@ if __name__ == '__main__':
     angle_settings = list(np.linspace(5, 55, 51))
 
     colors = itertools.cycle(["r", "b", "g", "k"])
-    # DOF result figures
-    fig = plt.figure(4, figsize=(10, 10))
-    ax = fig.add_subplot()
-    plt.scatter(angle_settings, dof_result_0p75deg, s=30, color=next(colors), label="dθ = 0.75 deg")
-    plt.scatter(angle_settings, dof_result_1deg, s=30, color=next(colors), label="dθ = 1 deg")
-    plt.scatter(angle_settings, dof_result_2deg, s=30, color=next(colors), label="dθ = 2 deg")
-    plt.scatter(angle_settings, dof_result_3deg, s=30, color=next(colors), label="dθ = 3 deg")
-    plt.title("Varying DoF of Revolute Joints in Series")
-    plt.xlabel("Fixed Angle of Cell i=0 in 1D Chain ")
-    plt.ylabel("Number of Free Revolute Cells")
-    ax.yaxis.set_major_locator(MaxNLocator(integer=True))  # Force matplotlib to only use integers on axis markings
-    plt.xlim([5, 30])
-    plt.ylim((0, 20))
-    ax.xaxis.labelpad = 6
-    ax.yaxis.labelpad = 6
-    plt.legend()
-    ax.tick_params(axis='both', which='major', pad=10)
-    plt.grid()
-    plt.savefig("./figures/dof_to_fixed_cell_angle_relation.png")
-
-    fig = plt.figure(figsize=(8, 8))
-    ax = fig.add_subplot()
-    # for pcolormesh --> , shading='flat', vmin=DO_list.min(), vmax=DO_list.max()
-    sc = ax.scatter(angle_list, backlash_list, c=DO_list)
-    # z_for_plot = np.array([[i*i + j*j for j in backlash_list for i in angle_list]])
-    ax.set_title("Max DO Distance - Varying Backlash and Angle")
-    ax.set_xlabel('Fixed Angle of Cell i=0')
-    ax.set_ylabel(r"$\Delta \Theta_i$")
-    ax.xaxis.labelpad = 6
-    ax.yaxis.labelpad = 6
-    ax.tick_params(axis='both', which='major', pad=10)
-    plt.colorbar(sc, label="DO Distance")
-    plt.savefig("./figures/DO_mapping_to_b_and_angle.png")
-    plt.close()
-
-    # alternative contour plot
-    fig = plt.figure(figsize=(10, 10))
-    ax = fig.add_subplot()
-    sc = plt.tricontourf(angle_list, backlash_list, DO_list)
-    ax.set_title("Max DO Distance - Varying Backlash and Angle", pad=30)
-    ax.set_xlabel('Fixed Angle of Cell i=0')
-    ax.set_ylabel(r"$\Delta \Theta_i$")
-    ax.xaxis.labelpad = 6
-    ax.yaxis.labelpad = 6
-    ax.tick_params(axis='both', which='major', pad=10)
-    cbar = plt.colorbar(sc,
-                        ticks=[0, 2, 4, 6, 8, 10, 12, 14, 16],
-                        extend='both',
-                        label="Die-Off Distance"
-                        )
-    # plt.colorbar(sc, label="DO Distance")
-    plt.savefig("./figures/DO_mapping_to_b_and_angle_contour.png")
-    plt.close()
 
     # ReLU plot
     b1 = 10
@@ -322,41 +195,108 @@ if __name__ == '__main__':
     sc = ax.plot(X, Y3, label="ReLU Model 2")
     plt.xlim([-30, 30])
     plt.ylim([-40, 40])
-    plt.grid()
+    plt.grid(visible=False)
     ax.set_title("Unit Cell - Non-Linear Model Using ReLU")
     ax.set_xlabel('Unit Cell Angle [degrees]')
     ax.set_ylabel('Rotational Stiffness [(rev)(N/mm)]')
     plt.legend()
-    plt.savefig("./figures/ReLU_demo_figure.png")
+    plt.axvline(0, color='black')
+    # plt.savefig("./figures/figure2_ReLU_demo_figure.png", dpi=600)
     plt.close()
 
-
-    quit()
-    fig = plt.figure(figsize=(12, 12))
+    fig = plt.figure(4, figsize=(10, 10))
     ax = fig.add_subplot()
-    sc = ax.scatter(angle_list, backlash_list, c=dDO_dx[1])
-    ax.set_title("dDO/dx for b and drive angle", pad=30)
+    # plt.scatter(angle_settings, dof_result_0p75deg, s=30, color=next(colors), label="Δθ = 0.75 deg")
+    # plt.scatter(angle_settings, dof_result_1deg, s=30, color=next(colors), label="Δθ = 1 deg")
+    # plt.scatter(angle_settings, dof_result_2deg, s=30, color=next(colors), label="Δθ = 2 deg")
+    # plt.scatter(angle_settings, dof_result_3deg, s=30, color=next(colors), label="Δθ = 3 deg")
+    plt.step(angle_settings, dof_result_0p75deg, '-o', color=next(colors), where='post', label="Δθ = 0.75 deg")
+    plt.step(angle_settings, dof_result_1deg,  '-o', color=next(colors), where='post', label="Δθ = 1 deg")
+    plt.step(angle_settings, dof_result_2deg,  '-o', color=next(colors), where='post', label="Δθ = 2 deg")
+    plt.step(angle_settings, dof_result_3deg,  '-o', color=next(colors), where='post', label="Δθ = 3 deg")
+    plt.title("Varying DoF of 20 Revolute Joints in Series", **csfont)
+    plt.xlabel("Fixed Angle of Cell i=0 in 1D Chain ", **csfont)
+    plt.ylabel("Number of Free Revolute Cells", **csfont)
+    ax.yaxis.set_major_locator(MaxNLocator(integer=True))  # Force matplotlib to only use integers on axis markings
+    plt.xlim([5, 20])
+    plt.ylim((-0.5, 20))
+    ax.xaxis.labelpad = 6
+    ax.yaxis.labelpad = 6
+    plt.legend()
+    plt.xticks(np.arange(5, 21, 2.5))
+    plt.yticks(np.arange(0, 21, 2))
+    ax.tick_params(axis='both', which='major', pad=10)
+    plt.grid(visible=False)
+    # plt.savefig("./figures/figure2_dof_to_fixed_cell_angle_relation.png", dpi=600)
+    plt.close()
+
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot()
+    # for pcolormesh --> , shading='flat', vmin=DO_list.min(), vmax=DO_list.max()
+    sc = ax.scatter(angle_list, backlash_list, c=DO_list)
+    # z_for_plot = np.array([[i*i + j*j for j in backlash_list for i in angle_list]])
+    ax.set_title("Max DO Distance - Varying Backlash and Angle")
     ax.set_xlabel('Fixed Angle of Cell i=0')
     ax.set_ylabel(r"$\Delta \Theta_i$")
     ax.xaxis.labelpad = 6
     ax.yaxis.labelpad = 6
     ax.tick_params(axis='both', which='major', pad=10)
-    plt.colorbar(sc, label="dDO/dx")
-    plt.savefig("./figures/DO_mapping_to_b_and_angle_ddx.png")
+    plt.colorbar(sc, label="DO Distance")
+    plt.axhline(0, color='black')
+    # plt.savefig("./figures/figure2_DO_mapping_to_b_and_angle.png", dpi=600)
     plt.close()
 
+    # alternative contour plot
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot()
+    cmap = plt.cm.jet
+    cmaplist = [cmap(i) for i in range(cmap.N -1)]
+    cmaplist[0] = (0.5, 0.5, 0.5, 1.0) # grey base color
+    cmap = matplotlib.colors.LinearSegmentedColormap.from_list('custom', cmaplist, cmap.N)
+    sc = plt.tricontourf(angle_list, backlash_list, DO_list, cmap=cmap)
+    ax.set_title("DO Distance - Varying Backlash and Angle", pad=30, **csfont)
+    ax.set_xlabel('Fixed Angle of Cell i=0', **csfont)
+    ax.set_ylabel(r"$\Delta \Theta_i$", **csfont)
+    ax.xaxis.labelpad = 6
+    ax.yaxis.labelpad = 6
+    ax.tick_params(axis='both', which='major', pad=10)
+    plt.locator_params(axis='y', nbins=6)
+    plt.locator_params(axis='x', nbins=6)
 
+    cbar = plt.colorbar(sc,
+                        ticks=[0, 2, 4, 6, 8, 10, 12, 14, 16, 18],
+                        extend='both',
+                        label="Die-Off Distance"
+                        )
+    # plt.colorbar(sc, label="DO Distance")
+    # plt.savefig("./figures/figure2_DO_mapping_to_b_and_angle_contour.png", dpi=600)
+    plt.close()
 
-    quit()
-    # example
+    fig = plt.figure(figsize=(12, 12))
+    ax = fig.add_subplot()
+    cmap = plt.cm.jet
+    cmaplist = [cmap(i) for i in range(cmap.N - 1)]
+    cmaplist[0] = (0.5, 0.5, 0.5, 1.0)  # grey base color
+    cmap = matplotlib.colors.LinearSegmentedColormap.from_list('custom', cmaplist, cmap.N)
+    sc = plt.tricontourf(angle_list, backlash_list, dDO_dx[1], cmap=cmap)
+    ax.set_title("dDO/dx - Varying Backlash and Angle", pad=30, **csfont)
+    ax.set_xlabel('Fixed Angle of Cell i=0', **csfont)
+    ax.set_ylabel(r"$\Delta \Theta_i$", **csfont)
+    ax.xaxis.labelpad = 6
+    ax.yaxis.labelpad = 6
+    ax.tick_params(axis='both', which='major', pad=10)
+    plt.colorbar(sc, label="dDO/dx")
+    plt.savefig("./figures/figure2_DO_mapping_to_b_and_angle_ddx.png", dpi=600)
+    plt.close()
+
     fig = plt.figure(5, figsize=(10, 10))
     ax = fig.add_subplot()
-    y1 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[0]], 3)
-    y2 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[1]], 3)
-    y3 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[2]], 3)
-    plt.plot(angle_settings, y1, 'r', label="dθ = 1 deg")
-    plt.plot(angle_settings, y2, 'b', label="dθ = 2 deg")
-    plt.plot(angle_settings, y3, 'g', label="dθ = 3 deg")
+    # y1 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[0]], 3)
+    # y2 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[1]], 3)
+    # y3 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[2]], 3)
+    plt.plot(angle_settings, dof_result[0], 'r', label="dθ = 1 deg")
+    plt.plot(angle_settings, dof_result[1], 'b', label="dθ = 2 deg")
+    plt.plot(angle_settings, dof_result[2], 'g', label="dθ = 3 deg")
     plt.title("Effect on Range for Joints in Series")
     plt.xlabel(r"Cell Index $i$")
     plt.ylabel("Range of Motion Remaining")
@@ -365,5 +305,95 @@ if __name__ == '__main__':
     plt.legend()
     plt.xlim([0, 30])
     ax.tick_params(axis='both', which='major', pad=10)
-    plt.grid()
-    plt.savefig("./figures/dof_to_angle die off.png")
+    plt.grid(visible=False)
+    # plt.savefig("./figures/dof_to_angle die off.png", dpi=600)
+    plt.close()
+
+
+if __name__ == '__main__':
+    # Set global variables
+    main()
+    # Set local variables
+    # Number of cells
+    N = 20
+    # Unit cell length
+    Ls = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    # alternative unit cell lengths
+    Ls_2 = [2 for i in range(20)]
+    L2_3 = [3 for i in range(20)]
+    # unit cell angle boundary condition
+    angle = [10]
+    # independent variables
+    b = [0.75, 1, 1.5, 2, 2.5, 3]  # degrees
+    fixs_dict = {0: 30, 19: 30}
+
+    # change to rerun 1D analysis, don't use when plotting
+    DOF_analysis = True
+    if DOF_analysis:
+        for backlash in b:
+            x, y, a, ta, ba = set_1D_chain(N, Ls, angle, fixed_dict=fixs_dict, gap=backlash)
+            # plot_chain(x=x, y=y, top_angle_list=ta, bottom_angle_list=ba)
+        # Generate angle amplitude to DoF plot
+        dof_count = get_DoF_from_chain(top_angle_list=ta, bottom_angle_list=ba)
+        # print(dof_count)
+        angle_settings = list(np.linspace(5, 55, 51))
+
+        dof_result = [[], [], [], [], [], []]
+        DO_number_at_b = []
+        # run only one cell fixed
+        for count, backlash in enumerate(b, 0):
+            for angle in angle_settings:
+                fixs_dict = {10: angle}
+                x, y, a, ta, ba = set_1D_chain(N, Ls_2, angle, fixed_dict=fixs_dict, gap=backlash)
+                # plot_chain(x=x, y=y, top_angle_list=ta, bottom_angle_list=ba)
+                # Generate angle amplitude to DoF plot
+                # print("Angle of single, center cell in 20 cell chain: {}".format(angle))
+                dof_count = get_DoF_from_chain(top_angle_list=ta, bottom_angle_list=ba)
+                # print("DoF Count: {}".format(dof_count))
+                dof_result[count].append(dof_count)
+                DO_number_at_b.append([backlash, angle, dof_count])
+        # DO distance
+        a1 = 20 - max(dof_result[0])
+        a2 = 20 - max(dof_result[1])
+        a3 = 20 - max(dof_result[2])
+        # print(a1, a2, a3)
+
+        # DO at backlash and angle figure
+        backlash_list = [i[0] for i in DO_number_at_b]
+        angle_list = [i[1] for i in DO_number_at_b]
+        DO_list = [i[2] for i in DO_number_at_b]
+
+        DO_number_array = np.array(DO_number_at_b)
+        np.savetxt("./DO_number_array.csv", DO_number_array, delimiter=",")
+        DO_number_array_ddx = np.gradient(DO_number_array)
+        # print(DO_number_array_ddx)
+
+        # angle_list = [i[:, 0] for i in DO_number_array_ddx]
+        # backlash_list = [i[:, 1] for i in DO_number_array_ddx]
+        dDO_dx = [i[:, 2] for i in DO_number_array_ddx]
+        # print(dDO_dx)
+        # zip data in form of many lists to rows
+
+        rows = []
+        # rows.append(angle_settings)
+        # rows.append(dof_result)
+        # rows.append(angle_list)
+        # rows.append(backlash_list)
+        # rows.append(DO_list)
+        # collect all modeling data into one
+        count = 0
+        for DOF_list in dof_result:
+            rows.append([angle_settings,
+                         DOF_list,
+                         angle_list[51 * count:51 * (count + 1)],
+                         backlash_list[51 * count:51 * (count + 1)],
+                         DO_list[51 * count:51 * (count + 1)]])
+            count += 1
+
+        data_path = "./data_from_1D_DOF.csv"
+        with open(data_path, "w") as f:
+            writer = csv.writer(f)
+            for row in rows:
+                writer.writerow(row)
+
+    plot_figure_2()
