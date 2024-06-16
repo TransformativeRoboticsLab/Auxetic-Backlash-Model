@@ -44,7 +44,7 @@ def set_1D_chain(N, L_list, angle, fixed_dict, gap):
     """
     # Assume fixed gap leading to 5 deg range between cells, full range is 60 deg
     # b = 2  # degrees
-    full_range = 60
+    full_range = 80
     # angle list is modified once the fixed_dict is parsed, starts fully collapsed at full_range
     angle_list = [full_range for _ in range(N)]
     top_angle_list = []
@@ -80,7 +80,7 @@ def set_1D_chain(N, L_list, angle, fixed_dict, gap):
 
         # set upper and lower angle bounds for each element
         if count2 not in fixed_dict.keys():
-            top_angle_list.append(np.min((60, fixed_dict[closest_fixed_cell] + gap * distance_to_fixed)))
+            top_angle_list.append(np.min((80, fixed_dict[closest_fixed_cell] + gap * distance_to_fixed)))
             bottom_angle_list.append(np.max((0, fixed_dict[closest_fixed_cell] - gap * distance_to_fixed)))
         else:
             top_angle_list.append(fixed_dict[closest_fixed_cell])
@@ -152,8 +152,8 @@ def plot_figure_2():
         reader = csv.reader(csvfile, delimiter=',')
         for row in reader:
             data.append(row)
-            print('\n')
-    print(type(data[0][0]))
+            # print('\n')
+    # print(type(data[0][0]))
 
     dof_result_0p75deg = data[0][1]
     dof_result_0p75deg = [float(i) for i in dof_result_0p75deg.strip('][').split(', ')]
@@ -230,21 +230,21 @@ def plot_figure_2():
     # plt.savefig("./figures/figure2_dof_to_fixed_cell_angle_relation.png", dpi=600)
     plt.close()
 
-    fig = plt.figure(figsize=(8, 8))
-    ax = fig.add_subplot()
-    # for pcolormesh --> , shading='flat', vmin=DO_list.min(), vmax=DO_list.max()
-    sc = ax.scatter(angle_list, backlash_list, c=DO_list)
-    # z_for_plot = np.array([[i*i + j*j for j in backlash_list for i in angle_list]])
-    ax.set_title("Max DO Distance - Varying Backlash and Angle")
-    ax.set_xlabel('Fixed Angle of Cell i=0')
-    ax.set_ylabel(r"$\Delta \Theta_i$")
-    ax.xaxis.labelpad = 6
-    ax.yaxis.labelpad = 6
-    ax.tick_params(axis='both', which='major', pad=10)
-    plt.colorbar(sc, label="DO Distance")
-    plt.axhline(0, color='black')
-    # plt.savefig("./figures/figure2_DO_mapping_to_b_and_angle.png", dpi=600)
-    plt.close()
+    # fig = plt.figure(figsize=(8, 8))
+    # ax = fig.add_subplot()
+    # # for pcolormesh --> , shading='flat', vmin=DO_list.min(), vmax=DO_list.max()
+    # sc = ax.scatter(angle_list, backlash_list, c=DO_list)
+    # # z_for_plot = np.array([[i*i + j*j for j in backlash_list for i in angle_list]])
+    # ax.set_title("Max DO Distance - Varying Backlash and Angle")
+    # ax.set_xlabel('Fixed Angle of Cell i=0')
+    # ax.set_ylabel(r"$\Delta \Theta_i$")
+    # ax.xaxis.labelpad = 6
+    # ax.yaxis.labelpad = 6
+    # ax.tick_params(axis='both', which='major', pad=10)
+    # plt.colorbar(sc, label="DO Distance")
+    # plt.axhline(0, color='black')
+    # # plt.savefig("./figures/figure2_DO_mapping_to_b_and_angle.png", dpi=600)
+    # plt.close()
 
     # alternative contour plot
     fig = plt.figure(figsize=(10, 10))
@@ -262,7 +262,6 @@ def plot_figure_2():
     ax.tick_params(axis='both', which='major', pad=10)
     plt.locator_params(axis='y', nbins=6)
     plt.locator_params(axis='x', nbins=6)
-
     cbar = plt.colorbar(sc,
                         ticks=[0, 2, 4, 6, 8, 10, 12, 14, 16, 18],
                         extend='both',
@@ -279,7 +278,7 @@ def plot_figure_2():
     cmaplist[0] = (0.5, 0.5, 0.5, 1.0)  # grey base color
     cmap = matplotlib.colors.LinearSegmentedColormap.from_list('custom', cmaplist, cmap.N)
     sc = plt.tricontourf(angle_list, backlash_list, dDO_dx[1], cmap=cmap)
-    ax.set_title("dDO/dx - Varying Backlash and Angle", pad=30, **csfont)
+    ax.set_title(r"$\frac{dDO}{dx}$ - Varying Backlash and Angle", pad=30, **csfont)
     ax.set_xlabel('Fixed Angle of Cell i=0', **csfont)
     ax.set_ylabel(r"$\Delta \Theta_i$", **csfont)
     ax.xaxis.labelpad = 6
@@ -324,7 +323,7 @@ if __name__ == '__main__':
     # unit cell angle boundary condition
     angle = [10]
     # independent variables
-    b = [0.75, 1, 1.5, 2, 2.5, 3]  # degrees
+    b = [0.75, 1, 1.5, 2, 2.5, 3]  # norm backlash
     fixs_dict = {0: 30, 19: 30}
 
     # change to rerun 1D analysis, don't use when plotting
@@ -366,12 +365,15 @@ if __name__ == '__main__':
         DO_number_array = np.array(DO_number_at_b)
         np.savetxt("./DO_number_array.csv", DO_number_array, delimiter=",")
         DO_number_array_ddx = np.gradient(DO_number_array)
-        # print(DO_number_array_ddx)
+        print(DO_number_array)
+        print(DO_number_array_ddx)
 
         # angle_list = [i[:, 0] for i in DO_number_array_ddx]
         # backlash_list = [i[:, 1] for i in DO_number_array_ddx]
-        dDO_dx = [i[:, 2] for i in DO_number_array_ddx]
-        # print(dDO_dx)
+
+        dDO_dx = [i[:, 1] for i in DO_number_array_ddx]
+
+        print(dDO_dx)
         # zip data in form of many lists to rows
 
         rows = []
