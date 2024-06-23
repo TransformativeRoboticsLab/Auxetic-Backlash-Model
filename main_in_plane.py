@@ -126,28 +126,39 @@ def draw_lattice_with_variable_dot_size(rows, cols, distance, dot_sizes):
     x = 3.5*np.arange(0, cols * distance, distance)
     y = 3.5*np.arange(0, rows * distance, distance)
     X, Y = np.meshgrid(x, y)
-    # Experimental results
-    x_experimental = [0, 0, 0 ,0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4]
-    y_experimental = [-0.1, 0.95, 1.98, 3, 4,
-                          -0.15, 0.85, 1.9, 2.8, 4,
-                          -0.22, 0.88, 1.86, 2.79, 3.99,
-                          -0.22, 0.88, 1.86, 2.79, 3.99,
-                          -0.22, 0.88, 1.86, 2.79, 3.99]
+    # Experimental results from lab notebook
+    x_experimental = [0, 0.02, 0.04, 0.05, 0.05,
+                      1.01, 1.02, 1.02, 1.03, 1.06,
+                      2.01, 2.03, 2.04, 2.05, 2.06,
+                      3.03, 3.04, 3.05, 3.08, 3.08,
+                      4.05, 4.06, 4.07, 4.09, 4.11]
+    y_experimental = [0, 1.02, 2.03, 3.04, 4.06,
+                      0.02, 1.05, 2.04, 3.04, 4.06,
+                      0.03, 1.03, 2.04, 3.05, 4.09,
+                      0.03, 1.05, 2.05, 3.06, 4.09,
+                      0.04, 1.05, 2.06, 3.09, 4.10]
     # scaling and linear set
     x_experimental = [3.5*i for i in x_experimental]
-    y_experimental = [3.5*j+0.35 for j in y_experimental]
-    plt.scatter(x_experimental, y_experimental, s=2, c='red', label="Experiment")
+    y_experimental = [3.5*j for j in y_experimental]
+    fig, ax = plt.subplots(1,1,figsize=(5, 5))
     # Plot the lattice points
-    plt.scatter(X, Y, s=dot_sizes, c='blue', label="Configuration Space")
+    plt.scatter(X, Y, s=dot_sizes, c='blue', label="Configuration Space", alpha=0.3)
+    plt.scatter(x_experimental, y_experimental, s=15, c='red', facecolors='r', label="Experiment", alpha=0.5)
+    plt.scatter([0], [0], facecolors='none', edgecolors='g', s=50, label="Locked Cell")
     plt.xlim([-1, 15])
     plt.ylim([-1, 15])
     plt.xlabel("Distance in X [cm]")
     plt.ylabel("Distance in Y [cm]")
-    plt.title("2D Lattice Cell Spacing with Backlash")
+    plt.title("Flat Lattice with Backlash Pulled from Corner")
     # Setting equal scaling and showing the plot
-    plt.legend(bbox_to_anchor=(1, 0.95))
+    leg = plt.legend(loc='lower right')
+    for axis in ['top', 'bottom', 'left', 'right']:
+        ax.spines[axis].set_linewidth(2)
+    leg.get_frame().set_linewidth(2)
+    leg.get_frame().set_edgecolor('k')
     plt.gca().set_aspect('equal', adjustable='box')
-    plt.savefig("./lattice.png")
+    plt.savefig("./figures/2D_lattice_experiment.png", dpi=400)
+    plt.close()
 
 
 def plot_mass_on_spring(m, k, w):
@@ -471,8 +482,10 @@ if __name__ == '__main__':
     # xs, ys = scissor_position(LENGTH, ANGLE, number_of_links=20)
 
     # plot_scissor_mechanism(xs, ys, NUMBER_OF_SERIES)
-
-    dot_sizes = np.array([[1, 3, 5, 12, 17],[3, 5, 12, 17, 19],[5, 12, 17, 19, 20],[12, 17, 19, 20, 20], [17, 19, 20, 20, 20]])
+    # 2 mm gap
+    dot_sizes = np.array([[1, 3, 5, 7, 9],[3, 5, 7, 9, 11],[5, 7, 9, 11, 13],[7, 9, 11, 13, 15], [9, 11, 13, 15, 17]])
+    #scale up for visualization
+    dot_sizes = np.multiply(dot_sizes, 35)
     draw_lattice_with_variable_dot_size(5, 5, 1, dot_sizes=dot_sizes)  # 5x5 lattice with points separated by 1 unit distance
 
     # dot_sizes = np.array([[30, 17, 12, 17, 30], [17, 12, 5, 12, 17], [12, 5, 1, 5, 12], [5, 12, 5, 12, 5], [1, 5, 12, 5, 1]])

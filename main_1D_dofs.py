@@ -42,7 +42,7 @@ def set_1D_chain(N, L_list, angle, fixed_dict, gap):
     :param fixed_dict: indexs of fixed cells in chain (N long), keys are angles
     :return: x and y of each cell in chain, angle_list
     """
-    # Assume fixed gap leading to 5 deg range between cells, full range is 60 deg
+    # Assume fixed gap leading to 5 deg range between cells, full range is 80 deg
     # b = 2  # degrees
     full_range = 80
     # angle list is modified once the fixed_dict is parsed, starts fully collapsed at full_range
@@ -210,10 +210,10 @@ def plot_figure_2():
     # plt.scatter(angle_settings, dof_result_1deg, s=30, color=next(colors), label="Δθ = 1 deg")
     # plt.scatter(angle_settings, dof_result_2deg, s=30, color=next(colors), label="Δθ = 2 deg")
     # plt.scatter(angle_settings, dof_result_3deg, s=30, color=next(colors), label="Δθ = 3 deg")
-    plt.step(angle_settings, dof_result_0p75deg, '-o', color=next(colors), where='post', label="Δθ = 0.75 deg")
-    plt.step(angle_settings, dof_result_1deg,  '-o', color=next(colors), where='post', label="Δθ = 1 deg")
-    plt.step(angle_settings, dof_result_2deg,  '-o', color=next(colors), where='post', label="Δθ = 2 deg")
-    plt.step(angle_settings, dof_result_3deg,  '-o', color=next(colors), where='post', label="Δθ = 3 deg")
+    plt.step(angle_settings, dof_result_0p75deg, '-o', color=next(colors), where='post', label="Δθ = 0.75$^\circ$")
+    plt.step(angle_settings, dof_result_1deg, '-o', color=next(colors), where='post', label="Δθ = 1$^\circ$")
+    plt.step(angle_settings, dof_result_2deg, '-o', color=next(colors), where='post', label="Δθ = 2$^\circ$")
+    plt.step(angle_settings, dof_result_3deg, '-o', color=next(colors), where='post', label="Δθ = 3$^\circ$")
     plt.title("Varying DoF of 20 Revolute Joints in Series", **csfont)
     plt.xlabel("Fixed Angle of Cell i=0 in 1D Chain ", **csfont)
     plt.ylabel("Number of Free Revolute Cells", **csfont)
@@ -227,7 +227,7 @@ def plot_figure_2():
     plt.yticks(np.arange(0, 21, 2))
     ax.tick_params(axis='both', which='major', pad=10)
     plt.grid(visible=False)
-    # plt.savefig("./figures/figure2_dof_to_fixed_cell_angle_relation.png", dpi=600)
+    plt.savefig("./figures/figure2_dof_to_fixed_cell_angle_relation.png", dpi=600)
     plt.close()
 
     # fig = plt.figure(figsize=(8, 8))
@@ -250,8 +250,8 @@ def plot_figure_2():
     fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot()
     cmap = plt.cm.jet
-    cmaplist = [cmap(i) for i in range(cmap.N -1)]
-    cmaplist[0] = (0.5, 0.5, 0.5, 1.0) # grey base color
+    cmaplist = [cmap(i) for i in range(cmap.N - 1)]
+    cmaplist[0] = (0.5, 0.5, 0.5, 1.0)  # grey base color
     cmap = matplotlib.colors.LinearSegmentedColormap.from_list('custom', cmaplist, cmap.N)
     sc = plt.tricontourf(angle_list, backlash_list, DO_list, cmap=cmap)
     ax.set_title("DO Distance - Varying Backlash and Angle", pad=30, **csfont)
@@ -268,44 +268,55 @@ def plot_figure_2():
                         label="Die-Off Distance"
                         )
     # plt.colorbar(sc, label="DO Distance")
-    # plt.savefig("./figures/figure2_DO_mapping_to_b_and_angle_contour.png", dpi=600)
+    plt.xlim(5, 45)  # symmetric plot
+    plt.savefig("./figures/figure2_DO_mapping_to_b_and_angle_contour.png", dpi=600)
     plt.close()
 
-    fig = plt.figure(figsize=(12, 12))
+    fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot()
     cmap = plt.cm.jet
     cmaplist = [cmap(i) for i in range(cmap.N - 1)]
     cmaplist[0] = (0.5, 0.5, 0.5, 1.0)  # grey base color
     cmap = matplotlib.colors.LinearSegmentedColormap.from_list('custom', cmaplist, cmap.N)
-    sc = plt.tricontourf(angle_list, backlash_list, dDO_dx[1], cmap=cmap)
+    sc = plt.tricontourf(angle_list, backlash_list, dDO_dx[1], cmap=cmap, vmin=0, vmax=7)
     ax.set_title(r"$\frac{dDO}{dx}$ - Varying Backlash and Angle", pad=30, **csfont)
     ax.set_xlabel('Fixed Angle of Cell i=0', **csfont)
     ax.set_ylabel(r"$\Delta \Theta_i$", **csfont)
     ax.xaxis.labelpad = 6
     ax.yaxis.labelpad = 6
     ax.tick_params(axis='both', which='major', pad=10)
+    plt.locator_params(axis='y', nbins=6)
+    plt.locator_params(axis='x', nbins=6)
+    ax.tick_params(axis='both', which='major', pad=10)
     plt.colorbar(sc, label="dDO/dx")
+    plt.xlim(5, 45)  # symmetric plot
     plt.savefig("./figures/figure2_DO_mapping_to_b_and_angle_ddx.png", dpi=600)
     plt.close()
 
-    fig = plt.figure(5, figsize=(10, 10))
+    fig = plt.figure(10, figsize=(6, 6))
     ax = fig.add_subplot()
     # y1 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[0]], 3)
     # y2 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[1]], 3)
     # y3 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[2]], 3)
-    plt.plot(angle_settings, dof_result[0], 'r', label="dθ = 1 deg")
-    plt.plot(angle_settings, dof_result[1], 'b', label="dθ = 2 deg")
-    plt.plot(angle_settings, dof_result[2], 'g', label="dθ = 3 deg")
-    plt.title("Effect on Range for Joints in Series")
-    plt.xlabel(r"Cell Index $i$")
-    plt.ylabel("Range of Motion Remaining")
+    range_of_motion_case0 = [ 100*(i/max(dof_result[0])) for i in dof_result[0]]
+    range_of_motion_case1 = [ 100*(i/max(dof_result[1])) for i in dof_result[1]]
+    range_of_motion_case2 = [ 100*(i/max(dof_result[3])) for i in dof_result[3]]
+    range_of_motion_case3 = [ 100*(i/max(dof_result[5])) for i in dof_result[5]]
+    plt.scatter(angle_settings, range_of_motion_case0, 60, c='r', marker="o", label="dθ = 0.75$^\circ$")
+    plt.scatter(angle_settings, range_of_motion_case1, 60, c='b', marker="<", label="dθ = 1$^\circ$")
+    plt.scatter(angle_settings, range_of_motion_case2, 60, c='g', marker=">", label="dθ = 2$^\circ$")
+    plt.scatter(angle_settings, range_of_motion_case3, 60, c='k', marker="v", label="dθ = 3$^\circ$")
+    plt.title("Range of Motion for Joints in Series", pad=30, **csfont)
+    plt.xlabel(r"Cell Index $i$", **csfont)
+    plt.ylabel("Range of Free Motion (%)", **csfont)
     ax.xaxis.labelpad = 10
     ax.yaxis.labelpad = 10
     plt.legend()
-    plt.xlim([0, 30])
+    plt.xlim([4, 16])
+    plt.ylim([0, 100])
     ax.tick_params(axis='both', which='major', pad=10)
     plt.grid(visible=False)
-    # plt.savefig("./figures/dof_to_angle die off.png", dpi=600)
+    plt.savefig("./figures/figure2_dof_to_angle die off.png", dpi=600)
     plt.close()
 
 
@@ -316,7 +327,7 @@ if __name__ == '__main__':
     # Number of cells
     N = 20
     # Unit cell length
-    Ls = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+    Ls = [1.5 for i in range(20)]
     # alternative unit cell lengths
     Ls_2 = [2 for i in range(20)]
     L2_3 = [3 for i in range(20)]
@@ -343,7 +354,7 @@ if __name__ == '__main__':
         for count, backlash in enumerate(b, 0):
             for angle in angle_settings:
                 fixs_dict = {10: angle}
-                x, y, a, ta, ba = set_1D_chain(N, Ls_2, angle, fixed_dict=fixs_dict, gap=backlash)
+                x, y, a, ta, ba = set_1D_chain(N, Ls, angle, fixed_dict=fixs_dict, gap=backlash)
                 # plot_chain(x=x, y=y, top_angle_list=ta, bottom_angle_list=ba)
                 # Generate angle amplitude to DoF plot
                 # print("Angle of single, center cell in 20 cell chain: {}".format(angle))
@@ -365,16 +376,10 @@ if __name__ == '__main__':
         DO_number_array = np.array(DO_number_at_b)
         np.savetxt("./DO_number_array.csv", DO_number_array, delimiter=",")
         DO_number_array_ddx = np.gradient(DO_number_array)
-        print(DO_number_array)
-        print(DO_number_array_ddx)
-
         # angle_list = [i[:, 0] for i in DO_number_array_ddx]
         # backlash_list = [i[:, 1] for i in DO_number_array_ddx]
-
+        # get the x-y plane axis gradient (z values)
         dDO_dx = [i[:, 1] for i in DO_number_array_ddx]
-
-        print(dDO_dx)
-        # zip data in form of many lists to rows
 
         rows = []
         # rows.append(angle_settings)
