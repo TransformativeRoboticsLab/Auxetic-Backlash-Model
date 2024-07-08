@@ -1,5 +1,5 @@
-# Auxetic Backlash Model
-This repository holds a set of programs to model the backlash in auxetic structures.
+# Auxetic Lattice Backlash Model
+This repository contains a set of programs to model the backlash in auxetic lattice structures.
 
 The backlash in an auxetic structure can be configured or programmed to design a shape-changing structure.
 
@@ -10,5 +10,5 @@ The backlash in an auxetic structure can be configured or programmed to design a
 
 
 #### ReLU Function for Stiffness of Cells
-
+To model the rotational stiffness of a rotating, auxetic cell, we use a realized linear unit equation.
 ![alt text](./figures/ReLU_demo_figure.png "ReLU model")

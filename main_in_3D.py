@@ -48,7 +48,7 @@ def bernstein_poly(i, n, t):
     """
      The Bernstein polynomial of n, i as a function of t
     """
-    return comb(n, i) * ( t**(n-i) ) * (1 - t)**i
+    return comb(n, i) * (t**(n-i)) * (1 - t)**i
 
 
 def get_bezier_parameters(X, Y, degree=3):
@@ -173,7 +173,6 @@ def plot_linkage_system(angle1, angle2, lengths):
 
 if __name__ == '__main__':
     print("This model assumes links can flex")
-
     # Show NACA 0018 shape
     # Create x values from 0 to 1, 200 points
     x = np.linspace(0, 1, 200)
@@ -213,17 +212,16 @@ if __name__ == '__main__':
 
     # Plot the original points
     plt.plot(xpoints, ypoints, "ro", label='Original Points')
-    # Get the Bezier parameters based on a degree.
+    # Get the Bézier parameters based on a degree.
     data = get_bezier_parameters(xpoints, ypoints, degree=4)
     x_val = [x[0] for x in data]
     y_val = [x[1] for x in data]
     print(data)
     # Plot the control points
     plt.plot(x_val, y_val, 'k--o', label='Control Points')
-    # Plot the resulting Bezier curve
+    # Plot the resulting Bézier curve
     xvals, yvals = bezier_curve(data, nTimes=1000)
     plt.plot(xvals, yvals, 'b-', label='B Curve')
     plt.xlabel("X Dimension (m)")
-
     plt.legend()
     plt.show()

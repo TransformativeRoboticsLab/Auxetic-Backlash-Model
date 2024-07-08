@@ -1,3 +1,5 @@
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -46,6 +48,7 @@ def figure_3():
     plt.ylim([0,8])
     plt.show()
     return 0
+
 
 if __name__ == '__main__':
     # figure_1()

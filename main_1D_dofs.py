@@ -11,10 +11,6 @@ import ast
 from matplotlib.ticker import MaxNLocator
 import matplotlib.ticker as mticker
 
-# grabs closest number in myList to myNumber
-# min(myList, key=lambda x:abs(x-myNumber))
-
-
 font = {'family': 'serif',
         'size': 22}
 csfont = {'fontname': 'Helvetica'}
@@ -25,7 +21,7 @@ matplotlib.rcParams['axes.linewidth'] = 1
 
 def main():
     """
-    Function to set up definitions
+    Function to set definitions
     :return:
     """
     # degrees of rotation range left to still be considered free dof

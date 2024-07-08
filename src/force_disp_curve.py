@@ -7,6 +7,7 @@ with open('./data/force_disp_auxetic.csv', newline='') as csvfile:
     for row in data_reader:
         displacement.append(float(row[0][:10]))
         force.append(float(row[1]))
+
 plt.figure(1)
 plt.scatter(displacement, force)
 plt.xlabel("Displacement [mm]")
