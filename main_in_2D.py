@@ -7,18 +7,19 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-class auxetic_cell:
+class AuxeticCell:
     # Class to describe an individual auxetic bilayer cell
     def __init__(self, x, y):
-        self.arm_length = 2                                       # [cm]
+        self.arm_length = 2  # [cm]
         self.arms = 4
         self.layers = 2
         self.center_x = x
         self.center_y = y
-        self.top_layer_angle = 0                                  # [radians]
-        self.bottom_layer_angle = 45                              # [radians]
-        self.arm_angle = 2*(np.pi)/(float(self.arms)) # [radians]
+        self.top_layer_angle = 0  # [radians]
+        self.bottom_layer_angle = 45  # [radians]
+        self.arm_angle = 2 * np.pi / (float(self.arms))  # [radians]
         self.arm_positions = []
+
     def get_position_list(self):
         cell_positions = []
         cell_center = [self.center_x, self.center_y]
@@ -36,24 +37,43 @@ class auxetic_cell:
             cell_positions.append(cell_j_position)
         # return list of size = 1 (center) + arm ends (layers*arms)
         return cell_positions
+
     def update_arm_positions(self):
         # rewrites arm positions based on connections
         print('not ready')
+
     def connect(self, other_cell_):
         # connects a cell arm to another cell arm
         print('not ready')
 
 
-class abstract_auxetic_cell:
-    # point representation of auxetic cell
+class AbstractAuxeticCell:
+    # point representation of auxetic cell, simplier than full class model
     def __init__(self, x, y):
-        self.position_x = x
-        self.position_y = y
+        self.pos_x = x
+        self.pos_y = y
+        self.arm_length = 10  # radius [mm]
+        self.alpha = 1
+        self.fixed = False
+
+    def connect_cell(self, A_cell):
+        """
+        Mates this cell with another cell
+        :param A_cell:
+        :return:
+        """
+        # If both are fixed, check if center within arm length, if not return False
+
+        # If one is free, move center position of free cell to nearest point in radius of fixed cell
+
+        # If both are free, find nearest point between two circles and move cells so that radius is
+
+
 
 
 def get_relu(a, b):
     # returns ReLU function response
-    return lambda x: max(0, a*(x-b))
+    return lambda x: max(0, a * (x - b))
 
 
 def plot_auxetic_cell(list_of_cell_positions):
@@ -98,7 +118,7 @@ def scissor_position(length, angle, number_of_links):
         y_positions.append(y_next)
 
         # Apply decrement to neutral pi/4 angle with ReLU relationship
-        angle = (angle - a*(angle - 0.785))
+        angle = (angle - a * (angle - 0.785))
         print(angle)
     print(x_positions)
     print(y_positions)
@@ -123,8 +143,8 @@ def plot_scissor_mechanism(xs, ys, number_of_series):
 
 def draw_lattice_with_variable_dot_size(rows, cols, distance, dot_sizes):
     # Create a meshgrid for the lattice points
-    x = 3.5*np.arange(0, cols * distance, distance)
-    y = 3.5*np.arange(0, rows * distance, distance)
+    x = 3.5 * np.arange(0, cols * distance, distance)
+    y = 3.5 * np.arange(0, rows * distance, distance)
     X, Y = np.meshgrid(x, y)
     # Experimental results from lab notebook
     x_experimental = [0, 0.02, 0.04, 0.05, 0.05,
@@ -138,9 +158,9 @@ def draw_lattice_with_variable_dot_size(rows, cols, distance, dot_sizes):
                       0.03, 1.05, 2.05, 3.06, 4.09,
                       0.04, 1.05, 2.06, 3.09, 4.10]
     # scaling and linear set
-    x_experimental = [3.5*i for i in x_experimental]
-    y_experimental = [3.5*j for j in y_experimental]
-    fig, ax = plt.subplots(1,1,figsize=(5, 5))
+    x_experimental = [3.5 * i for i in x_experimental]
+    y_experimental = [3.5 * j for j in y_experimental]
+    fig, ax = plt.subplots(1, 1, figsize=(5, 5))
     # Plot the lattice points
     plt.scatter(X, Y, s=dot_sizes, c='blue', label="Configuration Space", alpha=0.3)
     plt.scatter(x_experimental, y_experimental, s=15, c='red', facecolors='r', label="Experiment", alpha=0.5)
@@ -171,7 +191,7 @@ def plot_mass_on_spring(m, k, w):
     t = np.linspace(0, 100, 100)
     y = []
     for i in t:
-        y = np.cos(w*t)
+        y = np.cos(w * t)
     plt.figure(1)
     plt.scatter(t, y)
     plt.show()
@@ -202,11 +222,11 @@ def plot_N_masses_with_stiffness_in_between(m, k, w):
     y5_accel = [0]
     # for each timestep, determine the accel on each mass, y1 thru y5
     for count, i in enumerate(t, 0):
-        y1_accel.append(0.01*cos(w*t[count]) + k*((y2[count] - y1[count]) - 1))
-        y2_accel.append(- k*((y2[count] - y1[count])) + k*((y3[count] - y2[count])) )
-        y3_accel.append(- k*((y3[count] - y2[count])) + k*((y4[count] - y3[count])) )
-        y4_accel.append(- k*((y4[count] - y3[count])) + k*((y5[count] - y4[count])) )
-        y5_accel.append(- k*((y5[count] - y4[count]))  )
+        y1_accel.append(0.01 * cos(w * t[count]) + k * ((y2[count] - y1[count]) - 1))
+        y2_accel.append(- k * (y2[count] - y1[count]) + k * (y3[count] - y2[count]))
+        y3_accel.append(- k * (y3[count] - y2[count]) + k * (y4[count] - y3[count]))
+        y4_accel.append(- k * (y4[count] - y3[count]) + k * (y5[count] - y4[count]))
+        y5_accel.append(- k * (y5[count] - y4[count]))
         # Now adjust the position of individual masses based on the change in acceleration over the time step
         # last position plus movement 2(a)(dt)
         y1.append(y1[-1] + 2 * y1_accel[count] * 1)
@@ -260,30 +280,30 @@ def plot_N_masses_with_stiffness_in_between_with_RELU_gap(m, k, w, l_gap):
         y3_to_y4_distance = abs(y4[count] - y3[count])
         y4_to_y5_distance = abs(y5[count] - y4[count])
         # Apply ReLU relationship
-        if y1_to_y2_distance > 1+l_gap or y1_to_y2_distance < 1-l_gap:
+        if y1_to_y2_distance > 1 + l_gap or y1_to_y2_distance < 1 - l_gap:
             y1_to_y2_distance = y2[count] - y1[count]
         else:
             y1_to_y2_distance = 1
-        if y2_to_y3_distance > 1+l_gap or y2_to_y3_distance < 1-l_gap:
+        if y2_to_y3_distance > 1 + l_gap or y2_to_y3_distance < 1 - l_gap:
             y2_to_y3_distance = y3[count] - y2[count]
         else:
             y2_to_y3_distance = 1
-        if y3_to_y4_distance > 1+l_gap or y3_to_y4_distance < 1-l_gap:
+        if y3_to_y4_distance > 1 + l_gap or y3_to_y4_distance < 1 - l_gap:
             y3_to_y4_distance = y4[count] - y3[count]
         else:
             y3_to_y4_distance = 1
-        if y4_to_y5_distance > 1+l_gap or y4_to_y5_distance < 1-l_gap:
+        if y4_to_y5_distance > 1 + l_gap or y4_to_y5_distance < 1 - l_gap:
             y4_to_y5_distance = y5[count] - y4[count]
         else:
             y4_to_y5_distance = 1
         print("y1toy2 dist")
         print(y1_to_y2_distance)
         # append accelerations
-        y1_accel.append(0.01*cos(w*t[count]) + k * (y1_to_y2_distance - 1))
-        y2_accel.append( - k * ( y1_to_y2_distance - 1) + k * ( y2_to_y3_distance - 1 ))
-        y3_accel.append( - k * ( y2_to_y3_distance - 1) + k * ( y3_to_y4_distance - 1 ))
-        y4_accel.append( - k * ( y3_to_y4_distance - 1) + k * ( y4_to_y5_distance - 1 ))
-        y5_accel.append( - k * ( y4_to_y5_distance - 1) )
+        y1_accel.append(0.01 * cos(w * t[count]) + k * (y1_to_y2_distance - 1))
+        y2_accel.append(- k * (y1_to_y2_distance - 1) + k * (y2_to_y3_distance - 1))
+        y3_accel.append(- k * (y2_to_y3_distance - 1) + k * (y3_to_y4_distance - 1))
+        y4_accel.append(- k * (y3_to_y4_distance - 1) + k * (y4_to_y5_distance - 1))
+        y5_accel.append(- k * (y4_to_y5_distance - 1))
         print("y1 accel")
         print(y1_accel[-1])
         # Now adjust the position of individual masses based on the change in acceleration over the time step
@@ -306,7 +326,7 @@ def plot_N_masses_with_stiffness_in_between_with_RELU_gap(m, k, w, l_gap):
     plt.ylabel("Distance along x-Direction (cm)")
     plt.xlabel("Time (s)")
     plt.legend()
-    plt.xlim([0,200])
+    plt.xlim([0, 200])
     plt.savefig("TRL_ReLU_coupling m={} k={} w={} l_gap={}.png".format(m, k, w, l_gap))
     plt.close()
 
@@ -341,30 +361,30 @@ def plot_N_masses_with_stiffness_in_between_with_RELU_gap_fixed_BC(m, k, w, l_ga
         y3_to_y4_distance = abs(y4[count] - y3[count])
         y4_to_y5_distance = abs(y5[count] - y4[count])
         # Apply ReLU relationship
-        if y1_to_y2_distance > 1+l_gap or y1_to_y2_distance < 1-l_gap:
+        if y1_to_y2_distance > 1 + l_gap or y1_to_y2_distance < 1 - l_gap:
             y1_to_y2_distance = y2[count] - y1[count]
         else:
             y1_to_y2_distance = 1
-        if y2_to_y3_distance > 1+l_gap or y2_to_y3_distance < 1-l_gap:
+        if y2_to_y3_distance > 1 + l_gap or y2_to_y3_distance < 1 - l_gap:
             y2_to_y3_distance = y3[count] - y2[count]
         else:
             y2_to_y3_distance = 1
-        if y3_to_y4_distance > 1+l_gap or y3_to_y4_distance < 1-l_gap:
+        if y3_to_y4_distance > 1 + l_gap or y3_to_y4_distance < 1 - l_gap:
             y3_to_y4_distance = y4[count] - y3[count]
         else:
             y3_to_y4_distance = 1
-        if y4_to_y5_distance > 1+l_gap or y4_to_y5_distance < 1-l_gap:
+        if y4_to_y5_distance > 1 + l_gap or y4_to_y5_distance < 1 - l_gap:
             y4_to_y5_distance = y5[count] - y4[count]
         else:
             y4_to_y5_distance = 1
         print("y1toy2 dist")
         print(y1_to_y2_distance)
         # append accelerations
-        y1_accel.append(0.01*cos(w*t[count]) + k * (y1_to_y2_distance - 1))
-        y2_accel.append( - k * ( y1_to_y2_distance - 1) + k * ( y2_to_y3_distance - 1 ))
-        y3_accel.append( - k * ( y2_to_y3_distance - 1) + k * ( y3_to_y4_distance - 1 ))
-        y4_accel.append( - k * ( y3_to_y4_distance - 1) + k * ( y4_to_y5_distance - 1 ))
-        y5_accel.append( - k * ( y4_to_y5_distance - 1) )
+        y1_accel.append(0.01 * cos(w * t[count]) + k * (y1_to_y2_distance - 1))
+        y2_accel.append(- k * (y1_to_y2_distance - 1) + k * (y2_to_y3_distance - 1))
+        y3_accel.append(- k * (y2_to_y3_distance - 1) + k * (y3_to_y4_distance - 1))
+        y4_accel.append(- k * (y3_to_y4_distance - 1) + k * (y4_to_y5_distance - 1))
+        y5_accel.append(- k * (y4_to_y5_distance - 1))
         print("y1 accel")
         print(y1_accel[-1])
         # Now adjust the position of individual masses based on the change in acceleration over the time step
@@ -388,7 +408,7 @@ def plot_N_masses_with_stiffness_in_between_with_RELU_gap_fixed_BC(m, k, w, l_ga
     plt.ylabel("Distance along x-Direction (cm)")
     plt.xlabel("Time (s)")
     plt.legend()
-    plt.xlim([0,200])
+    plt.xlim([0, 200])
     plt.show()
     plt.close()
 
@@ -423,30 +443,30 @@ def plot_N_masses_with_stiffness_in_between_with_RELU_gap_2D(m, k, w, l_gap):
         y3_to_y4_distance = abs(y4[count] - y3[count])
         y4_to_y5_distance = abs(y5[count] - y4[count])
         # Apply ReLU relationship
-        if y1_to_y2_distance > 1+l_gap or y1_to_y2_distance < 1-l_gap:
+        if y1_to_y2_distance > 1 + l_gap or y1_to_y2_distance < 1 - l_gap:
             y1_to_y2_distance = y2[count] - y1[count]
         else:
             y1_to_y2_distance = 1
-        if y2_to_y3_distance > 1+l_gap or y2_to_y3_distance < 1-l_gap:
+        if y2_to_y3_distance > 1 + l_gap or y2_to_y3_distance < 1 - l_gap:
             y2_to_y3_distance = y3[count] - y2[count]
         else:
             y2_to_y3_distance = 1
-        if y3_to_y4_distance > 1+l_gap or y3_to_y4_distance < 1-l_gap:
+        if y3_to_y4_distance > 1 + l_gap or y3_to_y4_distance < 1 - l_gap:
             y3_to_y4_distance = y4[count] - y3[count]
         else:
             y3_to_y4_distance = 1
-        if y4_to_y5_distance > 1+l_gap or y4_to_y5_distance < 1-l_gap:
+        if y4_to_y5_distance > 1 + l_gap or y4_to_y5_distance < 1 - l_gap:
             y4_to_y5_distance = y5[count] - y4[count]
         else:
             y4_to_y5_distance = 1
         print("y1toy2 dist")
         print(y1_to_y2_distance)
         # append accelerations
-        y1_accel.append(0.01*cos(w*t[count]) + k * (y1_to_y2_distance - 1))
-        y2_accel.append( - k * ( y1_to_y2_distance - 1) + k * ( y2_to_y3_distance - 1 ))
-        y3_accel.append( - k * ( y2_to_y3_distance - 1) + k * ( y3_to_y4_distance - 1 ))
-        y4_accel.append( - k * ( y3_to_y4_distance - 1) + k * ( y4_to_y5_distance - 1 ))
-        y5_accel.append( - k * ( y4_to_y5_distance - 1) )
+        y1_accel.append(0.01 * cos(w * t[count]) + k * (y1_to_y2_distance - 1))
+        y2_accel.append(- k * (y1_to_y2_distance - 1) + k * (y2_to_y3_distance - 1))
+        y3_accel.append(- k * (y2_to_y3_distance - 1) + k * (y3_to_y4_distance - 1))
+        y4_accel.append(- k * (y3_to_y4_distance - 1) + k * (y4_to_y5_distance - 1))
+        y5_accel.append(- k * (y4_to_y5_distance - 1))
         print("y1 accel")
         print(y1_accel[-1])
         # Now adjust the position of individual masses based on the change in acceleration over the time step
@@ -469,7 +489,7 @@ def plot_N_masses_with_stiffness_in_between_with_RELU_gap_2D(m, k, w, l_gap):
     plt.ylabel("Distance along x-Direction (cm)")
     plt.xlabel("Time (s)")
     plt.legend()
-    plt.xlim([0,200])
+    plt.xlim([0, 200])
     plt.savefig("TRL_ReLU_coupling m={} k={} w={} l_gap={}.png".format(m, k, w, l_gap))
     plt.close()
 
@@ -483,10 +503,12 @@ if __name__ == '__main__':
 
     # plot_scissor_mechanism(xs, ys, NUMBER_OF_SERIES)
     # 2 mm gap
-    dot_sizes = np.array([[1, 3, 5, 7, 9],[3, 5, 7, 9, 11],[5, 7, 9, 11, 13],[7, 9, 11, 13, 15], [9, 11, 13, 15, 17]])
-    #scale up for visualization
+    dot_sizes = np.array(
+        [[1, 3, 5, 7, 9], [3, 5, 7, 9, 11], [5, 7, 9, 11, 13], [7, 9, 11, 13, 15], [9, 11, 13, 15, 17]])
+    # scale up for visualization
     dot_sizes = np.multiply(dot_sizes, 35)
-    draw_lattice_with_variable_dot_size(5, 5, 1, dot_sizes=dot_sizes)  # 5x5 lattice with points separated by 1 unit distance
+    draw_lattice_with_variable_dot_size(5, 5, 1,
+                                        dot_sizes=dot_sizes)  # 5x5 lattice with points separated by 1 unit distance
 
     # dot_sizes = np.array([[30, 17, 12, 17, 30], [17, 12, 5, 12, 17], [12, 5, 1, 5, 12], [5, 12, 5, 12, 5], [1, 5, 12, 5, 1]])
     # draw_lattice_with_variable_dot_size(5, 5, 1, dot_sizes=dot_sizes)  # 5x5 lattice with points separated by 1 unit distance
