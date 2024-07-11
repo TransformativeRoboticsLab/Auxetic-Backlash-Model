@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 class AuxeticCell:
     # Class to describe an individual auxetic bilayer cell
     def __init__(self, x, y):
+        self.cell_index = 0  # default all cells to be index zero until otherwise stated
         self.arm_length = 2  # [cm]
         self.arms = 4
         self.layers = 2
@@ -48,27 +49,68 @@ class AuxeticCell:
 
 
 class AbstractAuxeticCell:
-    # point representation of auxetic cell, simplier than full class model
+    # point representation of auxetic cell, simpler than full class model
     def __init__(self, x, y):
+        self.cell_index = 0  # default all cells to be index zero until otherwise stated
         self.pos_x = x
         self.pos_y = y
-        self.arm_length = 10  # radius [mm]
-        self.alpha = 1
+        self.arm_length = 10  # default radius [mm]
+        self.alpha = 1  # default cells at contracted state
         self.fixed = False
+        # Keep a list of all other cell indexes connected to this cell
+        self.connections = []
 
-    def connect_cell(self, A_cell):
+    def get_cell_position(self):
+        """
+        :return: prints (x, y) of cell
+        """
+        print(str(self.pos_x) + str(self.pos_y))
+
+    def get_distance_between_cells(self, a_cell):
+        """
+        Determine cartesian distance between two cells
+        :param a_cell: another cell, not self
+        :return: cartesian distance
+        """
+        distance = np.sqrt((a_cell.pos_x - self.pos_x) ** 2 + (a_cell.pos_y - self.pos_y) ** 2)
+        print(distance)
+        return distance
+
+    def get_connected_distance_between_cells(self, a_cell):
+        """
+        based on arm length and alpha, calculate connected distance between self and a_cell
+        :param a_cell: another cell, not self
+        :return:
+        """
+        connected_distance = self.arm_length * self.alpha + a_cell.arm_length * a_cell.alpha
+        print(connected_distance)
+        return connected_distance
+
+    def connect_cell(self, a_cell):
         """
         Mates this cell with another cell
-        :param A_cell:
+        :param a_cell:
         :return:
         """
         # If both are fixed, check if center within arm length, if not return False
-
+        if self.fixed and a_cell.fixed:
+            print('both fixed, cannot move')
         # If one is free, move center position of free cell to nearest point in radius of fixed cell
-
+        elif self.fixed or a_cell.fixed:
+            print('one is fixed')
+            if self.fixed:
+                print('self fixed')
+                # Try to move the other cell, get nearest point on circle between two points
+                # where P is the point, C is the center, and R is the radius
+                # Answer = C + V / |V| *R;
+                # a_cell.pos_x = cX + vX / magV * R;
+                # a_cell.pos_y = cY + vY / magV * R;
+            else:
+                # Try to move self
+                print('other cell fixed')
         # If both are free, find nearest point between two circles and move cells so that radius is
-
-
+        else:
+            print('neither fixed')
 
 
 def get_relu(a, b):
@@ -495,6 +537,15 @@ def plot_N_masses_with_stiffness_in_between_with_RELU_gap_2D(m, k, w, l_gap):
 
 
 if __name__ == '__main__':
+    # AbstractAuxeticCell tests
+    cell1 = AbstractAuxeticCell(x=0, y=0)
+    cell2 = AbstractAuxeticCell(x=20, y=30)
+    cell1.fixed = True
+    cell1.get_distance_between_cells(cell2)
+    cell1.get_connected_distance_between_cells(cell2)
+    cell1.connect_cell(cell2)
+
+
     # Parameters for the scissor mechanism
     # LENGTH = 2.0  # Length of each linkage
     # ANGLE = np.pi / 4  # Angle between the links
@@ -503,12 +554,14 @@ if __name__ == '__main__':
 
     # plot_scissor_mechanism(xs, ys, NUMBER_OF_SERIES)
     # 2 mm gap
-    dot_sizes = np.array(
-        [[1, 3, 5, 7, 9], [3, 5, 7, 9, 11], [5, 7, 9, 11, 13], [7, 9, 11, 13, 15], [9, 11, 13, 15, 17]])
-    # scale up for visualization
-    dot_sizes = np.multiply(dot_sizes, 35)
-    draw_lattice_with_variable_dot_size(5, 5, 1,
-                                        dot_sizes=dot_sizes)  # 5x5 lattice with points separated by 1 unit distance
+
+    # Figure 2.5 of RADs
+    # dot_sizes = np.array(
+    #     [[1, 3, 5, 7, 9], [3, 5, 7, 9, 11], [5, 7, 9, 11, 13], [7, 9, 11, 13, 15], [9, 11, 13, 15, 17]])
+    # # scale up for visualization
+    # dot_sizes = np.multiply(dot_sizes, 35)
+    # draw_lattice_with_variable_dot_size(5, 5, 1,
+    #                                     dot_sizes=dot_sizes)  # 5x5 lattice with points separated by 1 unit distance
 
     # dot_sizes = np.array([[30, 17, 12, 17, 30], [17, 12, 5, 12, 17], [12, 5, 1, 5, 12], [5, 12, 5, 12, 5], [1, 5, 12, 5, 1]])
     # draw_lattice_with_variable_dot_size(5, 5, 1, dot_sizes=dot_sizes)  # 5x5 lattice with points separated by 1 unit distance
