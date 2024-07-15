@@ -97,21 +97,50 @@ class AbstractAuxeticCell:
             print('both fixed, cannot move')
         # If one is free, move center position of free cell to nearest point in radius of fixed cell
         elif self.fixed or a_cell.fixed:
+            # First, try to connect
             print('one is fixed')
             if self.fixed:
-                print('self fixed')
+                print('self is fixed')
                 # Try to move the other cell, get nearest point on circle between two points
-                # where P is the point, C is the center, and R is the radius
-                # Answer = C + V / |V| *R;
-                # a_cell.pos_x = cX + vX / magV * R;
-                # a_cell.pos_y = cY + vY / magV * R;
+                # Where P is the closest point, C is the center, and R is the radius
+                V = [a_cell.pos_x - self.pos_x, a_cell.pos_y - self.pos_y]
+                print(V)
+                # = C + V / |V| * R;
+                mag_V = self.get_distance_between_cells(a_cell)
+                print(mag_V)
+                a_cell.pos_x = self.pos_x + V[0] * 1 / self.arm_length
+                a_cell.pos_y = self.pos_y + V[1] * 1 / self.arm_length
             else:
+                print('other cell is fixed')
                 # Try to move self
-                print('other cell fixed')
+                V = [a_cell.pos_x - self.pos_x, a_cell.pos_y - self.pos_y]
+                # = C + V / |V| * R;
+                mag_V = np.absolute(V)
+                self.pos_x = (a_cell.pos_x + V[0]) * 1 / (mag_V * a_cell.arm_length)
+                self.pos_y = (a_cell.pos_y + V[1]) * 1 / (mag_V * a_cell.arm_length)
+            # if connection is successful, add each cell to the other's connections list
+
         # If both are free, find nearest point between two circles and move cells so that radius is
         else:
             print('neither fixed')
+            # move both equally to meet one another
 
+
+def plot_abstract_cells(list_cells):
+    """
+    Given a list of AbstractAuxeticCells, plot centers and connected links
+    :param list_cells:
+    :return:
+    """
+    plt.figure(0)
+    for cell in list_cells:
+        print(vars(cell))
+        plt.scatter(cell.pos_x, cell.pos_y, label=cell.cell_index)
+        plt.legend()
+        plt.savefig("TRL_abstract_cells_plot.png")
+    plt.show()
+    plt.close()
+    return 0
 
 def get_relu(a, b):
     # returns ReLU function response
@@ -539,12 +568,13 @@ def plot_N_masses_with_stiffness_in_between_with_RELU_gap_2D(m, k, w, l_gap):
 if __name__ == '__main__':
     # AbstractAuxeticCell tests
     cell1 = AbstractAuxeticCell(x=0, y=0)
-    cell2 = AbstractAuxeticCell(x=20, y=30)
+    cell2 = AbstractAuxeticCell(x=50, y=80)
     cell1.fixed = True
     cell1.get_distance_between_cells(cell2)
     cell1.get_connected_distance_between_cells(cell2)
     cell1.connect_cell(cell2)
 
+    plot_abstract_cells([cell1, cell2])
 
     # Parameters for the scissor mechanism
     # LENGTH = 2.0  # Length of each linkage

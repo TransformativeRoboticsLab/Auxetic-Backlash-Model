@@ -71,11 +71,11 @@ if __name__ == '__main__':
     cell_center = np.array([0,0,0])
     tested = np.random.rand(20, 3)
     cloud = np.random.rand(50, 3)
-    print(cloud[0])
-    print(type(cloud[0]))
+    # print(cloud[0])
+    # print(type(cloud[0]))
+    #
+    # print(in_hull(cell_center, cloud))
 
-    print(in_hull(cell_center, cloud))
-
-    # tested_2d = np.random.rand(20, 2)
-    # cloud_2d = np.random.rand(50, 2)
-    # print(plot_in_hull_2D(tested_2d, cloud_2d))
+    tested_2d = np.random.rand(20, 2)
+    cloud_2d = np.random.rand(50, 2)
+    print(plot_in_hull_2D(tested_2d, cloud_2d))

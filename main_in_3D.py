@@ -4,21 +4,26 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.special import comb
+from matplotlib.collections import PolyCollection, LineCollection
+from scipy.spatial import Delaunay
+from sympy.utilities.iterables import multiset_permutations
+import itertools
 
 # TODO: general class based object for auxetic linkages
 
-class auxetic_cell:
+class AuxeticCell:
     # Class to describe an individual auxetic bilayer cell
     def __init__(self, x, y):
-        self.arm_length = 2                                       # [cm]
+        self.arm_length = 2  # [cm]
         self.arms = 4
         self.layers = 2
         self.center_x = x
         self.center_y = y
-        self.top_layer_angle = 0                                  # [radians]
-        self.bottom_layer_angle = 45                              # [radians]
-        self.arm_angle = 2*(np.pi)/(float(self.arms)) # [radians]
+        self.top_layer_angle = 0  # [radians]
+        self.bottom_layer_angle = 45  # [radians]
+        self.arm_angle = 2 * np.pi / (float(self.arms))  # [radians]
         self.arm_positions = []
+
     def get_position_list(self):
         cell_positions = []
         cell_center = [self.center_x, self.center_y]
@@ -36,19 +41,121 @@ class auxetic_cell:
             cell_positions.append(cell_j_position)
         # return list of size = 1 (center) + arm ends (layers*arms)
         return cell_positions
+
     def update_arm_positions(self):
         # rewrites arm positions based on connections
         print('not ready')
+
     def connect(self, other_cell_):
         # connects a cell arm to another cell arm
         print('not ready')
+        # see main_in_2D.py file
+
+
+class AbstractAuxeticCell:
+    # point representation of auxetic cell, simpler than full class model
+    def __init__(self, x, y):
+        self.cell_index = 0  # default all cells to be index zero until otherwise stated
+        self.pos_x = x
+        self.pos_y = y
+        self.arm_length = 10  # default radius [mm]
+        self.joint_backlash = 1  # default backlash in revolute joint [mm]
+        self.alpha = 1  # default cells at contracted state
+        self.fixed = False
+        # Keep a list of all other cell indexes connected to this cell
+        self.connections = []
+
+    def get_cell_position(self):
+        """
+        :return: prints (x, y) of cell
+        """
+        print(str(self.pos_x) + str(self.pos_y))
+
+    def get_distance_between_cells(self, a_cell):
+        """
+        Determine cartesian distance between two cells
+        :param a_cell: another cell, not self
+        :return: cartesian distance
+        """
+        distance = np.sqrt((a_cell.pos_x - self.pos_x) ** 2 + (a_cell.pos_y - self.pos_y) ** 2)
+        print(distance)
+        return distance
+
+    def get_connected_distance_between_cells(self, a_cell):
+        """
+        based on arm length and alpha, calculate connected distance between self and a_cell
+        :param a_cell: another cell, not self
+        :return:
+        """
+        connected_distance = self.arm_length * self.alpha + a_cell.arm_length * a_cell.alpha
+        print(connected_distance)
+        return connected_distance
+
+    def plot_connection_shape_space(self):
+        """
+        For this given cell, plot the connection shape space as convex hulls
+        :return:
+        """
+        # first, generate an equidistant point cloud in x,y,z within twice of the arm length
+        x_values = np.linspace(0, 2 * self.arm_length, 50)
+        y_values = np.linspace(0, 2 * self.arm_length, 50)
+        z_values = np.linspace(0, 2 * self.arm_length, 50)
+        point_values = np.array([x_values, y_values, z_values])
+        cube_points = itertools.permutations(point_values)
+        for p in cube_points:
+            print(p)
+        print("\n \n")
+        # joint space is a segmented toroid
+        outer_circle_points = [
+            (np.cos(2 * np.pi / 100 * i) * self.arm_length, np.sin(2 * np.pi / 100 * i) * self.arm_length, 0) for i in
+            range(0, 100)]
+        print(outer_circle_points)
+
+    def connect_cell(self, a_cell):
+        """
+        Mates this cell with another cell
+        :param a_cell:
+        :return:
+        """
+        # If both are fixed, check if center within arm length, if not return False
+        if self.fixed and a_cell.fixed:
+            print('both fixed, cannot move')
+        # If one is free, move center position of free cell to nearest point in radius of fixed cell
+        elif self.fixed or a_cell.fixed:
+            # First, try to connect
+            print('one is fixed')
+            if self.fixed:
+                print('self is fixed')
+                # Try to move the other cell, get nearest point on circle between two points
+                # Where P is the closest point, C is the center, and R is the radius
+                V = [a_cell.pos_x - self.pos_x, a_cell.pos_y - self.pos_y]
+                print(V)
+                # = C + V / |V| * R;
+                mag_V = self.get_distance_between_cells(a_cell)
+                print(mag_V)
+                a_cell.pos_x = self.pos_x + V[0] * 1 / self.arm_length
+                a_cell.pos_y = self.pos_y + V[1] * 1 / self.arm_length
+            else:
+                print('other cell is fixed')
+                # Try to move self
+                V = [a_cell.pos_x - self.pos_x, a_cell.pos_y - self.pos_y]
+                # = C + V / |V| * R;
+                mag_V = np.absolute(V)
+                self.pos_x = (a_cell.pos_x + V[0]) * 1 / (mag_V * a_cell.arm_length)
+                self.pos_y = (a_cell.pos_y + V[1]) * 1 / (mag_V * a_cell.arm_length)
+            # if connection is successful, add each cell to the other's connections list
+
+        # If both are free, find nearest point between two circles and move cells so that radius is
+        else:
+            print('neither fixed')
+            # move both equally to meet one another
 
 
 def bernstein_poly(i, n, t):
     """
      The Bernstein polynomial of n, i as a function of t
     """
-    return comb(n, i) * (t**(n-i)) * (1 - t)**i
+    return comb(n, i) * (t ** (n - i)) * (1 - t) ** i
 
 
 def get_bezier_parameters(X, Y, degree=3):
@@ -117,7 +224,7 @@ def bezier_curve(points, nTimes=50):
 
     t = np.linspace(0.0, 1.0, nTimes)
 
-    polynomial_array = np.array([ bernstein_poly(i, nPoints-1, t) for i in range(0, nPoints)   ])
+    polynomial_array = np.array([bernstein_poly(i, nPoints - 1, t) for i in range(0, nPoints)])
 
     xvals = np.dot(xPoints, polynomial_array)
     yvals = np.dot(yPoints, polynomial_array)
@@ -128,7 +235,7 @@ def bezier_curve(points, nTimes=50):
 def naca0018(x):
     # Thickness distribution for NACA 0018
     t = 0.18
-    yt = 5 * t * (0.2969*np.sqrt(x) - 0.1260*x - 0.3516*x**2 + 0.2843*x**3 - 0.1015*x**4)
+    yt = 5 * t * (0.2969 * np.sqrt(x) - 0.1260 * x - 0.3516 * x ** 2 + 0.2843 * x ** 3 - 0.1015 * x ** 4)
     return yt
 
 
@@ -140,6 +247,20 @@ def compute_endpoint(x, y, angle, length):
     end_x = x + length * np.cos(angle)
     end_y = y + length * np.sin(angle)
     return end_x, end_y
+
+
+def in_hull(p, hull):
+    """
+    Test if points in `p` are in `hull`
+
+    `p` should be a `NxK` coordinates of `N` points in `K` dimensions
+    `hull` is either a scipy.spatial.Delaunay object or the `MxK` array of the
+    coordinates of `M` points in `K`dimensions for which Delaunay triangulation
+    will be computed
+    """
+    if not isinstance(hull, Delaunay):
+        hull = Delaunay(hull)
+    return hull.find_simplex(p) >= 0
 
 
 def plot_linkage_system(angle1, angle2, lengths):
@@ -168,11 +289,11 @@ def plot_linkage_system(angle1, angle2, lengths):
     plt.show()
 
 
-
-
-
 if __name__ == '__main__':
-    print("This model assumes links can flex")
+    # plot 3D shape space of auxetic cell
+    cell1 = AbstractAuxeticCell(x=0, y=0)
+    cell1.plot_connection_shape_space()
+    # airfoil in 3D example
     # Show NACA 0018 shape
     # Create x values from 0 to 1, 200 points
     x = np.linspace(0, 1, 200)
@@ -187,8 +308,7 @@ if __name__ == '__main__':
     plt.ylabel('Thickness')
     plt.axis('equal')
     plt.grid(True)
-    plt.show()
-
+    plt.savefig("./figures/NACA0018example.png")
     # Linkages plot
     # Lengths of the linkages
     link_lengths = [5, 3]
@@ -197,7 +317,7 @@ if __name__ == '__main__':
     angle_1 = np.radians(45)  # 45 degrees
     angle_2 = np.radians(-30)  # -30 degrees
 
-    plot_linkage_system(angle_1, angle_2, link_lengths)
+    # plot_linkage_system(angle_1, angle_2, link_lengths)
 
     # bezier example
     points = []
@@ -224,4 +344,4 @@ if __name__ == '__main__':
     plt.plot(xvals, yvals, 'b-', label='B Curve')
     plt.xlabel("X Dimension (m)")
     plt.legend()
-    plt.show()
+    plt.savefig("./figures/bezier_example.png")
