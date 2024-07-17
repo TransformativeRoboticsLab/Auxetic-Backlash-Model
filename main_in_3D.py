@@ -1,14 +1,25 @@
 # TRL 2023
 # Jacob Miske
 
+import csv
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+from mpl_toolkits.mplot3d import proj3d
 from scipy.special import comb
 from matplotlib.collections import PolyCollection, LineCollection
 from scipy.spatial import Delaunay
 from sympy.utilities.iterables import multiset_permutations
 import itertools
 import math
+
+font = {'family': 'serif',
+        'size': 12}
+csfont = {'fontname': 'Helvetica'}
+
+matplotlib.rc('font', **font)
+matplotlib.rcParams['axes.linewidth'] = 1
 
 
 # TODO: general class based object for auxetic linkages
@@ -207,6 +218,58 @@ def get_bezier_parameters(X, Y, degree=3):
     return final
 
 
+def get_manhattan_distance(i, j, m, n):
+    """
+    For a point at i, j and another point at m, n
+    returns manhattan distance
+    :param i:
+    :param j:
+    :param m:
+    :param n:
+    :return:
+    """
+    return abs(i - m) + abs(j - n)
+
+
+def simulate_auxetic_lattice_dome_points(b, L, t, alpha, m, n):
+    """
+    Given cell backlash and length in mm, alpha is dilation factor
+    For lattice of m rows by n columns
+    get list of [(x, y, z);...] of each cell assuming suspended from center cell(s)
+    :param b:
+    :param L:
+    :param t: cell thickness
+    :param alpha: dilation ratio across auxetic dome
+    :param m:
+    :param n:
+    :return:
+    """
+    norm_b = b / L  # [mm]
+    # convert L and alpha to L_center_to_center distance
+    L_center_to_center = L + 10 * alpha - 10
+    # Auxetic cell phi angle [radians]
+    phi = np.arctan(b / t)
+    h = np.sin(phi) * L_center_to_center
+    cell_spacing = np.cos(phi) * L_center_to_center
+    # corner cell is origin
+    center_cell_m = round(m / 2)
+    center_cell_n = round(n / 2)
+    xyz_cells = []
+    # for each cell in lattice, determine distance from center cell, move down from z=0 plane
+    for i in range(m):
+        for j in range(n):
+            xyz_cell = []
+            # place x and y values
+            xyz_cell.insert(0, i * cell_spacing)
+            xyz_cell.insert(1, j * cell_spacing)
+            manhattan_dist = get_manhattan_distance(i, j, center_cell_m, center_cell_n)
+            depth = float(manhattan_dist * -h)
+            # second cell effects square the intercell depth
+            xyz_cell.insert(2, -1 / 8 * depth ** (2))
+            xyz_cells.append(xyz_cell)
+    return xyz_cells
+
+
 def get_sphere_points(xc, yc, zc, r):
     """
     Given a sphere centered at (x, y, z) with radius r, place points around sphere
@@ -253,6 +316,60 @@ def get_distance_from_sphere(xp, yp, zp, xc, yc, zc, r):
     # Calculate the nearest distance to the surface of the sphere
     nearest_distance = abs(d - r)
     return nearest_distance
+
+
+def get_experiment_dome_data(filename):
+    """
+    Pulls cell locations from filename and saves in [[x,y,z],[x,y,z],...] format
+    :param filename:
+    :return:
+    """
+    with open(filename, newline='') as f:
+        reader = csv.reader(f)
+        data = list(reader)
+        for i in range(len(data)):
+            data[i] = [float(j) for j in data[i]]
+    return data
+
+
+def get_error_2sets(points1, points2):
+    """
+    Given two sets of [[x, y, z],...] points SORTED
+    get error between sets
+    :param points1:
+    :param points2:
+    :return:
+    """
+    error_points = np.array(points2)
+    distances = np.zeros((1, len(points1)), dtype=np.float32)
+    for i in range(len(points1)):
+        point1 = points1[i]
+        point2 = points2[i]
+        x1 = point1[0]
+        y1 = point1[1]
+        z1 = point1[2]
+        x2 = point2[0]
+        y2 = point2[1]
+        z2 = point2[2]
+        distance = math.sqrt((x1 - x2) ** 2 + (y1 - y1) ** 2 + (z1 - z1) ** 2)
+        distances[0, i] = distance
+    error_points[:, 2] = distances
+    return error_points
+
+
+def vary_points(cell_list):
+    """
+    See if random variation to some degree results in more or less error to model
+    :param cell_list:
+    :return:
+    """
+    new_cell_list = []
+    for cell in cell_list:
+        new_cell = []
+        for i in cell:
+            new_cell.append((i + i * (np.random.rand() / 30 + 1))/2)
+        new_cell_list.append(new_cell)
+    return new_cell_list
 
 
 def bezier_curve(points, nTimes=50):
@@ -314,6 +431,31 @@ def in_hull(p, hull):
     return hull.find_simplex(p) >= 0
 
 
+def set_axes_equal(ax):
+    """
+    Make axes of 3D plot have equal scale so that spheres appear as spheres,
+    cubes as cubes, etc.
+    Input
+      ax: a matplotlib axis, e.g., as output from plt.gca().
+    """
+    x_limits = ax.get_xlim3d()
+    y_limits = ax.get_ylim3d()
+    z_limits = ax.get_zlim3d()
+    x_range = abs(x_limits[1] - x_limits[0])
+    x_middle = np.mean(x_limits)
+    y_range = abs(y_limits[1] - y_limits[0])
+    y_middle = np.mean(y_limits)
+    z_range = abs(z_limits[1] - z_limits[0])
+    z_middle = np.mean(z_limits)
+    # The plot bounding box is a sphere in the sense of the infinity
+    # norm, hence I call half the max range the plot radius.
+    plot_radius = 0.5 * max([x_range, y_range, z_range])
+    ax.set_xlim3d([x_middle - plot_radius, x_middle + plot_radius])
+    ax.set_ylim3d([y_middle - plot_radius, y_middle + plot_radius])
+    ax.set_zlim3d([z_middle - plot_radius, z_middle + plot_radius])
+    return 0
+
+
 def plot_linkage_system(angle1, angle2, lengths):
     """
     Plot a linkage system with given angles and lengths.
@@ -340,6 +482,151 @@ def plot_linkage_system(angle1, angle2, lengths):
     plt.show()
 
 
+def plot_3D_points_error(points, filename):
+    """
+    Given set of 3D points (error between sets, 3D scatter plot
+    :param points:
+    :return:
+    """
+    fig = plt.figure()
+    fig.set_figheight(9)
+    fig.set_figwidth(9)
+    ax = fig.add_subplot(111, projection='3d')
+    # Unzip the list of points into x, y, z coordinates
+    x, y, z = zip(*points)
+    ax.scatter(x, y, z, c='g', marker='o', label="Total Error")
+    ax.set_box_aspect([1.0, 1.0, 1.0])
+    ax.set_xlabel('X Exp. [mm]', labelpad=20, **csfont)
+    ax.set_ylabel('Y Exp. [mm]', labelpad=20, **csfont)
+    ax.set_zlabel('Error [mm]', labelpad=20, **csfont)
+    set_axes_equal(ax)
+    ax.set_zlim3d(-10, 10)
+    plt.legend()
+
+    x_scale = 2.5
+    y_scale = 2.5
+    z_scale = 1
+    scale = np.diag([x_scale, y_scale, z_scale, 1.0])
+    scale = scale * (1.0 / scale.max())
+    scale[3, 3] = 1.0
+
+    def short_proj():
+        return np.dot(Axes3D.get_proj(ax), scale)
+
+    ax.get_proj = short_proj
+
+    plt.savefig("./figures/{}_error_3D_points.png".format(filename))
+    return 0
+
+
+def plot_3D_points_error_percentage(points, filename):
+    """
+    Given set of 3D points (error between sets, 3D scatter plot
+    :param points:
+    :return:
+    """
+    fig = plt.figure()
+    fig.set_figheight(9)
+    fig.set_figwidth(9)
+    ax = fig.add_subplot(111, projection='3d')
+    # Unzip the list of points into x, y, z coordinates
+    x, y, z = zip(*points)
+    z = [abs(100*(i/35)) for i in z] # cells are L=35
+    ax.scatter(x, y, z, c='g', marker='o', label="Total Error")
+    ax.set_box_aspect([1.0, 1.0, 1.0])
+    ax.set_xlabel('X Exp. [mm]', labelpad=20, **csfont)
+    ax.set_ylabel('Y Exp. [mm]', labelpad=20, **csfont)
+    ax.set_zlabel('Error [& of L]', labelpad=20, **csfont)
+    set_axes_equal(ax)
+    ax.set_zlim3d(0, 20)
+    plt.legend()
+
+    x_scale = 2.5
+    y_scale = 2.5
+    z_scale = 1
+    scale = np.diag([x_scale, y_scale, z_scale, 1.0])
+    scale = scale * (1.0 / scale.max())
+    scale[3, 3] = 1.0
+
+    def short_proj():
+        return np.dot(Axes3D.get_proj(ax), scale)
+
+    ax.get_proj = short_proj
+
+    plt.savefig("./figures/{}_error_3D_points.png".format(filename))
+    return 0
+
+
+def get_alpha_dome(points, alpha, filename):
+    """
+    :param points:
+    :param filename:
+    :return:
+    """
+    fig = plt.figure()
+    fig.set_figheight(9)
+    fig.set_figwidth(9)
+    ax = fig.add_subplot(111, projection='3d')
+    # Unzip the list of points into x, y, z coordinates
+    x, y, z = zip(*points)
+    z = [alpha for i in z]  # cells are L=35
+    ax.scatter(x, y, z, c='k', marker='o', label="Alpha Function")
+    ax.set_box_aspect([1.0, 1.0, 1.0])
+    ax.set_xlabel('X Exp. [mm]', labelpad=20, **csfont)
+    ax.set_ylabel('Y Exp. [mm]', labelpad=20, **csfont)
+    ax.set_zlabel('Alpha', labelpad=20, **csfont)
+    set_axes_equal(ax)
+    ax.set_zlim3d(0, 3)
+    plt.legend()
+
+    x_scale = 2.5
+    y_scale = 2.5
+    z_scale = 1
+    scale = np.diag([x_scale, y_scale, z_scale, 1.0])
+    scale = scale * (1.0 / scale.max())
+    scale[3, 3] = 1.0
+
+    def short_proj():
+        return np.dot(Axes3D.get_proj(ax), scale)
+
+    ax.get_proj = short_proj
+
+    plt.savefig("./figures/{}_alpha_3D_points.png".format(filename))
+    return 0
+
+
+def plot_3D_points_2sets(points1, points2, filename):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    fig.set_figheight(9)
+    fig.set_figwidth(9)
+    # Unzip the list of points into x, y, z coordinates
+    x1, y1, z1 = zip(*points1)
+    x2, y2, z2 = zip(*points2)
+    ax.scatter(x1, y1, z1, c='b', marker='o', label="Model")
+    ax.scatter(x2, y2, z2, c='r', marker='o', label="Experiment")
+    ax.set_box_aspect([1.0, 1.0, 1.0])
+    ax.set_xlabel('X [mm]', labelpad=20, **csfont)
+    ax.set_ylabel('Y [mm]', labelpad=20, **csfont)
+    ax.set_zlabel('Z [mm]', labelpad=20, **csfont)
+    set_axes_equal(ax)
+    plt.legend()
+
+    x_scale = 2.5
+    y_scale = 2.5
+    z_scale = 1
+    scale = np.diag([x_scale, y_scale, z_scale, 1.0])
+    scale = scale * (1.0 / scale.max())
+    scale[3, 3] = 1.0
+    def short_proj():
+        return np.dot(Axes3D.get_proj(ax), scale)
+    ax.get_proj = short_proj
+
+    ax.set_zlim3d(-100, 100)
+    plt.savefig("./figures/{}.png".format(filename), dpi=600)
+    return 0
+
+
 def plot_auxetic_domes_figure():
     """
     generate two domes in 3D figure to compare to experimental results
@@ -353,6 +640,29 @@ if __name__ == '__main__':
     cell1.plot_connection_shape_space()
 
     # auxetic 3D dome at variable alpha
+    dome_cells1 = simulate_auxetic_lattice_dome_points(b=0.4, L=35, t=8, alpha=1, m=8, n=11)
+    dome_cells1_experiment = get_experiment_dome_data(filename="./data/dome1_exp_20240715.csv")
+    # vary_points(dome_cells1)
+    # plot_3D_points_2sets(points1=dome_cells1, points2=dome_cells1_experiment, filename="dome1")
+
+    dome_cells2 = simulate_auxetic_lattice_dome_points(b=0.4, L=35, t=8, alpha=2, m=8, n=11)
+    dome_cells2_experiment = get_experiment_dome_data(filename="./data/dome2_exp_20240715.csv")
+    # vary_points(dome_cells2)
+    # plot_3D_points_2sets(points1=dome_cells2, points2=dome_cells2_experiment, filename="dome2")
+
+    dome1_error = get_error_2sets(dome_cells1, dome_cells1_experiment)
+    plot_3D_points_error(dome1_error, filename="dome1")
+    plot_3D_points_error_percentage(dome1_error, filename="dome1_percentage")
+
+    dome2_error = get_error_2sets(dome_cells2, dome_cells2_experiment)
+    plot_3D_points_error(dome2_error, filename="dome2_percentage")
+    plot_3D_points_error_percentage(dome2_error, filename="dome2_percentage")
+
+    dome1_alpha = get_alpha_dome(points=dome_cells1_experiment, alpha=1, filename="dome1_alpha")
+    dome2_alpha = get_alpha_dome(points=dome_cells2_experiment, alpha=2, filename="dome2_alpha")
+
+
+    quit()
 
     # airfoil in 3D example
     # Show NACA 0018 shape
@@ -387,10 +697,8 @@ if __name__ == '__main__':
     ypoints = [8.95, 8.85, 8.75, 8.65, 8.55, 8.47, 8.40, 8.32,
                8.27, 8.23, 8.18, 8.18, 8.18, 8.18, 8.19, 8.19,
                8.19, 8.20, 8.20]
-
     for i in range(len(xpoints)):
         points.append([xpoints[i], ypoints[i]])
-
     # Plot the original points
     plt.plot(xpoints, ypoints, "ro", label='Original Points')
     # Get the Bézier parameters based on a degree.
