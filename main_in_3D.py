@@ -8,6 +8,8 @@ from matplotlib.collections import PolyCollection, LineCollection
 from scipy.spatial import Delaunay
 from sympy.utilities.iterables import multiset_permutations
 import itertools
+import math
+
 
 # TODO: general class based object for auxetic linkages
 
@@ -52,12 +54,13 @@ class AuxeticCell:
         # see main_in_2D.py file
 
 
-class AbstractAuxeticCell:
+class AbstractAuxeticCell3D:
     # point representation of auxetic cell, simpler than full class model
-    def __init__(self, x, y):
+    def __init__(self, x, y, z):
         self.cell_index = 0  # default all cells to be index zero until otherwise stated
         self.pos_x = x
         self.pos_y = y
+        self.pos_z = z
         self.arm_length = 10  # default radius [mm]
         self.joint_backlash = 1  # default backlash in revolute joint [mm]
         self.alpha = 1  # default cells at contracted state
@@ -204,6 +207,54 @@ def get_bezier_parameters(X, Y, degree=3):
     return final
 
 
+def get_sphere_points(xc, yc, zc, r):
+    """
+    Given a sphere centered at (x, y, z) with radius r, place points around sphere
+    using a Fibonacci lattice spiral
+    :param xc: sphere center x
+    :param yc: sphere center y
+    :param zc: sphere center z
+    :param r: sphere radius
+    :return:
+    """
+    N = 100
+    points = []
+    offset = 2.0 / N
+    increment = np.pi * (3.0 - np.sqrt(5.0))  # golden angle in radians
+    for i in range(N):
+        y = ((i * offset) - 1) + (offset / 2)
+        r_temp = np.sqrt(1 - y * y)
+        phi = ((i % N) * increment)
+        x = np.cos(phi) * r_temp
+        z = np.sin(phi) * r_temp
+        # Transform to the sphere's radius and center
+        x = xc + r * x
+        y = yc + r * y
+        z = zc + r * z
+        points.append((x, y, z))
+    return points
+
+
+def get_distance_from_sphere(xp, yp, zp, xc, yc, zc, r):
+    """
+    Given a sphere centered at (xc, yc, zc) with radius r
+    Determine nearest distance from (xp, yp, zp) to the sphere shell
+    :param xp: point x
+    :param yp: point y
+    :param zp: point z
+    :param xc: sphere center x
+    :param yc: sphere center y
+    :param zc: sphere center z
+    :param r: sphere radius
+    :return: nearest distance between point and center of sphere
+    """
+    # Calculate Euclidean distance between the point and the center of the sphere
+    d = math.sqrt((xp - xc) ** 2 + (yp - yc) ** 2 + (zp - zc) ** 2)
+    # Calculate the nearest distance to the surface of the sphere
+    nearest_distance = abs(d - r)
+    return nearest_distance
+
+
 def bezier_curve(points, nTimes=50):
     """
        Given a set of control points, return the
@@ -289,10 +340,20 @@ def plot_linkage_system(angle1, angle2, lengths):
     plt.show()
 
 
+def plot_auxetic_domes_figure():
+    """
+    generate two domes in 3D figure to compare to experimental results
+    :return:
+    """
+
+
 if __name__ == '__main__':
     # plot 3D shape space of auxetic cell
-    cell1 = AbstractAuxeticCell(x=0, y=0)
+    cell1 = AbstractAuxeticCell3D(x=0, y=0, z=0)
     cell1.plot_connection_shape_space()
+
+    # auxetic 3D dome at variable alpha
+
     # airfoil in 3D example
     # Show NACA 0018 shape
     # Create x values from 0 to 1, 200 points
