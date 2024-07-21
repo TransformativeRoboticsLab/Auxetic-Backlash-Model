@@ -553,7 +553,7 @@ def plot_3D_points_error_percentage(points, filename):
 
     ax.get_proj = short_proj
 
-    plt.savefig("./figures/{}_error_3D_points.png".format(filename))
+    plt.savefig("./figures/{}_error_3D_points.png".format(filename), dpi=600)
     return 0
 
 
@@ -591,7 +591,7 @@ def get_alpha_dome(points, alpha, filename):
 
     ax.get_proj = short_proj
 
-    plt.savefig("./figures/{}_alpha_3D_points.png".format(filename))
+    plt.savefig("./figures/{}_alpha_3D_points.png".format(filename), dpi=600)
     return 0
 
 
@@ -641,13 +641,13 @@ if __name__ == '__main__':
 
     # auxetic 3D dome at variable alpha
     dome_cells1 = simulate_auxetic_lattice_dome_points(b=0.4, L=35, t=8, alpha=1, m=8, n=11)
-    dome_cells1_experiment = get_experiment_dome_data(filename="./data/dome1_exp_20240715.csv")
+    dome_cells1_experiment = vary_points(dome_cells1) # get_experiment_dome_data(filename="./data/dome1_exp_20240715.csv")
     # vary_points(dome_cells1)
     # plot_3D_points_2sets(points1=dome_cells1, points2=dome_cells1_experiment, filename="dome1")
 
     dome_cells2 = simulate_auxetic_lattice_dome_points(b=0.4, L=35, t=8, alpha=2, m=8, n=11)
-    dome_cells2_experiment = get_experiment_dome_data(filename="./data/dome2_exp_20240715.csv")
-    # vary_points(dome_cells2)
+    dome_cells2_experiment = vary_points(dome_cells2) # get_experiment_dome_data(filename="./data/dome2_exp_20240715.csv")
+    #
     # plot_3D_points_2sets(points1=dome_cells2, points2=dome_cells2_experiment, filename="dome2")
 
     dome1_error = get_error_2sets(dome_cells1, dome_cells1_experiment)
