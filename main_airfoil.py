@@ -499,28 +499,35 @@ def plot_airfoil_slope(x, a, y, alpha, x_exp, z_exp):
     return 0
 
 
-def plot_airfoil_slope_experimental(x_exp, z_exp, x_a, alpha, ):
+def plot_airfoil_slope_experimental(x_exp, z_exp, x_a, alpha, x_exp_2, z_exp_2, x_a_2, alpha_2):
     """
-    Generates plot of slope and alpha across an airfoil
+    Generates plot of slope and alpha across an airfoil, two profiles for blended wing
     :param x_exp:
     :param z_exp:
     :param x_a:
     :param alpha:
     :return:
     """
+    blended_wing = True
     # get perfect airfoil points from equation directly
     m1 = float(NACA_number[:1])
     p1 = float(NACA_number[1:2])
     th1 = float(NACA_number[2:4])
     x_values, z_values = get_airfoil_from_NACA_values(m=m1, p=p1, th=th1, c=1)
     z_values = z_values[:1000] # cut z values down to only 1000
+    # Get 0018 airfoil
+    x_values_0018, z_values_0018 = get_airfoil_from_NACA_values(m=0, p=0, th=18, c=1)
+    z_values_0018 = z_values_0018[:1000]  # cut z values down to only 1000
     # Plot to compare to experimental results
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
     fig.set_figheight(9)
     fig.set_figwidth(9)
     # FIRST ROW PLOT use data set on angles in /data/
-    ax1.plot(x_values, z_values, '-', c='r', label="NACA{} Airfoil".format(NACA_number))
-    ax1.scatter(x_exp, z_exp, marker="^", s=50, c='b', label="Experimental Result")
+    ax1.plot(x_values, z_values, '-', c='m', label="NACA{} Airfoil".format(NACA_number))
+    ax1.plot(x_values_0018, z_values_0018, '-', c='r', label="NACA{} Airfoil".format("0018"))
+    ax1.scatter(x_exp, z_exp, marker="^", s=50, c='b', label="Experimental NACA2408")
+    if blended_wing:
+        ax1.scatter(x_exp_2, z_exp_2, marker="^", s=50, c='orange', label="Experimental NACA0018")
     # sort the experimental values from smallest x to largest x similar to x, z
     x_exp, z_exp = (list(x) for x in zip(*sorted(zip(x_exp, z_exp))))
     # for each x_exp value, get closest true z_value
@@ -531,22 +538,28 @@ def plot_airfoil_slope_experimental(x_exp, z_exp, x_a, alpha, ):
     print(z_exp)
     print(z_true)
     z_error = [abs(a_i - b_i) for a_i, b_i in zip(z_exp, z_true)]
+    z_error_2 = [abs(a_i - b_i)*15 for a_i, b_i in zip(z_exp_2, z_true)]
+
     # Set first subplot y_label
     ax1.set_ylabel("Height of wing \n (Arbitrary Length)", **csfont)
-    fig.suptitle(r"NACA{} Foil - Experiment and $\alpha$(x) Comparison".format(NACA_number), **csfont)
+    fig.suptitle(r"Blended Body NACA Foil - Experiment and $\alpha$(x) Comparison".format(NACA_number), **csfont)
     # Used to generate dual Y axis plot # ax2 = ax1.twinx()
     # SECOND ROW PLOT error between experiment and real NACA profile
     # z_error is in decimal, so we convert to percentage here:
     z_error = [i*100 for i in z_error]
     # linear leveling
-    ax2.plot(x_exp, z_error, '-', c='m')
+    ax2.plot(x_exp, z_error, '-x', c='m')
+    if blended_wing:
+        ax2.plot(x_exp_2, z_error_2, '-o', c='m')
     # 0 to 2 percent of full length error
     ax2.set_ylim([0,2])
     ax2.set_ylabel("Experimental Error \n (% of Full Length)", **csfont)
-    # THIRD ROW PLOT use data set on angles in /data/
 
-    ax3.scatter(x_alpha, alpha, c='#000000', label=r"$\alpha$ Function")
+    # THIRD ROW PLOT use data set on angles in /data/
+    ax3.scatter(x_a, alpha, marker='o', c='#000000', label=r"$\alpha$ - 0018")
     ax3.set_ylabel('Alpha Function \n (degrees)', **csfont)
+    if blended_wing:
+        ax3.scatter(x_a_2, alpha_2, marker='x', c='#222222', label=r"$\alpha$ - 2408")
     # ax4 = ax3.twinx()
     # alpha_expansion_ratio = alpha
     # ax4.scatter(x_alpha, alpha_expansion_ratio, c='#000000')
@@ -561,9 +574,12 @@ def plot_airfoil_slope_experimental(x_exp, z_exp, x_a, alpha, ):
     ax3.set_ylim((20, 60))
     h1, l1 = ax1.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
-    ax1.legend(h1 + h2, l1 + l2, loc=2)
+    h3, l3 = ax3.get_legend_handles_labels()
+    ax1.legend(h1 + h2, l1 + l2, loc=1)
+    ax3.legend(h3, l3, loc=1)
 
-    plt.savefig("./figures/NACA{} Airfoil Count {}.png".format(NACA_number, count))
+
+    plt.savefig("./figures/NACA{} Airfoil Experimental Blended Wing {}.png".format(NACA_number, count))
     # plt.show()
     plt.close()
 
@@ -687,20 +703,21 @@ if __name__ == '__main__':
             # pulling angles from data directly, TODO: code in data pull
             x_alpha = list(np.linspace(0, 0.95, 22))
             # angles set manually
-            alpha = [45, 42, 40, 38, 37, 36, 35, 33, 31, 30, 29, 27, 27, 27, 28, 30, 32, 34, 36, 38, 40, 42]  # Degrees
+            alpha_1 = [42, 42, 41, 38, 35, 32, 31, 30, 29, 27, 26, 25, 25, 27, 29, 31, 34, 37, 39, 41, 42, 44]  # Degrees
+            alpha_2 = [45, 42, 39, 38, 37, 35, 34, 33, 32, 31, 30, 30, 31, 32, 34, 35, 37, 38, 40, 42, 44, 45]  # Degrees
 
             if NACA_number == "0018":
                 # x_lists, z_lists, fnames = get_airfoil_mocap_multitest()
-                x_lists, z_lists, fnames = get_airfoil_photo_capture()
-                print(fnames)
-                for count, sample in enumerate(x_lists, 0):
-                    plot_airfoil_slope_experimental(x_exp=x_lists[count], z_exp=z_lists[count], x_a=x_alpha, alpha=alpha)
+                x_lists_0018, z_lists_0018, fnames = get_airfoil_photo_capture()
+                for count, sample in enumerate(x_lists_0018, 0):
+                    plot_airfoil_slope_experimental(x_exp=x_lists_0018[count], z_exp=z_lists_0018[count], x_a=x_alpha, alpha=alpha_1,
+                                                    x_exp_2=x_lists_0018[count], z_exp_2=x_lists_0018[count], x_a_2=x_alpha, alpha_2=alpha_2)
             if NACA_number == "2408":
                 # x_lists, z_lists, fnames = get_airfoil_mocap_multitest()
-                x_lists, z_lists, fnames = get_airfoil_photo_capture()
-                print(fnames)
-                for count, sample in enumerate(x_lists, 0):
-                    plot_airfoil_slope_experimental(x_exp=x_lists[count], z_exp=z_lists[count], x_a=x_alpha, alpha=alpha)
+                x_lists_2408, z_lists_2408, fnames = get_airfoil_photo_capture()
+                for count, sample in enumerate(x_lists_2408, 0):
+                    plot_airfoil_slope_experimental(x_exp=x_lists_0018[0], z_exp=z_lists_0018[0], x_a=x_alpha, alpha=alpha_1,
+                                                    x_exp_2=x_lists_2408[2], z_exp_2=z_lists_2408[2], x_a_2=x_alpha, alpha_2=alpha_2)
 
     # Look at generate NACA profile from model
     generated = False
