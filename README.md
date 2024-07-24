@@ -20,6 +20,7 @@ The programs and code for this work is split up into multiple files based on spe
 - main_airfoil.py
   - functions to examine 3D airfoil shape conformal placement
 - main_configuration_space.py
+  - functions to understand the configur
 
 
 #### ReLU Function for Stiffness of Cells

@@ -657,52 +657,55 @@ if __name__ == '__main__':
     print("TRL Airfoil Study Model")
     NACA_numbers = ["0018", "0024", "1408", "1410", "2408", "4412"]
     print("Examining airfoils: {}".format(str(NACA_numbers)))
-    # Determine characteristic relationships
-    # Take ranges for thickness, backlash, cell size [in millimeters]
-    d_values = np.linspace(0.1, 1.1, 10)
-    b_values = np.linspace(0.2, 2.1, 10)
-    L_values = np.linspace(10, 50, 100)
-    # 5 mm default cell size
-    default_cell_size = 5
-    data = []
-    # Run through range of reasonable values for b, d, and L
-    print("For each thickness, backlash, and cell size - determining b_norm, DO, and dDO/dx")
-    for thickness in d_values:
-        for backlash in b_values:
-            for cell_size in L_values:
-                b_norm = get_normalized_backlash(b= backlash, L=cell_size)
-                max_k = get_max_curvature(d=thickness, b=backlash, L=cell_size)
-                do = get_die_off(d=thickness, b=backlash, L=cell_size, angle_range=60)/cell_size
-                data.append([thickness, backlash, cell_size, b_norm, max_k, do])
 
-    # Change data type for input array
-    data_array = np.array(data)
-    # Generate plots from the data
-    plot_b_L_maxK(b_list=data_array[:, 3], L_list=data_array[:, 2], max_K_list=data_array[:, 4])
-    plot_b_L_dieoff(b_list=data_array[:, 3], L_list=data_array[:, 2], do_list=data_array[:, 5])
+    study_cell_geometry = False
+    if study_cell_geometry:
+        # Determine characteristic relationships
+        # Take ranges for thickness, backlash, cell size [in millimeters]
+        d_values = np.linspace(0.1, 1.1, 10)
+        b_values = np.linspace(0.2, 2.1, 10)
+        L_values = np.linspace(10, 50, 100)
+        # 5 mm default cell size
+        default_cell_size = 5
+        data = []
+        # Run through range of reasonable values for b, d, and L
+        print("For each thickness, backlash, and cell size - determining b_norm, DO, and dDO/dx")
+        for thickness in d_values:
+            for backlash in b_values:
+                for cell_size in L_values:
+                    b_norm = get_normalized_backlash(b= backlash, L=cell_size)
+                    max_k = get_max_curvature(d=thickness, b=backlash, L=cell_size)
+                    do = get_die_off(d=thickness, b=backlash, L=cell_size, angle_range=60)/cell_size
+                    data.append([thickness, backlash, cell_size, b_norm, max_k, do])
 
-    data = True
-    if data:
+        # Change data type for input array
+        data_array = np.array(data)
+        # Generate plots from the data
+        plot_b_L_maxK(b_list=data_array[:, 3], L_list=data_array[:, 2], max_K_list=data_array[:, 4])
+        plot_b_L_dieoff(b_list=data_array[:, 3], L_list=data_array[:, 2], do_list=data_array[:, 5])
+
+    airfoil_data = True
+    if airfoil_data:
+        # for each NACA airfoil profile under study
         for number in NACA_numbers:
             NACA_number = number
             print("Calculating Alpha(x) for airfoil: {}".format(number))
             x_values, y_values, t = get_airfoil_positions(number)
             a_values, t = get_airfoil_slope_function(x=x_values, y=y_values)
+
             # Original alpha function
             # alpha_values, t = get_airfoil_alpha_function(x=x_values, y=y_values)
+
             # Slope based alpha method
             alpha_values, t = get_airfoil_alpha_function_slope(x=x_values, y=y_values)
-            # Recurive, optimal alpha function
+
             # validate alpha function
             e, ep = validate_alpha_function(x=x_values, y=y_values, alpha_list=alpha_values, number=number)
-            # print("error and error percentage")
-            # print(e)
-            # print(ep)
-            # For two particular profiles, get slope and alpha plots against experimental data
 
+            # For two particular profiles, get slope and alpha plots against experimental data
             # pulling angles from data directly, TODO: code in data pull
             x_alpha = list(np.linspace(0, 0.95, 22))
-            # angles set manually
+            # angles set manually on RADs lattice and recorded here
             alpha_1 = [42, 42, 41, 38, 35, 32, 31, 30, 29, 27, 26, 25, 25, 27, 29, 31, 34, 37, 39, 41, 42, 44]  # Degrees
             alpha_2 = [45, 42, 39, 38, 37, 35, 34, 33, 32, 31, 30, 30, 31, 32, 34, 35, 37, 38, 40, 42, 44, 45]  # Degrees
 
