@@ -6,6 +6,9 @@ from itertools import *
 import numpy as np
 import matplotlib.pyplot as plt
 
+# References
+# even spaced points on a convex hull
+# https://stackoverflow.com/questions/75416188/get-evenly-spaced-points-from-a-curved-shape
 
 class AuxeticCell:
     # Class to describe an individual auxetic bilayer cell

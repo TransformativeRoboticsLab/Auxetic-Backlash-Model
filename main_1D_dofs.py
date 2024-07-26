@@ -12,7 +12,7 @@ from matplotlib.ticker import MaxNLocator
 import matplotlib.ticker as mticker
 
 font = {'family': 'serif',
-        'size': 22}
+        'size': 26}
 csfont = {'fontname': 'Helvetica'}
 
 matplotlib.rc('font', **font)
@@ -210,15 +210,15 @@ def plot_figure_2():
     plt.step(angle_settings, dof_result_1deg, '-o', color=next(colors), where='post', label="Δθ = 1$^\circ$")
     plt.step(angle_settings, dof_result_2deg, '-o', color=next(colors), where='post', label="Δθ = 2$^\circ$")
     plt.step(angle_settings, dof_result_3deg, '-o', color=next(colors), where='post', label="Δθ = 3$^\circ$")
-    plt.title("Varying DoF of 20 Revolute Joints in Series", **csfont)
-    plt.xlabel("Fixed Angle of Cell i=0 in 1D Chain ", **csfont)
-    plt.ylabel("Number of Free Revolute Cells", **csfont)
+    ax.set_title("Variable DoF - 20 Revolute Joints in Series", pad=30, **csfont)
+    plt.xlabel(r"Range of $\Theta$ [Degrees]", **csfont, fontsize=30)
+    plt.ylabel("Number of Free Revolute Cells", **csfont, fontsize=30)
     ax.yaxis.set_major_locator(MaxNLocator(integer=True))  # Force matplotlib to only use integers on axis markings
     plt.xlim([5, 20])
     plt.ylim((-0.5, 20))
     ax.xaxis.labelpad = 6
     ax.yaxis.labelpad = 6
-    plt.legend()
+    plt.legend(loc=1)
     plt.xticks(np.arange(5, 21, 2.5))
     plt.yticks(np.arange(0, 21, 2))
     ax.tick_params(axis='both', which='major', pad=10)
@@ -231,8 +231,8 @@ def plot_figure_2():
     # # for pcolormesh --> , shading='flat', vmin=DO_list.min(), vmax=DO_list.max()
     # sc = ax.scatter(angle_list, backlash_list, c=DO_list)
     # # z_for_plot = np.array([[i*i + j*j for j in backlash_list for i in angle_list]])
-    # ax.set_title("Max DO Distance - Varying Backlash and Angle")
-    # ax.set_xlabel('Fixed Angle of Cell i=0')
+    # ax.set_title("Max DO Distance - Variable Backlash and Angle")
+    # ax.set_xlabel(r"Range of $\Theta$ [Degrees]")
     # ax.set_ylabel(r"$\Delta \Theta_i$")
     # ax.xaxis.labelpad = 6
     # ax.yaxis.labelpad = 6
@@ -250,9 +250,9 @@ def plot_figure_2():
     cmaplist[0] = (0.5, 0.5, 0.5, 1.0)  # grey base color
     cmap = matplotlib.colors.LinearSegmentedColormap.from_list('custom', cmaplist, cmap.N)
     sc = plt.tricontourf(angle_list, backlash_list, DO_list, cmap=cmap)
-    ax.set_title("DO Distance - Varying Backlash and Angle", pad=30, **csfont)
-    ax.set_xlabel('Fixed Angle of Cell i=0', **csfont)
-    ax.set_ylabel(r"$\Delta \Theta_i$", **csfont)
+    ax.set_title("DO Distance - Variable Backlash and Angle", pad=30, **csfont)
+    ax.set_xlabel(r"Range of $\Theta$ [Degrees]", **csfont, fontsize=30)
+    ax.set_ylabel(r"$\Delta \Theta_i$", **csfont, fontsize=30)
     ax.xaxis.labelpad = 6
     ax.yaxis.labelpad = 6
     ax.tick_params(axis='both', which='major', pad=10)
@@ -275,9 +275,9 @@ def plot_figure_2():
     cmaplist[0] = (0.5, 0.5, 0.5, 1.0)  # grey base color
     cmap = matplotlib.colors.LinearSegmentedColormap.from_list('custom', cmaplist, cmap.N)
     sc = plt.tricontourf(angle_list, backlash_list, dDO_dx[1], cmap=cmap, vmin=0, vmax=7)
-    ax.set_title(r"$\frac{dDO}{dx}$ - Varying Backlash and Angle", pad=30, **csfont)
-    ax.set_xlabel('Fixed Angle of Cell i=0', **csfont)
-    ax.set_ylabel(r"$\Delta \Theta_i$", **csfont)
+    ax.set_title(r"$\frac{dDO}{dx}$ - Variable Backlash and Angle", pad=30, **csfont)
+    ax.set_xlabel(r"Range of $\Theta$ [Degrees]", **csfont, fontsize=30)
+    ax.set_ylabel(r"$\Delta \Theta_i$", **csfont, fontsize=30)
     ax.xaxis.labelpad = 6
     ax.yaxis.labelpad = 6
     ax.tick_params(axis='both', which='major', pad=10)
@@ -289,7 +289,7 @@ def plot_figure_2():
     plt.savefig("./figures/figure2_DO_mapping_to_b_and_angle_ddx.png", dpi=600)
     plt.close()
 
-    fig = plt.figure(10, figsize=(6, 6))
+    fig = plt.figure(10, figsize=(10, 10))
     ax = fig.add_subplot()
     # y1 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[0]], 3)
     # y2 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[1]], 3)
