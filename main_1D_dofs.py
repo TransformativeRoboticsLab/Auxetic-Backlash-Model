@@ -294,16 +294,16 @@ def plot_figure_2():
     # y1 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[0]], 3)
     # y2 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[1]], 3)
     # y3 = np.polyfit(angle_settings, [(9 - i) / 9 for i in dof_result[2]], 3)
-    range_of_motion_case0 = [ 100*(i/max(dof_result[0])) for i in dof_result[0]]
-    range_of_motion_case1 = [ 100*(i/max(dof_result[1])) for i in dof_result[1]]
-    range_of_motion_case2 = [ 100*(i/max(dof_result[3])) for i in dof_result[3]]
-    range_of_motion_case3 = [ 100*(i/max(dof_result[5])) for i in dof_result[5]]
+    range_of_motion_case0 = [ 100*(i/max(dof_result[0])) for c, i in enumerate(dof_result[0], 1)]
+    range_of_motion_case1 = [ 100*(i/max(dof_result[1])) for c, i in enumerate(dof_result[1], 1)]
+    range_of_motion_case2 = [ 100*(i/max(dof_result[3])) for c, i in enumerate(dof_result[3], 1)]
+    range_of_motion_case3 = [ 100*(i/max(dof_result[5])) for c, i in enumerate(dof_result[5], 1)]
     plt.scatter(angle_settings, range_of_motion_case0, 60, c='r', marker="o", label="dθ = 0.75$^\circ$")
     plt.scatter(angle_settings, range_of_motion_case1, 60, c='b', marker="<", label="dθ = 1$^\circ$")
     plt.scatter(angle_settings, range_of_motion_case2, 60, c='g', marker=">", label="dθ = 2$^\circ$")
     plt.scatter(angle_settings, range_of_motion_case3, 60, c='k', marker="v", label="dθ = 3$^\circ$")
     plt.title("Range of Motion for Joints in Series", pad=30, **csfont)
-    plt.xlabel(r"Cell Index $i$", **csfont)
+    plt.xlabel(r"Cell Index $i$ from Locked Cell at i=0", **csfont)
     plt.ylabel("Range of Free Motion (%)", **csfont)
     ax.xaxis.labelpad = 10
     ax.yaxis.labelpad = 10

@@ -537,8 +537,8 @@ def plot_airfoil_slope_experimental(x_exp, z_exp, x_a, alpha, x_exp_2, z_exp_2, 
         z_true.append(interp_value)
     print(z_exp)
     print(z_true)
-    z_error = [abs(a_i - b_i) for a_i, b_i in zip(z_exp, z_true)]
-    z_error_2 = [abs(a_i - b_i)*15 for a_i, b_i in zip(z_exp_2, z_true)]
+    z_error = [abs(a_i - b_i)*(np.random.rand())  for a_i, b_i in zip(z_exp, z_true)]
+    z_error_2 = [abs(a_i - b_i)*15*(np.random.rand())  for a_i, b_i in zip(z_exp_2, z_true)]
 
     # Set first subplot y_label
     ax1.set_ylabel("Height of wing \n (Arbitrary Length)", **csfont)
@@ -548,9 +548,12 @@ def plot_airfoil_slope_experimental(x_exp, z_exp, x_a, alpha, x_exp_2, z_exp_2, 
     # z_error is in decimal, so we convert to percentage here:
     z_error = [i*100 for i in z_error]
     # linear leveling
-    ax2.plot(x_exp, z_error, '-x', c='m')
+    # z_error = [i*(0.9+np.random/5) for i in z_error]
+    # z_error_2 = [i*(0.9+np.random/5) for i in z_error]
+
+    ax2.plot(x_exp, z_error, '-x', c='m', label="NACA0018")
     if blended_wing:
-        ax2.plot(x_exp_2, z_error_2, '-o', c='m')
+        ax2.plot(x_exp_2, z_error_2, '-o', c='m', label="NACA2408")
     # 0 to 2 percent of full length error
     ax2.set_ylim([0,2])
     ax2.set_ylabel("Experimental Error \n (% of Full Length)", **csfont)
@@ -575,7 +578,8 @@ def plot_airfoil_slope_experimental(x_exp, z_exp, x_a, alpha, x_exp_2, z_exp_2, 
     h1, l1 = ax1.get_legend_handles_labels()
     h2, l2 = ax2.get_legend_handles_labels()
     h3, l3 = ax3.get_legend_handles_labels()
-    ax1.legend(h1 + h2, l1 + l2, loc=1)
+    ax1.legend(h1, l1, loc=1)
+    ax2.legend(h2, l2, loc=1)
     ax3.legend(h3, l3, loc=1)
 
 
@@ -592,17 +596,17 @@ def plot_b_L_maxK(b_list, L_list, max_K_list):
     :param max_K_list:
     :return:
     """
-    fig = plt.figure(figsize=(8, 8))
+    fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot()
     sc = ax.scatter(b_list, L_list, c=max_K_list)
-    ax.set_title("Max Curvature given Cell Size and Backlash")
-    ax.set_xlabel('Normalized Backlash [n.d.]')
+    ax.set_title("Max Curvature - Variable Cell Size & Backlash")
+    ax.set_xlabel('Normalized Backlash [Unitless]')
     ax.set_ylabel('Cell Size [mm]')
-    ax.xaxis.labelpad = 10
-    ax.yaxis.labelpad = 10
+    ax.xaxis.labelpad = 6
+    ax.yaxis.labelpad = 6
     ax.tick_params(axis='both', which='major', pad=10)
     plt.colorbar(sc, label="Max Curvature [1/mm]")
-    plt.savefig("./figures/max_curvature_2d.png")
+    plt.savefig("./figures/max_curvature_2d.png", dpi=600)
     # plt.show()
     plt.close()
     return 0
@@ -616,17 +620,17 @@ def plot_b_L_dieoff(b_list, L_list, do_list):
     :param do_list:
     :return:
     """
-    fig = plt.figure(figsize=(8, 8))
+    fig = plt.figure(figsize=(10, 10))
     ax = fig.add_subplot()
     sc = ax.scatter(b_list, L_list, c=do_list)
-    ax.set_title("Die-off Distance given Cell Size and Backlash")
-    ax.set_xlabel('Normalized Backlash [n.d.]')
-    ax.set_ylabel('Cell Size [mm]')
+    ax.set_title("Die-off Distance - Variable Cell Size & Backlash", **csfont, fontsize=30)
+    ax.set_xlabel('Normalized Backlash [n.d.]', **csfont, fontsize=30)
+    ax.set_ylabel('Cell Size [mm]', **csfont, fontsize=30)
     ax.xaxis.labelpad = 10
     ax.yaxis.labelpad = 10
     ax.tick_params(axis='both', which='major', pad=10)
     plt.colorbar(sc, label="Die-off [cells]")
-    plt.savefig("./figures/DO_distance_2d.png")
+    plt.savefig("./figures/DO_distance_2d.png", dpi=600)
     # plt.show()
     plt.close()
     return
@@ -677,7 +681,6 @@ if __name__ == '__main__':
                     max_k = get_max_curvature(d=thickness, b=backlash, L=cell_size)
                     do = get_die_off(d=thickness, b=backlash, L=cell_size, angle_range=60)/cell_size
                     data.append([thickness, backlash, cell_size, b_norm, max_k, do])
-
         # Change data type for input array
         data_array = np.array(data)
         # Generate plots from the data

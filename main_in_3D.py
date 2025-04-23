@@ -22,8 +22,6 @@ matplotlib.rc('font', **font)
 matplotlib.rcParams['axes.linewidth'] = 1
 
 
-# TODO: general class based object for auxetic linkages
-
 class AuxeticCell:
     # Class to describe an individual auxetic bilayer cell
     def __init__(self, x, y):
