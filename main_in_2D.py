@@ -57,8 +57,9 @@ class AbstractAuxeticCell:
         self.cell_index = 0  # default all cells to be index zero until otherwise stated
         self.pos_x = x
         self.pos_y = y
-        self.arm_length = 10  # default radius [mm]
-        self.alpha = 1  # default cells at contracted state
+        self.arm_length = 10    # default radius [mm]
+        self.angle = 45       # deg
+        self.alpha = 1          # default cells at contracted state
         self.fixed = False
         # Keep a list of all other cell indexes connected to this cell
         self.connections = []
@@ -113,6 +114,12 @@ class AbstractAuxeticCell:
                 print(mag_V)
                 a_cell.pos_x = self.pos_x + V[0] * 1 / self.arm_length
                 a_cell.pos_y = self.pos_y + V[1] * 1 / self.arm_length
+                # when mating, set angle equal to one another within gap
+                # if close, keep as is
+                # TODO: backlash gap angle if then statement
+                # if not within gap, set equal
+                a_cell.angle = self.angle
+                # check dilation with backlash gap and set accordingly
             else:
                 print('other cell is fixed')
                 # Try to move self
@@ -138,8 +145,31 @@ def plot_abstract_cells(list_cells):
     plt.figure(0)
     for cell in list_cells:
         print(vars(cell))
+        # Plot cell boundary square
+        cx, cy = cell.pos_x, cell.pos_y
+        theta = np.radians(cell.angle)
+        # Define square corners relative to center (unrotated)
+        half_side = (cell.arm_length * cell.alpha) / 2
+        corners = np.array([
+            [-half_side, -half_side],
+            [ half_side, -half_side],
+            [ half_side,  half_side],
+            [-half_side,  half_side],
+            [-half_side, -half_side]  # Close the square
+        ])
+        # Rotation matrix
+        rotation_matrix = np.array([
+            [np.cos(theta), -np.sin(theta)],
+            [np.sin(theta),  np.cos(theta)]
+        ])
+        # Apply rotation and translation
+        rotated_corners = (rotation_matrix @ corners.T).T + np.array([cx, cy])
+        plt.plot(rotated_corners[:, 0], rotated_corners[:, 1], 'b-')
+        # Plot cell centers
         plt.scatter(cell.pos_x, cell.pos_y, label=cell.cell_index)
         plt.legend()
+        plt.axis('equal')
+        plt.grid(True)
         plt.savefig("TRL_abstract_cells_plot.png")
     plt.show()
     plt.close()
@@ -572,11 +602,14 @@ if __name__ == '__main__':
     # AbstractAuxeticCell tests
     cell1 = AbstractAuxeticCell(x=0, y=0)
     cell2 = AbstractAuxeticCell(x=50, y=80)
+    cell2.alpha = 1.2
     cell1.fixed = True
     cell1.get_distance_between_cells(cell2)
     cell1.get_connected_distance_between_cells(cell2)
+    # Plot before mating cells
+    plot_abstract_cells([cell1, cell2])
     cell1.connect_cell(cell2)
-
+    # Plot after mating cells
     plot_abstract_cells([cell1, cell2])
 
     # Parameters for the scissor mechanism
