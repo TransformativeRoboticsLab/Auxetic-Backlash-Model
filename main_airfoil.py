@@ -657,10 +657,78 @@ def plot_airfoil_error(x, y):
     return 0
 
 
+def relax_to_curve(target_curve, flat_line, max_iters=1000, step_size=0.01, tol=1e-6):
+    """
+    Iteratively adjust internal points of a flat line to approximate a target curve.
+
+    Parameters:
+        target_curve (list of (x, y)): Target curve as linked (x, y) tuples.
+        flat_line (list of (x, y)): Initial flat line as linked (x, y) tuples.
+        max_iters (int): Maximum number of iterations.
+        step_size (float): Gradient descent step size.
+        tol (float): Convergence tolerance (average movement).
+    Returns:
+        list of (x, y): Deformed line approximating the target curve.
+    """
+    target = np.array(target_curve)
+    current = np.array(flat_line)
+
+    assert len(target) == len(current), "Target and flat line must have the same number of points."
+    assert np.allclose(current[0], [0, 0]) and np.allclose(current[-1], [1, 0]), "First and last points must be fixed."
+
+    n = len(current)
+
+    for _ in range(max_iters):
+        prev = current.copy()
+
+        for i in range(1, n - 1):  # Skip endpoints
+            # Move towards the target curve point
+            direction = target[i] - current[i]
+            current[i] += step_size * direction
+
+        # Optional: enforce constant segment lengths
+        # This can be used to mimic physical link lengths more realistically
+        for _ in range(1):  # One pass per iteration to preserve link lengths
+            for i in range(1, n - 1):
+                left = current[i] - current[i - 1]
+                right = current[i + 1] - current[i]
+
+                left_len = np.linalg.norm(left)
+                right_len = np.linalg.norm(right)
+
+                desired_left_len = np.linalg.norm(target[i] - target[i - 1])
+                desired_right_len = np.linalg.norm(target[i + 1] - target[i])
+
+                if left_len > 1e-6:
+                    current[i] -= 0.5 * (left_len - desired_left_len) * (left / left_len)
+                if right_len > 1e-6:
+                    current[i] += 0.5 * (right_len - desired_right_len) * (right / right_len)
+
+        # Convergence check
+        avg_move = np.mean(np.linalg.norm(current - prev, axis=1))
+        if avg_move < tol:
+            break
+
+    return [tuple(p) for p in current]
+
+
 if __name__ == '__main__':
     print("TRL Airfoil Study Model")
     NACA_numbers = ["0018", "0024", "1408", "1410", "2408", "4412"]
     print("Examining airfoils: {}".format(str(NACA_numbers)))
+
+    # Iterative solver for alpha
+    iterative_alpha = True
+    if iterative_alpha:
+        # for each NACA airfoil profile under study
+        for number in NACA_numbers:
+            # for each NACA number of interest
+            NACA_number = number
+            print("Calculating Alpha(x) for airfoil: {}".format(number))
+            x_values, y_values, t = get_airfoil_positions(number)
+            # start with N cells equally spaced along length flat
+
+
 
     study_cell_geometry = False
     if study_cell_geometry:
@@ -687,7 +755,7 @@ if __name__ == '__main__':
         plot_b_L_maxK(b_list=data_array[:, 3], L_list=data_array[:, 2], max_K_list=data_array[:, 4])
         plot_b_L_dieoff(b_list=data_array[:, 3], L_list=data_array[:, 2], do_list=data_array[:, 5])
 
-    airfoil_data = True
+    airfoil_data = False
     if airfoil_data:
         # for each NACA airfoil profile under study
         for number in NACA_numbers:
