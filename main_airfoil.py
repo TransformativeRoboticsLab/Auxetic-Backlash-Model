@@ -718,7 +718,7 @@ if __name__ == '__main__':
     print("Examining airfoils: {}".format(str(NACA_numbers)))
 
     # Iterative solver for alpha
-    iterative_alpha = True
+    iterative_alpha = False
     if iterative_alpha:
         # for each NACA airfoil profile under study
         for number in NACA_numbers:
@@ -755,7 +755,7 @@ if __name__ == '__main__':
         plot_b_L_maxK(b_list=data_array[:, 3], L_list=data_array[:, 2], max_K_list=data_array[:, 4])
         plot_b_L_dieoff(b_list=data_array[:, 3], L_list=data_array[:, 2], do_list=data_array[:, 5])
 
-    airfoil_data = False
+    airfoil_data = True
     if airfoil_data:
         # for each NACA airfoil profile under study
         for number in NACA_numbers:
