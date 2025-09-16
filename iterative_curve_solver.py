@@ -33,12 +33,22 @@ def relax_to_curve(target_curve, flat_line, max_iters=1000, step_size=0.01, tol=
         # Optional: enforce constant segment lengths
         # This can be used to mimic physical link lengths more realistically
         for _ in range(1):  # One pass per iteration to preserve link lengths
-            for i in range(1, n - 1):
-                left = current[i] - current[i - 1]
-                right = current[i + 1] - current[i]
+            for i in range(1, n - 2):
+    
 
+                two_left = current[i-1] - current[i - 2]
+                left = current[i] - current[i - 1]
+                two_right = current[i + 2] - current[i+1]
+                right = current[i + 1] - current[i]
+                "Lengths of neighboring line segments"
                 left_len = np.linalg.norm(left)
+                two_left_len = np.linalg.norm(two_left)
                 right_len = np.linalg.norm(right)
+                two_right_len = np.linalg.norm(two_right)
+
+                # bounds on segment length differences
+                upper_bound = ((left_len+right_len)/2)+0.001
+                lower_bound = ((left_len+right_len)/2)-0.001
 
                 desired_left_len = np.linalg.norm(target[i] - target[i - 1])
                 desired_right_len = np.linalg.norm(target[i + 1] - target[i])
@@ -47,7 +57,16 @@ def relax_to_curve(target_curve, flat_line, max_iters=1000, step_size=0.01, tol=
                     current[i] -= 0.5 * (left_len - desired_left_len) * (left / left_len)
                 if right_len > 1e-6:
                     current[i] += 0.5 * (right_len - desired_right_len) * (right / right_len)
-
+                # print(two_left_len)
+                # if two_left_len > upper_bound:
+                #     current[i] -= 0.01
+                # if two_left_len < lower_bound:
+                #     current[i] += 0.01
+                # if two_right_len > upper_bound:
+                #     current[i] -= 0.01
+                # if two_right_len < lower_bound:
+                #     current[i] += 0.01
+                
         # Convergence check
         avg_move = np.mean(np.linalg.norm(current - prev, axis=1))
         if avg_move < tol:
@@ -75,14 +94,14 @@ def get_alpha_from_deformed(deformed_list):
 # Use a semicircle as target curve
 import matplotlib.pyplot as plt
 
-num_points = 13
-num_points_target = 100
+num_points = 15
+num_points_target = 15
 x_vals = np.linspace(0, 1, num_points)
 x_vals_target = np.linspace(0, 1, num_points_target)
 # y_vals = np.sqrt(0.25 - (x_vals - 0.5)**2)  # Semicircle radius 0.5
-y_vals_target = 0.12/0.2 * (0.2969*np.sqrt(x_vals_target) - 0.1260*x_vals_target - 0.3516*x_vals_target**2 + 0.2843*x_vals_target**3 - 0.1015*x_vals_target**4) +0.1
+y_vals_target = 0.12/0.2 * (0.2969*np.sqrt(x_vals_target) - 0.1260*x_vals_target - 0.3516*x_vals_target**2 + 0.2843*x_vals_target**3 - 0.1015*x_vals_target**4) 
 # y_vals_target = np.sqrt(0.25 - (x_vals_target - 0.5)**2 ) /10  # Semicircle radius 0.5
-target_curve = list(zip(x_vals_target, y_vals_target))
+target_curve = list(zip(x_vals_target, y_vals_target*0.1))
 print(target_curve)
 
 # Flat line from (0,0) to (1,0)
