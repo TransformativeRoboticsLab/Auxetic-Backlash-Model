@@ -1,6 +1,23 @@
 import numpy as np
 
-def relax_to_curve(target_curve, flat_line, max_iters=1000, step_size=0.01, tol=1e-6, use_smoothing = False, smooth_factor = 0.1, smooth_tol= 0.001):
+def _closest_point_on_segment(a, b, p):
+    ab = b - a
+    t = np.dot(p - a, ab) / (np.dot(ab, ab) + 1e-12)
+    t = np.clip(t, 0.0, 1.0)
+    return a + t * ab
+
+# Instead of snapping node i to target i, we snapped it to the geometrically nearest point on the curve.
+def closest_point_on_polyline(poly, p):
+    best, best_d2 = None, np.inf
+    for i in range(len(poly)-1):
+        q = _closest_point_on_segment(poly[i], poly[i+1], p)
+        d2 = np.sum((q - p)**2)
+        if d2 < best_d2:
+            best_d2, best = d2, q
+    return best
+
+
+def relax_to_curve(target_curve, flat_line, max_iters=2000, step_size=0.01, tol=1e-6, use_smoothing = False, smooth_factor = 0.1, smooth_tol= 0.001, k = 1.0, lock_x=False):
     """
     Iteratively adjust internal points of a flat line to approximate a target curve.
 
@@ -10,12 +27,15 @@ def relax_to_curve(target_curve, flat_line, max_iters=1000, step_size=0.01, tol=
         max_iters (int): Maximum number of iterations.
         step_size (float): Gradient descent step size.
         tol (float): Convergence tolerance (average movement).
+        k (float): spring constant for rest-length correction.
+        lock_x (bool): if True, nodes keep original x-coordinates.
 
     Returns:
         list of (x, y): Deformed line approximating the target curve.
     """
     target = np.array(target_curve)
-    current = np.array(flat_line)
+    flat_line = np.array(flat_line)  
+    current = flat_line.copy()     
 
     # assert len(target) == len(current), "Target and flat line must have the same number of points."
     assert np.allclose(current[0], [0, 0]) and np.allclose(current[-1], [1, 0]), "First and last points must be fixed."
@@ -27,9 +47,14 @@ def relax_to_curve(target_curve, flat_line, max_iters=1000, step_size=0.01, tol=
     for _ in range(max_iters):
         prev = current.copy()
 
+        if lock_x:
+            current[1:-1, 0] = flat_line[1:-1, 0]
+
+
         for i in range(1, n - 1):  # Skip endpoints
             # Move towards the target curve point
-            direction = target[i] - current[i]
+            t = closest_point_on_polyline(target, current[i]) # So now instead of just snapping node i to target node i, we're snapping it to the geometrically nearest part of the curve.
+            direction = t - current[i]
             current[i] += step_size * direction
 
         # Optional: enforce constant segment lengths
@@ -46,9 +71,9 @@ def relax_to_curve(target_curve, flat_line, max_iters=1000, step_size=0.01, tol=
                 # desired_right_len = np.linalg.norm(target[i + 1] - target[i])
 
                 if left_len > 1e-6:
-                    current[i] -= 0.5 * (left_len - L0) * (left / left_len)
+                    current[i] -= 0.5 * k * (left_len - L0) * (left / left_len)
                 if right_len > 1e-6:
-                    current[i] += 0.5 * (right_len - L0) * (right / right_len)
+                    current[i] += 0.5 * k * (right_len - L0) * (right / right_len)
                 
 
                 # Smoothing correction (OPTIONAL)
@@ -104,8 +129,8 @@ def get_alpha_from_deformed(deformed_list, L0):
 # Use a semicircle as target curve
 import matplotlib.pyplot as plt
 
-num_points = 50
-num_points_target =50
+num_points = 30
+num_points_target =30
 x_vals = np.linspace(0, 1, num_points)
 x_vals_target = np.linspace(0, 1, num_points_target)
 # y_vals = np.sqrt(0.25 - (x_vals - 0.5)**2)  # Semicircle radius 0.5
@@ -118,7 +143,7 @@ print(target_curve)
 flat_line = list(zip(x_vals, np.zeros_like(x_vals)))
 
 # Run the relaxation
-deformed, L0 = relax_to_curve(target_curve, flat_line)
+deformed, L0 = relax_to_curve(target_curve, flat_line, k = 0.3, lock_x=False)
 alpha = get_alpha_from_deformed(deformed, L0)
 print(alpha)
 
