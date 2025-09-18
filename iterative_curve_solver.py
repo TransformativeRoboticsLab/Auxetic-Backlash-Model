@@ -17,7 +17,9 @@ def closest_point_on_polyline(poly, p):
     return best
 
 
-def relax_to_curve(target_curve, flat_line, max_iters=2000, step_size=0.01, tol=1e-6, use_smoothing = False, smooth_factor = 0.1, smooth_tol= 0.001, k = 1.0, length_tol=0.15, lock_x=False, use_hard_limits = True):
+def relax_to_curve(target_curve, flat_line, max_iters=2000, step_size=0.01, tol=1e-6, 
+                   use_smoothing = False, smooth_factor = 0.1, smooth_tol= 0.001, k = 1.0, 
+                   length_tol=0.9, lock_x=False, use_hard_limits = True):
     """
     Iteratively adjust internal points of a flat line to approximate a target curve.
 
@@ -28,7 +30,9 @@ def relax_to_curve(target_curve, flat_line, max_iters=2000, step_size=0.01, tol=
         step_size (float): Gradient descent step size.
         tol (float): Convergence tolerance (average movement).
         k (float): spring constant for rest-length correction.
+        length_tol(float): total length of a segment
         lock_x (bool): if True, nodes keep original x-coordinates.
+        use_hard_limits(bool): limit the line segments to hard bounds
 
     Returns:
         list of (x, y): Deformed line approximating the target curve.
@@ -177,8 +181,8 @@ def get_lengths_and_alpha(deformed_list, L0):
 # Use a semicircle as target curve
 import matplotlib.pyplot as plt
 
-num_points = 70
-num_points_target =70
+num_points = 15
+num_points_target = 30
 x_vals = np.linspace(0, 1, num_points)
 x_vals_target = np.linspace(0, 1, num_points_target)
 # y_vals = np.sqrt(0.25 - (x_vals - 0.5)**2)  # Semicircle radius 0.5
