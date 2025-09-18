@@ -17,7 +17,7 @@ def closest_point_on_polyline(poly, p):
     return best
 
 
-def relax_to_curve(target_curve, flat_line, max_iters=2000, step_size=0.01, tol=1e-6, use_smoothing = False, smooth_factor = 0.1, smooth_tol= 0.001, k = 1.0, lock_x=False):
+def relax_to_curve(target_curve, flat_line, max_iters=2000, step_size=0.01, tol=1e-6, use_smoothing = False, smooth_factor = 0.1, smooth_tol= 0.001, k = 1.0, length_tol=0.15, lock_x=False, use_hard_limits = True):
     """
     Iteratively adjust internal points of a flat line to approximate a target curve.
 
@@ -42,6 +42,9 @@ def relax_to_curve(target_curve, flat_line, max_iters=2000, step_size=0.01, tol=
 
     n = len(current)
     L0 = 1.0 / (n - 1)  # rest length of each identical link
+    Lmin = (1.0 - length_tol) * L0
+    Lmax = (1.0 + length_tol) * L0
+
 
 
     for _ in range(max_iters):
@@ -56,6 +59,44 @@ def relax_to_curve(target_curve, flat_line, max_iters=2000, step_size=0.01, tol=
             t = closest_point_on_polyline(target, current[i]) # So now instead of just snapping node i to target node i, we're snapping it to the geometrically nearest part of the curve.
             direction = t - current[i]
             current[i] += step_size * direction
+
+        # spring toward L0
+        for i in range(1, n - 1):
+            left  = current[i]   - current[i-1]
+            right = current[i+1] - current[i]
+            ll = np.linalg.norm(left);  rr = np.linalg.norm(right)
+            if ll > 1e-6:
+                current[i] -= 0.5 * k * (ll - L0) * (left / ll)
+            if rr > 1e-6:
+                current[i] += 0.5 * k * (rr - L0) * (right / rr)
+
+        # HARD length limits (post-correction clamp)
+        if use_hard_limits:
+            for i in range(1, n - 1):
+                # left segment clamp
+                v = current[i] - current[i-1]
+                L = np.linalg.norm(v)
+                if L > 1e-6:
+                    u = v / L
+                    if L > Lmax:
+                        delta = 0.5 * (L - Lmax)
+                        current[i]   -= delta * u
+                    elif L < Lmin:
+                        delta = 0.5 * (Lmin - L)
+                        current[i]   += delta * u
+
+                # right segment clamp
+                v = current[i+1] - current[i]
+                L = np.linalg.norm(v)
+                if L > 1e-6:
+                    u = v / L
+                    if L > Lmax:
+                        delta = 0.5 * (L - Lmax)
+                        current[i]   += delta * u
+                    elif L < Lmin:
+                        delta = 0.5 * (Lmin - L)
+                        current[i]   -= delta * u
+        
 
         # Optional: enforce constant segment lengths
         # This can be used to mimic physical link lengths more realistically
@@ -126,11 +167,18 @@ def get_alpha_from_deformed(deformed_list, L0):
     # alpha = dists / np.mean(dists)
     # return alpha
 
+
+def get_lengths_and_alpha(deformed_list, L0):
+    points = np.array(deformed_list)
+    diffs = points[1:] - points[:-1]
+    dists = np.linalg.norm(diffs, axis=1)   # actual segment lengths
+    alpha = dists / L0                      # normalized (stretch factor)
+    return dists, alpha
 # Use a semicircle as target curve
 import matplotlib.pyplot as plt
 
-num_points = 30
-num_points_target =30
+num_points = 70
+num_points_target =70
 x_vals = np.linspace(0, 1, num_points)
 x_vals_target = np.linspace(0, 1, num_points_target)
 # y_vals = np.sqrt(0.25 - (x_vals - 0.5)**2)  # Semicircle radius 0.5
