@@ -3,6 +3,9 @@ This repository contains a set of programs to model the backlash in auxetic latt
 
 The backlash in an auxetic structure can be configured or programmed to design a shape-changing structure.
 
+Task List
+https://docs.google.com/spreadsheets/d/1UB8SRYQrKouYJ8RqrWCk4LBVXZi8fhDDzx1xIQ8QW4M/edit?usp=sharing
+
 ## Main Questions
 - How can we build valuable shapes using the backlash present in series and parallel networks of auxetic linkages?
 - What metrics in the structure lead to changes in a configuration space?
