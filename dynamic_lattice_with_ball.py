@@ -60,14 +60,16 @@ def compute_spring_forces(P, L0x, L0y, k=50.0):
     return F
 
 
-# ---------- Dynamic Lattice Simulation ---------- #
+# ---------- Lattice & Servo Setup ---------- #
 
 def _to_zero_based(pairs_1based):
     return np.array([(r-1, c-1) for (r, c) in pairs_1based], dtype=int)
 
 
-def simulate_dynamic_deformation(
-    Nu=15, Nv=15, steps=400, dt=0.01,
+# ---------- Dynamic Deformation Simulation ---------- #
+
+def simulate_dynamic_deformation_with_sequential_servos(
+    Nu=15, Nv=15, steps=1200, dt=0.01,
     mass=0.1, k_spring=50.0, damping=0.98,
     gravity=np.array([0, 0, -9.81]),
     fix_boundary=True,
@@ -76,9 +78,10 @@ def simulate_dynamic_deformation(
                         (6,3),(6,8),(7,13),
                         (10,3),(10,8),(10,13),
                         (14,3),(14,8),(14,13)),
-    servo_profile=lambda t: -0.05*np.sin(np.pi*min(t,1.0)) if t <= 1.0 else -0.05
+    servo_T=1.0,  # seconds per servo
+    servo_amp=-0.04
 ):
-    """Run dynamic lattice simulation under gravity + actuation."""
+    """Sequential servo actuation: activates one servo at a time."""
     P0 = make_initial_lattice(Nu, Nv)
     P = P0.copy()
     V = np.zeros_like(P)
@@ -87,49 +90,50 @@ def simulate_dynamic_deformation(
 
     bolt_idx = _to_zero_based(bolt_cells_1based)
     servo_idx = _to_zero_based(servo_cells_1based)
-    in_bounds = lambda i,j: (0 <= i < Nu) and (0 <= j < Nv)
-    bolt_idx = np.array([ij for ij in bolt_idx if in_bounds(*ij)], dtype=int)
-    servo_idx = np.array([ij for ij in servo_idx if in_bounds(*ij)], dtype=int)
-
-    def clamp_nodes_to_initial(idxs):
-        if idxs.size == 0:
-            return
-        ii, jj = idxs[:,0], idxs[:,1]
-        P[ii, jj, :] = P0[ii, jj, :]
-        V[ii, jj, :] = 0.0
-
-    def set_servo_nodes(t):
-        if servo_idx.size == 0:
-            return
-        z = servo_profile(t)
-        ii, jj = servo_idx[:,0], servo_idx[:,1]
-        P[ii, jj, 0:2] = P0[ii, jj, 0:2]
-        P[ii, jj, 2] = P0[ii, jj, 2] + z
-        V[ii, jj, :] = 0.0
+    servo_sequence = list(map(tuple, servo_idx))  # one-by-one sequence
 
     trajectory = []
+    active_servo_log = []
+
     for step in range(steps):
         t = step * dt
         F[:] = 0.0
         F += compute_spring_forces(P, L0x, L0y, k=k_spring)
         F += mass * gravity
 
+        # Integrate motion
         A = F / mass
         V += A * dt
         V *= damping
         P += V * dt
 
+        # Apply boundary clamps
         if fix_boundary:
             P[0,:,:] = P0[0,:,:]; V[0,:,:] = 0
             P[-1,:,:] = P0[-1,:,:]; V[-1,:,:] = 0
             P[:,0,:] = P0[:,0,:]; V[:,0,:] = 0
             P[:,-1,:] = P0[:,-1,:]; V[:,-1,:] = 0
 
-        clamp_nodes_to_initial(bolt_idx)
-        set_servo_nodes(t)
+        # Clamp bolts
+        if len(bolt_idx) > 0:
+            ii, jj = bolt_idx[:,0], bolt_idx[:,1]
+            P[ii, jj, :] = P0[ii, jj, :]
+            V[ii, jj, :] = 0.0
 
+        # Sequential servo actuation
+        total_servos = len(servo_sequence)
+        total_period = servo_T * total_servos
+        idx = int((t // servo_T) % total_servos)
+        ci, cj = servo_sequence[idx]
+        local_t = (t % servo_T)
+        z_offset = servo_amp * np.sin(np.pi * local_t / servo_T)
+        P[ci, cj, 2] = P0[ci, cj, 2] + z_offset
+        V[ci, cj, :] = 0.0
+
+        active_servo_log.append((t, ci, cj))
         trajectory.append(P.copy())
-    return np.array(trajectory)
+
+    return np.array(trajectory), active_servo_log
 
 
 # ---------- Ball Simulation ---------- #
@@ -157,79 +161,38 @@ def surface_gradients(Z, x, y, size=(1.0, 1.0)):
     return dzdx, dzdy
 
 
-def simulate_ball_over_lattice(
-    traj, dt, size=(1.0, 1.0),
-    ball_radius=0.03, g=9.81,
-    mu=0.03, damping=0.998,  # slightly stronger damping
-    slope_gain=0.6,          # reduces slope acceleration to make motion smoother
-    x0=0.5, y0=0.5
-):
-    """
-    Simulates a rolling/sliding ball over a deforming lattice surface.
-    This version smooths gradients (dz/dx, dz/dy) between frames and
-    uses semi-implicit Euler integration for smoother, more stable motion.
-    """
-
+def simulate_ball_over_lattice(traj, dt, size=(1.0,1.0),
+                               ball_radius=0.03, g=9.81, mu=0.03,
+                               damping=0.995, slope_gain=0.6,
+                               x0=0.5, y0=0.5):
     steps, Nu, Nv, _ = traj.shape
     W, H = size
-
-    # Initial state
     bx, by = x0, y0
-    Z0 = traj[0, :, :, 2]
-    bz = interp_bilinear(Z0, bx * W, by * H, 0, W, 0, H) + ball_radius + 1e-3
+    Z0 = traj[0,:,:,2]
+    bz = interp_bilinear(Z0, bx*W, by*H, 0, W, 0, H) + ball_radius + 1e-3
     vx = vy = vz = 0.0
-    dzdx_prev = dzdy_prev = 0.0
-
-    out = np.zeros((steps, 3))
+    out = np.zeros((steps,3))
 
     for t in range(steps):
-        Z = traj[t, :, :, 2]
+        Z = traj[t,:,:,2]
+        z_surf = interp_bilinear(Z, bx*W, by*H, 0, W, 0, H)
+        dzdx, dzdy = surface_gradients(Z, bx*W, by*H, size=size)
 
-        # Interpolate surface height and slope at (bx, by)
-        z_surf = interp_bilinear(Z, bx * W, by * H, 0, W, 0, H)
-        dzdx, dzdy = surface_gradients(Z, bx * W, by * H, size=size)
-
-        # --- Low-pass filter the slope (smooth transition) ---
-        dzdx = 0.8 * dzdx_prev + 0.2 * dzdx
-        dzdy = 0.8 * dzdy_prev + 0.2 * dzdy
-        dzdx_prev, dzdy_prev = dzdx, dzdy
-
-        # --- Compute accelerations ---
         ax, ay, az = 0.0, 0.0, -g
         contact = (bz - ball_radius) <= z_surf
-
         if contact:
             bz = z_surf + ball_radius
-            if vz < 0: vz = 0.0
-
-            # smoother slope effect
+            if vz < 0: vz = 0
             ax += -slope_gain * g * dzdx
             ay += -slope_gain * g * dzdy
+            vx *= (1 - mu)
+            vy *= (1 - mu)
 
-            # simple friction model
-            vx *= (1.0 - mu)
-            vy *= (1.0 - mu)
-
-        # --- Semi-implicit Euler integration ---
-        vx += ax * dt
-        vy += ay * dt
-        vz += az * dt
-
-        bx += vx * dt
-        by += vy * dt
-        bz += vz * dt
-
-        # --- Global damping after integration ---
-        vx *= damping
-        vy *= damping
-        vz *= damping
-
-        # Keep ball within bounds
-        bx = np.clip(bx, 0.0, 1.0)
-        by = np.clip(by, 0.0, 1.0)
-
+        vx += ax * dt; vy += ay * dt; vz += az * dt
+        bx += vx * dt; by += vy * dt; bz += vz * dt
+        vx *= damping; vy *= damping; vz *= damping
+        bx = np.clip(bx, 0, 1); by = np.clip(by, 0, 1)
         out[t] = (bx, by, bz)
-
     return out
 
 
@@ -240,7 +203,7 @@ def animate_with_ball(traj, ball_traj, bolt_cells_1based, servo_cells_1based, in
     bolt_idx = _to_zero_based(bolt_cells_1based)
     servo_idx = _to_zero_based(servo_cells_1based)
 
-    fig = plt.figure(figsize=(8, 6))
+    fig = plt.figure(figsize=(8,6))
     ax = fig.add_subplot(111, projection='3d')
 
     def update(frame):
@@ -248,31 +211,18 @@ def animate_with_ball(traj, ball_traj, bolt_cells_1based, servo_cells_1based, in
         P = traj[frame]
         bx, by, bz = ball_traj[frame]
         ax.set_title(f"Lattice + Ball | frame {frame}")
-
-        # Lattice grid
-        for i in range(Nu):
-            ax.plot(P[i,:,0], P[i,:,1], P[i,:,2], color='tab:blue', lw=1.2)
-        for j in range(Nv):
-            ax.plot(P[:,j,0], P[:,j,1], P[:,j,2], color='tab:blue', lw=1.2)
-
-        # Servo and bolt points
-        if len(servo_idx) > 0:
-            ax.scatter(P[servo_idx[:,0], servo_idx[:,1], 0],
-                       P[servo_idx[:,0], servo_idx[:,1], 1],
-                       P[servo_idx[:,0], servo_idx[:,1], 2],
-                       s=40, c='red', label='Servos')
-        if len(bolt_idx) > 0:
-            ax.scatter(P[bolt_idx[:,0], bolt_idx[:,1], 0],
-                       P[bolt_idx[:,0], bolt_idx[:,1], 1],
-                       P[bolt_idx[:,0], bolt_idx[:,1], 2],
-                       s=40, c='orange', label='Bolts')
-
-        # Ball (yellow)
-        ax.scatter([bx], [by], [bz], color='gold', s=100, edgecolor='black')
-
-        ax.set_xlim(0, 1)
-        ax.set_ylim(0, 1)
-        ax.set_zlim(-0.2, 0.3)
+        for i in range(Nu): ax.plot(P[i,:,0], P[i,:,1], P[i,:,2], color='tab:blue', lw=1.2)
+        for j in range(Nv): ax.plot(P[:,j,0], P[:,j,1], P[:,j,2], color='tab:blue', lw=1.2)
+        ax.scatter(P[servo_idx[:,0], servo_idx[:,1], 0],
+                   P[servo_idx[:,0], servo_idx[:,1], 1],
+                   P[servo_idx[:,0], servo_idx[:,1], 2],
+                   s=40, c='red', label='Servos')
+        ax.scatter(P[bolt_idx[:,0], bolt_idx[:,1], 0],
+                   P[bolt_idx[:,0], bolt_idx[:,1], 1],
+                   P[bolt_idx[:,0], bolt_idx[:,1], 2],
+                   s=40, c='orange', label='Bolts')
+        ax.scatter([bx],[by],[bz], color='gold', s=100, edgecolor='black')
+        ax.set_xlim(0,1); ax.set_ylim(0,1); ax.set_zlim(-0.2,0.3)
         ax.view_init(elev=25, azim=35)
         return []
 
@@ -281,7 +231,7 @@ def animate_with_ball(traj, ball_traj, bolt_cells_1based, servo_cells_1based, in
     plt.show()
 
 
-# ---------- Run Demo ---------- #
+# ---------- Run the Full Simulation ---------- #
 
 if __name__ == "__main__":
     bolt_cells = ((1,2),(1,14),(8,2),(8,14),(15,2),(15,14))
@@ -290,19 +240,29 @@ if __name__ == "__main__":
                    (10,3),(10,8),(10,13),
                    (14,3),(14,8),(14,13))
 
-    traj = simulate_dynamic_deformation(
+    traj, servo_log = simulate_dynamic_deformation_with_sequential_servos(
         Nu=15, Nv=15,
-        steps=600, dt=0.01,
+        steps=1200, dt=0.01,
         mass=0.05, k_spring=80.0, damping=0.85,
-        gravity=np.array([0, 0, -9.81]),
-        fix_boundary=True,
-        servo_profile = lambda t: -0.04 * np.sin(2 * np.pi * 0.25 * t)
+        gravity=np.array([0,0,-9.81]),
+        servo_T=1.0, servo_amp=-0.04
     )
 
-    ball_traj = simulate_ball_over_lattice(
-        traj, dt=0.01, size=(1.0,1.0),
-        ball_radius=0.03, g=9.81, mu=0.03, damping=0.995,
-        x0=0.5, y0=0.5   # Ball starts at center
-    )
+    ball_traj = simulate_ball_over_lattice(traj, dt=0.01, size=(1.0,1.0),
+                                           ball_radius=0.03, g=9.81, mu=0.03, damping=0.995,
+                                           x0=0.5, y0=0.5)
 
+    # Animate the lattice & ball
     animate_with_ball(traj, ball_traj, bolt_cells, servo_cells)
+
+    # ---- Plot time vs XY ----
+    times = np.arange(len(ball_traj)) * 0.01
+    plt.figure(figsize=(8,4))
+    plt.plot(times, ball_traj[:,0], label='Ball X [m]', color='tab:blue')
+    plt.plot(times, ball_traj[:,1], label='Ball Y [m]', color='tab:purple')
+    plt.xlabel('Time [s]')
+    plt.ylabel('Ball Position [m]')
+    plt.title('Ball X/Y Over Time with Sequential Servo Activation')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
