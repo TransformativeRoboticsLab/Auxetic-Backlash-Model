@@ -117,7 +117,7 @@ def simulate_dynamic_deformation(
                         (14,3),(14,8),(14,13)),
 
     # --- Actuation profile for servo cells (return z-offset at time t) ---
-    # Example: gentle downwards pulse with a smooth settle
+    # gentle downwards pulse with a smooth settle
     servo_profile=lambda t: -0.05*np.sin(np.pi*min(t,1.0)) if t <= 1.0 else -0.05
 ):
     """
