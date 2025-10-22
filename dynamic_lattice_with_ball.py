@@ -296,7 +296,7 @@ if __name__ == "__main__":
         mass=0.05, k_spring=80.0, damping=0.85,
         gravity=np.array([0, 0, -9.81]),
         fix_boundary=True,
-        servo_profile=lambda t: -0.04*np.sin(np.pi*min(t,1.0)) if t <= 1.0 else -0.04
+        servo_profile = lambda t: -0.04 * np.sin(2 * np.pi * 0.25 * t)
     )
 
     ball_traj = simulate_ball_over_lattice(
