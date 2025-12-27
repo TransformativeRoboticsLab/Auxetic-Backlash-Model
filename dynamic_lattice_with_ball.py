@@ -21,6 +21,8 @@ def rest_lengths(P0):
     return np.linalg.norm(seg_x, axis=-1), np.linalg.norm(seg_y, axis=-1)
 
 
+
+
 def compute_spring_forces(P, L0x, L0y, k=50.0):
     Nu, Nv, _ = P.shape
     F = np.zeros_like(P)
@@ -50,6 +52,41 @@ def compute_spring_forces(P, L0x, L0y, k=50.0):
             F[i + 1, j] -= Fmag * dir
     return F
 
+def curvature_forces(P, kappa_max=5.0, k_bend=0.5, size=(1.0,1.0), skip_rim=1):
+    """
+    Stable curvature limiter using scaled Laplacian of Z with bounded tanh penalty.
+    - kappa_max is in units of 1/length^2 (proxy curvature)
+    - k_bend controls strength
+    - skip_rim skips a number of boundary rings (1 = don't touch outermost interior ring)
+    """
+    Nu, Nv, _ = P.shape
+    W, H = size
+    hx = W / (Nu - 1)
+    hy = H / (Nv - 1)
+
+    Z = P[:,:,2]
+    F = np.zeros_like(P)
+
+    i0 = 1 + skip_rim
+    i1 = Nu - 1 - skip_rim
+    j0 = 1 + skip_rim
+    j1 = Nv - 1 - skip_rim
+    if i1 <= i0 or j1 <= j0:
+        return F
+
+    # scaled Laplacian (anisotropic spacing safe)
+    lap = (
+        (Z[i0+1:i1+1, j0:j1] - 2*Z[i0:i1, j0:j1] + Z[i0-1:i1-1, j0:j1]) / (hx*hx)
+        +
+        (Z[i0:i1, j0+1:j1+1] - 2*Z[i0:i1, j0:j1] + Z[i0:i1, j0-1:j1-1]) / (hy*hy)
+    )
+
+    # bounded penalty (prevents violent kicks)
+    Fz = -k_bend * kappa_max * np.tanh(lap / kappa_max)
+
+    F[i0:i1, j0:j1, 2] += Fz
+    return F
+
 
 # ---------- Lattice & Servo Setup ---------- #
 
@@ -67,7 +104,8 @@ def simulate_dynamic_deformation_with_sequential_servos(
     bolt_cells_1based=((1,2),(1,14),(8,2),(8,14),(15,2),(15,14)),
     servo_cells_1based=((2,8),(8,2),(8,14),(14,8)),  
     servo_T=1.0,
-    servo_amp=-0.02
+    servo_amp=-0.02,
+    kappa_max=5.0, k_bend=0.2
 ):
     """Sequential actuation of four servos (plus-shaped layout)."""
     P0 = make_initial_lattice(Nu, Nv)
@@ -86,6 +124,7 @@ def simulate_dynamic_deformation_with_sequential_servos(
         t = step * dt
         F[:] = 0
         F += compute_spring_forces(P, L0x, L0y, k=k_spring)
+        F += curvature_forces(P, kappa_max=kappa_max, k_bend=k_bend)
         F += mass * gravity
 
         # Integrate motion
