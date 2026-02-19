@@ -8,6 +8,8 @@ import matplotlib
 import matplotlib.animation as animation
 import re
 import pandas as pd
+from scipy.interpolate import griddata
+
 
 font = {'family': 'serif',
         'size': 16}
@@ -620,7 +622,7 @@ def plot_b_L_dieoff(b_list, L_list, do_list):
     :param do_list:
     :return:
     """
-    fig = plt.figure(figsize=(10, 10))
+    fig = plt.figure(figsize=(12, 10))
     ax = fig.add_subplot()
     sc = ax.scatter(b_list, L_list, c=do_list)
     ax.set_title("Die-off Distance - Variable Cell Size & Backlash", **csfont, fontsize=30)
@@ -635,6 +637,57 @@ def plot_b_L_dieoff(b_list, L_list, do_list):
     plt.close()
     return
 
+
+def plot_b_L_dieoff_interpolated(b_list, L_list, do_list):
+    """
+    Creates interpolated 2D surface plot from scatter data
+    :param b_list: backlash values
+    :param L_list: cell size values
+    :param do_list: die-off values
+    :return:
+    """
+    fig = plt.figure(figsize=(12, 10))
+    ax = fig.add_subplot()
+    
+    # Create regular grid for interpolation
+    b_grid = np.linspace(min(b_list), max(b_list), 200)
+    L_grid = np.linspace(min(L_list), max(L_list), 200)
+    B_grid, L_grid_mesh = np.meshgrid(b_grid, L_grid)
+    
+    # Interpolate scattered data onto regular grid
+    # Methods: 'linear', 'nearest', 'cubic'
+    points = np.column_stack((b_list, L_list))
+    do_grid = griddata(points, do_list, (B_grid, L_grid_mesh), method='cubic')
+    
+    # Create filled contour plot
+    levels = 20  # Number of contour levels
+    contour = ax.contourf(B_grid, L_grid_mesh, do_grid, levels=levels, cmap='viridis')
+    
+    # Optional: Add contour lines
+    contour_lines = ax.contour(B_grid, L_grid_mesh, do_grid, levels=levels, 
+                                colors='white', alpha=0.3, linewidths=0.5)
+    
+    # Optional: Overlay original scatter points
+    ax.scatter(b_list, L_list, c='red', s=2, alpha=0.3, label='Data points')
+    
+    # Labels and formatting
+    ax.set_title("Die-off Distance - Variable Cell Size & Backlash", 
+                 fontsize=30)
+    ax.set_xlabel('Normalized Backlash [n.d.]', fontsize=30)
+    ax.set_ylabel('Cell Size [mm]', fontsize=30)
+    ax.xaxis.labelpad = 10
+    ax.yaxis.labelpad = 10
+    ax.tick_params(axis='both', which='major', pad=10)
+    
+    # Colorbar
+    cbar = plt.colorbar(contour, ax=ax, label="Die-off [cells]")
+    cbar.ax.tick_params(labelsize=20)
+    
+    plt.tight_layout()
+    plt.savefig("./figures/DO_distance_2d_interpolated.png", dpi=600, bbox_inches='tight')
+    # plt.show()
+    plt.close()
+    return
 
 def plot_airfoil_error(x, y):
     """
@@ -730,7 +783,7 @@ if __name__ == '__main__':
 
 
 
-    study_cell_geometry = False
+    study_cell_geometry = True
     if study_cell_geometry:
         # Determine characteristic relationships
         # Take ranges for thickness, backlash, cell size [in millimeters]
@@ -754,8 +807,9 @@ if __name__ == '__main__':
         # Generate plots from the data
         plot_b_L_maxK(b_list=data_array[:, 3], L_list=data_array[:, 2], max_K_list=data_array[:, 4])
         plot_b_L_dieoff(b_list=data_array[:, 3], L_list=data_array[:, 2], do_list=data_array[:, 5])
+        plot_b_L_dieoff_interpolated(b_list=data_array[:, 3], L_list=data_array[:, 2], do_list=data_array[:, 5])
 
-    airfoil_data = True
+    airfoil_data = False
     if airfoil_data:
         # for each NACA airfoil profile under study
         for number in NACA_numbers:
