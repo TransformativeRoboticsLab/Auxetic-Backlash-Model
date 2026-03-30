@@ -258,15 +258,18 @@ def animate_lattice(trajectory, bolt_cells_1based, servo_cells_1based, interval=
 # ---------- Run demo ---------- #
 
 if __name__ == "__main__":
-    bolt_cells = ((1,2),(1,14),(8,2),(8,14),(15,2),(15,14))
-    servo_cells = ((2,3),(2,8),(2,13),
-                   (6,3),(6,8),(7,13),
-                   (10,3),(10,8),(10,13),
-                   (14,3),(14,8),(14,13))
+    bolt_cells = ()
+    servo_cells = ((3,3),(3,8),(3,13),
+                   (8,3),(8,8),(8,13),
+                   (13,3),(13,8),(13,13))
     traj = simulate_dynamic_deformation(
-        Nu=15, Nv=15,
-        steps=600, dt=0.01,
-        mass=0.05, k_spring=80.0, damping=0.85,
+        Nu=15, 
+        Nv=15,
+        steps=600, 
+        dt=0.01,
+        mass=0.05, 
+        k_spring=120.0, 
+        damping=0.85,
         gravity=np.array([0, 0, -9.81]),
         fix_boundary=True,
         servo_profile=lambda t: -0.04*np.sin(np.pi*min(t,1.0)) if t <= 1.0 else -0.04

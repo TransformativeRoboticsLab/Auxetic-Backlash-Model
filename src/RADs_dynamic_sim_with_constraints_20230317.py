@@ -193,7 +193,7 @@ def animate_lattice(trajectory, bolt_cells_1based, servo_cells_1based, interval=
     def update(frame):
         ax.cla()
         P = trajectory[frame]
-        ax.set_title(f"Sine-wave driven lattice  |  t = {frame * 0.01:.2f} s")
+        ax.set_title(f"RADs Servo Driven 15x15 Lattice  |  t = {frame * 0.01:.2f} s")
 
         # Filled polytope faces
         quads  = make_quads(P)
@@ -253,7 +253,7 @@ if __name__ == "__main__":
     #   A = amplitude (metres)   ω = angular frequency (rad/s)
     # ------------------------------------------------------------------ #
 
-    A, omega = 0.08, np.pi   # 0.08 m amplitude, 0.5 Hz wave speed
+    A, omega = 0.05, np.pi   # 0.08 m amplitude, 0.5 Hz wave speed
 
     traj = simulate_dynamic_deformation(
         Nu=15, Nv=15,

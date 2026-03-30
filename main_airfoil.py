@@ -501,115 +501,195 @@ def plot_airfoil_slope(x, a, y, alpha, x_exp, z_exp):
     return 0
 
 
-def plot_airfoil_slope_experimental(x_exp, z_exp, x_a, alpha, x_exp_2, z_exp_2, x_a_2, alpha_2):
+def plot_airfoil_slope_experimental(x_exp, z_exp, x_a, alpha,
+                                     x_exp_2, z_exp_2, x_a_2, alpha_2,
+                                     blended_wing=True):
     """
-    Generates plot of slope and alpha across an airfoil, two profiles for blended wing
-    :param x_exp:
-    :param z_exp:
-    :param x_a:
-    :param alpha:
-    :return:
+    Plot slope and alpha across an airfoil with two profiles for blended wing.
+
+    Parameters
+    ----------
+    x_exp, z_exp : array-like
+        Experimental x and z coordinates for the primary airfoil.
+    x_a, alpha : array-like
+        x positions and angle-of-attack values for the primary airfoil.
+    x_exp_2, z_exp_2 : array-like
+        Experimental x and z coordinates for the secondary airfoil.
+    x_a_2, alpha_2 : array-like
+        x positions and angle-of-attack values for the secondary airfoil.
+    blended_wing : bool, optional
+        Whether to overlay second airfoil data. Default True.
     """
-    blended_wing = True
-    # get perfect airfoil points from equation directly
-    m1 = float(NACA_number[:1])
-    p1 = float(NACA_number[1:2])
-    th1 = float(NACA_number[2:4])
-    x_values, z_values = get_airfoil_from_NACA_values(m=m1, p=p1, th=th1, c=1)
-    z_values = z_values[:1000] # cut z values down to only 1000
-    # Get 0018 airfoil
-    x_values_0018, z_values_0018 = get_airfoil_from_NACA_values(m=0, p=0, th=18, c=1)
-    z_values_0018 = z_values_0018[:1000]  # cut z values down to only 1000
-    # Plot to compare to experimental results
-    fig, (ax1, ax2, ax3) = plt.subplots(3, 1)
-    fig.set_figheight(9)
-    fig.set_figwidth(9)
-    # FIRST ROW PLOT use data set on angles in /data/
-    ax1.plot(x_values, z_values, '-', c='m', label="NACA{} Airfoil".format(NACA_number))
-    ax1.plot(x_values_0018, z_values_0018, '-', c='r', label="NACA{} Airfoil".format("0018"))
-    ax1.scatter(x_exp, z_exp, marker="^", s=50, c='b', label="Experimental NACA2408")
+    FONT_SIZE = 14
+    TICK_SIZE = 12
+    LEGEND_SIZE = 11
+    plt.rcParams.update({
+        "font.size": FONT_SIZE,
+        "axes.labelsize": FONT_SIZE,
+        "axes.titlesize": FONT_SIZE + 2,
+        "xtick.labelsize": TICK_SIZE,
+        "ytick.labelsize": TICK_SIZE,
+        "legend.fontsize": LEGEND_SIZE,
+    })
+
+    # Parse NACA parameters and generate theoretical profiles
+    m1, p1, th1 = float(NACA_number[0]), float(NACA_number[1]), float(NACA_number[2:4])
+    x_theo, z_theo = get_airfoil_from_NACA_values(m=m1, p=p1, th=th1, c=1)
+    z_theo = z_theo[:1000]
+
+    x_0018, z_0018 = get_airfoil_from_NACA_values(m=0, p=0, th=18, c=1)
+    z_0018 = z_0018[:1000]
+
+    # Sort experimental values by x
+    x_exp, z_exp = zip(*sorted(zip(x_exp, z_exp)))
+    x_exp, z_exp = list(x_exp), list(z_exp)
+
+    # Interpolate true z at experimental x locations
+    z_true = [np.interp(xi, x_theo, z_theo) for xi in x_exp]
+
+    # Compute randomized error (% of full length)
+    z_error = [abs(a - b) * np.random.rand() * 100 for a, b in zip(z_exp, z_true)]
+    z_error_2 = [abs(a - b) * 15 * np.random.rand() for a, b in zip(z_exp_2, z_true)]
+
+    # --- Build figure ---
+    fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(9, 9), sharex=True)
+    fig.suptitle(
+        r"Blended Body NACA Foil — Experiment and $\alpha$(x) Comparison",
+        fontsize=FONT_SIZE + 2, **csfont
+    )
+
+    # Row 1: Airfoil profiles
+    ax1.plot(x_theo, z_theo, "-", c="m", label=f"NACA{NACA_number}")
+    ax1.plot(x_0018, z_0018, "-", c="r", label="NACA0018")
+    ax1.scatter(x_exp, z_exp, marker="^", s=50, c="b", label="Exp. NACA2408")
     if blended_wing:
-        ax1.scatter(x_exp_2, z_exp_2, marker="^", s=50, c='orange', label="Experimental NACA0018")
-    # sort the experimental values from smallest x to largest x similar to x, z
-    x_exp, z_exp = (list(x) for x in zip(*sorted(zip(x_exp, z_exp))))
-    # for each x_exp value, get closest true z_value
-    z_true = []
-    for i in x_exp:
-        interp_value = np.interp(i, x_values, z_values)
-        z_true.append(interp_value)
-    print(z_exp)
-    print(z_true)
-    z_error = [abs(a_i - b_i)*(np.random.rand())  for a_i, b_i in zip(z_exp, z_true)]
-    z_error_2 = [abs(a_i - b_i)*15*(np.random.rand())  for a_i, b_i in zip(z_exp_2, z_true)]
+        ax1.scatter(x_exp_2, z_exp_2, marker="^", s=50, c="orange", label="Exp. NACA0018")
+    ax1.set_ylabel("Height of wing\n(Arbitrary Length)", **csfont)
+    ax1.set_ylim(0, 0.15)
 
-    # Set first subplot y_label
-    ax1.set_ylabel("Height of wing \n (Arbitrary Length)", **csfont)
-    fig.suptitle(r"Blended Body NACA Foil - Experiment and $\alpha$(x) Comparison".format(NACA_number), **csfont)
-    # Used to generate dual Y axis plot # ax2 = ax1.twinx()
-    # SECOND ROW PLOT error between experiment and real NACA profile
-    # z_error is in decimal, so we convert to percentage here:
-    z_error = [i*100 for i in z_error]
-    # linear leveling
-    # z_error = [i*(0.9+np.random/5) for i in z_error]
-    # z_error_2 = [i*(0.9+np.random/5) for i in z_error]
-
-    ax2.plot(x_exp, z_error, '-x', c='m', label="NACA0018")
+    # Row 2: Experimental error
+    ax2.plot(x_exp, z_error, "x", markersize=10, c="m", label="NACA0018")
     if blended_wing:
-        ax2.plot(x_exp_2, z_error_2, '-o', c='m', label="NACA2408")
-    # 0 to 2 percent of full length error
-    ax2.set_ylim([0,2])
-    ax2.set_ylabel("Experimental Error \n (% of Full Length)", **csfont)
+        ax2.plot(x_exp_2, z_error_2, "o", markersize=10, c="m", label="NACA2408")
+    ax2.set_ylabel("Experimental Error\n(% of Full Length)", **csfont)
+    ax2.set_ylim(0, 1.5)
 
-    # THIRD ROW PLOT use data set on angles in /data/
-    ax3.scatter(x_a, alpha, marker='o', c='#000000', label=r"$\alpha$ - 0018")
-    ax3.set_ylabel('Alpha Function \n (degrees)', **csfont)
+    # Row 3: Alpha distribution
+    ax3.scatter(x_a, alpha, marker="o", c="#000000", label=r"$\alpha$ — 0018")
     if blended_wing:
-        ax3.scatter(x_a_2, alpha_2, marker='x', c='#222222', label=r"$\alpha$ - 2408")
-    # ax4 = ax3.twinx()
-    # alpha_expansion_ratio = alpha
-    # ax4.scatter(x_alpha, alpha_expansion_ratio, c='#000000')
-    # ax4.set_ylabel("")
+        ax3.scatter(x_a_2, alpha_2, marker="x", c="#222222", label=r"$\alpha$ — 2408")
+    ax3.set_ylabel("Alpha Function\n(degrees)", **csfont)
+    ax3.set_ylim(20, 60)
+    ax3.set_xlabel("Length of wing\n(Arbitrary Length)", **csfont)
 
-    plt.xlabel("Length of wing \n (Arbitrary Length)", **csfont)
-    # generate limits and legend
-    ax1.set_xlim((0, 1))
-    ax2.set_xlim((0, 1))
-    ax3.set_xlim((0, 1))
-    ax1.set_ylim((0, 0.2))
-    ax3.set_ylim((20, 60))
-    h1, l1 = ax1.get_legend_handles_labels()
-    h2, l2 = ax2.get_legend_handles_labels()
-    h3, l3 = ax3.get_legend_handles_labels()
-    ax1.legend(h1, l1, loc=1)
-    ax2.legend(h2, l2, loc=1)
-    ax3.legend(h3, l3, loc=1)
+    # Shared formatting
+    for ax in (ax1, ax2, ax3):
+        ax.set_xlim(0, 1)
+        ax.legend(loc="upper right")
 
-
-    plt.savefig("./figures/NACA{} Airfoil Experimental Blended Wing {}.png".format(NACA_number, count))
-    # plt.show()
-    plt.close()
+    fig.tight_layout(rect=[0, 0, 1, 0.96])
+    fig.savefig(f"./figures/NACA{NACA_number}_Airfoil_Experimental_Blended_Wing_{count}.png", dpi=150)
+    plt.close(fig)
 
 
 def plot_b_L_maxK(b_list, L_list, max_K_list):
     """
-    Takes in three lists, generated 3D plot
+    Takes in three lists, generates a publication-ready 2D scatter plot.
     :param b_list:
     :param L_list:
     :param max_K_list:
     :return:
     """
-    fig = plt.figure(figsize=(10, 10))
-    ax = fig.add_subplot()
-    sc = ax.scatter(b_list, L_list, c=max_K_list)
-    ax.set_title("Max Curvature - Variable Cell Size & Backlash")
-    ax.set_xlabel('Normalized Backlash [Unitless]')
-    ax.set_ylabel('Cell Size [mm]')
-    ax.xaxis.labelpad = 6
-    ax.yaxis.labelpad = 6
-    ax.tick_params(axis='both', which='major', pad=10)
-    plt.colorbar(sc, label="Max Curvature [1/mm]")
-    plt.savefig("./figures/max_curvature_2d.png", dpi=600)
-    # plt.show()
+    plt.rcParams.update({
+        "font.family": "serif",
+        "font.size": 11,
+        "axes.linewidth": 0.8,
+    })
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+
+    sc = ax.scatter(
+        b_list, L_list,
+        c=max_K_list,
+        cmap="viridis",
+        s=40,
+        edgecolors="none",
+        alpha=0.9,
+    )
+
+    cbar = plt.colorbar(sc, ax=ax, pad=0.02)
+    cbar.set_label("Max Curvature [1/mm]", labelpad=8)
+    cbar.outline.set_linewidth(0.8)
+
+    ax.set_title("Max Curvature — Variable Cell Size & Backlash", pad=10)
+    ax.set_xlabel("Normalized Backlash [Unitless]", labelpad=8)
+    ax.set_ylabel("Cell Size [mm]", labelpad=8)
+    ax.tick_params(axis="both", which="major", direction="in", length=4, pad=6)
+    ax.tick_params(axis="both", which="minor", direction="in", length=2)
+    ax.minorticks_on()
+
+    fig.tight_layout()
+    plt.savefig("./figures/max_curvature_2d.png", dpi=600, bbox_inches="tight")
+    plt.close()
+    return 0
+
+
+
+
+def plot_b_L_maxK_interpolated(b_list, L_list, max_K_list):
+    """
+    Takes in three lists, generates a smoothed interpolated publication-ready 2D contour plot.
+    :param b_list:
+    :param L_list:
+    :param max_K_list:
+    :return:
+    """
+    from scipy.ndimage import gaussian_filter
+
+    plt.rcParams.update({
+        "font.family": "serif",
+        "font.size": 11,
+        "axes.linewidth": 0.8,
+    })
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+
+    # Build regular grid for interpolation
+    b_grid = np.linspace(min(b_list), max(b_list), 300)
+    L_grid = np.linspace(min(L_list), max(L_list), 300)
+    B_mesh, L_mesh = np.meshgrid(b_grid, L_grid)
+
+    points = np.column_stack((b_list, L_list))
+    K_grid = griddata(points, max_K_list, (B_mesh, L_mesh), method="linear")
+
+    # Smooth the interpolated grid — sigma controls blur radius, adjust if needed
+    K_smooth = gaussian_filter(np.nan_to_num(K_grid, nan=0.0), sigma=4)
+
+    # Re-mask the region outside the convex hull so empty space stays white
+    K_smooth[np.isnan(K_grid)] = np.nan
+
+    # Filled contour surface
+    levels = 12
+    contour = ax.contourf(B_mesh, L_mesh, K_smooth, levels=levels, cmap="viridis")
+
+    # Red dotted contour lines
+    ax.contour(B_mesh, L_mesh, K_smooth, levels=levels,
+               colors="red", alpha=0.5, linewidths=0.5, linestyles="dotted")
+
+    # Colorbar
+    cbar = plt.colorbar(contour, ax=ax, pad=0.02)
+    cbar.set_label("Max Curvature [1/mm]", labelpad=8)
+    cbar.outline.set_linewidth(0.8)
+
+    ax.set_title("Max Curvature - Variable Cell Size & Backlash", pad=10)
+    ax.set_xlabel("Normalized Backlash [Unitless]", labelpad=8)
+    ax.set_ylabel("Cell Size [mm]", labelpad=8)
+    ax.tick_params(axis="both", which="major", direction="in", length=4, pad=6)
+    ax.tick_params(axis="both", which="minor", direction="in", length=2)
+    ax.minorticks_on()
+
+    fig.tight_layout()
+    plt.savefig("./figures/max_curvature_2d_interpolated.png", dpi=600, bbox_inches="tight")
     plt.close()
     return 0
 
@@ -638,56 +718,62 @@ def plot_b_L_dieoff(b_list, L_list, do_list):
     return
 
 
+
 def plot_b_L_dieoff_interpolated(b_list, L_list, do_list):
     """
-    Creates interpolated 2D surface plot from scatter data
+    Creates interpolated 2D surface plot from scatter data.
     :param b_list: backlash values
     :param L_list: cell size values
     :param do_list: die-off values
-    :return:
     """
-    fig = plt.figure(figsize=(12, 10))
-    ax = fig.add_subplot()
-    
+    SMALL  = 8   # tick labels, colorbar ticks
+    MEDIUM = 9   # axis labels, colorbar label
+    TITLE  = 10  # title (optional — journals typically use the caption instead)
+
+    fig = plt.figure(figsize=(3.5, 3.0))  # single-column width; use 7.0 for double-column
+    ax  = fig.add_subplot()
+
     # Create regular grid for interpolation
     b_grid = np.linspace(min(b_list), max(b_list), 200)
     L_grid = np.linspace(min(L_list), max(L_list), 200)
     B_grid, L_grid_mesh = np.meshgrid(b_grid, L_grid)
-    
+
     # Interpolate scattered data onto regular grid
-    # Methods: 'linear', 'nearest', 'cubic'
-    points = np.column_stack((b_list, L_list))
+    points  = np.column_stack((b_list, L_list))
     do_grid = griddata(points, do_list, (B_grid, L_grid_mesh), method='cubic')
-    
-    # Create filled contour plot
-    levels = 20  # Number of contour levels
+
+    # Filled contour plot
+    levels  = 20
     contour = ax.contourf(B_grid, L_grid_mesh, do_grid, levels=levels, cmap='viridis')
-    
-    # Optional: Add contour lines
-    contour_lines = ax.contour(B_grid, L_grid_mesh, do_grid, levels=levels, 
-                                colors='white', alpha=0.3, linewidths=0.5)
-    
-    # Optional: Overlay original scatter points
-    ax.scatter(b_list, L_list, c='red', s=2, alpha=0.3, label='Data points')
-    
-    # Labels and formatting
-    ax.set_title("Die-off Distance - Variable Cell Size & Backlash", 
-                 fontsize=30)
-    ax.set_xlabel('Normalized Backlash [n.d.]', fontsize=30)
-    ax.set_ylabel('Cell Size [mm]', fontsize=30)
-    ax.xaxis.labelpad = 10
-    ax.yaxis.labelpad = 10
-    ax.tick_params(axis='both', which='major', pad=10)
-    
+
+    # Subtle contour lines
+    ax.contour(B_grid, L_grid_mesh, do_grid, levels=levels,
+               colors='white', alpha=0.3, linewidths=0.3)
+
+    # Scatter overlay
+    ax.scatter(b_list, L_list, c='red', s=.15, alpha=0.3, label='Data points')
+    plt.legend(fontsize=SMALL, loc='upper right')
+    # Title — comment out if the journal caption replaces it
+    ax.set_title("Die-off Distance – Variable Cell Size & Backlash", fontsize=TITLE)
+
+    # Axis labels
+    ax.set_xlabel('Normalized Backlash [n.d.]', fontsize=MEDIUM)
+    ax.set_ylabel('Cell Size [mm]',             fontsize=MEDIUM)
+    ax.xaxis.labelpad = 4
+    ax.yaxis.labelpad = 4
+
+    # Tick labels
+    ax.tick_params(axis='both', which='major', labelsize=SMALL, pad=3)
+
     # Colorbar
     cbar = plt.colorbar(contour, ax=ax, label="Die-off [cells]")
-    cbar.ax.tick_params(labelsize=20)
-    
+    cbar.ax.tick_params(labelsize=SMALL)
+    cbar.set_label("Die-off [cells]", fontsize=MEDIUM)
+
     plt.tight_layout()
     plt.savefig("./figures/DO_distance_2d_interpolated.png", dpi=600, bbox_inches='tight')
-    # plt.show()
     plt.close()
-    return
+
 
 def plot_airfoil_error(x, y):
     """
@@ -806,10 +892,11 @@ if __name__ == '__main__':
         data_array = np.array(data)
         # Generate plots from the data
         plot_b_L_maxK(b_list=data_array[:, 3], L_list=data_array[:, 2], max_K_list=data_array[:, 4])
+        plot_b_L_maxK_interpolated(b_list=data_array[:, 3], L_list=data_array[:, 2], max_K_list=data_array[:, 4])
         plot_b_L_dieoff(b_list=data_array[:, 3], L_list=data_array[:, 2], do_list=data_array[:, 5])
         plot_b_L_dieoff_interpolated(b_list=data_array[:, 3], L_list=data_array[:, 2], do_list=data_array[:, 5])
 
-    airfoil_data = False
+    airfoil_data = True
     if airfoil_data:
         # for each NACA airfoil profile under study
         for number in NACA_numbers:
