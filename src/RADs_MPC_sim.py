@@ -419,7 +419,7 @@ if __name__ == "__main__":
         bolt_cells_1based=BOLT_CELLS,
         servo_cells_1based=SERVO_CELLS,
         servo_profile=profile,
-        mpc_lambda=0.05,   # Tikhonov regularisation on the servo correction
+        mpc_lambda=0.05,   # regularisation on the servo correction
         u_clip=0.15,       # actuator travel limit ±0.15 m
     )
     animate_comparison(
