@@ -37,6 +37,8 @@ assert.strictEqual(typeof RAD.calibrationExperimentResultsTemplate, "function", 
 assert.strictEqual(typeof RAD.exportCalibrationExperimentResultsTemplate, "function", "analysis module should export calibration results template");
 assert.strictEqual(typeof RAD.compareCalibrationExperimentResults, "function", "analysis module should compare calibration results");
 assert.strictEqual(typeof RAD.summarizeCalibrationComparison, "function", "analysis module should summarize calibration result comparisons");
+assert.strictEqual(typeof RAD.calibrationComparisonReport, "function", "analysis module should expose calibration comparison reports");
+assert.strictEqual(typeof RAD.exportCalibrationComparisonReport, "function", "analysis module should export calibration comparison reports");
 assert.strictEqual(typeof RAD.validateInversePlanPhysical, "function", "inverse module should expose physical inverse validation");
 const provenance = RAD.modelProvenance();
 assert.ok(
@@ -62,6 +64,7 @@ assert.ok(html.includes('id="selectCalibrationHotspot"'), "response panel should
 assert.ok(html.includes('id="saveExperimentProtocol"'), "response panel should expose a protocol export button");
 assert.ok(html.includes('id="saveResultsTemplate"'), "response panel should expose a results-template export button");
 assert.ok(html.includes('id="loadResultsJson"'), "response panel should expose a results import button");
+assert.ok(html.includes('id="saveComparisonReport"'), "response panel should expose a comparison-report export button");
 assert.ok(html.includes('id="calibrationResultsFileInput"'), "response panel should include hidden calibration results file input");
 assert.ok(html.includes('id="calibrationResultsSummary"'), "response panel should expose calibration result summary");
 assert.ok(html.includes('id="calibrationResultsError"'), "response panel should expose calibration result error readout");
@@ -296,6 +299,8 @@ assert.strictEqual(comparison.schema, "rad-sim.calibration-experiment-comparison
 assert.strictEqual(liftComparison.missingObservationCount, 0);
 assert.strictEqual(Number(liftComparison.heightRmse.toFixed(8)), 0);
 assert.strictEqual(Number(liftComparison.meanPinHoleSlipMm.toFixed(8)), 0.11);
+assert.strictEqual(Number(liftComparison.meanSignedHeightError.toFixed(8)), 0);
+assert.strictEqual(Number(liftComparison.meanAbsHeightError.toFixed(8)), 0);
 assert.ok(Array.isArray(comparison.field.combinedError), "calibration comparison should include per-cell error field");
 assert.ok(comparison.field.sampleCount.some((row) => row.some((value) => value > 0)), "calibration field should count measured cells");
 assert.strictEqual(Number(comparison.field.maxCombinedError.toFixed(8)), 0);
@@ -306,6 +311,7 @@ assert.strictEqual(comparisonSummary.stepCount, comparison.comparisons.length);
 assert.ok(comparisonSummary.measuredCellCount >= liftResult.cells.length);
 assert.strictEqual(Number(comparisonSummary.heightRmseMean.toFixed(8)), 0);
 assert.strictEqual(Number(comparisonSummary.maxCombinedError.toFixed(8)), 0);
+assert.strictEqual(Number(comparisonSummary.meanSignedHeightError.toFixed(8)), 0);
 const perturbedResults = JSON.parse(JSON.stringify(resultsTemplate));
 const perturbedLift = perturbedResults.steps.find((step) => step.stepId === "single_z_lift" && step.repeatIndex === 1);
 perturbedLift.cells[0].heightDelta += 0.05;
@@ -316,6 +322,13 @@ assert.strictEqual(perturbedComparison.field.worstCell.row, perturbedLift.cells[
 assert.strictEqual(perturbedComparison.field.worstCell.col, perturbedLift.cells[0].col);
 const perturbedSummary = RAD.summarizeCalibrationComparison(perturbedComparison);
 assert.deepStrictEqual(perturbedSummary.worstCell, perturbedComparison.field.worstCell);
+readyState.experiment.calibrationResults = perturbedResults;
+readyState.experiment.calibrationComparison = perturbedComparison;
+readyState.experiment.calibrationComparisonSummary = perturbedSummary;
+const report = RAD.calibrationComparisonReport(readyState);
+assert.strictEqual(report.schema, "rad-sim.calibration-comparison-report.v1");
+assert.strictEqual(report.summary.worstCell.row, perturbedLift.cells[0].row);
+assert.strictEqual(JSON.parse(RAD.exportCalibrationComparisonReport(readyState)).schema, report.schema);
 const appliedProfileState = RAD.createState(2, 2);
 appliedProfileState.grid.cellSize = 1.25;
 appliedProfileState.grid.hardwareProfile = JSON.parse(JSON.stringify(state.grid.hardwareProfile));

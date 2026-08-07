@@ -501,6 +501,7 @@
       document.getElementById("saveResultsTemplate").addEventListener("click", () => this.saveResultsTemplate());
       document.getElementById("loadResultsJson").addEventListener("click", () => this.els.calibrationResultsFileInput.click());
       this.els.calibrationResultsFileInput.addEventListener("change", () => this.loadCalibrationResults());
+      document.getElementById("saveComparisonReport").addEventListener("click", () => this.saveComparisonReport());
       document.getElementById("playTimeline").addEventListener("click", () => this.toggleTimeline());
       document.getElementById("stepTimeline").addEventListener("click", () => this.stepTimeline());
       document.getElementById("captureKeyframe").addEventListener("click", () => this.captureKeyframe());
@@ -1197,11 +1198,13 @@
       const stepCount = Number(summary.stepCount || 0);
       const height = summary.heightRmseMean === null || summary.heightRmseMean === undefined ? "--" : Number(summary.heightRmseMean).toFixed(4);
       const alpha = summary.alphaRmseMean === null || summary.alphaRmseMean === undefined ? "--" : Number(summary.alphaRmseMean).toFixed(4);
+      const heightBias = summary.meanSignedHeightError === null || summary.meanSignedHeightError === undefined ? "--" : Number(summary.meanSignedHeightError).toFixed(4);
+      const alphaBias = summary.meanSignedAlphaError === null || summary.meanSignedAlphaError === undefined ? "--" : Number(summary.meanSignedAlphaError).toFixed(4);
       const max = summary.maxCombinedError === null || summary.maxCombinedError === undefined ? "--" : Number(summary.maxCombinedError).toFixed(4);
       const cell = summary.worstCell ? ` cell r${summary.worstCell.row} c${summary.worstCell.col}` : "";
       const worst = summary.worstStepId ? ` worst ${summary.worstStepId}` : "";
       document.getElementById("calibrationResultsSummary").textContent = `cal results ${stepCount} steps, ${measured} cells, missing ${missing}`;
-      document.getElementById("calibrationResultsError").textContent = `height ${height}, alpha ${alpha}, max ${max}${cell}${worst}`;
+      document.getElementById("calibrationResultsError").textContent = `h ${height}/${heightBias}, a ${alpha}/${alphaBias}, max ${max}${cell}${worst}`;
     }
 
     strongestInteractionHotspot(result) {
@@ -1436,6 +1439,26 @@
       const link = document.createElement("a");
       link.href = url;
       link.download = "rad-sim-calibration-results-template.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveComparisonReport() {
+      if (!this.state.experiment.calibrationComparison) {
+        window.alert("Load calibration results before saving a comparison report.");
+        return;
+      }
+      const payload =
+        typeof RAD.exportCalibrationComparisonReport === "function"
+          ? RAD.exportCalibrationComparisonReport(this.state)
+          : JSON.stringify(this.state.experiment.calibrationComparison, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "rad-sim-calibration-comparison-report.json";
       document.body.appendChild(link);
       link.click();
       link.remove();

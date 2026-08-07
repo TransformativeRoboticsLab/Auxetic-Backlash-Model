@@ -1003,6 +1003,10 @@
         alphaRmse: rmse(alphaErrors),
         heightRmse: rmse(heightErrors),
         centerRmse: rmse(centerErrors),
+        meanSignedAlphaError: meanOrNull(alphaErrors),
+        meanSignedHeightError: meanOrNull(heightErrors),
+        meanAbsAlphaError: meanOrNull(alphaErrors.map(Math.abs)),
+        meanAbsHeightError: meanOrNull(heightErrors.map(Math.abs)),
         maxAbsHeightError: heightErrors.length ? Math.max(...heightErrors.map(Math.abs)) : null,
         meanActuatorForceN: meanOrNull(forceValues),
         meanPinHoleSlipMm: meanOrNull(slipValues),
@@ -1026,6 +1030,10 @@
     const heightErrors = comparisons.map((item) => item.heightRmse).filter(Number.isFinite);
     const alphaErrors = comparisons.map((item) => item.alphaRmse).filter(Number.isFinite);
     const centerErrors = comparisons.map((item) => item.centerRmse).filter(Number.isFinite);
+    const signedAlphaErrors = comparisons.map((item) => item.meanSignedAlphaError).filter(Number.isFinite);
+    const signedHeightErrors = comparisons.map((item) => item.meanSignedHeightError).filter(Number.isFinite);
+    const absAlphaErrors = comparisons.map((item) => item.meanAbsAlphaError).filter(Number.isFinite);
+    const absHeightErrors = comparisons.map((item) => item.meanAbsHeightError).filter(Number.isFinite);
     const forceValues = comparisons.map((item) => item.meanActuatorForceN).filter(Number.isFinite);
     const slipValues = comparisons.map((item) => item.meanPinHoleSlipMm).filter(Number.isFinite);
     const field = comparison?.field || {};
@@ -1043,6 +1051,10 @@
       alphaRmseMean: finiteAverage(alphaErrors),
       heightRmseMean: finiteAverage(heightErrors),
       centerRmseMean: finiteAverage(centerErrors),
+      meanSignedAlphaError: finiteAverage(signedAlphaErrors),
+      meanSignedHeightError: finiteAverage(signedHeightErrors),
+      meanAbsAlphaError: finiteAverage(absAlphaErrors),
+      meanAbsHeightError: finiteAverage(absHeightErrors),
       maxAbsHeightError: worst ? Number(worst.maxAbsHeightError) : null,
       maxAbsAlphaError: Number.isFinite(field.maxAbsAlphaError) ? field.maxAbsAlphaError : null,
       maxCombinedError: Number.isFinite(field.maxCombinedError) ? field.maxCombinedError : null,
@@ -1051,6 +1063,34 @@
       meanActuatorForceN: finiteAverage(forceValues),
       meanPinHoleSlipMm: finiteAverage(slipValues),
     };
+  }
+
+  function calibrationComparisonReport(state) {
+    const comparison = state.experiment?.calibrationComparison;
+    if (!comparison) throw new Error("no imported calibration comparison is available");
+    const summary = state.experiment?.calibrationComparisonSummary || summarizeCalibrationComparison(comparison);
+    return {
+      schema: "rad-sim.calibration-comparison-report.v1",
+      savedAt: new Date().toISOString(),
+      grid: {
+        rows: state.grid.rows,
+        cols: state.grid.cols,
+        cellSize: state.grid.cellSize,
+        backlash: state.grid.backlash,
+        couplingGain: state.grid.couplingGain,
+        zCouplingGain: state.grid.zCouplingGain,
+        pinRadius: state.grid.pinRadius,
+        holeRadius: state.grid.holeRadius,
+      },
+      hardwareProfile: state.grid.hardwareProfile?.name || null,
+      sourceResultsSchema: state.experiment?.calibrationResults?.schema || null,
+      summary,
+      comparison,
+    };
+  }
+
+  function exportCalibrationComparisonReport(state) {
+    return JSON.stringify(calibrationComparisonReport(state), null, 2);
   }
 
   function analyzeExperimentSequence(state) {
@@ -1188,6 +1228,8 @@
   RAD.exportCalibrationExperimentResultsTemplate = exportCalibrationExperimentResultsTemplate;
   RAD.compareCalibrationExperimentResults = compareCalibrationExperimentResults;
   RAD.summarizeCalibrationComparison = summarizeCalibrationComparison;
+  RAD.calibrationComparisonReport = calibrationComparisonReport;
+  RAD.exportCalibrationComparisonReport = exportCalibrationComparisonReport;
   RAD.physicalPreviewComparison = physicalPreviewComparison;
   RAD.responseDecayProfile = responseDecayProfile;
 })();
