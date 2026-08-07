@@ -261,7 +261,9 @@
     const alphaErrorMatrix = RAD.matrix(activeSources.length, activeSources.length, 0);
     const heightErrorMatrix = RAD.matrix(activeSources.length, activeSources.length, 0);
     const hotspotMap = RAD.matrix(state.grid.rows, state.grid.cols, 0);
+    const degreeMap = RAD.matrix(state.grid.rows, state.grid.cols, 0);
     let hotspotMax = 0;
+    let degreeMax = 0;
     const markHotspot = (source, value) => {
       const r = source?.r;
       const c = source?.c;
@@ -269,6 +271,18 @@
       const strength = Math.abs(Number(value) || 0);
       hotspotMap[r][c] = Math.max(hotspotMap[r][c], strength);
       hotspotMax = Math.max(hotspotMax, hotspotMap[r][c]);
+    };
+    const markNonadditiveDegree = (...sources) => {
+      const seen = new Set();
+      for (const source of sources) {
+        const r = source?.r;
+        const c = source?.c;
+        const key = `${r},${c}`;
+        if (seen.has(key) || !degreeMap[r] || degreeMap[r][c] === undefined) continue;
+        seen.add(key);
+        degreeMap[r][c] += 1;
+        degreeMax = Math.max(degreeMax, degreeMap[r][c]);
+      }
     };
     if (activeSources.length < 2) {
       return {
@@ -285,6 +299,9 @@
         pairwiseHeightErrorMatrix: heightErrorMatrix,
         pairwiseInteractionMap: hotspotMap,
         pairwiseInteractionMapMax: hotspotMax,
+        pairwiseInteractionDegreeMap: degreeMap,
+        pairwiseInteractionDegreeMax: degreeMax,
+        pairwiseInteractionDensity: 0,
       };
     }
 
@@ -322,6 +339,9 @@
             pairwiseHeightErrorMatrix: heightErrorMatrix,
             pairwiseInteractionMap: hotspotMap,
             pairwiseInteractionMapMax: hotspotMax,
+            pairwiseInteractionDegreeMap: degreeMap,
+            pairwiseInteractionDegreeMax: degreeMax,
+            pairwiseInteractionDensity: evaluated ? nonadditive / evaluated : 0,
           };
         }
         const combinedState = scopedState(state, [activeSources[i], activeSources[j]]);
@@ -343,7 +363,10 @@
         maxHeight = Math.max(maxHeight, heightError);
         markHotspot(activeSources[i], maxError);
         markHotspot(activeSources[j], maxError);
-        if (maxError > tolerance) nonadditive += 1;
+        if (maxError > tolerance) {
+          nonadditive += 1;
+          markNonadditiveDegree(activeSources[i], activeSources[j]);
+        }
         interactions.push({
           firstIndex: i,
           secondIndex: j,
@@ -374,6 +397,9 @@
       pairwiseHeightErrorMatrix: heightErrorMatrix,
       pairwiseInteractionMap: hotspotMap,
       pairwiseInteractionMapMax: hotspotMax,
+      pairwiseInteractionDegreeMap: degreeMap,
+      pairwiseInteractionDegreeMax: degreeMax,
+      pairwiseInteractionDensity: evaluated ? nonadditive / evaluated : 0,
     };
   }
 

@@ -964,6 +964,8 @@
         pairwisePairs: result.pairwiseEvaluatedPairs,
         pairwiseNonadditive: result.pairwiseNonadditivePairs,
         pairwiseMaxError: result.pairwiseMaxInteractionError,
+        pairwiseMaxDegree: result.pairwiseInteractionDegreeMax,
+        pairwiseDensity: result.pairwiseInteractionDensity,
       });
       this.syncControls();
       this.onChange(this.state);
@@ -995,9 +997,9 @@
       document.getElementById("characterizationSuperposition").textContent = superposition;
       document.getElementById("characterizationScale").textContent = `clearance ${Number(result.pinHoleClearanceMm || 0).toFixed(3)} mm`;
       document.getElementById("characterizationPairwise").textContent = `pairs ${result.pairwiseEvaluatedPairs || 0}/${result.pairwiseTotalPairs || 0} nonadd ${result.pairwiseNonadditivePairs || 0}${result.pairwiseTruncated ? " trunc" : ""}`;
-      document.getElementById("characterizationPairwiseMax").textContent = `pair max ${Number(result.pairwiseMaxInteractionError || 0).toFixed(3)}`;
+      document.getElementById("characterizationPairwiseMax").textContent = `pair max ${Number(result.pairwiseMaxInteractionError || 0).toFixed(3)} deg ${result.pairwiseInteractionDegreeMax || 0}`;
       const hotspot = this.strongestInteractionHotspot(result);
-      document.getElementById("characterizationHotspot").textContent = hotspot ? `hotspot r${hotspot.r} c${hotspot.c} ${hotspot.value.toFixed(3)}` : "hotspot none";
+      document.getElementById("characterizationHotspot").textContent = hotspot ? `hotspot r${hotspot.r} c${hotspot.c} ${hotspot.value.toFixed(3)} d${hotspot.degree}` : "hotspot none";
       document.getElementById("characterizationRank").textContent = `rank a${result.responseRankAlpha || 0} z${result.responseRankHeight || 0}`;
       document.getElementById("characterizationUnderactuated").textContent = `under a${result.alphaUnderactuatedCells || 0} z${result.heightUnderactuatedCells || 0}`;
       const physicalLabel = result.physicalPreviewAvailable
@@ -1020,7 +1022,8 @@
         const row = map[r] || [];
         for (let c = 0; c < row.length; c += 1) {
           const value = Math.abs(Number(row[c]) || 0);
-          if (!best || value > best.value) best = { r, c, value };
+          const degree = Number(result?.pairwiseInteractionDegreeMap?.[r]?.[c]) || 0;
+          if (!best || value > best.value) best = { r, c, value, degree };
         }
       }
       return best && best.value > 1e-12 ? best : null;
@@ -1526,7 +1529,7 @@
       if (event.type === "linear-fit-solved") return `linear solve: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}`;
       if (event.type === "linear-fit-applied") return `linear apply: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}`;
       if (event.type === "inverse-physical-validated") return `physical validate: ${event.source || "plan"}, err ${Number(event.physicalError || 0).toFixed(3)}, model ${Number(event.modelError || 0).toFixed(3)}`;
-      if (event.type === "characterization") return `characterize: ${event.scope}, ${event.responseCells || 0} cells, sup ${Number(event.superpositionError || 0).toFixed(3)}, pairs ${event.pairwiseNonadditive || 0}/${event.pairwisePairs || 0}`;
+      if (event.type === "characterization") return `characterize: ${event.scope}, ${event.responseCells || 0} cells, sup ${Number(event.superpositionError || 0).toFixed(3)}, pairs ${event.pairwiseNonadditive || 0}/${event.pairwisePairs || 0}, deg ${event.pairwiseMaxDegree || 0}`;
       if (event.type === "operator-lock") return `event lock: r${event.r}, c${event.c} a ${Number(event.lockAlpha || 0).toFixed(3)}`;
       if (event.type === "operator-release") return `event release: r${event.r}, c${event.c}`;
       if (event.type === "operator-order-check") return `order check: r${event.r}, c${event.c} da ${Number(event.finalAlphaError || 0).toFixed(3)} dz ${Number(event.finalHeightError || 0).toFixed(3)} max ${Number(event.maxOrderError || 0).toFixed(3)}`;

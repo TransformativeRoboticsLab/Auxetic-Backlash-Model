@@ -42,8 +42,8 @@ controllability checks and inverse-design experiments.
 distance from active source cells, matching the browser Response Experiments
 decay readout for notebook-side locality studies.
 `characterize_pairwise_interactions` evaluates command pairs and builds
-alpha/height residual matrices plus a per-cell hotspot map that identify which
-local operators are responsible for non-additive composition.
+alpha/height residual matrices plus per-cell hotspot and degree maps that
+identify which local operators are responsible for non-additive composition.
 `diagnose_programmable_discontinuity` packages the same response fields into an
 operator diagnostic: locality radius, reachable cells, response rank,
 underactuated cells, fitted decay ratio/length, pairwise interaction graph,
@@ -261,12 +261,13 @@ and the largest pairwise interaction error. Running the characterization switche
 the viewport to the Operator interaction overlay, which colors command-source
 cells by the strongest non-additive pair residual found in that scan; `Select
 Hotspot` moves selection to the strongest cell without adding labels over the
-lattice. It also compares the same response against the browser 3D spring
-preview and reports height/center disagreement from the kinematic backlash
-prediction. The reported decay ratio and decay length come from a simulator-side
-log-linear fit to shellwise maximum response
-versus Manhattan distance from the active sources; this is a locality diagnostic,
-not a paper-derived material law. This is an early numerical probe for
+lattice. The same readout reports max non-additive degree, counting how many
+non-additive pair edges touch the strongest cells. It also compares the same
+response against the browser 3D spring preview and reports height/center
+disagreement from the kinematic backlash prediction. The reported decay ratio
+and decay length come from a simulator-side log-linear fit to shellwise maximum
+response versus Manhattan distance from the active sources; this is a locality
+diagnostic, not a paper-derived material law. This is an early numerical probe for
 programmable-discontinuity behavior: nonzero residual indicates that backlash,
 locks, or saturation are making the local operators interact non-additively.
 
@@ -477,12 +478,12 @@ without requiring Playwright or a browser binary.
   checks, adjacent-swap sensitivity, and event-order noncommutativity.
 - `diagnose_programmable_discontinuity`: Python operator diagnostic for locality,
   reachable sets, response rank, underactuated regions, shellwise response decay,
-  pairwise interaction matrices/hotspot maps, and additive versus non-additive
-  operator composition. When given an `event_sequence`, it also reports
-  reversal/adjacent-swap order sensitivity.
+  pairwise interaction matrices/hotspot/degree maps, and additive versus
+  non-additive operator composition. When given an `event_sequence`, it also
+  reports reversal/adjacent-swap order sensitivity.
 - `characterize_pairwise_interactions`: Python pairwise command interaction graph
   for identifying which actuation operators create non-additive residuals and
-  mapping each command cell's strongest pair residual.
+  mapping each command cell's strongest pair residual and non-additive degree.
 - `response_decay_profile`: Python log-linear shell-max locality diagnostic that
   mirrors the browser Response Experiments decay ratio/length readout.
 - `solve_inverse_design`: bounded damped least-squares inverse design using

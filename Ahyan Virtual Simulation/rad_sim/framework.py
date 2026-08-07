@@ -139,6 +139,24 @@ class ProgrammableDiscontinuityDiagnostic:
         return self.pairwise_interactions.max_hotspot_error
 
     @property
+    def pairwise_interaction_degree_map(self) -> np.ndarray:
+        if self.pairwise_interactions is None:
+            return np.zeros_like(self.combined.alpha_delta, dtype=int)
+        return self.pairwise_interactions.interaction_degree_map
+
+    @property
+    def max_pairwise_interaction_degree(self) -> int:
+        if self.pairwise_interactions is None:
+            return 0
+        return self.pairwise_interactions.max_interaction_degree
+
+    @property
+    def pairwise_interaction_density(self) -> float:
+        if self.pairwise_interactions is None:
+            return 0.0
+        return self.pairwise_interactions.interaction_density
+
+    @property
     def pairwise_interactions_truncated(self) -> bool:
         return bool(self.pairwise_interactions and self.pairwise_interactions.truncated)
 

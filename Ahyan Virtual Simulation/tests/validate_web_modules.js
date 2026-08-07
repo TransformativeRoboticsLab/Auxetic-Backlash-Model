@@ -293,6 +293,12 @@ assert.strictEqual(pairCharacterization.pairwiseInteractionMap.length, character
 assert.strictEqual(pairCharacterization.pairwiseInteractionMap[0].length, characterizationState.grid.cols, "pairwise hotspot map should match lattice columns");
 assert.ok(Number.isFinite(pairCharacterization.pairwiseInteractionMapMax), "pair characterization should report finite pairwise hotspot scale");
 assert.ok(pairCharacterization.pairwiseInteractionMapMax >= 0, "pairwise hotspot scale should be nonnegative");
+assert.ok(Array.isArray(pairCharacterization.pairwiseInteractionDegreeMap), "pair characterization should include a nonadditive degree map");
+assert.strictEqual(pairCharacterization.pairwiseInteractionDegreeMap.length, characterizationState.grid.rows, "pairwise degree map should match lattice rows");
+assert.strictEqual(pairCharacterization.pairwiseInteractionDegreeMap[0].length, characterizationState.grid.cols, "pairwise degree map should match lattice columns");
+assert.ok(Number.isFinite(pairCharacterization.pairwiseInteractionDegreeMax), "pair characterization should report finite max degree");
+assert.ok(Number.isFinite(pairCharacterization.pairwiseInteractionDensity), "pair characterization should report finite interaction density");
+assert.ok(pairCharacterization.pairwiseInteractionDensity >= 0 && pairCharacterization.pairwiseInteractionDensity <= 1, "interaction density should be normalized");
 assert.deepStrictEqual(
   JSON.parse(JSON.stringify(pairCharacterization.pairwiseAlphaErrorMatrix)),
   JSON.parse(JSON.stringify(pairCharacterization.pairwiseAlphaErrorMatrix.map((row, r) => row.map((_, c) => pairCharacterization.pairwiseAlphaErrorMatrix[c][r])))),

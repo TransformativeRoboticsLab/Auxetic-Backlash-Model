@@ -87,6 +87,7 @@ class OperatorInteractionGraph:
     alpha_error_matrix: np.ndarray
     height_error_matrix: np.ndarray
     interaction_hotspot_map: np.ndarray
+    interaction_degree_map: np.ndarray
     total_pair_count: int
     truncated: bool
     tolerance: float
@@ -120,6 +121,18 @@ class OperatorInteractionGraph:
         if self.interaction_hotspot_map.size == 0:
             return 0.0
         return float(np.max(self.interaction_hotspot_map))
+
+    @property
+    def max_interaction_degree(self) -> int:
+        if self.interaction_degree_map.size == 0:
+            return 0
+        return int(np.max(self.interaction_degree_map))
+
+    @property
+    def interaction_density(self) -> float:
+        if self.evaluated_pair_count == 0:
+            return 0.0
+        return self.nonadditive_pair_count / self.evaluated_pair_count
 
 
 @dataclass(frozen=True)
@@ -408,6 +421,7 @@ def characterize_pairwise_interactions(
     alpha_error_matrix = np.zeros((command_count, command_count), dtype=float)
     height_error_matrix = np.zeros((command_count, command_count), dtype=float)
     interaction_hotspot_map = np.zeros((config.rows, config.cols), dtype=float)
+    interaction_degree_map = np.zeros((config.rows, config.cols), dtype=int)
     if command_count < 2:
         return OperatorInteractionGraph(
             commands=command_tuple,
@@ -415,6 +429,7 @@ def characterize_pairwise_interactions(
             alpha_error_matrix=alpha_error_matrix,
             height_error_matrix=height_error_matrix,
             interaction_hotspot_map=interaction_hotspot_map,
+            interaction_degree_map=interaction_degree_map,
             total_pair_count=total_pair_count,
             truncated=False,
             tolerance=tolerance,
@@ -436,6 +451,7 @@ def characterize_pairwise_interactions(
                     alpha_error_matrix=alpha_error_matrix,
                     height_error_matrix=height_error_matrix,
                     interaction_hotspot_map=interaction_hotspot_map,
+                    interaction_degree_map=interaction_degree_map,
                     total_pair_count=total_pair_count,
                     truncated=True,
                     tolerance=tolerance,
@@ -468,6 +484,10 @@ def characterize_pairwise_interactions(
                         interaction_hotspot_map[row, col],
                         max_error,
                     )
+            if max_error > tolerance:
+                for row, col in {first.cell, second.cell}:
+                    if 0 <= row < config.rows and 0 <= col < config.cols:
+                        interaction_degree_map[row, col] += 1
             distance = abs(first.cell[0] - second.cell[0]) + abs(first.cell[1] - second.cell[1])
             interactions.append(
                 OperatorPairInteraction(
@@ -489,6 +509,7 @@ def characterize_pairwise_interactions(
         alpha_error_matrix=alpha_error_matrix,
         height_error_matrix=height_error_matrix,
         interaction_hotspot_map=interaction_hotspot_map,
+        interaction_degree_map=interaction_degree_map,
         total_pair_count=total_pair_count,
         truncated=False,
         tolerance=tolerance,
