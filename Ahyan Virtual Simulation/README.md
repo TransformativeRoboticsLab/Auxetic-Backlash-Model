@@ -43,6 +43,11 @@ automatically enables the detailed display layers needed to inspect the
 normalized mechanism: hinge pins, pivot bosses, diagonal braces, linkage rods,
 fasteners, backlash stops, and active actuator markers. Switching back to
 `Cell abstraction` restores the cleaner topology diagram defaults.
+The `Paper RAD cell` display mode sits between those two views. It shows the
+paper-grounded rotating-square structure as two concentric square parts with
+four joints, pin bosses, and hole-clearance rings driven by the normalized
+pin/hole controls. It is still normalized geometry, but it reflects the RAD
+papers' stated unit-cell structure more directly than the general abstraction.
 Saved `rad-sim.browser.v1` JSON includes both command inputs and derived cell
 state. `cells.commandAlpha`, `cells.commandZ`, and `cells.locked` remain the
 authoritative controls; `cells.alpha`, `cells.theta`, and `cells.z` are refreshed

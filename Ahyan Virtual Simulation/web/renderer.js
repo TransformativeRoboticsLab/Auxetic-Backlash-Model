@@ -91,6 +91,9 @@
         abstractEdge: new T.LineBasicMaterial({ color: 0x172330, transparent: true, opacity: 0.88 }),
         abstractGuide: new T.MeshBasicMaterial({ color: 0x172330, transparent: true, opacity: 0.68 }),
         abstractDatum: new T.MeshBasicMaterial({ color: 0x5d6b78, transparent: true, opacity: 0.32 }),
+        paperOuter: new T.MeshStandardMaterial({ color: 0xcbd8e3, roughness: 0.48, metalness: 0.06, transparent: true, opacity: 0.74 }),
+        paperInner: new T.MeshStandardMaterial({ color: 0x14799d, roughness: 0.42, metalness: 0.08, transparent: true, opacity: 0.88 }),
+        paperClearance: new T.MeshBasicMaterial({ color: 0xe6b64a, transparent: true, opacity: 0.7 }),
         hinge: new T.MeshStandardMaterial({ color: 0x222b36, roughness: 0.32, metalness: 0.35 }),
         brace: new T.MeshStandardMaterial({ color: 0x314152, roughness: 0.38, metalness: 0.22 }),
         linkage: new T.MeshStandardMaterial({ color: 0x253545, roughness: 0.34, metalness: 0.28 }),
@@ -153,6 +156,8 @@
         abstractCorner: new T.CylinderGeometry(0.045, 0.045, 0.05, 16),
         abstractGuide: new T.BoxGeometry(1, 0.018, 0.018),
         abstractDatum: new T.BoxGeometry(1, 0.01, 0.01),
+        paperPin: new T.CylinderGeometry(1, 1, 0.055, 20),
+        paperClearanceRing: new T.TorusGeometry(1, 0.045, 8, 30),
         screwHead,
         screwSlot: new T.BoxGeometry(0.04, 0.006, 0.006),
         hinge,
@@ -732,7 +737,7 @@
         for (let c = 0; c < cols; c += 1) {
           const group = new T.Group();
           group.userData = { r, c };
-          const record = { group, plates: [], plateHardware: [], hinges: [], links: [], pivotBosses: [], braces: [], abstract: null, gap: null, stops: [], actuator: null };
+          const record = { group, plates: [], plateHardware: [], hinges: [], links: [], pivotBosses: [], braces: [], abstract: null, paperRad: null, gap: null, stops: [], actuator: null };
           for (let i = 0; i < 4; i += 1) {
             const plate = new T.Mesh(plateGeometry, this.materials.plate);
             plate.castShadow = true;
@@ -800,6 +805,41 @@
           }
           group.add(abstract);
           record.abstract = { group: abstract, outer, inner, outerEdge, innerEdge, guideX, guideY, datumX, datumY, corners };
+
+          const paperRad = new T.Group();
+          const paperOuter = new T.Mesh(this.geometries.abstractBody, this.materials.paperOuter);
+          const paperInner = new T.Mesh(this.geometries.abstractInner, this.materials.paperInner);
+          const paperOuterEdge = new T.LineSegments(new T.EdgesGeometry(this.geometries.abstractBody, 15), this.materials.abstractEdge);
+          const paperInnerEdge = new T.LineSegments(new T.EdgesGeometry(this.geometries.abstractInner, 15), this.materials.abstractEdge);
+          const paperDatumX = new T.Mesh(this.geometries.abstractDatum, this.materials.abstractDatum);
+          const paperDatumY = new T.Mesh(this.geometries.abstractDatum, this.materials.abstractDatum);
+          const paperPins = [];
+          const paperClearanceRings = [];
+          paperOuter.userData = { r, c, selectable: true };
+          paperOuter.castShadow = true;
+          paperOuter.receiveShadow = true;
+          paperInner.castShadow = true;
+          paperInner.receiveShadow = true;
+          paperInner.position.z = 0.075;
+          paperOuterEdge.position.z = 0.035;
+          paperInnerEdge.position.z = 0.115;
+          paperDatumX.position.z = 0.135;
+          paperDatumY.position.z = 0.135;
+          paperDatumY.rotation.z = Math.PI / 2;
+          paperRad.add(paperOuter, paperInner, paperOuterEdge, paperInnerEdge, paperDatumX, paperDatumY);
+          this.selectables.push(paperOuter);
+          for (let i = 0; i < 4; i += 1) {
+            const pin = new T.Mesh(this.geometries.paperPin, this.materials.hinge);
+            const clearanceRing = new T.Mesh(this.geometries.paperClearanceRing, this.materials.paperClearance);
+            pin.rotation.x = Math.PI / 2;
+            clearanceRing.position.z = 0.165;
+            pin.castShadow = true;
+            paperRad.add(clearanceRing, pin);
+            paperPins.push(pin);
+            paperClearanceRings.push(clearanceRing);
+          }
+          group.add(paperRad);
+          record.paperRad = { group: paperRad, outer: paperOuter, inner: paperInner, outerEdge: paperOuterEdge, innerEdge: paperInnerEdge, datumX: paperDatumX, datumY: paperDatumY, pins: paperPins, clearanceRings: paperClearanceRings };
           this.cellRoot.add(group);
 
           const gapGeometry = new T.TorusGeometry(1, 0.006, 6, 48);
@@ -946,20 +986,24 @@
           record.group.visible = cellVisible;
           record.group.position.set(center.x, center.y, center.z);
           const material = this.overlayColor(state, sim, r, c);
-          const abstractMode = (state.view.cellVisualMode || "abstract") === "abstract";
+          const visualMode = state.view.cellVisualMode || "abstract";
+          const abstractMode = visualMode === "abstract";
+          const paperRadMode = visualMode === "paperRad";
+          const mechanismMode = visualMode === "mechanism";
           record.abstract.group.visible = abstractMode;
+          record.paperRad.group.visible = paperRadMode;
           for (let i = 0; i < 4; i += 1) {
             const [px, py] = positions[i];
             const [ex, ey, ez] = explodedPositions[i];
             const plate = record.plates[i];
-            plate.visible = !abstractMode;
+            plate.visible = mechanismMode;
             plate.material = material;
             plate.position.set(ex, ey, ez);
             plate.rotation.z = theta;
-            for (const part of record.plateHardware) part.visible = !abstractMode && state.view.fastenersVisible !== false;
-            record.hinges[i].visible = !abstractMode;
+            for (const part of record.plateHardware) part.visible = mechanismMode && state.view.fastenersVisible !== false;
+            record.hinges[i].visible = mechanismMode;
             record.hinges[i].position.set(ex, ey, 0.08 + ez + explodeAmount * 0.35);
-            record.pivotBosses[i].visible = !abstractMode && state.view.pivotsVisible !== false;
+            record.pivotBosses[i].visible = mechanismMode && state.view.pivotsVisible !== false;
             record.pivotBosses[i].position.set(ex, ey, 0.13 + ez + explodeAmount * 0.45);
             record.pivotBosses[i].scale.setScalar(0.85 + Math.max(0, state.grid.backlash) * 0.65);
           }
@@ -967,13 +1011,13 @@
             const a = explodedPositions[i];
             const b = explodedPositions[(i + 1) % explodedPositions.length];
             const link = record.links[i];
-            link.visible = !abstractMode;
+            link.visible = mechanismMode;
             link.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2 - 0.02);
             link.scale.x = Math.hypot(a[0] - b[0], a[1] - b[1]);
             link.rotation.z = Math.atan2(b[1] - a[1], b[0] - a[0]);
           }
           this.updateDiagonalBraces(record, state, explodedPositions, explodeAmount);
-          for (const brace of record.braces) brace.visible = !abstractMode && state.view.pivotsVisible !== false;
+          for (const brace of record.braces) brace.visible = mechanismMode && state.view.pivotsVisible !== false;
           const outerSize = Math.max(0.42, radius * 2 + state.grid.backlash * 0.45);
           const innerSize = Math.max(0.18, radius * 1.16);
           record.abstract.outer.material = material;
@@ -993,6 +1037,26 @@
             const [px, py] = positions[i];
             record.abstract.corners[i].position.set(px, py, 0.13);
             record.abstract.corners[i].scale.setScalar(0.9 + state.grid.backlash * 0.9);
+          }
+          const paperOuterSize = Math.max(0.44, radius * 2.05 + state.grid.backlash * 0.5);
+          const paperInnerSize = Math.max(0.22, radius * 1.18);
+          const pinVisualRadius = Math.max(0.028, Math.min(0.14, Number(state.grid.pinRadius ?? 0.18) * cellSize * 0.32));
+          const holeVisualRadius = Math.max(pinVisualRadius + 0.006, Math.min(0.17, Number(state.grid.holeRadius ?? 0.225) * cellSize * 0.32));
+          record.paperRad.outer.material = material;
+          record.paperRad.outer.scale.set(paperOuterSize, paperOuterSize, 1);
+          record.paperRad.inner.scale.set(paperInnerSize, paperInnerSize, 1);
+          record.paperRad.inner.rotation.z = theta;
+          record.paperRad.outerEdge.scale.set(paperOuterSize, paperOuterSize, 1);
+          record.paperRad.innerEdge.scale.set(paperInnerSize, paperInnerSize, 1);
+          record.paperRad.innerEdge.rotation.z = theta;
+          record.paperRad.datumX.scale.set(paperOuterSize * 0.92, 1, 1);
+          record.paperRad.datumY.scale.set(paperOuterSize * 0.92, 1, 1);
+          for (let i = 0; i < record.paperRad.pins.length; i += 1) {
+            const [px, py] = positions[i];
+            record.paperRad.pins[i].position.set(px, py, 0.15);
+            record.paperRad.pins[i].scale.set(pinVisualRadius, pinVisualRadius, 1);
+            record.paperRad.clearanceRings[i].position.set(px, py, 0.17);
+            record.paperRad.clearanceRings[i].scale.set(holeVisualRadius, holeVisualRadius, holeVisualRadius);
           }
           record.gap.visible = cellVisible && state.view.gapsVisible;
           record.gap.position.set(center.x, center.y, center.z + 0.11 + explodeAmount * 0.75);

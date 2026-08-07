@@ -526,6 +526,7 @@ class WebStaticTests(unittest.TestCase):
         html = (WEB / "index.html").read_text(encoding="utf-8")
         self.assertIn('id="cellVisualMode"', html)
         self.assertIn('value="abstract"', html)
+        self.assertIn('value="paperRad"', html)
         self.assertIn('value="mechanism"', html)
         for option in ['value="zresidual"', 'value="error"', 'value="travel"', 'value="saturation"', 'value="strain"', 'value="displacement"', 'value="slope"', 'value="inverse"', 'value="sensitivity"', 'value="reachability"']:
             self.assertIn(option, html)
@@ -551,7 +552,7 @@ class WebStaticTests(unittest.TestCase):
         self.assertIn("this.els.cellVisualMode.addEventListener", ui_js)
         for symbol in [
             "applyCellVisualMode(mode)",
-            'mode === "mechanism" ? "mechanism" : "abstract"',
+            '["abstract", "paperRad", "mechanism"].includes(mode)',
             "this.state.view.explodedSelected = false",
             "stopsVisible: true",
             "pivotsVisible: true",
@@ -559,6 +560,7 @@ class WebStaticTests(unittest.TestCase):
             "fastenersVisible: true",
             "actuatorsVisible: true",
             "measurementMode: \"all\"",
+            "measurementMode: \"backlash\"",
             "stopsVisible: false",
             "pivotsVisible: false",
             "linkagesVisible: false",
@@ -788,12 +790,20 @@ class WebStaticTests(unittest.TestCase):
             "abstractDatum",
             "cellVisualMode",
             "abstractMode",
+            "paperRadMode",
             "record.abstract",
+            "record.paperRad",
             "Cell abstraction",
+            "Paper RAD cell",
+            "paperOuter",
+            "paperInner",
+            "paperClearance",
+            "pinVisualRadius",
+            "holeVisualRadius",
             "state.view.cellVisualMode || \"abstract\") !== \"abstract\"",
             "state.view.cellVisualMode || \"abstract\") === \"abstract\"",
         ]:
-            if symbol == "Cell abstraction":
+            if symbol in {"Cell abstraction", "Paper RAD cell"}:
                 self.assertIn(symbol, (WEB / "index.html").read_text(encoding="utf-8"))
             else:
                 self.assertIn(symbol, renderer_js)
