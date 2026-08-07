@@ -259,10 +259,12 @@ isolated source responses. It also reports a bounded pairwise interaction scan
 that identifies how many source pairs create non-additive alpha/height residuals
 and the largest pairwise interaction error. Running the characterization switches
 the viewport to the Operator interaction overlay, which colors command-source
-cells by the strongest non-additive pair residual found in that scan. It also
-compares the same response against the browser 3D spring preview and reports
-height/center disagreement from the kinematic backlash prediction. The reported
-decay ratio and decay length come from a simulator-side log-linear fit to shellwise maximum response
+cells by the strongest non-additive pair residual found in that scan; `Select
+Hotspot` moves selection to the strongest cell without adding labels over the
+lattice. It also compares the same response against the browser 3D spring
+preview and reports height/center disagreement from the kinematic backlash
+prediction. The reported decay ratio and decay length come from a simulator-side
+log-linear fit to shellwise maximum response
 versus Manhattan distance from the active sources; this is a locality diagnostic,
 not a paper-derived material law. This is an early numerical probe for
 programmable-discontinuity behavior: nonzero residual indicates that backlash,

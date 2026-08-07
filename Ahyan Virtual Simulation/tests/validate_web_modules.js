@@ -33,6 +33,8 @@ for (const ref of localRefs) {
 }
 assert.ok(!/https?:\/\//.test(html), "browser entry should not require external scripts or styles");
 assert.ok(html.includes('value="operatorInteraction"'), "operator interaction overlay should be available in the browser UI");
+assert.ok(html.includes('id="selectInteractionHotspot"'), "response panel should expose a hotspot selection button");
+assert.ok(html.includes('id="characterizationHotspot"'), "response panel should expose a hotspot readout");
 const scriptOrder = [
   "./vendor/three.min.js",
   "./state.js",
@@ -48,6 +50,10 @@ const scriptOrder = [
 ];
 for (let i = 1; i < scriptOrder.length; i += 1) {
   assert.ok(html.indexOf(scriptOrder[i - 1]) < html.indexOf(scriptOrder[i]), `${scriptOrder[i - 1]} should load before ${scriptOrder[i]}`);
+}
+for (const filename of ["renderer.js", "ui.js", "app.js"]) {
+  const source = fs.readFileSync(path.join(web, filename), "utf8");
+  assert.doesNotThrow(() => new Function(source), `${filename} should compile`);
 }
 
 const threeContext = { console: { ...console, warn: () => {} }, window: {} };

@@ -461,6 +461,7 @@
         this.updateLabels(null);
       });
       document.getElementById("runCharacterization").addEventListener("click", () => this.runCharacterization());
+      document.getElementById("selectInteractionHotspot").addEventListener("click", () => this.selectInteractionHotspot());
       document.getElementById("playTimeline").addEventListener("click", () => this.toggleTimeline());
       document.getElementById("stepTimeline").addEventListener("click", () => this.stepTimeline());
       document.getElementById("captureKeyframe").addEventListener("click", () => this.captureKeyframe());
@@ -977,6 +978,7 @@
         document.getElementById("characterizationScale").textContent = "clearance 0.000 mm";
         document.getElementById("characterizationPairwise").textContent = "pairs 0/0 nonadd 0";
         document.getElementById("characterizationPairwiseMax").textContent = "pair max 0.000";
+        document.getElementById("characterizationHotspot").textContent = "hotspot none";
         document.getElementById("characterizationRank").textContent = "rank a0 z0";
         document.getElementById("characterizationUnderactuated").textContent = "under a0 z0";
         document.getElementById("characterizationPhysical").textContent = "phys rms 0.000";
@@ -994,6 +996,8 @@
       document.getElementById("characterizationScale").textContent = `clearance ${Number(result.pinHoleClearanceMm || 0).toFixed(3)} mm`;
       document.getElementById("characterizationPairwise").textContent = `pairs ${result.pairwiseEvaluatedPairs || 0}/${result.pairwiseTotalPairs || 0} nonadd ${result.pairwiseNonadditivePairs || 0}${result.pairwiseTruncated ? " trunc" : ""}`;
       document.getElementById("characterizationPairwiseMax").textContent = `pair max ${Number(result.pairwiseMaxInteractionError || 0).toFixed(3)}`;
+      const hotspot = this.strongestInteractionHotspot(result);
+      document.getElementById("characterizationHotspot").textContent = hotspot ? `hotspot r${hotspot.r} c${hotspot.c} ${hotspot.value.toFixed(3)}` : "hotspot none";
       document.getElementById("characterizationRank").textContent = `rank a${result.responseRankAlpha || 0} z${result.responseRankHeight || 0}`;
       document.getElementById("characterizationUnderactuated").textContent = `under a${result.alphaUnderactuatedCells || 0} z${result.heightUnderactuatedCells || 0}`;
       const physicalLabel = result.physicalPreviewAvailable
@@ -1006,6 +1010,29 @@
       document.getElementById("characterizationPhysicalMax").textContent = physicalMaxLabel;
       document.getElementById("characterizationDecay").textContent = `decay a${Number(result.alphaDecayRatio || 0).toFixed(2)} z${Number(result.zDecayRatio || 0).toFixed(2)}`;
       document.getElementById("characterizationDecayLength").textContent = `len a${Number(result.alphaDecayLength || 0).toFixed(1)} z${Number(result.zDecayLength || 0).toFixed(1)}`;
+    }
+
+    strongestInteractionHotspot(result) {
+      const map = result?.pairwiseInteractionMap;
+      if (!Array.isArray(map)) return null;
+      let best = null;
+      for (let r = 0; r < map.length; r += 1) {
+        const row = map[r] || [];
+        for (let c = 0; c < row.length; c += 1) {
+          const value = Math.abs(Number(row[c]) || 0);
+          if (!best || value > best.value) best = { r, c, value };
+        }
+      }
+      return best && best.value > 1e-12 ? best : null;
+    }
+
+    selectInteractionHotspot() {
+      const hotspot = this.strongestInteractionHotspot(this.state.experiment.characterization);
+      if (!hotspot) return;
+      this.state.selection = { r: hotspot.r, c: hotspot.c };
+      this.state.view.overlayMode = "operatorInteraction";
+      this.syncControls();
+      this.onChange(this.state);
     }
 
     updateCouplingInspector(r, c) {
