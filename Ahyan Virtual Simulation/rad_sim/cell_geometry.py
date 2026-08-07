@@ -6,7 +6,8 @@ from typing import Literal
 import numpy as np
 
 from .coupling import alpha_to_theta
-from .models import LatticeConfig
+from .kinematic import simulate_kinematic
+from .models import LatticeConfig, LatticeState, SimulationResult
 
 
 @dataclass(frozen=True)
@@ -50,6 +51,68 @@ class PaperRADCellGeometry:
     @property
     def joint_count(self) -> int:
         return len(self.outer_joints) + len(self.inner_joints)
+
+
+@dataclass(frozen=True)
+class PaperRADCellRecord:
+    index: tuple[int, int]
+    geometry: PaperRADCellGeometry
+    locked: bool
+    command_alpha: float
+    command_z: float
+
+    @property
+    def is_actuated(self) -> bool:
+        return abs(self.command_alpha) > 1e-12 or abs(self.command_z) > 1e-12
+
+
+@dataclass(frozen=True)
+class PaperRADConnectorGeometry:
+    first: tuple[int, int]
+    second: tuple[int, int]
+    axis: Literal["x", "y"]
+    start: np.ndarray
+    end: np.ndarray
+    backlash_gap: float
+    vertical_clearance: float
+    alpha_delta: float
+    height_delta: float
+
+    @property
+    def length(self) -> float:
+        return float(np.linalg.norm(self.end - self.start))
+
+
+@dataclass(frozen=True)
+class PaperRADLatticeGeometry:
+    cells: tuple[PaperRADCellRecord, ...]
+    connectors: tuple[PaperRADConnectorGeometry, ...]
+    centers: np.ndarray
+    alpha: np.ndarray
+    height: np.ndarray
+    locked_mask: np.ndarray
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        return self.alpha.shape
+
+    @property
+    def cell_count(self) -> int:
+        return len(self.cells)
+
+    @property
+    def connector_count(self) -> int:
+        return len(self.connectors)
+
+    @property
+    def active_actuator_count(self) -> int:
+        return sum(1 for cell in self.cells if cell.is_actuated)
+
+    def cell_at(self, row: int, col: int) -> PaperRADCellRecord:
+        rows, cols = self.shape
+        if not (0 <= row < rows and 0 <= col < cols):
+            raise IndexError("cell index out of range")
+        return self.cells[row * cols + col]
 
 
 PAPER_RAD_REFERENCE = PaperRADReference()
@@ -145,4 +208,110 @@ def build_paper_rad_cell_geometry(
         z_actuator_axis=z_axis,
         backlash_gap=config.backlash * config.cell_size,
         vertical_free_play=config.pin_hole_clearance,
+    )
+
+
+def _side_midpoint(
+    cell: PaperRADCellGeometry,
+    side: Literal["left", "right", "top", "bottom"],
+) -> np.ndarray:
+    index_pairs = {
+        "bottom": (0, 1),
+        "right": (1, 2),
+        "top": (2, 3),
+        "left": (3, 0),
+    }
+    i, j = index_pairs[side]
+    return (cell.outer_part[i] + cell.outer_part[j]) / 2.0
+
+
+def _simulation_result(
+    config: LatticeConfig,
+    state_or_result: LatticeState | SimulationResult | None,
+) -> SimulationResult:
+    if state_or_result is None:
+        return simulate_kinematic(config, LatticeState.uniform(config))
+    if isinstance(state_or_result, SimulationResult):
+        return state_or_result
+    return simulate_kinematic(config, state_or_result)
+
+
+def build_paper_rad_lattice_geometry(
+    config: LatticeConfig,
+    state_or_result: LatticeState | SimulationResult | None = None,
+    *,
+    reference: PaperRADReference = PAPER_RAD_REFERENCE,
+) -> PaperRADLatticeGeometry:
+    result = _simulation_result(config, state_or_result)
+    state = result.state.normalized(config)
+    cells: list[PaperRADCellRecord] = []
+    geometry_grid: list[list[PaperRADCellGeometry]] = []
+    centers_3d = result.deformed_centers_3d
+    height = centers_3d[..., 2]
+
+    for r in range(config.rows):
+        row: list[PaperRADCellGeometry] = []
+        for c in range(config.cols):
+            center = centers_3d[r, c]
+            geometry = build_paper_rad_cell_geometry(
+                config,
+                alpha=float(result.alpha[r, c]),
+                center=center[:2],
+                z=float(center[2]),
+                reference=reference,
+            )
+            row.append(geometry)
+            cells.append(
+                PaperRADCellRecord(
+                    index=(r, c),
+                    geometry=geometry,
+                    locked=bool(state.locked_mask[r, c]),
+                    command_alpha=float(state.actuator_grid[r, c]),
+                    command_z=float(state.z_actuator_grid[r, c]),
+                )
+            )
+        geometry_grid.append(row)
+
+    connectors: list[PaperRADConnectorGeometry] = []
+    for r in range(config.rows):
+        for c in range(config.cols):
+            first = geometry_grid[r][c]
+            if c + 1 < config.cols:
+                second = geometry_grid[r][c + 1]
+                connectors.append(
+                    PaperRADConnectorGeometry(
+                        first=(r, c),
+                        second=(r, c + 1),
+                        axis="x",
+                        start=_side_midpoint(first, "right"),
+                        end=_side_midpoint(second, "left"),
+                        backlash_gap=config.backlash * config.cell_size,
+                        vertical_clearance=config.pin_hole_clearance,
+                        alpha_delta=float(result.alpha[r, c + 1] - result.alpha[r, c]),
+                        height_delta=float(height[r, c + 1] - height[r, c]),
+                    )
+                )
+            if r + 1 < config.rows:
+                second = geometry_grid[r + 1][c]
+                connectors.append(
+                    PaperRADConnectorGeometry(
+                        first=(r, c),
+                        second=(r + 1, c),
+                        axis="y",
+                        start=_side_midpoint(first, "top"),
+                        end=_side_midpoint(second, "bottom"),
+                        backlash_gap=config.backlash * config.cell_size,
+                        vertical_clearance=config.pin_hole_clearance,
+                        alpha_delta=float(result.alpha[r + 1, c] - result.alpha[r, c]),
+                        height_delta=float(height[r + 1, c] - height[r, c]),
+                    )
+                )
+
+    return PaperRADLatticeGeometry(
+        cells=tuple(cells),
+        connectors=tuple(connectors),
+        centers=centers_3d.copy(),
+        alpha=result.alpha.copy(),
+        height=height.copy(),
+        locked_mask=state.locked_mask.copy(),
     )

@@ -3,9 +3,13 @@
 from .cell_geometry import (
     PAPER_RAD_REFERENCE,
     PaperRADCellGeometry,
+    PaperRADCellRecord,
+    PaperRADConnectorGeometry,
+    PaperRADLatticeGeometry,
     PaperRADReference,
     RADJointGeometry,
     build_paper_rad_cell_geometry,
+    build_paper_rad_lattice_geometry,
 )
 from .coupling import alpha_to_theta, backlash_activation, theta_to_alpha
 from .experiments import (
@@ -41,6 +45,9 @@ __all__ = [
     "PaperRADReference",
     "RADJointGeometry",
     "PaperRADCellGeometry",
+    "PaperRADCellRecord",
+    "PaperRADConnectorGeometry",
+    "PaperRADLatticeGeometry",
     "PAPER_RAD_REFERENCE",
     "PropagationResult",
     "DeadZonePropagationOperator",
@@ -50,6 +57,7 @@ __all__ = [
     "ResponseMatrix",
     "InverseDesignResult",
     "build_paper_rad_cell_geometry",
+    "build_paper_rad_lattice_geometry",
     "build_response_matrix",
     "solve_inverse_design",
     "alpha_to_theta",

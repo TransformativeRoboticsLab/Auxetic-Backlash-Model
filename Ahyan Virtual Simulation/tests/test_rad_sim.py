@@ -13,6 +13,7 @@ from rad_sim import (
     backlash_activation,
     build_response_matrix,
     build_paper_rad_cell_geometry,
+    build_paper_rad_lattice_geometry,
     characterize_cluster,
     characterize_pair,
     characterize_single_cell,
@@ -153,6 +154,54 @@ class RadSimTests(unittest.TestCase):
             np.linalg.norm(cell.z_actuator_axis[1] - cell.z_actuator_axis[0]),
             config.pin_hole_clearance,
         )
+
+    def test_paper_rad_lattice_geometry_builds_cells_and_connectors(self):
+        config = LatticeConfig(rows=2, cols=3)
+        lattice = build_paper_rad_lattice_geometry(config)
+        self.assertEqual(lattice.shape, (2, 3))
+        self.assertEqual(lattice.cell_count, 6)
+        self.assertEqual(lattice.connector_count, 7)
+        self.assertEqual(lattice.centers.shape, (2, 3, 3))
+        self.assertEqual(lattice.cell_at(1, 2).index, (1, 2))
+        self.assertTrue(all(connector.length > 0.0 for connector in lattice.connectors))
+
+    def test_paper_rad_lattice_geometry_preserves_state_flags(self):
+        config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.2)
+        state = LatticeState.uniform(config)
+        state.locked_mask[1, 1] = True
+        state.actuator_grid[0, 1] = -0.25
+        state.z_actuator_grid[2, 1] = 0.3
+        lattice = build_paper_rad_lattice_geometry(config, state)
+        self.assertTrue(lattice.cell_at(1, 1).locked)
+        self.assertEqual(lattice.active_actuator_count, 2)
+        self.assertAlmostEqual(lattice.cell_at(0, 1).command_alpha, -0.25)
+        self.assertAlmostEqual(lattice.cell_at(2, 1).command_z, 0.3)
+        np.testing.assert_array_equal(lattice.locked_mask, state.locked_mask)
+
+    def test_paper_rad_lattice_geometry_accepts_physical_result(self):
+        config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.0)
+        state = LatticeState.uniform(config)
+        state.z_actuator_grid[1, 1] = 0.3
+        physical = solve_spring_hinge_3d(
+            config,
+            state,
+            LoadCase(lock_stiffness=500.0, maxiter=400),
+        )
+        lattice = build_paper_rad_lattice_geometry(config, physical)
+        np.testing.assert_allclose(lattice.centers, physical.deformed_centers_3d)
+        np.testing.assert_allclose(lattice.height, physical.deformed_centers_3d[..., 2])
+
+    def test_paper_rad_lattice_connectors_track_neighbor_jumps(self):
+        config = LatticeConfig(rows=1, cols=2, z_coupling_gain=0.0, backlash=0.0)
+        state = LatticeState.uniform(config)
+        state.z_actuator_grid[0, 1] = 0.2
+        lattice = build_paper_rad_lattice_geometry(config, state)
+        connector = lattice.connectors[0]
+        self.assertEqual(connector.first, (0, 0))
+        self.assertEqual(connector.second, (0, 1))
+        self.assertEqual(connector.axis, "x")
+        self.assertAlmostEqual(connector.height_delta, 0.2)
+        self.assertAlmostEqual(connector.backlash_gap, 0.0)
 
     def test_dead_zone_operator_has_no_neighbor_transmission_inside_gap(self):
         op = DeadZonePropagationOperator("test", dead_zone=0.1, gain=0.5)
