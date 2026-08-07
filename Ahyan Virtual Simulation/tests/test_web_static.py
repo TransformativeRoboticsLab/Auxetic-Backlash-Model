@@ -630,10 +630,14 @@ class WebStaticTests(unittest.TestCase):
         ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
         self.assertIn('id="zCoupling"', html)
         self.assertIn('id="zCouplingOut"', html)
-        for symbol in ["zCouplingGain: 0.32", "ensureGridSchema", "state.grid.zCouplingGain === undefined", "zCouplingGain"]:
+        for symbol in ['id="pinRadius"', 'id="holeRadius"', 'id="pinHoleClearanceOut"']:
+            self.assertIn(symbol, html)
+        for symbol in ["zCouplingGain: 0.32", "pinRadius: 0.18", "holeRadius: 0.225", "ensureGridSchema", "state.grid.zCouplingGain === undefined", "zCouplingGain"]:
             self.assertIn(symbol, state_js)
         for symbol in [
             "computeVerticalResidual",
+            "pinHoleClearance",
+            "verticalDeadZone",
             "zResidual",
             "zDieOff",
             "const deadZone",
@@ -641,7 +645,7 @@ class WebStaticTests(unittest.TestCase):
             "height[r][c] = locked ? 0 : -0.65 * influence[r][c] + zResidual[r][c]",
         ]:
             self.assertIn(symbol, math_js)
-        for symbol in ["zCoupling: document.getElementById(\"zCoupling\")", "this.state.grid.zCouplingGain", "zCouplingOut"]:
+        for symbol in ["zCoupling: document.getElementById(\"zCoupling\")", "pinRadius: document.getElementById(\"pinRadius\")", "holeRadius: document.getElementById(\"holeRadius\")", "this.state.grid.zCouplingGain", "this.state.grid.pinRadius", "this.state.grid.holeRadius", "zCouplingOut", "pinHoleClearanceOut"]:
             self.assertIn(symbol, ui_js)
 
     def test_selected_influence_footprint_is_visible_and_toggleable(self):

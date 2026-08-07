@@ -40,7 +40,7 @@ def _actuator_influence(config: LatticeConfig, actuator_grid: np.ndarray) -> np.
 def _vertical_residual(config: LatticeConfig, z_actuator_grid: np.ndarray) -> np.ndarray:
     residual = np.zeros((config.rows, config.cols), dtype=float)
     steps = config.max_coupling_steps or (config.rows + config.cols)
-    dead_zone = min(0.18 * config.cell_size, config.backlash * 0.45)
+    dead_zone = config.pin_hole_clearance
 
     for source in zip(*np.nonzero(np.abs(z_actuator_grid) > 1e-12), strict=False):
         r0, c0 = int(source[0]), int(source[1])
@@ -118,6 +118,7 @@ def simulate_kinematic(config: LatticeConfig, state: LatticeState) -> Simulation
             "mean_alpha": float(np.mean(alpha)),
             "actuator_influence": influence,
             "z_residual": z_residual,
+            "z_dead_zone": config.pin_hole_clearance,
             "height": height,
         },
     )

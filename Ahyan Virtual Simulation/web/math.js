@@ -41,6 +41,16 @@
     return Math.max(alphaSat, zSat);
   }
 
+  function pinHoleClearance(state) {
+    const pinRadius = Math.max(0, Number(state.grid.pinRadius ?? 0.18));
+    const holeRadius = Math.max(pinRadius, Number(state.grid.holeRadius ?? 0.225));
+    return Math.max(0, holeRadius - pinRadius);
+  }
+
+  function verticalDeadZone(state) {
+    return Math.min(commandLimits(state).z, pinHoleClearance(state));
+  }
+
   function clampAllCommands(state) {
     const { rows, cols } = state.grid;
     for (let r = 0; r < rows; r += 1) {
@@ -230,11 +240,11 @@
   }
 
   function computeVerticalResidual(state) {
-    const { rows, cols, backlash } = state.grid;
+    const { rows, cols } = state.grid;
     const zCouplingGain = Math.max(0, Math.min(1, Number(state.grid.zCouplingGain ?? 0.32)));
     const zResidual = RAD.matrix(rows, cols, 0);
     const zDieOff = RAD.matrix(rows, cols, Infinity);
-    const deadZone = Math.max(0, Math.min(commandLimits(state).z * 0.18, Number(backlash || 0) * 0.45));
+    const deadZone = verticalDeadZone(state);
     for (let sr = 0; sr < rows; sr += 1) {
       for (let sc = 0; sc < cols; sc += 1) {
         const source = state.cells.commandZ[sr][sc];
@@ -284,7 +294,7 @@
   function selectedCellFootprint(state, r, c) {
     const { backlash, couplingGain } = state.grid;
     const zCouplingGain = Math.max(0, Math.min(1, Number(state.grid.zCouplingGain ?? 0.32)));
-    const zDeadZone = Math.max(0, Math.min(commandLimits(state).z * 0.18, Number(backlash || 0) * 0.45));
+    const zDeadZone = verticalDeadZone(state);
     const alpha = propagateSingleSource(state, [r, c, state.cells.commandAlpha[r][c]], backlash, couplingGain);
     const z = propagateSingleSource(state, [r, c, state.cells.commandZ[r][c]], zDeadZone, zCouplingGain);
     return {
@@ -298,7 +308,7 @@
   function selectedCellCouplingMetrics(state, r, c) {
     const { backlash, couplingGain } = state.grid;
     const zCouplingGain = Math.max(0, Math.min(1, Number(state.grid.zCouplingGain ?? 0.32)));
-    const zDeadZone = Math.max(0, Math.min(commandLimits(state).z * 0.18, Number(backlash || 0) * 0.45));
+    const zDeadZone = verticalDeadZone(state);
     const alphaCommand = Number(state.cells.commandAlpha[r][c]) || 0;
     const zCommand = Number(state.cells.commandZ[r][c]) || 0;
     const alphaNeighborSignal = backlashActivation(alphaCommand, backlash) * couplingGain;
@@ -702,6 +712,8 @@
   RAD.clampCommandZ = clampCommandZ;
   RAD.clampCommandAlpha = clampCommandAlpha;
   RAD.commandSaturation = commandSaturation;
+  RAD.pinHoleClearance = pinHoleClearance;
+  RAD.verticalDeadZone = verticalDeadZone;
   RAD.clampAllCommands = clampAllCommands;
   RAD.computeLinkStrain = computeLinkStrain;
   RAD.referenceCenter = referenceCenter;

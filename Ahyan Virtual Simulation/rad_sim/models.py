@@ -15,6 +15,8 @@ class LatticeConfig:
     initial_alpha: float = 1.0
     coupling_gain: float = 0.55
     z_coupling_gain: float = 0.32
+    pin_radius: float = 0.18
+    hole_radius: float = 0.225
     max_coupling_steps: int | None = None
     alpha_min: float = 0.25
     alpha_max: float = 1.75
@@ -30,8 +32,16 @@ class LatticeConfig:
             raise ValueError("coupling_gain must be in [0, 1]")
         if not (0 <= self.z_coupling_gain <= 1):
             raise ValueError("z_coupling_gain must be in [0, 1]")
+        if self.pin_radius < 0:
+            raise ValueError("pin_radius must be non-negative")
+        if self.hole_radius < self.pin_radius:
+            raise ValueError("hole_radius must be greater than or equal to pin_radius")
         if self.alpha_min <= 0 or self.alpha_min >= self.alpha_max:
             raise ValueError("alpha bounds must satisfy 0 < alpha_min < alpha_max")
+
+    @property
+    def pin_hole_clearance(self) -> float:
+        return self.hole_radius - self.pin_radius
 
 
 @dataclass

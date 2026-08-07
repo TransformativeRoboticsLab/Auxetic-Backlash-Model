@@ -720,6 +720,13 @@ output {
   font-variant-numeric: tabular-nums;
 }
 
+.help-text {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
 .toggle {
   display: flex;
   justify-content: flex-start;

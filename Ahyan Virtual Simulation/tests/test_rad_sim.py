@@ -59,6 +59,37 @@ class RadSimTests(unittest.TestCase):
         self.assertGreater(height[2, 3], 0.0)
         self.assertLess(abs(height[2, 3]), abs(height[2, 2]))
         self.assertAlmostEqual(height[2, 3], residual[2, 3])
+        self.assertAlmostEqual(result.metadata["z_dead_zone"], config.pin_hole_clearance)
+
+    def test_pin_hole_clearance_controls_vertical_residual_dieoff(self):
+        tight = LatticeConfig(
+            rows=5,
+            cols=5,
+            z_coupling_gain=0.35,
+            pin_radius=0.18,
+            hole_radius=0.20,
+        )
+        loose = LatticeConfig(
+            rows=5,
+            cols=5,
+            z_coupling_gain=0.35,
+            pin_radius=0.18,
+            hole_radius=0.32,
+        )
+        tight_state = LatticeState.uniform(tight)
+        loose_state = LatticeState.uniform(loose)
+        tight_state.z_actuator_grid[2, 2] = 0.4
+        loose_state.z_actuator_grid[2, 2] = 0.4
+        tight_result = simulate_kinematic(tight, tight_state)
+        loose_result = simulate_kinematic(loose, loose_state)
+        self.assertGreater(
+            tight_result.metadata["z_residual"][2, 3],
+            loose_result.metadata["z_residual"][2, 3],
+        )
+
+    def test_pin_hole_radius_validation(self):
+        with self.assertRaises(ValueError):
+            LatticeConfig(pin_radius=0.2, hole_radius=0.1)
 
     def test_zero_vertical_coupling_recovers_local_z_motion(self):
         config = LatticeConfig(rows=5, cols=5, backlash=0.02, z_coupling_gain=0.0)

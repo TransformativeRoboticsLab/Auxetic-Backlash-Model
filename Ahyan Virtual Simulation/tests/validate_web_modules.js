@@ -78,6 +78,8 @@ state.grid.cellSize = 1.25;
 state.grid.backlash = 0.18;
 state.grid.couplingGain = 0.42;
 state.grid.zCouplingGain = 0.37;
+state.grid.pinRadius = 0.16;
+state.grid.holeRadius = 0.22;
 state.view.camera = {
   mode: "custom",
   projection: "orthographic",
@@ -109,6 +111,9 @@ assert.strictEqual(restored.grid.cellSize, 1.25);
 assert.strictEqual(restored.grid.backlash, 0.18);
 assert.strictEqual(restored.grid.couplingGain, 0.42);
 assert.strictEqual(restored.grid.zCouplingGain, 0.37);
+assert.strictEqual(restored.grid.pinRadius, 0.16);
+assert.strictEqual(restored.grid.holeRadius, 0.22);
+assert.strictEqual(Number(RAD.pinHoleClearance(restored).toFixed(6)), 0.06);
 assert.deepStrictEqual(JSON.parse(JSON.stringify(restored.view.camera)), state.view.camera);
 assert.strictEqual(restored.view.overlayMode, "height");
 assert.strictEqual(restored.view.membraneVisible, false);
@@ -134,6 +139,8 @@ assert.ok(Number.isFinite(sim.metrics.rmsTargetError));
 const zResidualState = RAD.createState(5, 5);
 zResidualState.grid.backlash = 0.02;
 zResidualState.grid.zCouplingGain = 0.35;
+zResidualState.grid.pinRadius = 0.18;
+zResidualState.grid.holeRadius = 0.225;
 zResidualState.cells.commandAlpha = RAD.matrix(5, 5, 0);
 zResidualState.cells.commandZ[2][2] = 0.4;
 const zResidualSim = RAD.simulate(zResidualState);
@@ -148,6 +155,20 @@ const zMetrics = RAD.selectedCellCouplingMetrics(zResidualState, 2, 2);
 assert.strictEqual(Number(zMetrics.zNeighborSignal.toFixed(6)), Number(zFootprint.zResidual[2][3].toFixed(6)));
 assert.ok(zMetrics.zReachCells > 0, "selected coupling metrics should count z spillover reach");
 assert.strictEqual(zMetrics.zCoupled, true, "selected coupling metrics should report z coupled outside dead-zone");
+const tightClearanceState = RAD.createState(5, 5);
+tightClearanceState.grid.zCouplingGain = 0.35;
+tightClearanceState.grid.pinRadius = 0.18;
+tightClearanceState.grid.holeRadius = 0.20;
+tightClearanceState.cells.commandZ[2][2] = 0.4;
+const looseClearanceState = RAD.createState(5, 5);
+looseClearanceState.grid.zCouplingGain = 0.35;
+looseClearanceState.grid.pinRadius = 0.18;
+looseClearanceState.grid.holeRadius = 0.32;
+looseClearanceState.cells.commandZ[2][2] = 0.4;
+assert.ok(
+  RAD.simulate(tightClearanceState).zResidual[2][3] > RAD.simulate(looseClearanceState).zResidual[2][3],
+  "larger pin-hole clearance should increase z dead-zone and reduce neighbor residual"
+);
 zResidualState.grid.zCouplingGain = 0;
 const localZSim = RAD.simulate(zResidualState);
 assert.strictEqual(Number(localZSim.height[2][3].toFixed(6)), 0);

@@ -54,6 +54,10 @@ receives the commanded height, and neighboring cells receive a backlash-gated,
 decaying fraction of that motion. The Lattice panel's `Z coupling` slider
 controls this residual spillover; setting it to zero recovers the earlier
 local-only vertical command behavior.
+The vertical dead-zone is now tied to normalized pin-hole free play: `hole radius
+- pin radius`. This follows the RAD papers' treatment of backlash as joint
+clearance and keeps the user-specified vertical residual assumption explicit
+until calibrated physical pin and hole dimensions are measured.
 The viewport has explicit `Iso`, `Top`, `Front`, and `Side` camera presets with
 `Z` treated as the vertical axis in both the scene math and the camera up vector,
 plus scene `X/Y/Z` labels for orientation. The top preset uses the positive `Y`

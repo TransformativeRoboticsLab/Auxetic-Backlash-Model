@@ -13,6 +13,8 @@
         backlash: document.getElementById("backlash"),
         coupling: document.getElementById("coupling"),
         zCoupling: document.getElementById("zCoupling"),
+        pinRadius: document.getElementById("pinRadius"),
+        holeRadius: document.getElementById("holeRadius"),
         quickDock: document.querySelector(".quick-actuation-dock"),
         toggleQuickDock: document.getElementById("toggleQuickDock"),
         quickDockMini: document.getElementById("quickDockMini"),
@@ -102,6 +104,15 @@
       });
       this.els.zCoupling.addEventListener("input", () => {
         this.state.grid.zCouplingGain = Number(this.els.zCoupling.value);
+        this.onChange(this.state);
+      });
+      this.els.pinRadius.addEventListener("input", () => {
+        this.state.grid.pinRadius = Number(this.els.pinRadius.value);
+        if (this.state.grid.holeRadius < this.state.grid.pinRadius) this.state.grid.holeRadius = this.state.grid.pinRadius;
+        this.onChange(this.state);
+      });
+      this.els.holeRadius.addEventListener("input", () => {
+        this.state.grid.holeRadius = Math.max(Number(this.els.holeRadius.value), Number(this.state.grid.pinRadius || 0));
         this.onChange(this.state);
       });
       this.els.toggleQuickDock.addEventListener("click", () => {
@@ -609,6 +620,8 @@
       this.els.backlash.value = s.grid.backlash;
       this.els.coupling.value = s.grid.couplingGain;
       this.els.zCoupling.value = s.grid.zCouplingGain ?? 0.32;
+      this.els.pinRadius.value = s.grid.pinRadius ?? 0.18;
+      this.els.holeRadius.value = s.grid.holeRadius ?? 0.225;
       this.els.paintRadius.value = Math.max(0, Math.min(2, Number(s.view.paintRadius || 0)));
       this.els.cellVisualMode.value = s.view.cellVisualMode || "abstract";
       this.els.overlayMode.value = s.view.overlayMode;
@@ -688,6 +701,9 @@
       document.getElementById("backlashOut").textContent = Number(s.grid.backlash).toFixed(2);
       document.getElementById("couplingOut").textContent = Number(s.grid.couplingGain).toFixed(2);
       document.getElementById("zCouplingOut").textContent = Number(s.grid.zCouplingGain ?? 0.32).toFixed(2);
+      document.getElementById("pinRadiusOut").textContent = Number(s.grid.pinRadius ?? 0.18).toFixed(3);
+      document.getElementById("holeRadiusOut").textContent = Number(s.grid.holeRadius ?? 0.225).toFixed(3);
+      document.getElementById("pinHoleClearanceOut").textContent = RAD.pinHoleClearance(s).toFixed(3);
       document.getElementById("alphaCommandOut").textContent = Number(this.els.alphaCommand.value).toFixed(2);
       document.getElementById("zCommandOut").textContent = Number(this.els.zCommand.value).toFixed(2);
       document.getElementById("targetAmpOut").textContent = Number(s.target.amplitude).toFixed(2);
