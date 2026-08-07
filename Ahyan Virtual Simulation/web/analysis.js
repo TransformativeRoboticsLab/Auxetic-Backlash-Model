@@ -882,6 +882,57 @@
     return values.reduce((sum, value) => sum + value, 0) / values.length;
   }
 
+  function calibrationLinearFit(pairs) {
+    const sampleCount = pairs.length;
+    if (!sampleCount) {
+      return {
+        sampleCount: 0,
+        gain: null,
+        bias: null,
+        suggestedGain: null,
+        suggestedBias: null,
+        gainIdentifiable: false,
+        rmsRawError: null,
+        rmsResidual: null,
+        meanPredicted: null,
+        meanMeasured: null,
+        predictedRange: null,
+        measuredRange: null,
+      };
+    }
+    const predicted = pairs.map((pair) => pair.predicted);
+    const measured = pairs.map((pair) => pair.measured);
+    const meanPredicted = meanOrNull(predicted);
+    const meanMeasured = meanOrNull(measured);
+    const variance = predicted.reduce((sum, value) => sum + (value - meanPredicted) ** 2, 0);
+    const covariance = pairs.reduce(
+      (sum, pair) => sum + (pair.predicted - meanPredicted) * (pair.measured - meanMeasured),
+      0
+    );
+    const gainIdentifiable = variance > 1e-12;
+    const gain = gainIdentifiable ? covariance / variance : null;
+    const suggestedGain = gainIdentifiable ? gain : 1;
+    const bias = gainIdentifiable
+      ? meanMeasured - gain * meanPredicted
+      : meanOrNull(pairs.map((pair) => pair.measured - pair.predicted));
+    const residuals = pairs.map((pair) => pair.measured - (suggestedGain * pair.predicted + bias));
+    const rawErrors = pairs.map((pair) => pair.measured - pair.predicted);
+    return {
+      sampleCount,
+      gain,
+      bias,
+      suggestedGain,
+      suggestedBias: bias,
+      gainIdentifiable,
+      rmsRawError: rmse(rawErrors),
+      rmsResidual: rmse(residuals),
+      meanPredicted,
+      meanMeasured,
+      predictedRange: [Math.min(...predicted), Math.max(...predicted)],
+      measuredRange: [Math.min(...measured), Math.max(...measured)],
+    };
+  }
+
   function createCalibrationErrorField(state) {
     const rows = state.grid.rows;
     const cols = state.grid.cols;
@@ -942,6 +993,8 @@
     const stepsById = new Map((protocol.steps || []).map((step) => [step.id, step]));
     const comparisons = [];
     const field = createCalibrationErrorField(state);
+    const alphaPairs = [];
+    const heightPairs = [];
     for (const measuredStep of parsed.steps || []) {
       const step = stepsById.get(measuredStep.stepId);
       if (!step) continue;
@@ -964,15 +1017,19 @@
         const height = numericOrNull(cell.heightDelta);
         let measuredField = false;
         if (alpha !== null) {
-          const alphaError = alpha - ((sim.alpha?.[row]?.[col] || 0) - (baseline.alpha?.[row]?.[col] || 0));
+          const predictedAlpha = (sim.alpha?.[row]?.[col] || 0) - (baseline.alpha?.[row]?.[col] || 0);
+          const alphaError = alpha - predictedAlpha;
           alphaErrors.push(alphaError);
+          alphaPairs.push({ predicted: predictedAlpha, measured: alpha });
           field.alphaError[row][col] += alphaError;
           field.alphaSampleCount[row][col] += 1;
           measuredField = true;
         }
         if (height !== null) {
-          const heightError = height - ((sim.height?.[row]?.[col] || 0) - (baseline.height?.[row]?.[col] || 0));
+          const predictedHeight = (sim.height?.[row]?.[col] || 0) - (baseline.height?.[row]?.[col] || 0);
+          const heightError = height - predictedHeight;
           heightErrors.push(heightError);
+          heightPairs.push({ predicted: predictedHeight, measured: height });
           field.heightError[row][col] += heightError;
           field.heightSampleCount[row][col] += 1;
           measuredField = true;
@@ -1016,6 +1073,10 @@
       schema: "rad-sim.calibration-experiment-comparison.v1",
       comparisons,
       field: finalizeCalibrationErrorField(field),
+      fit: {
+        alpha: calibrationLinearFit(alphaPairs),
+        height: calibrationLinearFit(heightPairs),
+      },
     };
   }
 
@@ -1055,6 +1116,7 @@
       meanSignedHeightError: finiteAverage(signedHeightErrors),
       meanAbsAlphaError: finiteAverage(absAlphaErrors),
       meanAbsHeightError: finiteAverage(absHeightErrors),
+      fit: comparison?.fit || null,
       maxAbsHeightError: worst ? Number(worst.maxAbsHeightError) : null,
       maxAbsAlphaError: Number.isFinite(field.maxAbsAlphaError) ? field.maxAbsAlphaError : null,
       maxCombinedError: Number.isFinite(field.maxCombinedError) ? field.maxCombinedError : null,

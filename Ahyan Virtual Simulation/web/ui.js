@@ -1201,9 +1201,13 @@
       const heightBias = summary.meanSignedHeightError === null || summary.meanSignedHeightError === undefined ? "--" : Number(summary.meanSignedHeightError).toFixed(4);
       const alphaBias = summary.meanSignedAlphaError === null || summary.meanSignedAlphaError === undefined ? "--" : Number(summary.meanSignedAlphaError).toFixed(4);
       const max = summary.maxCombinedError === null || summary.maxCombinedError === undefined ? "--" : Number(summary.maxCombinedError).toFixed(4);
+      const heightFit = summary.fit?.height;
+      const alphaFit = summary.fit?.alpha;
+      const heightGain = heightFit?.suggestedGain === null || heightFit?.suggestedGain === undefined ? "--" : Number(heightFit.suggestedGain).toFixed(3);
+      const alphaGain = alphaFit?.suggestedGain === null || alphaFit?.suggestedGain === undefined ? "--" : Number(alphaFit.suggestedGain).toFixed(3);
       const cell = summary.worstCell ? ` cell r${summary.worstCell.row} c${summary.worstCell.col}` : "";
       const worst = summary.worstStepId ? ` worst ${summary.worstStepId}` : "";
-      document.getElementById("calibrationResultsSummary").textContent = `cal results ${stepCount} steps, ${measured} cells, missing ${missing}`;
+      document.getElementById("calibrationResultsSummary").textContent = `cal results ${stepCount} steps, ${measured} cells, missing ${missing}, fit h ${heightGain} a ${alphaGain}`;
       document.getElementById("calibrationResultsError").textContent = `h ${height}/${heightBias}, a ${alpha}/${alphaBias}, max ${max}${cell}${worst}`;
     }
 

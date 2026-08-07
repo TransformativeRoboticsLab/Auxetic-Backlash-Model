@@ -163,8 +163,10 @@ measurement disagreement. `Select Cal Error` moves the 3D selection to the cell
 with the largest imported measurement disagreement so the mismatch can be
 inspected without placing labels over the lattice. `Save Comparison` exports a
 JSON report containing the imported comparison, per-cell error field, worst-cell
-record, signed alpha/height bias, and hardware/profile metadata for lab notes or
-GitHub review.
+record, signed alpha/height bias, measured-versus-simulated gain/bias fit, and
+hardware/profile metadata for lab notes or GitHub review. The fit is diagnostic:
+it estimates whether measured alpha or height response needs a scale or offset
+correction, but it does not automatically mutate the solver.
 For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
 paper RAD lattice into extruded plate, pin, and connector mesh components, and
 `export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for
