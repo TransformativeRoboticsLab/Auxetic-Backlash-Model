@@ -7,7 +7,11 @@ from rad_sim import (
     DeadZonePropagationOperator,
     LatticeConfig,
     LatticeState,
+    SourceCommand,
     backlash_activation,
+    characterize_cluster,
+    characterize_pair,
+    characterize_single_cell,
     evaluate_programmable_operators,
     lock_projection,
     simulate_kinematic,
@@ -139,6 +143,53 @@ class RadSimTests(unittest.TestCase):
         config = LatticeConfig(pin_radius=0.12, hole_radius=0.19)
         op = vertical_clearance_operator(config)
         self.assertAlmostEqual(op.dead_zone, 0.07)
+
+    def test_single_cell_characterization_reports_reach_and_dieoff(self):
+        config = LatticeConfig(rows=5, cols=5, backlash=0.02, z_coupling_gain=0.35)
+        response = characterize_single_cell(config, (2, 2), alpha=-0.3, z=0.4)
+        self.assertGreater(response.alpha_reach, 1)
+        self.assertGreater(response.z_reach, 1)
+        self.assertGreaterEqual(response.effective_alpha_die_off, 1)
+        self.assertGreaterEqual(response.effective_z_die_off, 1)
+        self.assertAlmostEqual(response.height_delta[2, 2], 0.4 - 0.65 * -0.3)
+
+    def test_pair_characterization_reports_superposition_error(self):
+        config = LatticeConfig(rows=5, cols=5, backlash=0.15, z_coupling_gain=0.35)
+        pair = characterize_pair(
+            config,
+            SourceCommand((2, 1), alpha=-0.25, z=0.2),
+            SourceCommand((2, 3), alpha=-0.25, z=0.2),
+        )
+        self.assertLess(pair.alpha_superposition_error, 1e-9)
+        self.assertLess(pair.height_superposition_error, 1e-9)
+        self.assertGreater(pair.combined.alpha_reach, pair.first.alpha_reach)
+
+    def test_cluster_characterization_combines_multiple_sources(self):
+        config = LatticeConfig(rows=5, cols=5, backlash=0.02, z_coupling_gain=0.35)
+        cluster = characterize_cluster(
+            config,
+            [
+                SourceCommand((1, 1), alpha=-0.25),
+                SourceCommand((3, 3), z=0.35),
+                SourceCommand((1, 3), alpha=0.2, z=-0.2),
+            ],
+        )
+        self.assertEqual(len(cluster.commands), 3)
+        self.assertGreater(cluster.alpha_reach, 1)
+        self.assertGreater(cluster.z_reach, 1)
+        self.assertGreater(cluster.max_abs_height_delta, 0)
+
+    def test_characterization_respects_locked_cells(self):
+        config = LatticeConfig(rows=3, cols=3, backlash=0.0)
+        response = characterize_single_cell(
+            config,
+            (1, 1),
+            alpha=-0.4,
+            z=0.3,
+            locked_cells=((1, 1),),
+        )
+        self.assertAlmostEqual(response.alpha_delta[1, 1], 0.0)
+        self.assertAlmostEqual(response.height_delta[1, 1], 0.0)
 
     def test_zero_vertical_coupling_recovers_local_z_motion(self):
         config = LatticeConfig(rows=5, cols=5, backlash=0.02, z_coupling_gain=0.0)

@@ -1,0 +1,148 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Iterable
+
+import numpy as np
+
+from .kinematic import simulate_kinematic
+from .models import LatticeConfig, LatticeState
+
+
+@dataclass(frozen=True)
+class SourceCommand:
+    cell: tuple[int, int]
+    alpha: float = 0.0
+    z: float = 0.0
+
+
+@dataclass(frozen=True)
+class ResponseCharacterization:
+    commands: tuple[SourceCommand, ...]
+    alpha_delta: np.ndarray
+    height_delta: np.ndarray
+    actuator_influence: np.ndarray
+    z_residual: np.ndarray
+    alpha_die_off: np.ndarray
+    z_die_off: np.ndarray
+    alpha_reach: int
+    z_reach: int
+    effective_alpha_die_off: int
+    effective_z_die_off: int
+    max_abs_alpha_delta: float
+    max_abs_height_delta: float
+
+
+@dataclass(frozen=True)
+class PairCharacterization:
+    combined: ResponseCharacterization
+    first: ResponseCharacterization
+    second: ResponseCharacterization
+    alpha_superposition_error: float
+    height_superposition_error: float
+
+
+def _state_with_commands(
+    config: LatticeConfig,
+    commands: Iterable[SourceCommand],
+    locked_cells: Iterable[tuple[int, int]] = (),
+) -> LatticeState:
+    state = LatticeState.uniform(config)
+    for r, c in locked_cells:
+        state.locked_mask[r, c] = True
+    for command in commands:
+        r, c = command.cell
+        state.actuator_grid[r, c] += command.alpha
+        state.z_actuator_grid[r, c] += command.z
+    return state
+
+
+def _effective_die_off(delta: np.ndarray, die_off: np.ndarray, tolerance: float) -> int:
+    mask = np.abs(delta) > tolerance
+    if not np.any(mask):
+        return 0
+    finite = die_off[mask & np.isfinite(die_off)]
+    if finite.size == 0:
+        return 0
+    return int(np.max(finite))
+
+
+def _reach(delta: np.ndarray, tolerance: float) -> int:
+    return int(np.count_nonzero(np.abs(delta) > tolerance))
+
+
+def characterize_response(
+    config: LatticeConfig,
+    commands: Iterable[SourceCommand],
+    locked_cells: Iterable[tuple[int, int]] = (),
+    tolerance: float = 1e-9,
+) -> ResponseCharacterization:
+    commands = tuple(commands)
+    locked_cells = tuple(locked_cells)
+    baseline = simulate_kinematic(config, _state_with_commands(config, (), locked_cells))
+    result = simulate_kinematic(config, _state_with_commands(config, commands, locked_cells))
+    alpha_delta = result.alpha - baseline.alpha
+    height_delta = result.metadata["height"] - baseline.metadata["height"]
+    alpha_die_off = result.metadata["die_off"]
+    z_die_off = result.metadata["z_die_off"]
+    return ResponseCharacterization(
+        commands=commands,
+        alpha_delta=alpha_delta,
+        height_delta=height_delta,
+        actuator_influence=result.metadata["actuator_influence"],
+        z_residual=result.metadata["z_residual"],
+        alpha_die_off=alpha_die_off,
+        z_die_off=z_die_off,
+        alpha_reach=_reach(alpha_delta, tolerance),
+        z_reach=_reach(height_delta, tolerance),
+        effective_alpha_die_off=_effective_die_off(alpha_delta, alpha_die_off, tolerance),
+        effective_z_die_off=_effective_die_off(height_delta, z_die_off, tolerance),
+        max_abs_alpha_delta=float(np.max(np.abs(alpha_delta))),
+        max_abs_height_delta=float(np.max(np.abs(height_delta))),
+    )
+
+
+def characterize_single_cell(
+    config: LatticeConfig,
+    cell: tuple[int, int],
+    alpha: float = 0.0,
+    z: float = 0.0,
+    locked_cells: Iterable[tuple[int, int]] = (),
+    tolerance: float = 1e-9,
+) -> ResponseCharacterization:
+    return characterize_response(
+        config,
+        (SourceCommand(cell=cell, alpha=alpha, z=z),),
+        locked_cells=locked_cells,
+        tolerance=tolerance,
+    )
+
+
+def characterize_pair(
+    config: LatticeConfig,
+    first: SourceCommand,
+    second: SourceCommand,
+    locked_cells: Iterable[tuple[int, int]] = (),
+    tolerance: float = 1e-9,
+) -> PairCharacterization:
+    first_response = characterize_response(config, (first,), locked_cells, tolerance)
+    second_response = characterize_response(config, (second,), locked_cells, tolerance)
+    combined = characterize_response(config, (first, second), locked_cells, tolerance)
+    alpha_expected = first_response.alpha_delta + second_response.alpha_delta
+    height_expected = first_response.height_delta + second_response.height_delta
+    return PairCharacterization(
+        combined=combined,
+        first=first_response,
+        second=second_response,
+        alpha_superposition_error=float(np.max(np.abs(combined.alpha_delta - alpha_expected))),
+        height_superposition_error=float(np.max(np.abs(combined.height_delta - height_expected))),
+    )
+
+
+def characterize_cluster(
+    config: LatticeConfig,
+    commands: Iterable[SourceCommand],
+    locked_cells: Iterable[tuple[int, int]] = (),
+    tolerance: float = 1e-9,
+) -> ResponseCharacterization:
+    return characterize_response(config, tuple(commands), locked_cells, tolerance)

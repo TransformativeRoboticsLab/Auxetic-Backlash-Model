@@ -16,6 +16,12 @@ python -m rad_sim.interactive
 The interactive module opens an `ipywidgets` UI when run inside Jupyter. Outside
 Jupyter it falls back to a static Matplotlib demo.
 
+For numerical characterization of programmable discontinuities, the Python API
+also exposes `characterize_single_cell`, `characterize_pair`, and
+`characterize_cluster`. These helpers return response fields, vertical residuals,
+die-off distances, and pairwise superposition error from the same simulator used
+by the browser.
+
 ## Browser UI
 
 Open `web/index.html` directly in a browser. The page is a static
