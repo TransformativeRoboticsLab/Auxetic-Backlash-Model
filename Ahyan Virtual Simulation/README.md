@@ -159,7 +159,9 @@ load the completed JSON, and display compact measured-cell, missing-observation,
 alpha RMSE, height RMSE, maximum combined per-cell error, and worst-step readouts.
 Loading completed results also switches the Display panel to the `Calibration
 error` overlay, which colors the 3D lattice by the averaged per-cell alpha/height
-measurement disagreement.
+measurement disagreement. `Select Cal Error` moves the 3D selection to the cell
+with the largest imported measurement disagreement so the mismatch can be
+inspected without placing labels over the lattice.
 For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
 paper RAD lattice into extruded plate, pin, and connector mesh components, and
 `export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for

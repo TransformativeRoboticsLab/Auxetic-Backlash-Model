@@ -895,6 +895,7 @@
       maxAbsAlphaError: 0,
       maxAbsHeightError: 0,
       maxCombinedError: 0,
+      worstCell: null,
     };
   }
 
@@ -912,6 +913,21 @@
         field.maxAbsAlphaError = Math.max(field.maxAbsAlphaError, Math.abs(alpha));
         field.maxAbsHeightError = Math.max(field.maxAbsHeightError, Math.abs(height));
         field.maxCombinedError = Math.max(field.maxCombinedError, combined);
+        if (
+          field.sampleCount[r][c] > 0 &&
+          (!field.worstCell || combined > field.worstCell.combinedError)
+        ) {
+          field.worstCell = {
+            row: r,
+            col: c,
+            alphaError: alpha,
+            heightError: height,
+            combinedError: combined,
+            sampleCount: field.sampleCount[r][c],
+            alphaSampleCount: alphaCount,
+            heightSampleCount: heightCount,
+          };
+        }
       }
     }
     return field;
@@ -1030,6 +1046,7 @@
       maxAbsHeightError: worst ? Number(worst.maxAbsHeightError) : null,
       maxAbsAlphaError: Number.isFinite(field.maxAbsAlphaError) ? field.maxAbsAlphaError : null,
       maxCombinedError: Number.isFinite(field.maxCombinedError) ? field.maxCombinedError : null,
+      worstCell: field.worstCell || null,
       worstStepId: worst?.stepId || null,
       meanActuatorForceN: finiteAverage(forceValues),
       meanPinHoleSlipMm: finiteAverage(slipValues),

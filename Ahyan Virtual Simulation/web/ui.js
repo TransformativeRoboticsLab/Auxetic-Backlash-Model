@@ -496,6 +496,7 @@
       });
       document.getElementById("runCharacterization").addEventListener("click", () => this.runCharacterization());
       document.getElementById("selectInteractionHotspot").addEventListener("click", () => this.selectInteractionHotspot());
+      document.getElementById("selectCalibrationHotspot").addEventListener("click", () => this.selectCalibrationHotspot());
       document.getElementById("saveExperimentProtocol").addEventListener("click", () => this.saveExperimentProtocol());
       document.getElementById("saveResultsTemplate").addEventListener("click", () => this.saveResultsTemplate());
       document.getElementById("loadResultsJson").addEventListener("click", () => this.els.calibrationResultsFileInput.click());
@@ -1197,9 +1198,10 @@
       const height = summary.heightRmseMean === null || summary.heightRmseMean === undefined ? "--" : Number(summary.heightRmseMean).toFixed(4);
       const alpha = summary.alphaRmseMean === null || summary.alphaRmseMean === undefined ? "--" : Number(summary.alphaRmseMean).toFixed(4);
       const max = summary.maxCombinedError === null || summary.maxCombinedError === undefined ? "--" : Number(summary.maxCombinedError).toFixed(4);
+      const cell = summary.worstCell ? ` cell r${summary.worstCell.row} c${summary.worstCell.col}` : "";
       const worst = summary.worstStepId ? ` worst ${summary.worstStepId}` : "";
       document.getElementById("calibrationResultsSummary").textContent = `cal results ${stepCount} steps, ${measured} cells, missing ${missing}`;
-      document.getElementById("calibrationResultsError").textContent = `height ${height}, alpha ${alpha}, max ${max}${worst}`;
+      document.getElementById("calibrationResultsError").textContent = `height ${height}, alpha ${alpha}, max ${max}${cell}${worst}`;
     }
 
     strongestInteractionHotspot(result) {
@@ -1222,6 +1224,17 @@
       if (!hotspot) return;
       this.state.selection = { r: hotspot.r, c: hotspot.c };
       this.state.view.overlayMode = "operatorInteraction";
+      this.syncControls();
+      this.onChange(this.state);
+    }
+
+    selectCalibrationHotspot() {
+      const cell =
+        this.state.experiment.calibrationComparisonSummary?.worstCell ||
+        this.state.experiment.calibrationComparison?.field?.worstCell;
+      if (!cell) return;
+      this.state.selection = { r: cell.row, c: cell.col };
+      this.state.view.overlayMode = "calibrationError";
       this.syncControls();
       this.onChange(this.state);
     }
