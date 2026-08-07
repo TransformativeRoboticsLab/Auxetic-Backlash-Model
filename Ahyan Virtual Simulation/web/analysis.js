@@ -255,6 +255,88 @@
     return { rms: Math.sqrt(squared / Math.max(1, rows * cols * 2)), max, skipped: false, sourceCount: activeSources.length };
   }
 
+  function responseVector(next, base, field) {
+    const values = [];
+    for (let r = 0; r < next[field].length; r += 1) {
+      for (let c = 0; c < next[field][r].length; c += 1) values.push((next[field][r][c] || 0) - (base[field][r][c] || 0));
+    }
+    return values;
+  }
+
+  function matrixRankFromColumns(columns, tolerance = 1e-9) {
+    if (!columns.length) return 0;
+    const rows = columns[0].length;
+    const matrix = Array.from({ length: rows }, (_, r) => columns.map((column) => Number(column[r]) || 0));
+    let rank = 0;
+    for (let col = 0; col < columns.length && rank < rows; col += 1) {
+      let pivot = rank;
+      for (let r = rank + 1; r < rows; r += 1) {
+        if (Math.abs(matrix[r][col]) > Math.abs(matrix[pivot][col])) pivot = r;
+      }
+      if (Math.abs(matrix[pivot][col]) <= tolerance) continue;
+      [matrix[rank], matrix[pivot]] = [matrix[pivot], matrix[rank]];
+      const scale = matrix[rank][col];
+      for (let c = col; c < columns.length; c += 1) matrix[rank][c] /= scale;
+      for (let r = 0; r < rows; r += 1) {
+        if (r === rank) continue;
+        const factor = matrix[r][col];
+        if (Math.abs(factor) <= tolerance) continue;
+        for (let c = col; c < columns.length; c += 1) matrix[r][c] -= factor * matrix[rank][c];
+      }
+      rank += 1;
+    }
+    return rank;
+  }
+
+  function countReachableFromColumns(columns, tolerance = 1e-9) {
+    if (!columns.length) return 0;
+    let count = 0;
+    for (let row = 0; row < columns[0].length; row += 1) {
+      if (columns.some((column) => Math.abs(column[row] || 0) > tolerance)) count += 1;
+    }
+    return count;
+  }
+
+  function responseMatrixDiagnostic(state, sourceCells, baselineSim, tolerance = 1e-9) {
+    const limits = RAD.commandLimits(state);
+    const stepAlpha = Math.min(0.12, limits.alphaContract);
+    const stepZ = Math.min(0.12, limits.z);
+    const alphaColumns = [];
+    const heightColumns = [];
+    let columnCount = 0;
+    for (const cell of sourceCells) {
+      if (state.cells.locked?.[cell.r]?.[cell.c]) continue;
+      if (stepAlpha > tolerance) {
+        const alphaState = scopedState(state, []);
+        alphaState.cells.commandAlpha[cell.r][cell.c] = -stepAlpha;
+        const alphaSim = RAD.simulate(alphaState);
+        alphaColumns.push(responseVector(alphaSim, baselineSim, "alpha"));
+        heightColumns.push(responseVector(alphaSim, baselineSim, "height"));
+        columnCount += 1;
+      }
+      if (stepZ > tolerance) {
+        const zState = scopedState(state, []);
+        zState.cells.commandZ[cell.r][cell.c] = stepZ;
+        const zSim = RAD.simulate(zState);
+        alphaColumns.push(responseVector(zSim, baselineSim, "alpha"));
+        heightColumns.push(responseVector(zSim, baselineSim, "height"));
+        columnCount += 1;
+      }
+    }
+    const totalCells = state.grid.rows * state.grid.cols;
+    const reachableAlphaCells = countReachableFromColumns(alphaColumns, tolerance);
+    const reachableHeightCells = countReachableFromColumns(heightColumns, tolerance);
+    return {
+      diagnosticColumnCount: columnCount,
+      responseRankAlpha: matrixRankFromColumns(alphaColumns, tolerance),
+      responseRankHeight: matrixRankFromColumns(heightColumns, tolerance),
+      reachableAlphaCells,
+      reachableHeightCells,
+      alphaUnderactuatedCells: Math.max(0, totalCells - reachableAlphaCells),
+      heightUnderactuatedCells: Math.max(0, totalCells - reachableHeightCells),
+    };
+  }
+
   function characterizeLocalResponse(state, options = {}) {
     const scope = options.scope || state.experiment?.characterizationScope || "single";
     const selected = {
@@ -268,6 +350,7 @@
     const baselineSim = RAD.simulate(baselineState);
     const stats = localResponseStats(combinedState, sim, baselineSim, sourceCells);
     const interaction = superpositionError(combinedState, sourceCells, sim, baselineSim);
+    const matrixDiagnostic = responseMatrixDiagnostic(combinedState, sourceCells, baselineSim);
     const calibration = RAD.paperRadCalibration(combinedState);
     return {
       scope,
@@ -275,10 +358,12 @@
       cells: sourceCells,
       regionCellCount: sourceCells.length,
       ...stats,
+      ...matrixDiagnostic,
       superpositionError: interaction.rms,
       maxSuperpositionError: interaction.max,
       superpositionSkipped: interaction.skipped,
       superpositionSources: interaction.sourceCount,
+      nonadditive: !interaction.skipped && (interaction.rms || 0) > 1e-9,
       backlash: Number(combinedState.grid.backlash) || 0,
       zDeadZone: RAD.verticalDeadZone(combinedState),
       pinHoleClearance: RAD.pinHoleClearance(combinedState),

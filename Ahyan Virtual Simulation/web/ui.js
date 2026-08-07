@@ -925,6 +925,8 @@
         document.getElementById("characterizationDetail").textContent = "reach a0 z0";
         document.getElementById("characterizationSuperposition").textContent = "superposition 0.000";
         document.getElementById("characterizationScale").textContent = "clearance 0.000 mm";
+        document.getElementById("characterizationRank").textContent = "rank a0 z0";
+        document.getElementById("characterizationUnderactuated").textContent = "under a0 z0";
         return;
       }
       const superposition = result.superpositionSkipped
@@ -934,6 +936,8 @@
       document.getElementById("characterizationDetail").textContent = `reach a${result.alphaReachCells} z${result.zReachCells}, die ${result.alphaDieOff}/${result.zDieOff}`;
       document.getElementById("characterizationSuperposition").textContent = superposition;
       document.getElementById("characterizationScale").textContent = `clearance ${Number(result.pinHoleClearanceMm || 0).toFixed(3)} mm`;
+      document.getElementById("characterizationRank").textContent = `rank a${result.responseRankAlpha || 0} z${result.responseRankHeight || 0}`;
+      document.getElementById("characterizationUnderactuated").textContent = `under a${result.alphaUnderactuatedCells || 0} z${result.heightUnderactuatedCells || 0}`;
     }
 
     updateCouplingInspector(r, c) {

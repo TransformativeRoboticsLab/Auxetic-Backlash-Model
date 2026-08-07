@@ -920,6 +920,8 @@ class WebStaticTests(unittest.TestCase):
             "characterizationDetail",
             "characterizationSuperposition",
             "characterizationScale",
+            "characterizationRank",
+            "characterizationUnderactuated",
         ]:
             self.assertIn(f'id="{control_id}"', html)
         for option in ['value="single"', 'value="pair"', 'value="cluster"', 'value="lattice"']:
@@ -933,10 +935,17 @@ class WebStaticTests(unittest.TestCase):
             "characterizationCells",
             "scopedState",
             "superpositionError",
+            "responseMatrixDiagnostic",
+            "matrixRankFromColumns",
+            "countReachableFromColumns",
             "activeSources",
             "responseCells",
             "alphaReachCells",
             "zReachCells",
+            "responseRankAlpha",
+            "responseRankHeight",
+            "alphaUnderactuatedCells",
+            "heightUnderactuatedCells",
             "pinHoleClearanceMm",
             "RAD.characterizeLocalResponse",
         ]:
@@ -951,6 +960,8 @@ class WebStaticTests(unittest.TestCase):
             'type: "characterization"',
             "characterizationSummary",
             "characterizationSuperposition",
+            "characterizationRank",
+            "characterizationUnderactuated",
             "characterize:",
         ]:
             self.assertIn(symbol, ui_js)
@@ -961,6 +972,9 @@ class WebStaticTests(unittest.TestCase):
             "pair characterization should include at least the single-cell response footprint",
             "pair characterization should report finite superposition residual",
             "characterization should carry paper-scale clearance",
+            "pair characterization should report alpha response rank",
+            "pair characterization should report height response rank",
+            "pair characterization should report alpha underactuation",
         ]:
             self.assertIn(symbol, script)
 
