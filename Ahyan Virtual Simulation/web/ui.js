@@ -927,6 +927,8 @@
         document.getElementById("characterizationScale").textContent = "clearance 0.000 mm";
         document.getElementById("characterizationRank").textContent = "rank a0 z0";
         document.getElementById("characterizationUnderactuated").textContent = "under a0 z0";
+        document.getElementById("characterizationPhysical").textContent = "phys rms 0.000";
+        document.getElementById("characterizationPhysicalMax").textContent = "phys max 0.000";
         return;
       }
       const superposition = result.superpositionSkipped
@@ -938,6 +940,14 @@
       document.getElementById("characterizationScale").textContent = `clearance ${Number(result.pinHoleClearanceMm || 0).toFixed(3)} mm`;
       document.getElementById("characterizationRank").textContent = `rank a${result.responseRankAlpha || 0} z${result.responseRankHeight || 0}`;
       document.getElementById("characterizationUnderactuated").textContent = `under a${result.alphaUnderactuatedCells || 0} z${result.heightUnderactuatedCells || 0}`;
+      const physicalLabel = result.physicalPreviewAvailable
+        ? `phys rms ${Number(result.physicalHeightRmsError || 0).toFixed(3)}`
+        : "phys unavailable";
+      const physicalMaxLabel = result.physicalPreviewAvailable
+        ? `phys max ${Number(result.physicalHeightMaxError || 0).toFixed(3)}`
+        : "phys max --";
+      document.getElementById("characterizationPhysical").textContent = physicalLabel;
+      document.getElementById("characterizationPhysicalMax").textContent = physicalMaxLabel;
     }
 
     updateCouplingInspector(r, c) {

@@ -21,6 +21,7 @@ for (const filename of ["state.js", "math.js", "operators.js", "inverse.js", "an
 
 const RAD = context.window.RAD;
 assert.ok(RAD, "RAD namespace should load");
+assert.strictEqual(typeof RAD.physicalPreviewComparison, "function", "analysis module should expose physical preview comparison");
 
 const html = fs.readFileSync(path.join(web, "index.html"), "utf8");
 const localRefs = Array.from(html.matchAll(/(?:src|href)="(\.\/[^"]+)"/g)).map((match) => match[1]);
@@ -239,6 +240,13 @@ assert.ok(pairCharacterization.reachableAlphaCells > 0, "pair characterization s
 assert.ok(pairCharacterization.reachableHeightCells > 0, "pair characterization should report reachable height cells");
 assert.ok(pairCharacterization.alphaUnderactuatedCells >= 0, "pair characterization should report alpha underactuation");
 assert.ok(pairCharacterization.heightUnderactuatedCells >= 0, "pair characterization should report height underactuation");
+assert.strictEqual(pairCharacterization.physicalPreviewAvailable, true, "characterization should compare against the browser physical preview");
+assert.strictEqual(pairCharacterization.physicalPreviewSuccess, true, "physical preview comparison should complete");
+assert.ok(Number.isFinite(pairCharacterization.physicalHeightRmsError), "physical preview comparison should report finite height RMS error");
+assert.ok(Number.isFinite(pairCharacterization.physicalHeightMaxError), "physical preview comparison should report finite height max error");
+assert.ok(Number.isFinite(pairCharacterization.physicalCenterRmsError), "physical preview comparison should report finite center RMS error");
+assert.ok(Number.isFinite(pairCharacterization.physicalCenterMaxError), "physical preview comparison should report finite center max error");
+assert.ok(pairCharacterization.physicalPreviewIterations > 0, "physical preview comparison should report relaxation iterations");
 characterizationState.experiment.characterizationScope = "pair";
 characterizationState.experiment.characterization = pairCharacterization;
 const characterizationRoundtrip = RAD.deserialize(RAD.serialize(characterizationState));

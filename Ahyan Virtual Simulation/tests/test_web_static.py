@@ -30,6 +30,10 @@ class WebStaticTests(unittest.TestCase):
             "RAD.compareEventOrder",
             "RAD.paperRadCalibration",
             "RAD.characterizeLocalResponse",
+            "RAD.physicalPreviewComparison",
+            "physicalHeightRmsError",
+            "physicalHeightMaxError",
+            "physicalPreviewAvailable",
             "localRefs",
             "validateLocalHttpEntry",
             "http.createServer",
@@ -74,7 +78,7 @@ class WebStaticTests(unittest.TestCase):
         expected = {
             "state.js": ["RAD.createState", "RAD.serialize", "RAD.updateDerivedCells", "RAD.exportExperimentSequence", "RAD.importExperimentSequence", "RAD.deserialize"],
             "operators.js": ["RAD.localActuationEvent", "RAD.lockEvent", "RAD.applyEventSequence", "RAD.compareEventOrder", "RAD.finiteDieOffRadius"],
-            "analysis.js": ["RAD.analyzeExperimentSequence", "RAD.exportSequenceMetricsCsv", "RAD.sequenceFrames", "RAD.characterizeLocalResponse"],
+            "analysis.js": ["RAD.analyzeExperimentSequence", "RAD.exportSequenceMetricsCsv", "RAD.sequenceFrames", "RAD.characterizeLocalResponse", "RAD.physicalPreviewComparison"],
             "physics.js": ["RAD.simulatePhysicalRelaxation", "RAD.simulateActive"],
             "mesh_export.js": ["RAD.buildPaperRadMesh", "RAD.exportPaperRadMeshObj"],
             "math.js": [
@@ -137,6 +141,22 @@ class WebStaticTests(unittest.TestCase):
         ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
         for symbol in ["toggleQuickDock", "quickDockMini", "syncQuickDock", "quickDockCollapsed", "is-collapsed"]:
             self.assertIn(symbol, ui_js)
+
+    def test_response_experiments_show_physical_preview_comparison(self):
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
+        analysis_js = (WEB / "analysis.js").read_text(encoding="utf-8")
+        for control_id in ["characterizationPhysical", "characterizationPhysicalMax"]:
+            self.assertIn(f'id="{control_id}"', html)
+        for symbol in [
+            "physicalPreviewAvailable",
+            "physicalHeightRmsError",
+            "physicalHeightMaxError",
+        ]:
+            self.assertIn(symbol, ui_js)
+            self.assertIn(symbol, analysis_js)
+        for label in ["phys rms", "phys max"]:
+            self.assertIn(label, ui_js)
 
     def test_desktop_layout_keeps_lattice_visible_while_controls_scroll(self):
         css = (WEB / "styles.css").read_text(encoding="utf-8")

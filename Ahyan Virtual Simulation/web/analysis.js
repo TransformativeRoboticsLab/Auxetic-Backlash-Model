@@ -337,6 +337,70 @@
     };
   }
 
+  function physicalPreviewComparison(state, baselineState, sim, baselineSim) {
+    const unavailable = {
+      physicalPreviewAvailable: false,
+      physicalPreviewSuccess: false,
+      physicalHeightRmsError: 0,
+      physicalHeightMaxError: 0,
+      physicalCenterRmsError: 0,
+      physicalCenterMaxError: 0,
+      physicalPreviewIterations: 0,
+    };
+    if (typeof RAD.simulatePhysicalRelaxation !== "function") return unavailable;
+    try {
+      const physicalBase = RAD.simulatePhysicalRelaxation(baselineState, { baseSim: baselineSim });
+      const physical = RAD.simulatePhysicalRelaxation(state, { baseSim: sim });
+      const rows = Math.min(state.grid.rows, baselineState.grid.rows);
+      const cols = Math.min(state.grid.cols, baselineState.grid.cols);
+      let heightSquared = 0;
+      let heightMax = 0;
+      let centerSquared = 0;
+      let centerMax = 0;
+      let heightCount = 0;
+      let centerCount = 0;
+      for (let r = 0; r < rows; r += 1) {
+        for (let c = 0; c < cols; c += 1) {
+          const kinematicHeightDelta = (sim.height?.[r]?.[c] || 0) - (baselineSim.height?.[r]?.[c] || 0);
+          const physicalHeightDelta = (physical.height?.[r]?.[c] || 0) - (physicalBase.height?.[r]?.[c] || 0);
+          const heightError = physicalHeightDelta - kinematicHeightDelta;
+          heightSquared += heightError * heightError;
+          heightMax = Math.max(heightMax, Math.abs(heightError));
+          heightCount += 1;
+
+          const kinematicPoint = sim.centers?.[r]?.[c];
+          const kinematicBasePoint = baselineSim.centers?.[r]?.[c];
+          const physicalPoint = physical.centers?.[r]?.[c];
+          const physicalBasePoint = physicalBase.centers?.[r]?.[c];
+          if (kinematicPoint && kinematicBasePoint && physicalPoint && physicalBasePoint) {
+            const dx = (physicalPoint.x - physicalBasePoint.x) - (kinematicPoint.x - kinematicBasePoint.x);
+            const dy = (physicalPoint.y - physicalBasePoint.y) - (kinematicPoint.y - kinematicBasePoint.y);
+            const dz = (physicalPoint.z - physicalBasePoint.z) - (kinematicPoint.z - kinematicBasePoint.z);
+            const centerError = Math.hypot(dx, dy, dz);
+            centerSquared += centerError * centerError;
+            centerMax = Math.max(centerMax, centerError);
+            centerCount += 1;
+          }
+        }
+      }
+      return {
+        physicalPreviewAvailable: true,
+        physicalPreviewSuccess: true,
+        physicalHeightRmsError: Math.sqrt(heightSquared / Math.max(1, heightCount)),
+        physicalHeightMaxError: heightMax,
+        physicalCenterRmsError: Math.sqrt(centerSquared / Math.max(1, centerCount)),
+        physicalCenterMaxError: centerMax,
+        physicalPreviewIterations: Number(physical.metrics?.physicalIterations || physicalBase.metrics?.physicalIterations || 0),
+      };
+    } catch (error) {
+      return {
+        ...unavailable,
+        physicalPreviewAvailable: true,
+        physicalPreviewError: error?.message || String(error),
+      };
+    }
+  }
+
   function characterizeLocalResponse(state, options = {}) {
     const scope = options.scope || state.experiment?.characterizationScope || "single";
     const selected = {
@@ -351,6 +415,7 @@
     const stats = localResponseStats(combinedState, sim, baselineSim, sourceCells);
     const interaction = superpositionError(combinedState, sourceCells, sim, baselineSim);
     const matrixDiagnostic = responseMatrixDiagnostic(combinedState, sourceCells, baselineSim);
+    const physicalComparison = physicalPreviewComparison(combinedState, baselineState, sim, baselineSim);
     const calibration = RAD.paperRadCalibration(combinedState);
     return {
       scope,
@@ -359,6 +424,7 @@
       regionCellCount: sourceCells.length,
       ...stats,
       ...matrixDiagnostic,
+      ...physicalComparison,
       superpositionError: interaction.rms,
       maxSuperpositionError: interaction.max,
       superpositionSkipped: interaction.skipped,
@@ -502,4 +568,5 @@
   RAD.analyzeExperimentSequence = analyzeExperimentSequence;
   RAD.exportSequenceMetricsCsv = exportSequenceMetricsCsv;
   RAD.characterizeLocalResponse = characterizeLocalResponse;
+  RAD.physicalPreviewComparison = physicalPreviewComparison;
 })();

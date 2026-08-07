@@ -233,7 +233,9 @@ pair, local cluster, or active lattice command set. It reports active command
 sources, total responding cells, alpha and z reach, alpha/z die-off, paper-scale
 pin-hole clearance, local response rank, underactuated cells, and a
 superposition residual that compares the combined response against the sum of
-isolated source responses. This is an early numerical probe for programmable-
+isolated source responses. It also compares the same response against the
+browser 3D spring preview and reports height/center disagreement from the
+kinematic backlash prediction. This is an early numerical probe for programmable-
 discontinuity behavior: nonzero residual indicates that backlash, locks, or
 saturation are making the local operators interact non-additively.
 
@@ -448,8 +450,8 @@ without requiring Playwright or a browser binary.
   backlash, pin-hole clearance, and fabrication tolerance readouts.
 - `web/analysis.js` `characterizeLocalResponse`: browser-side single, pair,
   cluster, and active-lattice response experiment metrics with superposition
-  residuals, local response rank, and underactuated-cell counts for
-  programmable-discontinuity studies.
+  residuals, local response rank, underactuated-cell counts, and browser
+  spring-preview disagreement metrics for programmable-discontinuity studies.
 - `compare_physical_response` / `compare_physical_pair` /
   `compare_physical_cluster`: single, pair, and cluster diagnostics that quantify
   the deviation between kinematic backlash propagation and the 3D spring-hinge
