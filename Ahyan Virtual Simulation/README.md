@@ -4,6 +4,9 @@ This repository contains a first-pass 3D demonstration simulator for Reconfigura
 Auxetic Devices (RADs) with backlash. The model is intentionally synthetic and
 dimensionless: it is meant to expose the backlash-coupled lattice mechanics before
 CAD calibration while target-surface inverse design is still experimental.
+Paper-supported formulas, prototype values, and current modeling assumptions are
+tracked in `docs/research_grounding.md`; use that note before changing RAD cell
+geometry or coupling laws.
 
 ## Run
 
