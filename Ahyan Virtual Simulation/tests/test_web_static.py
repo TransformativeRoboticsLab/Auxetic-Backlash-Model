@@ -28,6 +28,7 @@ class WebStaticTests(unittest.TestCase):
             "RAD.exportPaperRadMeshObj",
             "RAD.simulateActive",
             "RAD.compareEventOrder",
+            "RAD.compareSequenceOrder",
             "RAD.paperRadCalibration",
             "RAD.characterizeLocalResponse",
             "RAD.physicalPreviewComparison",
@@ -645,6 +646,8 @@ class WebStaticTests(unittest.TestCase):
             "operatorOrderState",
             "operatorAlphaError",
             "operatorHeightError",
+            "operatorSequenceState",
+            "operatorMaxOrderError",
         ]:
             self.assertIn(f'id="{control_id}"', html)
 
@@ -657,6 +660,10 @@ class WebStaticTests(unittest.TestCase):
             "applyProgrammableEvent",
             "applyEventSequence",
             "compareEventOrder",
+            "compareSequenceOrder",
+            "stateDistance",
+            "noncommutingAdjacentPairs",
+            "maxOrderError",
             "finiteDieOffRadius",
             "lockAlphaCommutes",
             "finalHeightError",
@@ -672,6 +679,10 @@ class WebStaticTests(unittest.TestCase):
             "updateOperatorInspector",
             "RAD.applyProgrammableEvent",
             "RAD.compareEventOrder",
+            "RAD.compareSequenceOrder",
+            "operatorSequenceState",
+            "operatorMaxOrderError",
+            "noncommutingAdjacentPairs",
             "operator-order-check",
         ]:
             self.assertIn(symbol, ui_js)

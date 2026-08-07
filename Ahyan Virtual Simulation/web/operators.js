@@ -115,6 +115,36 @@
     return JSON.stringify(a) === JSON.stringify(b);
   }
 
+  function boolMatrixDiffCount(a, b) {
+    let count = 0;
+    for (let r = 0; r < a.length; r += 1) {
+      for (let c = 0; c < a[r].length; c += 1) {
+        if (Boolean(a[r][c]) !== Boolean(b?.[r]?.[c])) count += 1;
+      }
+    }
+    return count;
+  }
+
+  function stateDistance(a, b, simA = null, simB = null) {
+    const firstSim = simA || RAD.simulate(a);
+    const secondSim = simB || RAD.simulate(b);
+    const commandAlphaError = maxMatrixDiff(a.cells.commandAlpha, b.cells.commandAlpha);
+    const commandZError = maxMatrixDiff(a.cells.commandZ, b.cells.commandZ);
+    const lockAlphaError = maxMatrixDiff(a.cells.lockAlpha, b.cells.lockAlpha);
+    const finalAlphaError = maxMatrixDiff(firstSim.alpha, secondSim.alpha);
+    const finalHeightError = maxMatrixDiff(firstSim.height, secondSim.height);
+    return {
+      modeChanges: boolMatrixDiffCount(a.cells.locked, b.cells.locked),
+      commandAlphaError,
+      commandZError,
+      commandError: Math.max(commandAlphaError, commandZError),
+      lockAlphaError,
+      finalAlphaError,
+      finalHeightError,
+      finalError: Math.max(finalAlphaError, finalHeightError),
+    };
+  }
+
   function compareEventOrder(state, first, second, tolerance = 1e-9) {
     const firstThenSecond = applyEventSequence(state, [first, second]);
     const secondThenFirst = applyEventSequence(state, [second, first]);
@@ -133,6 +163,73 @@
     };
   }
 
+  function compareSequenceOrder(state, events, tolerance = 1e-9) {
+    const sequence = (events || []).filter(Boolean).map(cloneData);
+    const baseFinal = applyEventSequence(state, sequence);
+    const baseSim = RAD.simulate(baseFinal);
+    const reverseFinal = applyEventSequence(state, sequence.slice().reverse());
+    const reverse = stateDistance(baseFinal, reverseFinal, baseSim);
+    let maxAdjacentAlphaError = 0;
+    let maxAdjacentHeightError = 0;
+    let maxAdjacentCommandError = 0;
+    let maxAdjacentLockAlphaError = 0;
+    let noncommutingAdjacentPairs = 0;
+    const adjacent = [];
+    for (let index = 0; index + 1 < sequence.length; index += 1) {
+      const swapped = sequence.map(cloneData);
+      [swapped[index], swapped[index + 1]] = [swapped[index + 1], swapped[index]];
+      const swappedFinal = applyEventSequence(state, swapped);
+      const distance = stateDistance(baseFinal, swappedFinal, baseSim);
+      const sensitive =
+        distance.modeChanges > 0 ||
+        distance.commandError > tolerance ||
+        distance.lockAlphaError > tolerance ||
+        distance.finalAlphaError > tolerance ||
+        distance.finalHeightError > tolerance;
+      if (sensitive) noncommutingAdjacentPairs += 1;
+      maxAdjacentAlphaError = Math.max(maxAdjacentAlphaError, distance.finalAlphaError);
+      maxAdjacentHeightError = Math.max(maxAdjacentHeightError, distance.finalHeightError);
+      maxAdjacentCommandError = Math.max(maxAdjacentCommandError, distance.commandError);
+      maxAdjacentLockAlphaError = Math.max(maxAdjacentLockAlphaError, distance.lockAlphaError);
+      adjacent.push({
+        index,
+        firstKind: sequence[index]?.kind || "",
+        secondKind: sequence[index + 1]?.kind || "",
+        sensitive,
+        ...distance,
+      });
+    }
+    const maxOrderError = Math.max(
+      reverse.finalError,
+      reverse.commandError,
+      reverse.lockAlphaError,
+      maxAdjacentAlphaError,
+      maxAdjacentHeightError,
+      maxAdjacentCommandError,
+      maxAdjacentLockAlphaError
+    );
+    return {
+      eventCount: sequence.length,
+      adjacentPairCount: Math.max(0, sequence.length - 1),
+      noncommutingAdjacentPairs,
+      orderSensitive:
+        reverse.modeChanges > 0 ||
+        maxOrderError > tolerance ||
+        noncommutingAdjacentPairs > 0,
+      reverseAlphaError: reverse.finalAlphaError,
+      reverseHeightError: reverse.finalHeightError,
+      reverseModeChanges: reverse.modeChanges,
+      reverseCommandError: reverse.commandError,
+      reverseLockAlphaError: reverse.lockAlphaError,
+      maxAdjacentAlphaError,
+      maxAdjacentHeightError,
+      maxAdjacentCommandError,
+      maxAdjacentLockAlphaError,
+      maxOrderError,
+      adjacent,
+    };
+  }
+
   RAD.finiteDieOffRadius = finiteDieOffRadius;
   RAD.localActuationEvent = localActuationEvent;
   RAD.lockEvent = lockEvent;
@@ -141,4 +238,5 @@
   RAD.applyProgrammableEvent = applyProgrammableEvent;
   RAD.applyEventSequence = applyEventSequence;
   RAD.compareEventOrder = compareEventOrder;
+  RAD.compareSequenceOrder = compareSequenceOrder;
 })();

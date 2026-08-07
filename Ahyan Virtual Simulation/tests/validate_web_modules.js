@@ -207,6 +207,19 @@ assert.strictEqual(orderDiagnostic.commandCommutes, false);
 assert.strictEqual(orderDiagnostic.lockAlphaCommutes, false);
 assert.ok(orderDiagnostic.finalAlphaError > 0.1, "actuation and lock events should not commute in alpha");
 assert.ok(orderDiagnostic.finalHeightError > 0.1, "actuation and lock events should not commute in height");
+const sequenceDiagnostic = RAD.compareSequenceOrder(orderState, [
+  RAD.localActuationEvent({ r: 1, c: 1 }, -0.3, 0.2),
+  RAD.lockEvent({ r: 1, c: 1 }),
+  RAD.clearActuationEvent({ r: 1, c: 1 }),
+]);
+assert.strictEqual(sequenceDiagnostic.eventCount, 3);
+assert.strictEqual(sequenceDiagnostic.adjacentPairCount, 2);
+assert.ok(sequenceDiagnostic.noncommutingAdjacentPairs > 0, "local operator sequence should identify noncommuting adjacent swaps");
+assert.strictEqual(sequenceDiagnostic.orderSensitive, true, "local operator sequence should be order sensitive");
+assert.ok(sequenceDiagnostic.maxOrderError > 0.1, "sequence order sensitivity should report a nonzero max error");
+assert.ok(Number.isFinite(sequenceDiagnostic.reverseAlphaError), "sequence order sensitivity should report finite reverse alpha error");
+assert.ok(Number.isFinite(sequenceDiagnostic.reverseHeightError), "sequence order sensitivity should report finite reverse height error");
+assert.strictEqual(sequenceDiagnostic.adjacent.length, 2);
 
 const zResidualState = RAD.createState(5, 5);
 zResidualState.grid.backlash = 0.02;

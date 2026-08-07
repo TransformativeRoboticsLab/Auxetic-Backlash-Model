@@ -32,7 +32,10 @@ be tested as a measurable noncommutative effect.
 The browser mirrors this operator layer through `web/operators.js`. The selected
 cell dock includes event lock, event release, and order-check controls; committed
 locks store `cells.lockAlpha` so a locked cell can hold the dilation reached
-before locking instead of always snapping back to the default state.
+before locking instead of always snapping back to the default state. Browser
+order checks now include both the two-event actuation/lock commutator and a
+three-event local sequence probe that reverses the sequence and swaps adjacent
+events, giving a measured `maxOrderError` for path dependence.
 `build_response_matrix` stacks those responses into alpha and height matrices for
 controllability checks and inverse-design experiments.
 `diagnose_programmable_discontinuity` packages the same response fields into an
@@ -451,7 +454,9 @@ without requiring Playwright or a browser binary.
   reachable sets, response rank, underactuated regions, and additive versus
   non-additive operator composition.
 - `web/operators.js`: browser-side version of the event operators with committed
-  `lockAlpha` state and selected-cell order diagnostics in the viewport dock.
+  `lockAlpha` state, selected-cell order diagnostics, and
+  `compareSequenceOrder` adjacent-swap/reversal sensitivity checks in the
+  viewport dock.
 - `web/math.js` `paperRadCalibration`: browser-side paper scale conversion for
   backlash, pin-hole clearance, and fabrication tolerance readouts.
 - `web/analysis.js` `characterizeLocalResponse`: browser-side single, pair,

@@ -84,6 +84,8 @@
         operatorOrderState: document.getElementById("operatorOrderState"),
         operatorAlphaError: document.getElementById("operatorAlphaError"),
         operatorHeightError: document.getElementById("operatorHeightError"),
+        operatorSequenceState: document.getElementById("operatorSequenceState"),
+        operatorMaxOrderError: document.getElementById("operatorMaxOrderError"),
       };
       this.playTimer = null;
       this.transitionFrame = null;
@@ -667,6 +669,12 @@
         RAD.localActuationEvent({ r, c }, alpha, z),
         RAD.lockEvent({ r, c })
       );
+      const sequence = RAD.compareSequenceOrder(this.selectedEventBaseline(r, c), [
+        RAD.localActuationEvent({ r, c }, alpha, z),
+        RAD.lockEvent({ r, c }),
+        RAD.clearActuationEvent({ r, c }),
+      ]);
+      diagnostic.sequence = sequence;
       this.lastOperatorDiagnostic = diagnostic;
       RAD.recordEvent(this.state, {
         type: "operator-order-check",
@@ -676,6 +684,8 @@
         z,
         finalAlphaError: diagnostic.finalAlphaError,
         finalHeightError: diagnostic.finalHeightError,
+        maxOrderError: sequence.maxOrderError,
+        noncommutingAdjacentPairs: sequence.noncommutingAdjacentPairs,
       });
       this.updateOperatorInspector(diagnostic);
       this.onChange(this.state);
@@ -686,13 +696,23 @@
         this.els.operatorOrderState.textContent = "not checked";
         this.els.operatorAlphaError.textContent = "0.000";
         this.els.operatorHeightError.textContent = "0.000";
+        this.els.operatorSequenceState.textContent = "0/0";
+        this.els.operatorMaxOrderError.textContent = "0.000";
         return;
       }
       const commutes = diagnostic.modeCommutes && diagnostic.commandCommutes && diagnostic.lockAlphaCommutes && diagnostic.finalAlphaError < 1e-9 && diagnostic.finalHeightError < 1e-9;
+      const sequence = diagnostic.sequence;
       this.els.operatorOrderState.textContent = commutes ? "commutes" : "path dependent";
       this.els.operatorAlphaError.textContent = diagnostic.finalAlphaError.toFixed(3);
       this.els.operatorHeightError.textContent = diagnostic.finalHeightError.toFixed(3);
       this.els.operatorOrderState.title = `mode ${diagnostic.modeCommutes ? "same" : "diff"}, commands ${diagnostic.commandCommutes ? "same" : "diff"}, lock alpha ${diagnostic.lockAlphaCommutes ? "same" : "diff"}`;
+      this.els.operatorSequenceState.textContent = sequence
+        ? `${sequence.noncommutingAdjacentPairs}/${sequence.adjacentPairCount}`
+        : "0/0";
+      this.els.operatorMaxOrderError.textContent = Number(sequence?.maxOrderError || 0).toFixed(3);
+      this.els.operatorSequenceState.title = sequence
+        ? `reverse da ${sequence.reverseAlphaError.toFixed(3)}, dz ${sequence.reverseHeightError.toFixed(3)}, mode changes ${sequence.reverseModeChanges}`
+        : "";
     }
 
     applyCellVisualMode(mode) {
@@ -1444,7 +1464,7 @@
       if (event.type === "characterization") return `characterize: ${event.scope}, ${event.responseCells || 0} cells, sup ${Number(event.superpositionError || 0).toFixed(3)}`;
       if (event.type === "operator-lock") return `event lock: r${event.r}, c${event.c} a ${Number(event.lockAlpha || 0).toFixed(3)}`;
       if (event.type === "operator-release") return `event release: r${event.r}, c${event.c}`;
-      if (event.type === "operator-order-check") return `order check: r${event.r}, c${event.c} da ${Number(event.finalAlphaError || 0).toFixed(3)} dz ${Number(event.finalHeightError || 0).toFixed(3)}`;
+      if (event.type === "operator-order-check") return `order check: r${event.r}, c${event.c} da ${Number(event.finalAlphaError || 0).toFixed(3)} dz ${Number(event.finalHeightError || 0).toFixed(3)} max ${Number(event.maxOrderError || 0).toFixed(3)}`;
       if (event.type === "inverse-preview-keyframe") return `preview keyframe: ${event.name || "plan preview"}, ${event.actuators || 0} cells`;
       if (event.type === "keyframe") return `keyframe: ${event.name || "pose"} (${event.index || 0})`;
       return event.name ? `${event.type}: ${event.name}` : event.type;
