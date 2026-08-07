@@ -60,6 +60,13 @@ paper-grounded rotating-square structure as two concentric square parts with
 four joints, pin bosses, and hole-clearance rings driven by the normalized
 pin/hole controls. It is still normalized geometry, but it reflects the RAD
 papers' stated unit-cell structure more directly than the general abstraction.
+The Python API mirrors that with `build_paper_rad_cell_geometry`, which returns
+a normalized single-cell description with two concentric square parts, four
+joints per part, lock sites, alpha/z actuator axes, backlash gap, and vertical
+free play. The embedded reference values come from the RAD preprint text:
+35 mm prototype side length, normalized backlash `b = 0.1`, and target effective
+Poisson ratio `-0.4`; exact CAD thicknesses and tolerances remain configurable
+until measured from the physical parts.
 Saved `rad-sim.browser.v1` JSON includes both command inputs and derived cell
 state. `cells.commandAlpha`, `cells.commandZ`, and `cells.locked` remain the
 authoritative controls; `cells.alpha`, `cells.theta`, and `cells.z` are refreshed
@@ -358,6 +365,9 @@ without requiring Playwright or a browser binary.
 
 - `simulate_kinematic`: rotating-square auxetic cells with dead-zone backlash
   coupling, angle/dilation mapping, and synthetic out-of-plane height.
+- `build_paper_rad_cell_geometry`: normalized single-cell RAD geometry with
+  two concentric square parts, four joints per part, pin/hole clearance,
+  lock sites, actuator axes, and paper reference metadata.
 - `solve_spring_hinge`: reduced center-node spring-hinge quasistatic solver using
   SciPy optimization and penalty locks.
 - `solve_spring_hinge_3d`: out-of-plane spring-hinge relaxation over 3D center

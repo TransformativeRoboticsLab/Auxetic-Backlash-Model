@@ -8,9 +8,11 @@ from rad_sim import (
     LatticeConfig,
     LatticeState,
     LoadCase,
+    PAPER_RAD_REFERENCE,
     SourceCommand,
     backlash_activation,
     build_response_matrix,
+    build_paper_rad_cell_geometry,
     characterize_cluster,
     characterize_pair,
     characterize_single_cell,
@@ -107,6 +109,50 @@ class RadSimTests(unittest.TestCase):
     def test_pin_hole_radius_validation(self):
         with self.assertRaises(ValueError):
             LatticeConfig(pin_radius=0.2, hole_radius=0.1)
+
+    def test_paper_rad_reference_contains_extracted_prototype_values(self):
+        self.assertEqual(PAPER_RAD_REFERENCE.concentric_parts, 2)
+        self.assertEqual(PAPER_RAD_REFERENCE.joints_per_part, 4)
+        self.assertAlmostEqual(PAPER_RAD_REFERENCE.normalized_backlash, 0.1)
+        self.assertAlmostEqual(PAPER_RAD_REFERENCE.poisson_ratio, -0.4)
+        self.assertAlmostEqual(PAPER_RAD_REFERENCE.side_length_mm, 35.0)
+
+    def test_paper_rad_cell_has_two_four_joint_parts(self):
+        config = LatticeConfig(pin_radius=0.12, hole_radius=0.19)
+        cell = build_paper_rad_cell_geometry(config, center=(0.2, -0.1), z=0.3)
+        self.assertEqual(cell.outer_part.shape, (4, 3))
+        self.assertEqual(cell.inner_part.shape, (4, 3))
+        self.assertEqual(len(cell.outer_joints), 4)
+        self.assertEqual(len(cell.inner_joints), 4)
+        self.assertEqual(cell.joint_count, 8)
+        self.assertAlmostEqual(cell.center[2], 0.3)
+        self.assertAlmostEqual(cell.backlash_gap, config.backlash * config.cell_size)
+        self.assertAlmostEqual(cell.vertical_free_play, config.pin_hole_clearance)
+        self.assertTrue(all(joint.clearance == config.pin_hole_clearance for joint in cell.outer_joints))
+
+    def test_paper_rad_inner_part_rotates_with_alpha(self):
+        config = LatticeConfig(backlash=0.1)
+        contracted = build_paper_rad_cell_geometry(config, alpha=0.8)
+        expanded = build_paper_rad_cell_geometry(config, alpha=1.2)
+        self.assertAlmostEqual(contracted.theta_degrees, alpha_to_theta(0.8))
+        self.assertAlmostEqual(expanded.theta_degrees, alpha_to_theta(1.2))
+        self.assertFalse(np.allclose(contracted.inner_part, expanded.inner_part))
+        contracted_edges = np.linalg.norm(
+            np.roll(contracted.inner_part[:, :2], -1, axis=0) - contracted.inner_part[:, :2],
+            axis=1,
+        )
+        np.testing.assert_allclose(contracted_edges, contracted_edges[0])
+
+    def test_paper_rad_cell_exposes_lock_and_actuator_interfaces(self):
+        config = LatticeConfig(pin_radius=0.18, hole_radius=0.225)
+        cell = build_paper_rad_cell_geometry(config)
+        self.assertEqual(cell.lock_sites.shape, (4, 3))
+        self.assertEqual(cell.alpha_actuator_axis.shape, (2, 3))
+        self.assertEqual(cell.z_actuator_axis.shape, (2, 3))
+        self.assertAlmostEqual(
+            np.linalg.norm(cell.z_actuator_axis[1] - cell.z_actuator_axis[0]),
+            config.pin_hole_clearance,
+        )
 
     def test_dead_zone_operator_has_no_neighbor_transmission_inside_gap(self):
         op = DeadZonePropagationOperator("test", dead_zone=0.1, gain=0.5)

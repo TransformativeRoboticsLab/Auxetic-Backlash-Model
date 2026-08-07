@@ -1,5 +1,12 @@
 """RAD backlash lattice simulator."""
 
+from .cell_geometry import (
+    PAPER_RAD_REFERENCE,
+    PaperRADCellGeometry,
+    PaperRADReference,
+    RADJointGeometry,
+    build_paper_rad_cell_geometry,
+)
 from .coupling import alpha_to_theta, backlash_activation, theta_to_alpha
 from .experiments import (
     PairCharacterization,
@@ -31,6 +38,10 @@ __all__ = [
     "LatticeState",
     "LoadCase",
     "SimulationResult",
+    "PaperRADReference",
+    "RADJointGeometry",
+    "PaperRADCellGeometry",
+    "PAPER_RAD_REFERENCE",
     "PropagationResult",
     "DeadZonePropagationOperator",
     "SourceCommand",
@@ -38,6 +49,7 @@ __all__ = [
     "PairCharacterization",
     "ResponseMatrix",
     "InverseDesignResult",
+    "build_paper_rad_cell_geometry",
     "build_response_matrix",
     "solve_inverse_design",
     "alpha_to_theta",
