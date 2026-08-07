@@ -663,6 +663,14 @@ class RadSimTests(unittest.TestCase):
         self.assertGreater(solution.active_actuator_count, 0)
         self.assertLess(solution.rms_error_after, solution.rms_error_before)
         self.assertGreater(solution.state.z_actuator_grid[2, 2], 0.0)
+        self.assertEqual(solution.target_height.shape, target.shape)
+        self.assertEqual(solution.height_residual.shape, target.shape)
+        self.assertEqual(solution.reachable_height_mask.shape, target.shape)
+        self.assertEqual(solution.underactuated_height_mask.shape, target.shape)
+        self.assertGreaterEqual(solution.height_rms_residual, 0.0)
+        self.assertGreaterEqual(solution.max_abs_height_residual, 0.0)
+        self.assertGreaterEqual(solution.saturated_column_fraction, 0.0)
+        self.assertLessEqual(solution.saturated_column_fraction, 1.0)
 
     def test_inverse_design_fits_alpha_contraction(self):
         config = LatticeConfig(rows=3, cols=3, backlash=0.0)
@@ -696,6 +704,24 @@ class RadSimTests(unittest.TestCase):
         self.assertTrue(solution.state.locked_mask[1, 1])
         self.assertAlmostEqual(solution.state.z_actuator_grid[1, 1], 0.0)
         self.assertTrue(all(command.cell != (1, 1) for command in solution.commands))
+
+    def test_inverse_design_marks_underactuated_height_targets(self):
+        config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.0)
+        target = np.zeros((3, 3), dtype=float)
+        target[2, 2] = 0.25
+        solution = solve_inverse_design(
+            config,
+            target_height=target,
+            actuator_cells=[(0, 0)],
+            include_alpha=False,
+            include_z=True,
+        )
+        self.assertTrue(solution.reachable_height_mask[0, 0])
+        self.assertFalse(solution.reachable_height_mask[2, 2])
+        self.assertTrue(solution.underactuated_height_mask[2, 2])
+        self.assertEqual(solution.height_underactuated_cells, 1)
+        self.assertEqual(solution.alpha_underactuated_cells, 0)
+        self.assertGreater(solution.height_rms_residual, 0.0)
 
     def test_inverse_design_requires_target(self):
         with self.assertRaises(ValueError):

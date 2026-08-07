@@ -26,10 +26,65 @@ class InverseDesignResult:
     linearized_rms_error: float
     success: bool
     message: str
+    target_alpha: np.ndarray | None = None
+    target_height: np.ndarray | None = None
+    alpha_residual: np.ndarray | None = None
+    height_residual: np.ndarray | None = None
+    reachable_alpha_mask: np.ndarray | None = None
+    reachable_height_mask: np.ndarray | None = None
+    underactuated_alpha_mask: np.ndarray | None = None
+    underactuated_height_mask: np.ndarray | None = None
+    max_command_multiplier: float = 0.0
+    saturated_column_count: int = 0
+    near_saturated_column_count: int = 0
 
     @property
     def active_actuator_count(self) -> int:
         return len(self.commands)
+
+    @property
+    def alpha_underactuated_cells(self) -> int:
+        if self.underactuated_alpha_mask is None:
+            return 0
+        return int(np.count_nonzero(self.underactuated_alpha_mask))
+
+    @property
+    def height_underactuated_cells(self) -> int:
+        if self.underactuated_height_mask is None:
+            return 0
+        return int(np.count_nonzero(self.underactuated_height_mask))
+
+    @property
+    def saturated_column_fraction(self) -> float:
+        if self.coefficients.size == 0:
+            return 0.0
+        return float(self.saturated_column_count / self.coefficients.size)
+
+    @property
+    def near_saturated_column_fraction(self) -> float:
+        if self.coefficients.size == 0:
+            return 0.0
+        return float(self.near_saturated_column_count / self.coefficients.size)
+
+    @property
+    def alpha_rms_residual(self) -> float:
+        return 0.0 if self.alpha_residual is None else _rms(self.alpha_residual.reshape(-1))
+
+    @property
+    def height_rms_residual(self) -> float:
+        return 0.0 if self.height_residual is None else _rms(self.height_residual.reshape(-1))
+
+    @property
+    def max_abs_alpha_residual(self) -> float:
+        if self.alpha_residual is None or self.alpha_residual.size == 0:
+            return 0.0
+        return float(np.max(np.abs(self.alpha_residual)))
+
+    @property
+    def max_abs_height_residual(self) -> float:
+        if self.height_residual is None or self.height_residual.size == 0:
+            return 0.0
+        return float(np.max(np.abs(self.height_residual)))
 
 
 def _target_array(
@@ -149,6 +204,41 @@ def _state_with_commands(
     return state
 
 
+def _reachable_mask(matrix: ResponseMatrix, family: str, tolerance: float) -> np.ndarray:
+    response = matrix.alpha if family == "alpha" else matrix.height
+    if response.shape[1] == 0:
+        flat = np.zeros(response.shape[0], dtype=bool)
+    else:
+        flat = np.any(np.abs(response) > tolerance, axis=1)
+    return flat.reshape(matrix.cell_shape)
+
+
+def _underactuated_mask(
+    target: np.ndarray | None,
+    baseline: np.ndarray,
+    reachable: np.ndarray,
+    tolerance: float,
+) -> np.ndarray | None:
+    if target is None:
+        return None
+    requested_change = np.abs(target - baseline) > tolerance
+    return requested_change & ~reachable
+
+
+def _saturation_counts(
+    coefficients: np.ndarray,
+    max_command_multiplier: float,
+    tolerance: float,
+) -> tuple[int, int]:
+    if coefficients.size == 0:
+        return 0, 0
+    margin = max(tolerance, 1e-6)
+    magnitudes = np.abs(coefficients)
+    saturated = magnitudes >= max_command_multiplier - margin
+    near_saturated = magnitudes >= 0.9 * max_command_multiplier
+    return int(np.count_nonzero(saturated)), int(np.count_nonzero(near_saturated))
+
+
 def solve_inverse_design(
     config: LatticeConfig,
     *,
@@ -236,6 +326,19 @@ def solve_inverse_design(
         result, target_alpha_array, target_height_array, alpha_weight, height_weight
     )
     linearized = a_matrix @ coefficients - b_vector if coefficients.size else -b_vector
+    alpha_residual = (
+        None if target_alpha_array is None else target_alpha_array - result.alpha
+    )
+    height_residual = (
+        None if target_height_array is None else target_height_array - result.metadata["height"]
+    )
+    reachable_alpha = _reachable_mask(matrix, "alpha", tolerance)
+    reachable_height = _reachable_mask(matrix, "height", tolerance)
+    saturated_count, near_saturated_count = _saturation_counts(
+        coefficients,
+        max_command_multiplier,
+        tolerance,
+    )
     return InverseDesignResult(
         matrix=matrix,
         coefficients=coefficients,
@@ -250,4 +353,25 @@ def solve_inverse_design(
         linearized_rms_error=_rms(linearized),
         success=success,
         message=message,
+        target_alpha=target_alpha_array,
+        target_height=target_height_array,
+        alpha_residual=alpha_residual,
+        height_residual=height_residual,
+        reachable_alpha_mask=reachable_alpha,
+        reachable_height_mask=reachable_height,
+        underactuated_alpha_mask=_underactuated_mask(
+            target_alpha_array,
+            baseline.alpha,
+            reachable_alpha,
+            tolerance,
+        ),
+        underactuated_height_mask=_underactuated_mask(
+            target_height_array,
+            baseline.metadata["height"],
+            reachable_height,
+            tolerance,
+        ),
+        max_command_multiplier=max_command_multiplier,
+        saturated_column_count=saturated_count,
+        near_saturated_column_count=near_saturated_count,
     )

@@ -53,7 +53,10 @@ thresholds, locks, or saturation.
 fit from target alpha/height fields to candidate actuator commands. This is the
 first Python-backed inverse layer for surface-shaping studies; it is linearized
 around the unactuated baseline and should be treated as a command proposal, not
-as a calibrated nonlinear optimizer.
+as a calibrated nonlinear optimizer. Its result also carries unweighted alpha and
+height residual fields, reachable/underactuated masks, and command-saturation
+counts so poor target fits can be separated from mechanically unreachable or
+travel-limited regions.
 
 ## Browser UI
 
@@ -461,6 +464,9 @@ without requiring Playwright or a browser binary.
   `event_sequence`, it also reports reversal/adjacent-swap order sensitivity.
 - `response_decay_profile`: Python log-linear shell-max locality diagnostic that
   mirrors the browser Response Experiments decay ratio/length readout.
+- `solve_inverse_design`: bounded damped least-squares inverse design using
+  finite response columns for alpha/height target fields, with residual fields,
+  reachable/underactuated masks, and command-saturation diagnostics.
 - `web/operators.js`: browser-side version of the event operators with committed
   `lockAlpha` state, selected-cell order diagnostics, and
   `compareSequenceOrder` adjacent-swap/reversal sensitivity checks in the
