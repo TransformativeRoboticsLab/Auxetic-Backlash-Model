@@ -17,6 +17,41 @@ class PaperRADReference:
     poisson_ratio: float = -0.4
     concentric_parts: int = 2
     joints_per_part: int = 4
+    fabrication_hole_tolerance_mm: float = 0.1
+
+    @property
+    def reference_backlash_mm(self) -> float:
+        return self.normalized_backlash * self.side_length_mm
+
+    def model_length_to_mm(self, config: LatticeConfig, value: float) -> float:
+        return float(value) * self.side_length_mm / config.cell_size
+
+    def mm_to_model_length(self, config: LatticeConfig, value_mm: float) -> float:
+        return float(value_mm) * config.cell_size / self.side_length_mm
+
+
+@dataclass(frozen=True)
+class PaperRADCalibration:
+    reference: PaperRADReference
+    model_cell_size: float
+    mm_per_model_unit: float
+    side_length_mm: float
+    configured_backlash_mm: float
+    reference_backlash_mm: float
+    pin_radius_mm: float
+    hole_radius_mm: float
+    pin_hole_clearance_mm: float
+    fabrication_hole_tolerance_mm: float
+    fabrication_hole_tolerance_model: float
+    poisson_ratio: float
+    concentric_parts: int
+    joints_per_part: int
+
+    def model_length_to_mm(self, value: float) -> float:
+        return float(value) * self.mm_per_model_unit
+
+    def mm_to_model_length(self, value_mm: float) -> float:
+        return float(value_mm) / self.mm_per_model_unit
 
 
 @dataclass(frozen=True)
@@ -35,6 +70,7 @@ class RADJointGeometry:
 @dataclass(frozen=True)
 class PaperRADCellGeometry:
     reference: PaperRADReference
+    calibration: PaperRADCalibration
     center: np.ndarray
     alpha: float
     theta_degrees: float
@@ -51,6 +87,14 @@ class PaperRADCellGeometry:
     @property
     def joint_count(self) -> int:
         return len(self.outer_joints) + len(self.inner_joints)
+
+    @property
+    def backlash_gap_mm(self) -> float:
+        return self.calibration.model_length_to_mm(self.backlash_gap)
+
+    @property
+    def vertical_free_play_mm(self) -> float:
+        return self.calibration.model_length_to_mm(self.vertical_free_play)
 
 
 @dataclass(frozen=True)
@@ -118,6 +162,43 @@ class PaperRADLatticeGeometry:
 PAPER_RAD_REFERENCE = PaperRADReference()
 
 
+def calibrate_paper_rad_config(
+    config: LatticeConfig,
+    reference: PaperRADReference = PAPER_RAD_REFERENCE,
+) -> PaperRADCalibration:
+    """Convert the normalized simulator parameters to paper prototype units.
+
+    The paper gives a 35 mm prototype side length, normalized backlash b = 0.1,
+    and 0.1 mm hole fabrication tolerance. Pin and hole radii remain current
+    simulator parameters, so their millimeter values are configured estimates
+    until measured hardware dimensions are added.
+    """
+
+    mm_per_model_unit = reference.side_length_mm / config.cell_size
+    return PaperRADCalibration(
+        reference=reference,
+        model_cell_size=config.cell_size,
+        mm_per_model_unit=mm_per_model_unit,
+        side_length_mm=reference.side_length_mm,
+        configured_backlash_mm=reference.model_length_to_mm(
+            config, config.backlash * config.cell_size
+        ),
+        reference_backlash_mm=reference.reference_backlash_mm,
+        pin_radius_mm=reference.model_length_to_mm(config, config.pin_radius),
+        hole_radius_mm=reference.model_length_to_mm(config, config.hole_radius),
+        pin_hole_clearance_mm=reference.model_length_to_mm(
+            config, config.pin_hole_clearance
+        ),
+        fabrication_hole_tolerance_mm=reference.fabrication_hole_tolerance_mm,
+        fabrication_hole_tolerance_model=reference.mm_to_model_length(
+            config, reference.fabrication_hole_tolerance_mm
+        ),
+        poisson_ratio=reference.poisson_ratio,
+        concentric_parts=reference.concentric_parts,
+        joints_per_part=reference.joints_per_part,
+    )
+
+
 def _square_vertices(
     center: np.ndarray,
     side: float,
@@ -157,6 +238,7 @@ def build_paper_rad_cell_geometry(
     alpha_value = config.initial_alpha if alpha is None else float(alpha)
     alpha_value = float(np.clip(alpha_value, config.alpha_min, config.alpha_max))
     theta = float(alpha_to_theta(alpha_value))
+    calibration = calibrate_paper_rad_config(config, reference)
     center_2d = np.asarray(center, dtype=float)
     if center_2d.shape != (2,):
         raise ValueError("center must be a 2D point")
@@ -196,6 +278,7 @@ def build_paper_rad_cell_geometry(
     )
     return PaperRADCellGeometry(
         reference=reference,
+        calibration=calibration,
         center=center_3d,
         alpha=alpha_value,
         theta_degrees=theta,

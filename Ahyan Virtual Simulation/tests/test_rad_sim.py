@@ -16,6 +16,7 @@ from rad_sim import (
     build_paper_rad_cell_geometry,
     build_paper_rad_lattice_geometry,
     build_paper_rad_lattice_mesh,
+    calibrate_paper_rad_config,
     characterize_cluster,
     characterize_pair,
     characterize_single_cell,
@@ -130,6 +131,34 @@ class RadSimTests(unittest.TestCase):
         self.assertAlmostEqual(PAPER_RAD_REFERENCE.normalized_backlash, 0.1)
         self.assertAlmostEqual(PAPER_RAD_REFERENCE.poisson_ratio, -0.4)
         self.assertAlmostEqual(PAPER_RAD_REFERENCE.side_length_mm, 35.0)
+        self.assertAlmostEqual(PAPER_RAD_REFERENCE.fabrication_hole_tolerance_mm, 0.1)
+        self.assertAlmostEqual(PAPER_RAD_REFERENCE.reference_backlash_mm, 3.5)
+
+    def test_paper_rad_calibration_converts_model_units_to_mm(self):
+        config = LatticeConfig(
+            backlash=0.1,
+            cell_size=1.0,
+            pin_radius=0.18,
+            hole_radius=0.225,
+        )
+        calibration = calibrate_paper_rad_config(config)
+        self.assertAlmostEqual(calibration.mm_per_model_unit, 35.0)
+        self.assertAlmostEqual(calibration.configured_backlash_mm, 3.5)
+        self.assertAlmostEqual(calibration.reference_backlash_mm, 3.5)
+        self.assertAlmostEqual(calibration.pin_radius_mm, 6.3)
+        self.assertAlmostEqual(calibration.hole_radius_mm, 7.875)
+        self.assertAlmostEqual(calibration.pin_hole_clearance_mm, 1.575)
+        self.assertAlmostEqual(calibration.fabrication_hole_tolerance_model, 0.1 / 35.0)
+        self.assertAlmostEqual(calibration.model_length_to_mm(0.25), 8.75)
+        self.assertAlmostEqual(calibration.mm_to_model_length(8.75), 0.25)
+
+    def test_paper_rad_calibration_respects_nonunit_model_cell_size(self):
+        config = LatticeConfig(cell_size=2.0, backlash=0.1, pin_radius=0.2, hole_radius=0.3)
+        calibration = calibrate_paper_rad_config(config)
+        self.assertAlmostEqual(calibration.mm_per_model_unit, 17.5)
+        self.assertAlmostEqual(calibration.configured_backlash_mm, 3.5)
+        self.assertAlmostEqual(calibration.pin_hole_clearance_mm, 1.75)
+        self.assertAlmostEqual(calibration.fabrication_hole_tolerance_model, 0.1 * 2.0 / 35.0)
 
     def test_paper_rad_cell_has_two_four_joint_parts(self):
         config = LatticeConfig(pin_radius=0.12, hole_radius=0.19)
@@ -142,6 +171,8 @@ class RadSimTests(unittest.TestCase):
         self.assertAlmostEqual(cell.center[2], 0.3)
         self.assertAlmostEqual(cell.backlash_gap, config.backlash * config.cell_size)
         self.assertAlmostEqual(cell.vertical_free_play, config.pin_hole_clearance)
+        self.assertAlmostEqual(cell.backlash_gap_mm, 3.5)
+        self.assertAlmostEqual(cell.vertical_free_play_mm, 2.45)
         self.assertTrue(all(joint.clearance == config.pin_hole_clearance for joint in cell.outer_joints))
 
     def test_paper_rad_inner_part_rotates_with_alpha(self):

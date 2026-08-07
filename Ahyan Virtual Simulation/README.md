@@ -83,6 +83,12 @@ full-lattice inspection. The embedded reference values come from the RAD
 preprint text: 35 mm prototype side length, normalized backlash `b = 0.1`, and
 target effective Poisson ratio `-0.4`; exact CAD thicknesses and tolerances
 remain configurable until measured from the physical parts.
+`calibrate_paper_rad_config` converts normalized model lengths into paper
+prototype millimeters. With the default reference, one model cell side maps to
+35 mm, the paper `b = 0.1` backlash maps to 3.5 mm, and the extracted 0.1 mm
+hole fabrication tolerance maps back into normalized model units. Current pin
+and hole radii are still configured estimates, but their clearance can now be
+reported in millimeters for comparison against measured parts.
 For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
 paper RAD lattice into extruded plate, pin, and connector mesh components, and
 `export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for
@@ -395,6 +401,9 @@ without requiring Playwright or a browser binary.
 - `build_paper_rad_cell_geometry`: normalized single-cell RAD geometry with
   two concentric square parts, four joints per part, pin/hole clearance,
   lock sites, actuator axes, and paper reference metadata.
+- `calibrate_paper_rad_config`: paper-derived prototype scale conversion for
+  side length, normalized backlash, pin/hole clearance, and hole fabrication
+  tolerance in millimeters and normalized model units.
 - `build_paper_rad_lattice_geometry`: full-lattice paper RAD geometry records
   derived from a `LatticeState` or `SimulationResult`, including inter-cell
   connector spans and neighbor alpha/height jumps.

@@ -2,6 +2,7 @@
 
 from .cell_geometry import (
     PAPER_RAD_REFERENCE,
+    PaperRADCalibration,
     PaperRADCellGeometry,
     PaperRADCellRecord,
     PaperRADConnectorGeometry,
@@ -10,6 +11,7 @@ from .cell_geometry import (
     RADJointGeometry,
     build_paper_rad_cell_geometry,
     build_paper_rad_lattice_geometry,
+    calibrate_paper_rad_config,
 )
 from .coupling import alpha_to_theta, backlash_activation, theta_to_alpha
 from .experiments import (
@@ -65,6 +67,7 @@ __all__ = [
     "LoadCase",
     "SimulationResult",
     "PaperRADReference",
+    "PaperRADCalibration",
     "RADJointGeometry",
     "PaperRADCellGeometry",
     "PaperRADCellRecord",
@@ -86,6 +89,7 @@ __all__ = [
     "InverseDesignResult",
     "build_paper_rad_cell_geometry",
     "build_paper_rad_lattice_geometry",
+    "calibrate_paper_rad_config",
     "build_paper_rad_lattice_mesh",
     "export_paper_rad_mesh_obj",
     "iter_obj_vertices",
