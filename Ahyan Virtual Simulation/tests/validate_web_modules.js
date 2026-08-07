@@ -53,6 +53,10 @@ assert.ok(html.includes('id="modelProvenanceList"'), "browser UI should expose m
 assert.ok(html.includes('id="provenancePaper"'), "browser UI should expose paper-supported provenance count");
 assert.ok(html.includes('id="hardwareCoverageOut"'), "browser UI should expose hardware profile coverage");
 assert.ok(html.includes('id="hardwareMissingOut"'), "browser UI should expose missing calibration fields");
+assert.ok(html.includes('id="hardwareProfileName"'), "browser UI should expose measured profile name input");
+assert.ok(html.includes('id="hardwarePinRadiusMm"'), "browser UI should expose measured pin-radius input");
+assert.ok(html.includes('id="hardwareHoleRadiusMm"'), "browser UI should expose measured hole-radius input");
+assert.ok(html.includes('id="applyHardwareProfile"'), "browser UI should expose hardware profile apply action");
 const scriptOrder = [
   "./vendor/three.min.js",
   "./state.js",

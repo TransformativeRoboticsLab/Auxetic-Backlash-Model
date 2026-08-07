@@ -17,6 +17,16 @@
         holeRadius: document.getElementById("holeRadius"),
         paperSideLengthMm: document.getElementById("paperSideLengthMm"),
         paperHoleToleranceMm: document.getElementById("paperHoleToleranceMm"),
+        hardwareProfileName: document.getElementById("hardwareProfileName"),
+        hardwareProfileSource: document.getElementById("hardwareProfileSource"),
+        hardwareBacklashMm: document.getElementById("hardwareBacklashMm"),
+        hardwarePinRadiusMm: document.getElementById("hardwarePinRadiusMm"),
+        hardwareHoleRadiusMm: document.getElementById("hardwareHoleRadiusMm"),
+        hardwarePlateThicknessMm: document.getElementById("hardwarePlateThicknessMm"),
+        hardwareJointStackHeightMm: document.getElementById("hardwareJointStackHeightMm"),
+        hardwareBossRadiusMm: document.getElementById("hardwareBossRadiusMm"),
+        applyHardwareProfile: document.getElementById("applyHardwareProfile"),
+        clearHardwareProfile: document.getElementById("clearHardwareProfile"),
         quickDock: document.querySelector(".quick-actuation-dock"),
         toggleQuickDock: document.getElementById("toggleQuickDock"),
         quickDockMini: document.getElementById("quickDockMini"),
@@ -151,6 +161,13 @@
         };
         this.onChange(this.state);
       });
+      this.els.hardwareProfileName.addEventListener("input", () => this.updateHardwareProfileText("name", this.els.hardwareProfileName.value));
+      this.els.hardwareProfileSource.addEventListener("input", () => this.updateHardwareProfileText("source", this.els.hardwareProfileSource.value));
+      for (const [field, element] of this.hardwareProfileNumberInputs()) {
+        element.addEventListener("input", () => this.updateHardwareProfileNumber(field, element.value));
+      }
+      this.els.applyHardwareProfile.addEventListener("click", () => this.applyHardwareProfile());
+      this.els.clearHardwareProfile.addEventListener("click", () => this.clearHardwareProfileMeasurements());
       this.els.toggleQuickDock.addEventListener("click", () => {
         this.state.view.quickDockCollapsed = !this.state.view.quickDockCollapsed;
         this.syncQuickDock();
@@ -556,6 +573,84 @@
       return RAD.brushCells(this.state, r, c, this.state.view.paintRadius);
     }
 
+    hardwareProfileNumberInputs() {
+      return [
+        ["backlashMm", this.els.hardwareBacklashMm],
+        ["pinRadiusMm", this.els.hardwarePinRadiusMm],
+        ["holeRadiusMm", this.els.hardwareHoleRadiusMm],
+        ["plateThicknessMm", this.els.hardwarePlateThicknessMm],
+        ["jointStackHeightMm", this.els.hardwareJointStackHeightMm],
+        ["bossRadiusMm", this.els.hardwareBossRadiusMm],
+      ];
+    }
+
+    ensureHardwareProfile() {
+      const defaults = typeof RAD.defaultHardwareProfile === "function" ? RAD.defaultHardwareProfile() : {};
+      this.state.grid.hardwareProfile = {
+        ...defaults,
+        ...(this.state.grid.hardwareProfile || {}),
+        sideLengthMm: Math.max(1e-9, Number(this.state.grid.paperSideLengthMm ?? 35)),
+        fabricationHoleToleranceMm: Math.max(0, Number(this.state.grid.paperHoleToleranceMm ?? 0.1)),
+      };
+      return this.state.grid.hardwareProfile;
+    }
+
+    optionalProfileNumber(value) {
+      if (value === "" || value === null || value === undefined) return null;
+      const numeric = Number(value);
+      return Number.isFinite(numeric) && numeric >= 0 ? numeric : null;
+    }
+
+    profileNumberInputValue(value) {
+      return value === null || value === undefined ? "" : String(value);
+    }
+
+    enforceHardwareProfileRadii(profile) {
+      if (
+        profile.pinRadiusMm !== null &&
+        profile.pinRadiusMm !== undefined &&
+        profile.holeRadiusMm !== null &&
+        profile.holeRadiusMm !== undefined &&
+        profile.holeRadiusMm < profile.pinRadiusMm
+      ) {
+        profile.holeRadiusMm = profile.pinRadiusMm;
+        this.els.hardwareHoleRadiusMm.value = this.profileNumberInputValue(profile.holeRadiusMm);
+      }
+    }
+
+    updateHardwareProfileText(field, value) {
+      const profile = this.ensureHardwareProfile();
+      profile[field] = String(value || "").trim() || (field === "name" ? "paper-reference" : "unspecified");
+      this.updateLabels(null);
+      this.onChange(this.state);
+    }
+
+    updateHardwareProfileNumber(field, value) {
+      const profile = this.ensureHardwareProfile();
+      profile[field] = this.optionalProfileNumber(value);
+      this.enforceHardwareProfileRadii(profile);
+      this.updateLabels(null);
+      this.onChange(this.state);
+    }
+
+    applyHardwareProfile() {
+      this.ensureHardwareProfile();
+      if (typeof RAD.applyHardwareProfileToGrid === "function") RAD.applyHardwareProfileToGrid(this.state);
+      if (this.state.grid.holeRadius < this.state.grid.pinRadius) this.state.grid.holeRadius = this.state.grid.pinRadius;
+      this.syncControls();
+      this.onChange(this.state);
+    }
+
+    clearHardwareProfileMeasurements() {
+      const profile = this.ensureHardwareProfile();
+      for (const [field, element] of this.hardwareProfileNumberInputs()) {
+        profile[field] = null;
+        element.value = "";
+      }
+      this.updateLabels(null);
+      this.onChange(this.state);
+    }
+
     applySelected() {
       const { r, c } = this.state.selection;
       if (!this.state.experiment.initialSnapshot) this.state.experiment.initialSnapshot = RAD.snapshotState(this.state);
@@ -805,6 +900,12 @@
       this.els.holeRadius.value = s.grid.holeRadius ?? 0.225;
       this.els.paperSideLengthMm.value = s.grid.paperSideLengthMm ?? 35;
       this.els.paperHoleToleranceMm.value = s.grid.paperHoleToleranceMm ?? 0.1;
+      const profile = typeof RAD.hardwareProfile === "function" ? RAD.hardwareProfile(s) : this.ensureHardwareProfile();
+      this.els.hardwareProfileName.value = profile.name || "paper-reference";
+      this.els.hardwareProfileSource.value = profile.source || "unspecified";
+      for (const [field, element] of this.hardwareProfileNumberInputs()) {
+        element.value = this.profileNumberInputValue(profile[field]);
+      }
       this.els.paintRadius.value = Math.max(0, Math.min(2, Number(s.view.paintRadius || 0)));
       this.els.cellVisualMode.value = s.view.cellVisualMode || "abstract";
       this.els.simulationMode.value = s.view.simulationMode || "kinematic";

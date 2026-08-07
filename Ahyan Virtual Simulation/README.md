@@ -133,7 +133,11 @@ simulator values can be compared against prototype measurements without
 changing the normalized solver. Browser JSON now also carries a
 `grid.hardwareProfile` record for measured dimensions such as pin radius, hole
 radius, plate thickness, joint stack height, and boss radius; the Lattice panel
-reports how many of those measurements are present and which are still missing.
+now includes a compact measured-profile editor, reports how many of those
+measurements are present, and lists which are still missing. `Apply Measured
+Dims` deliberately maps measured backlash, pin radius, and hole radius back into
+the normalized backlash/free-play controls; unfilled fields remain calibration
+gaps instead of silently changing the solver.
 For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
 paper RAD lattice into extruded plate, pin, and connector mesh components, and
 `export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for
@@ -519,6 +523,8 @@ without requiring Playwright or a browser binary.
 - `RADHardwareProfile` / `web/math.js` `calibrationProfileSummary`: measured
   hardware profile scaffolding that tracks pin, hole, plate, stack, and boss
   dimensions before they are allowed to replace normalized model assumptions.
+  The browser editor saves those values in `grid.hardwareProfile` and only
+  applies measured backlash/radii to normalized controls on explicit command.
 - `web/analysis.js` `characterizeLocalResponse`: browser-side single, pair,
   cluster, and active-lattice response experiment metrics with superposition
   residuals, pairwise operator-interaction counts and hotspot maps, local

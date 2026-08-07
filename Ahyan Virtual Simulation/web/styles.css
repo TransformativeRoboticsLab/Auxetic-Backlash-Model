@@ -733,6 +733,7 @@ label {
 }
 
 label input[type="range"],
+label input[type="number"],
 label input[type="text"],
 label textarea,
 label select {
@@ -741,6 +742,7 @@ label select {
 }
 
 select,
+input[type="number"],
 input[type="text"],
 textarea {
   min-height: 36px;
@@ -766,6 +768,27 @@ output {
   color: var(--muted);
   font-size: 0.78rem;
   line-height: 1.35;
+}
+
+.calibration-editor {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.calibration-editor label {
+  margin-top: 0;
+  font-size: 0.78rem;
+}
+
+.calibration-editor label:first-child,
+.calibration-editor label:nth-child(2) {
+  grid-column: 1 / -1;
+}
+
+.calibration-actions {
+  margin-top: 10px;
 }
 
 .toggle {
