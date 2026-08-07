@@ -208,6 +208,9 @@
         initialSnapshot: null,
         characterizationScope: "single",
         characterization: null,
+        calibrationResults: null,
+        calibrationComparison: null,
+        calibrationComparisonSummary: null,
         notes: "",
       },
     };

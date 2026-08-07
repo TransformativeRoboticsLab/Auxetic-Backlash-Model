@@ -373,7 +373,9 @@
             <button id="selectInteractionHotspot" type="button">Select Hotspot</button>
             <button id="saveExperimentProtocol" type="button">Save Protocol</button>
             <button id="saveResultsTemplate" type="button">Save Results Template</button>
+            <button id="loadResultsJson" type="button">Load Results</button>
           </div>
+          <input id="calibrationResultsFileInput" class="hidden-file" type="file" accept="application/json,.json" />
           <div class="selected-readout">
             <span id="characterizationSummary">No response run</span>
             <span id="characterizationDetail">reach a0 z0</span>
@@ -398,6 +400,10 @@
           <div class="selected-readout">
             <span id="characterizationDecay">decay a0.00 z0.00</span>
             <span id="characterizationDecayLength">len a0.0 z0.0</span>
+          </div>
+          <div class="selected-readout">
+            <span id="calibrationResultsSummary">calibration results none</span>
+            <span id="calibrationResultsError">height rmse --</span>
           </div>
         </section>
 

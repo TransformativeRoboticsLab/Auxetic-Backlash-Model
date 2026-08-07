@@ -88,6 +88,7 @@
         sequenceChart: document.getElementById("sequenceChart"),
         fileInput: document.getElementById("fileInput"),
         sequenceFileInput: document.getElementById("sequenceFileInput"),
+        calibrationResultsFileInput: document.getElementById("calibrationResultsFileInput"),
         saveObj: document.getElementById("saveObj"),
         provenancePaper: document.getElementById("provenancePaper"),
         provenanceAssumptions: document.getElementById("provenanceAssumptions"),
@@ -497,6 +498,8 @@
       document.getElementById("selectInteractionHotspot").addEventListener("click", () => this.selectInteractionHotspot());
       document.getElementById("saveExperimentProtocol").addEventListener("click", () => this.saveExperimentProtocol());
       document.getElementById("saveResultsTemplate").addEventListener("click", () => this.saveResultsTemplate());
+      document.getElementById("loadResultsJson").addEventListener("click", () => this.els.calibrationResultsFileInput.click());
+      this.els.calibrationResultsFileInput.addEventListener("change", () => this.loadCalibrationResults());
       document.getElementById("playTimeline").addEventListener("click", () => this.toggleTimeline());
       document.getElementById("stepTimeline").addEventListener("click", () => this.stepTimeline());
       document.getElementById("captureKeyframe").addEventListener("click", () => this.captureKeyframe());
@@ -1152,6 +1155,7 @@
         document.getElementById("characterizationPhysicalMax").textContent = "phys max 0.000";
         document.getElementById("characterizationDecay").textContent = "decay a0.00 z0.00";
         document.getElementById("characterizationDecayLength").textContent = "len a0.0 z0.0";
+        this.renderCalibrationResults();
         return;
       }
       const superposition = result.superpositionSkipped
@@ -1177,6 +1181,24 @@
       document.getElementById("characterizationPhysicalMax").textContent = physicalMaxLabel;
       document.getElementById("characterizationDecay").textContent = `decay a${Number(result.alphaDecayRatio || 0).toFixed(2)} z${Number(result.zDecayRatio || 0).toFixed(2)}`;
       document.getElementById("characterizationDecayLength").textContent = `len a${Number(result.alphaDecayLength || 0).toFixed(1)} z${Number(result.zDecayLength || 0).toFixed(1)}`;
+      this.renderCalibrationResults();
+    }
+
+    renderCalibrationResults() {
+      const summary = this.state.experiment.calibrationComparisonSummary;
+      if (!summary) {
+        document.getElementById("calibrationResultsSummary").textContent = "calibration results none";
+        document.getElementById("calibrationResultsError").textContent = "height rmse --";
+        return;
+      }
+      const measured = Number(summary.measuredCellCount || 0);
+      const missing = Number(summary.missingObservationCount || 0);
+      const stepCount = Number(summary.stepCount || 0);
+      const height = summary.heightRmseMean === null || summary.heightRmseMean === undefined ? "--" : Number(summary.heightRmseMean).toFixed(4);
+      const alpha = summary.alphaRmseMean === null || summary.alphaRmseMean === undefined ? "--" : Number(summary.alphaRmseMean).toFixed(4);
+      const worst = summary.worstStepId ? ` worst ${summary.worstStepId}` : "";
+      document.getElementById("calibrationResultsSummary").textContent = `cal results ${stepCount} steps, ${measured} cells, missing ${missing}`;
+      document.getElementById("calibrationResultsError").textContent = `height ${height}, alpha ${alpha}${worst}`;
     }
 
     strongestInteractionHotspot(result) {
@@ -1404,6 +1426,31 @@
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
+    }
+
+    loadCalibrationResults() {
+      const file = this.els.calibrationResultsFileInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const results = JSON.parse(String(reader.result));
+          const comparison = RAD.compareCalibrationExperimentResults(this.state, results);
+          const summary =
+            typeof RAD.summarizeCalibrationComparison === "function"
+              ? RAD.summarizeCalibrationComparison(comparison)
+              : { stepCount: comparison.comparisons?.length || 0 };
+          this.state.experiment.calibrationResults = results;
+          this.state.experiment.calibrationComparison = comparison;
+          this.state.experiment.calibrationComparisonSummary = summary;
+          this.renderCalibrationResults();
+          this.onChange(this.state);
+        } catch (error) {
+          window.alert(error.message);
+        }
+      };
+      reader.readAsText(file);
+      this.els.calibrationResultsFileInput.value = "";
     }
 
     saveSequence() {

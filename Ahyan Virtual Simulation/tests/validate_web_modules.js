@@ -36,6 +36,7 @@ assert.strictEqual(typeof RAD.exportCalibrationExperimentProtocol, "function", "
 assert.strictEqual(typeof RAD.calibrationExperimentResultsTemplate, "function", "analysis module should expose calibration results template");
 assert.strictEqual(typeof RAD.exportCalibrationExperimentResultsTemplate, "function", "analysis module should export calibration results template");
 assert.strictEqual(typeof RAD.compareCalibrationExperimentResults, "function", "analysis module should compare calibration results");
+assert.strictEqual(typeof RAD.summarizeCalibrationComparison, "function", "analysis module should summarize calibration result comparisons");
 assert.strictEqual(typeof RAD.validateInversePlanPhysical, "function", "inverse module should expose physical inverse validation");
 const provenance = RAD.modelProvenance();
 assert.ok(
@@ -58,6 +59,10 @@ assert.ok(html.includes('value="operatorInteraction"'), "operator interaction ov
 assert.ok(html.includes('id="selectInteractionHotspot"'), "response panel should expose a hotspot selection button");
 assert.ok(html.includes('id="saveExperimentProtocol"'), "response panel should expose a protocol export button");
 assert.ok(html.includes('id="saveResultsTemplate"'), "response panel should expose a results-template export button");
+assert.ok(html.includes('id="loadResultsJson"'), "response panel should expose a results import button");
+assert.ok(html.includes('id="calibrationResultsFileInput"'), "response panel should include hidden calibration results file input");
+assert.ok(html.includes('id="calibrationResultsSummary"'), "response panel should expose calibration result summary");
+assert.ok(html.includes('id="calibrationResultsError"'), "response panel should expose calibration result error readout");
 assert.ok(html.includes('id="characterizationHotspot"'), "response panel should expose a hotspot readout");
 assert.ok(html.includes("./provenance.js"), "provenance module should be loaded by the browser entry");
 assert.ok(html.includes('id="modelProvenanceList"'), "browser UI should expose model provenance list");
@@ -289,6 +294,11 @@ assert.strictEqual(comparison.schema, "rad-sim.calibration-experiment-comparison
 assert.strictEqual(liftComparison.missingObservationCount, 0);
 assert.strictEqual(Number(liftComparison.heightRmse.toFixed(8)), 0);
 assert.strictEqual(Number(liftComparison.meanPinHoleSlipMm.toFixed(8)), 0.11);
+const comparisonSummary = RAD.summarizeCalibrationComparison(comparison);
+assert.strictEqual(comparisonSummary.schema, "rad-sim.calibration-experiment-comparison-summary.v1");
+assert.strictEqual(comparisonSummary.stepCount, comparison.comparisons.length);
+assert.ok(comparisonSummary.measuredCellCount >= liftResult.cells.length);
+assert.strictEqual(Number(comparisonSummary.heightRmseMean.toFixed(8)), 0);
 const appliedProfileState = RAD.createState(2, 2);
 appliedProfileState.grid.cellSize = 1.25;
 appliedProfileState.grid.hardwareProfile = JSON.parse(JSON.stringify(state.grid.hardwareProfile));

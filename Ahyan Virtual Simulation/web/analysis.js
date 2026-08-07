@@ -948,6 +948,40 @@
     };
   }
 
+  function finiteAverage(values) {
+    const finite = values.filter((value) => Number.isFinite(value));
+    if (!finite.length) return null;
+    return finite.reduce((sum, value) => sum + value, 0) / finite.length;
+  }
+
+  function summarizeCalibrationComparison(comparison) {
+    const comparisons = comparison?.comparisons || [];
+    const heightErrors = comparisons.map((item) => item.heightRmse).filter(Number.isFinite);
+    const alphaErrors = comparisons.map((item) => item.alphaRmse).filter(Number.isFinite);
+    const centerErrors = comparisons.map((item) => item.centerRmse).filter(Number.isFinite);
+    const forceValues = comparisons.map((item) => item.meanActuatorForceN).filter(Number.isFinite);
+    const slipValues = comparisons.map((item) => item.meanPinHoleSlipMm).filter(Number.isFinite);
+    let worst = null;
+    for (const item of comparisons) {
+      const value = Number(item.maxAbsHeightError);
+      if (!Number.isFinite(value)) continue;
+      if (!worst || Math.abs(value) > Math.abs(worst.maxAbsHeightError)) worst = item;
+    }
+    return {
+      schema: "rad-sim.calibration-experiment-comparison-summary.v1",
+      stepCount: comparisons.length,
+      measuredCellCount: comparisons.reduce((sum, item) => sum + (Number(item.measuredCellCount) || 0), 0),
+      missingObservationCount: comparisons.reduce((sum, item) => sum + (Number(item.missingObservationCount) || 0), 0),
+      alphaRmseMean: finiteAverage(alphaErrors),
+      heightRmseMean: finiteAverage(heightErrors),
+      centerRmseMean: finiteAverage(centerErrors),
+      maxAbsHeightError: worst ? Number(worst.maxAbsHeightError) : null,
+      worstStepId: worst?.stepId || null,
+      meanActuatorForceN: finiteAverage(forceValues),
+      meanPinHoleSlipMm: finiteAverage(slipValues),
+    };
+  }
+
   function analyzeExperimentSequence(state) {
     const frames = sequenceFrames(state);
     const frameMetrics = frames.map((frame, frameIndex) => {
@@ -1082,6 +1116,7 @@
   RAD.calibrationExperimentResultsTemplate = calibrationExperimentResultsTemplate;
   RAD.exportCalibrationExperimentResultsTemplate = exportCalibrationExperimentResultsTemplate;
   RAD.compareCalibrationExperimentResults = compareCalibrationExperimentResults;
+  RAD.summarizeCalibrationComparison = summarizeCalibrationComparison;
   RAD.physicalPreviewComparison = physicalPreviewComparison;
   RAD.responseDecayProfile = responseDecayProfile;
 })();
