@@ -62,6 +62,7 @@ from .experiments import (
     export_calibration_experiment_comparison_report_json,
     export_calibration_experiment_protocol_json,
     export_calibration_experiment_results_template_json,
+    export_response_matrix_json,
     run_calibration_experiment_protocol,
     response_decay_profile,
 )
@@ -188,6 +189,7 @@ __all__ = [
     "export_calibration_experiment_results_template_json",
     "export_calibration_experiment_comparison_json",
     "export_calibration_experiment_comparison_report_json",
+    "export_response_matrix_json",
     "run_calibration_experiment_protocol",
     "solve_inverse_design",
     "validate_inverse_design_physical",

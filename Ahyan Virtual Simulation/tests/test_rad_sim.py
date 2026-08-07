@@ -48,6 +48,7 @@ from rad_sim import (
     export_calibration_experiment_comparison_json,
     export_calibration_experiment_comparison_report_json,
     export_calibration_experiment_results_template_json,
+    export_response_matrix_json,
     hardware_profile_from_config,
     local_actuation_event,
     lock_event,
@@ -800,6 +801,14 @@ class RadSimTests(unittest.TestCase):
         self.assertGreater(matrix.height_rank, 0)
         self.assertGreater(matrix.reachable_alpha_cells(), 1)
         self.assertGreater(matrix.reachable_height_cells(), 1)
+        payload = matrix.to_dict()
+        self.assertEqual(payload["schema"], "rad-sim.response-matrix.v1")
+        self.assertEqual(payload["grid"], {"rows": 3, "cols": 3})
+        self.assertEqual(len(payload["cellOrder"]), 9)
+        self.assertEqual(payload["diagnostics"]["columnCount"], 4)
+        self.assertEqual(payload["diagnostics"]["alphaRank"], matrix.alpha_rank)
+        self.assertEqual(payload["diagnostics"]["reachableHeightCells"], matrix.reachable_height_cells())
+        self.assertEqual(json.loads(export_response_matrix_json(matrix))["schema"], payload["schema"])
 
     def test_response_matrix_can_select_command_family(self):
         config = LatticeConfig(rows=3, cols=3)

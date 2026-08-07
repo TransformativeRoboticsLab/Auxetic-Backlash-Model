@@ -495,6 +495,7 @@
         this.updateLabels(null);
       });
       document.getElementById("runCharacterization").addEventListener("click", () => this.runCharacterization());
+      document.getElementById("saveResponseMatrix").addEventListener("click", () => this.saveResponseMatrix());
       document.getElementById("selectInteractionHotspot").addEventListener("click", () => this.selectInteractionHotspot());
       document.getElementById("selectCalibrationHotspot").addEventListener("click", () => this.selectCalibrationHotspot());
       document.getElementById("nextCalibrationHotspot").addEventListener("click", () => this.selectCalibrationHotspot(1));
@@ -1451,6 +1452,23 @@
       const link = document.createElement("a");
       link.href = url;
       link.download = "rad-sim-calibration-experiment-protocol.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveResponseMatrix() {
+      const scope = this.els.characterizationScope.value || "single";
+      const payload =
+        typeof RAD.exportResponseMatrix === "function"
+          ? RAD.exportResponseMatrix(this.state, { scope, ...this.state.selection })
+          : JSON.stringify({ schema: "rad-sim.response-matrix.v1" }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `rad-sim-response-matrix-${scope}.json`;
       document.body.appendChild(link);
       link.click();
       link.remove();

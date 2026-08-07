@@ -33,6 +33,8 @@ assert.strictEqual(typeof RAD.physicalPreviewComparison, "function", "analysis m
 assert.strictEqual(typeof RAD.responseDecayProfile, "function", "analysis module should expose response decay profile");
 assert.strictEqual(typeof RAD.calibrationExperimentProtocol, "function", "analysis module should expose calibration experiment protocol");
 assert.strictEqual(typeof RAD.exportCalibrationExperimentProtocol, "function", "analysis module should export calibration experiment protocol");
+assert.strictEqual(typeof RAD.buildResponseMatrix, "function", "analysis module should expose response matrix export");
+assert.strictEqual(typeof RAD.exportResponseMatrix, "function", "analysis module should serialize response matrices");
 assert.strictEqual(typeof RAD.calibrationExperimentResultsTemplate, "function", "analysis module should expose calibration results template");
 assert.strictEqual(typeof RAD.exportCalibrationExperimentResultsTemplate, "function", "analysis module should export calibration results template");
 assert.strictEqual(typeof RAD.compareCalibrationExperimentResults, "function", "analysis module should compare calibration results");
@@ -61,6 +63,7 @@ assert.ok(html.includes('value="operatorInteraction"'), "operator interaction ov
 assert.ok(html.includes('value="calibrationError"'), "calibration error overlay should be available in the browser UI");
 assert.ok(html.includes('value="calibrationResidual"'), "calibration residual overlay should be available in the browser UI");
 assert.ok(html.includes('id="selectInteractionHotspot"'), "response panel should expose a hotspot selection button");
+assert.ok(html.includes('id="saveResponseMatrix"'), "response panel should expose a response-matrix export button");
 assert.ok(html.includes('id="selectCalibrationHotspot"'), "response panel should expose a calibration-error selection button");
 assert.ok(html.includes('id="nextCalibrationHotspot"'), "response panel should expose ranked calibration-error navigation");
 assert.ok(html.includes('id="saveExperimentProtocol"'), "response panel should expose a protocol export button");
@@ -550,6 +553,16 @@ assert.ok(pairCharacterization.reachableAlphaCells > 0, "pair characterization s
 assert.ok(pairCharacterization.reachableHeightCells > 0, "pair characterization should report reachable height cells");
 assert.ok(pairCharacterization.alphaUnderactuatedCells >= 0, "pair characterization should report alpha underactuation");
 assert.ok(pairCharacterization.heightUnderactuatedCells >= 0, "pair characterization should report height underactuation");
+const responseMatrix = RAD.buildResponseMatrix(characterizationState, { r: 2, c: 2, scope: "pair" });
+assert.strictEqual(responseMatrix.schema, "rad-sim.response-matrix.v1");
+assert.strictEqual(responseMatrix.commands.length, responseMatrix.diagnostics.columnCount);
+assert.ok(responseMatrix.commands.length >= 4, "pair response matrix should include alpha and z columns");
+assert.strictEqual(responseMatrix.alpha.length, characterizationState.grid.rows * characterizationState.grid.cols);
+assert.strictEqual(responseMatrix.height.length, characterizationState.grid.rows * characterizationState.grid.cols);
+assert.strictEqual(responseMatrix.alpha[0].length, responseMatrix.commands.length);
+assert.ok(responseMatrix.diagnostics.alphaRank > 0, "response matrix should report alpha rank");
+assert.ok(responseMatrix.diagnostics.reachableHeightCells > 0, "response matrix should report height reachability");
+assert.strictEqual(JSON.parse(RAD.exportResponseMatrix(characterizationState, { r: 2, c: 2, scope: "pair" })).schema, responseMatrix.schema);
 assert.strictEqual(pairCharacterization.decayModel, "log-linear shell max", "characterization should report the decay fitting model");
 assert.ok(Number.isFinite(pairCharacterization.alphaDecayRatio), "pair characterization should report finite alpha decay ratio");
 assert.ok(Number.isFinite(pairCharacterization.zDecayRatio), "pair characterization should report finite z decay ratio");

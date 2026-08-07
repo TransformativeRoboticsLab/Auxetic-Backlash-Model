@@ -42,7 +42,8 @@ order checks now include both the two-event actuation/lock commutator and a
 three-event local sequence probe that reverses the sequence and swaps adjacent
 events, giving a measured `maxOrderError` for path dependence.
 `build_response_matrix` stacks those responses into alpha and height matrices for
-controllability checks and inverse-design experiments.
+controllability checks and inverse-design experiments; the matrix can also be
+serialized as `rad-sim.response-matrix.v1` JSON for lab comparisons.
 `model_provenance` and `provenance_summary` return the current evidence ledger
 for solver features, separating paper-supported equations from assumptions,
 diagnostics, and missing calibration data.
@@ -593,6 +594,9 @@ without requiring Playwright or a browser binary.
   response rank, underactuated-cell counts, browser spring-preview disagreement
   metrics, and log-linear locality/decay estimates for
   programmable-discontinuity studies.
+- `web/analysis.js` `buildResponseMatrix` / `exportResponseMatrix`: browser-side
+  alpha and height response-matrix artifact for the selected single, pair,
+  cluster, or active-lattice actuator set.
 - `web/inverse.js` `validateInversePlanPhysical`: browser-side physical
   validation of analyzed inverse plans and linear fits against spring-preview
   relaxation, including physical target residual and model-disagreement metrics.

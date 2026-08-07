@@ -485,6 +485,100 @@
     };
   }
 
+  function matrixFromColumns(columns, rowCount) {
+    return Array.from({ length: rowCount }, (_, row) => columns.map((column) => Number(column[row]) || 0));
+  }
+
+  function responseMatrixCellOrder(rows, cols) {
+    const cells = [];
+    for (let r = 0; r < rows; r += 1) {
+      for (let c = 0; c < cols; c += 1) cells.push({ index: r * cols + c, row: r, col: c });
+    }
+    return cells;
+  }
+
+  function normalizeMatrixCell(state, cell) {
+    return {
+      r: clampIndex(cell?.r ?? cell?.row ?? 0, state.grid.rows),
+      c: clampIndex(cell?.c ?? cell?.col ?? 0, state.grid.cols),
+    };
+  }
+
+  function buildResponseMatrix(state, options = {}) {
+    const tolerance = Number(options.tolerance ?? 1e-9);
+    const includeAlpha = options.includeAlpha !== false;
+    const includeZ = options.includeZ !== false;
+    if (!includeAlpha && !includeZ) throw new Error("at least one command family must be included");
+    const scope = options.scope || state.experiment?.characterizationScope || "single";
+    const selected = {
+      r: clampIndex(options.r ?? state.selection?.r ?? 0, state.grid.rows),
+      c: clampIndex(options.c ?? state.selection?.c ?? 0, state.grid.cols),
+    };
+    const rawCells = options.actuatorCells || characterizationCells(state, selected.r, selected.c, scope);
+    const sourceCells = uniqueProtocolCells(rawCells.map((cell) => normalizeMatrixCell(state, cell)));
+    const limits = RAD.commandLimits(state);
+    const stepAlpha = Math.min(Math.abs(Number(options.alphaStep ?? 0.12)), limits.alphaContract);
+    const stepZ = Math.min(Math.abs(Number(options.zStep ?? 0.12)), limits.z);
+    const baselineState = scopedState(state, []);
+    const baselineSim = RAD.simulate(baselineState);
+    const alphaColumns = [];
+    const heightColumns = [];
+    const commands = [];
+    const pushColumn = (cell, family, commandAlpha, commandZ) => {
+      const nextState = scopedState(state, []);
+      nextState.cells.commandAlpha[cell.r][cell.c] = commandAlpha;
+      nextState.cells.commandZ[cell.r][cell.c] = commandZ;
+      const nextSim = RAD.simulate(nextState);
+      alphaColumns.push(responseVector(nextSim, baselineSim, "alpha"));
+      heightColumns.push(responseVector(nextSim, baselineSim, "height"));
+      commands.push({
+        index: commands.length,
+        row: cell.r,
+        col: cell.c,
+        family,
+        alpha: commandAlpha,
+        z: commandZ,
+        locked: Boolean(state.cells.locked?.[cell.r]?.[cell.c]),
+      });
+    };
+    for (const cell of sourceCells) {
+      if (includeAlpha && stepAlpha > tolerance) pushColumn(cell, "alpha", -stepAlpha, 0);
+      if (includeZ && stepZ > tolerance) pushColumn(cell, "z", 0, stepZ);
+    }
+    const totalCells = state.grid.rows * state.grid.cols;
+    const reachableAlphaCells = countReachableFromColumns(alphaColumns, tolerance);
+    const reachableHeightCells = countReachableFromColumns(heightColumns, tolerance);
+    return {
+      schema: "rad-sim.response-matrix.v1",
+      grid: { rows: state.grid.rows, cols: state.grid.cols },
+      source: {
+        scope,
+        selected,
+        actuatorCellCount: sourceCells.length,
+        alphaStep: -stepAlpha,
+        zStep: stepZ,
+      },
+      cellOrder: responseMatrixCellOrder(state.grid.rows, state.grid.cols),
+      commands,
+      alpha: matrixFromColumns(alphaColumns, totalCells),
+      height: matrixFromColumns(heightColumns, totalCells),
+      diagnostics: {
+        columnCount: commands.length,
+        alphaRank: matrixRankFromColumns(alphaColumns, tolerance),
+        heightRank: matrixRankFromColumns(heightColumns, tolerance),
+        reachableAlphaCells,
+        reachableHeightCells,
+        alphaUnderactuatedCells: Math.max(0, totalCells - reachableAlphaCells),
+        heightUnderactuatedCells: Math.max(0, totalCells - reachableHeightCells),
+        tolerance,
+      },
+    };
+  }
+
+  function exportResponseMatrix(state, options = {}) {
+    return JSON.stringify(buildResponseMatrix(state, options), null, 2);
+  }
+
   function nearestSourceDistance(r, c, sourceCells) {
     let best = Infinity;
     for (const source of sourceCells) best = Math.min(best, Math.abs(r - source.r) + Math.abs(c - source.c));
@@ -1331,6 +1425,8 @@
   RAD.analyzeExperimentSequence = analyzeExperimentSequence;
   RAD.exportSequenceMetricsCsv = exportSequenceMetricsCsv;
   RAD.characterizeLocalResponse = characterizeLocalResponse;
+  RAD.buildResponseMatrix = buildResponseMatrix;
+  RAD.exportResponseMatrix = exportResponseMatrix;
   RAD.calibrationExperimentProtocol = calibrationExperimentProtocol;
   RAD.exportCalibrationExperimentProtocol = exportCalibrationExperimentProtocol;
   RAD.calibrationExperimentResultsTemplate = calibrationExperimentResultsTemplate;

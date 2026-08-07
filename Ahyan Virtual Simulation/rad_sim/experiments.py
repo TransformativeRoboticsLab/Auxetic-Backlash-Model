@@ -186,6 +186,59 @@ class ResponseMatrix:
     def reachable_height_cells(self, tolerance: float = 1e-9) -> int:
         return int(np.count_nonzero(np.any(np.abs(self.height) > tolerance, axis=1)))
 
+    def alpha_underactuated_cells(self, tolerance: float = 1e-9) -> int:
+        return max(0, self.cell_shape[0] * self.cell_shape[1] - self.reachable_alpha_cells(tolerance))
+
+    def height_underactuated_cells(self, tolerance: float = 1e-9) -> int:
+        return max(0, self.cell_shape[0] * self.cell_shape[1] - self.reachable_height_cells(tolerance))
+
+    def to_dict(self, tolerance: float = 1e-9) -> dict[str, object]:
+        rows, cols = self.cell_shape
+
+        def command_family(command: SourceCommand) -> str:
+            has_alpha = abs(command.alpha) > tolerance
+            has_z = abs(command.z) > tolerance
+            if has_alpha and has_z:
+                return "combined"
+            if has_alpha:
+                return "alpha"
+            if has_z:
+                return "z"
+            return "zero"
+
+        return {
+            "schema": "rad-sim.response-matrix.v1",
+            "grid": {"rows": rows, "cols": cols},
+            "cellOrder": [
+                {"index": row * cols + col, "row": row, "col": col}
+                for row in range(rows)
+                for col in range(cols)
+            ],
+            "commands": [
+                {
+                    "index": index,
+                    "row": command.cell[0],
+                    "col": command.cell[1],
+                    "family": command_family(command),
+                    "alpha": command.alpha,
+                    "z": command.z,
+                }
+                for index, command in enumerate(self.commands)
+            ],
+            "alpha": self.alpha.tolist(),
+            "height": self.height.tolist(),
+            "diagnostics": {
+                "columnCount": len(self.commands),
+                "alphaRank": self.alpha_rank,
+                "heightRank": self.height_rank,
+                "reachableAlphaCells": self.reachable_alpha_cells(tolerance),
+                "reachableHeightCells": self.reachable_height_cells(tolerance),
+                "alphaUnderactuatedCells": self.alpha_underactuated_cells(tolerance),
+                "heightUnderactuatedCells": self.height_underactuated_cells(tolerance),
+                "tolerance": tolerance,
+            },
+        }
+
 
 PROTOCOL_MEASUREMENT_FIELDS: tuple[str, ...] = (
     "alpha_delta_grid",
@@ -1606,3 +1659,11 @@ def build_response_matrix(
         height=height_matrix,
         cell_shape=(config.rows, config.cols),
     )
+
+
+def export_response_matrix_json(
+    matrix: ResponseMatrix,
+    *,
+    tolerance: float = 1e-9,
+) -> str:
+    return json.dumps(matrix.to_dict(tolerance=tolerance), indent=2)
