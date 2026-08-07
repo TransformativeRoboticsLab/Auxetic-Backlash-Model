@@ -42,8 +42,8 @@ controllability checks and inverse-design experiments.
 distance from active source cells, matching the browser Response Experiments
 decay readout for notebook-side locality studies.
 `characterize_pairwise_interactions` evaluates command pairs and builds
-alpha/height residual matrices that identify which local operators are
-responsible for non-additive composition.
+alpha/height residual matrices plus a per-cell hotspot map that identify which
+local operators are responsible for non-additive composition.
 `diagnose_programmable_discontinuity` packages the same response fields into an
 operator diagnostic: locality radius, reachable cells, response rank,
 underactuated cells, fitted decay ratio/length, pairwise interaction graph,
@@ -475,11 +475,12 @@ without requiring Playwright or a browser binary.
   checks, adjacent-swap sensitivity, and event-order noncommutativity.
 - `diagnose_programmable_discontinuity`: Python operator diagnostic for locality,
   reachable sets, response rank, underactuated regions, shellwise response decay,
-  pairwise interaction matrices, and additive versus non-additive operator
-  composition. When given an `event_sequence`, it also reports
+  pairwise interaction matrices/hotspot maps, and additive versus non-additive
+  operator composition. When given an `event_sequence`, it also reports
   reversal/adjacent-swap order sensitivity.
 - `characterize_pairwise_interactions`: Python pairwise command interaction graph
-  for identifying which actuation operators create non-additive residuals.
+  for identifying which actuation operators create non-additive residuals and
+  mapping each command cell's strongest pair residual.
 - `response_decay_profile`: Python log-linear shell-max locality diagnostic that
   mirrors the browser Response Experiments decay ratio/length readout.
 - `solve_inverse_design`: bounded damped least-squares inverse design using

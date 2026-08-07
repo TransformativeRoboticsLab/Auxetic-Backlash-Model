@@ -86,6 +86,7 @@ class OperatorInteractionGraph:
     interactions: tuple[OperatorPairInteraction, ...]
     alpha_error_matrix: np.ndarray
     height_error_matrix: np.ndarray
+    interaction_hotspot_map: np.ndarray
     total_pair_count: int
     truncated: bool
     tolerance: float
@@ -113,6 +114,12 @@ class OperatorInteractionGraph:
     @property
     def max_interaction_error(self) -> float:
         return max(self.max_alpha_error, self.max_height_error)
+
+    @property
+    def max_hotspot_error(self) -> float:
+        if self.interaction_hotspot_map.size == 0:
+            return 0.0
+        return float(np.max(self.interaction_hotspot_map))
 
 
 @dataclass(frozen=True)
@@ -400,12 +407,14 @@ def characterize_pairwise_interactions(
     total_pair_count = command_count * (command_count - 1) // 2
     alpha_error_matrix = np.zeros((command_count, command_count), dtype=float)
     height_error_matrix = np.zeros((command_count, command_count), dtype=float)
+    interaction_hotspot_map = np.zeros((config.rows, config.cols), dtype=float)
     if command_count < 2:
         return OperatorInteractionGraph(
             commands=command_tuple,
             interactions=(),
             alpha_error_matrix=alpha_error_matrix,
             height_error_matrix=height_error_matrix,
+            interaction_hotspot_map=interaction_hotspot_map,
             total_pair_count=total_pair_count,
             truncated=False,
             tolerance=tolerance,
@@ -426,6 +435,7 @@ def characterize_pairwise_interactions(
                     interactions=tuple(interactions),
                     alpha_error_matrix=alpha_error_matrix,
                     height_error_matrix=height_error_matrix,
+                    interaction_hotspot_map=interaction_hotspot_map,
                     total_pair_count=total_pair_count,
                     truncated=True,
                     tolerance=tolerance,
@@ -450,6 +460,14 @@ def characterize_pairwise_interactions(
             alpha_error_matrix[second_index, first_index] = alpha_error
             height_error_matrix[first_index, second_index] = height_error
             height_error_matrix[second_index, first_index] = height_error
+            max_error = max(alpha_error, height_error)
+            for command in (first, second):
+                row, col = command.cell
+                if 0 <= row < config.rows and 0 <= col < config.cols:
+                    interaction_hotspot_map[row, col] = max(
+                        interaction_hotspot_map[row, col],
+                        max_error,
+                    )
             distance = abs(first.cell[0] - second.cell[0]) + abs(first.cell[1] - second.cell[1])
             interactions.append(
                 OperatorPairInteraction(
@@ -470,6 +488,7 @@ def characterize_pairwise_interactions(
         interactions=tuple(interactions),
         alpha_error_matrix=alpha_error_matrix,
         height_error_matrix=height_error_matrix,
+        interaction_hotspot_map=interaction_hotspot_map,
         total_pair_count=total_pair_count,
         truncated=False,
         tolerance=tolerance,

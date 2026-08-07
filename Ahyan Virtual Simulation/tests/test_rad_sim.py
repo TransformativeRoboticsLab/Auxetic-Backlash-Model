@@ -556,6 +556,9 @@ class RadSimTests(unittest.TestCase):
         self.assertFalse(graph.truncated)
         self.assertEqual(graph.nonadditive_pair_count, 1)
         self.assertGreater(graph.max_alpha_error, 0.0)
+        self.assertEqual(graph.interaction_hotspot_map.shape, (3, 3))
+        self.assertGreater(graph.interaction_hotspot_map[1, 1], 0.0)
+        self.assertEqual(graph.max_hotspot_error, graph.interaction_hotspot_map[1, 1])
         self.assertEqual(graph.interactions[0].manhattan_distance, 0)
         self.assertTrue(graph.interactions[0].nonadditive)
         np.testing.assert_allclose(graph.alpha_error_matrix, graph.alpha_error_matrix.T)
@@ -624,6 +627,8 @@ class RadSimTests(unittest.TestCase):
         self.assertIsNotNone(diagnostic.pairwise_interactions)
         self.assertEqual(diagnostic.nonadditive_pair_count, 1)
         self.assertGreater(diagnostic.max_pairwise_interaction_error, 0.0)
+        self.assertEqual(diagnostic.pairwise_interaction_hotspot_map.shape, (3, 3))
+        self.assertGreater(diagnostic.max_pairwise_hotspot_error, 0.0)
 
     def test_physical_response_comparison_reports_spring_hinge_deviation(self):
         config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.0)
