@@ -577,6 +577,9 @@ without requiring Playwright or a browser binary.
   helpers: fillable bench-results schema plus simulator-vs-measurement error
   report for the calibration protocol. The browser can import a completed
   results JSON and summarize the comparison in the Response Experiments panel.
+  `calibration_experiment_comparison_report` and the browser `Save Comparison`
+  action add per-cell raw/residual fields plus measured-vs-simulated gain and
+  bias diagnostics without mutating solver parameters.
 - `web/renderer.js` `calibratedRad` mode and `web/mesh_export.js`
   `calibratedMeshDimensions`: profile-aware visual/export layer that uses
   measured dimensions for CAD-like inspection while keeping solver assumptions

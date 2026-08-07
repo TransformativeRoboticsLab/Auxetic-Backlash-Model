@@ -338,6 +338,10 @@ class CalibrationExperimentComparison:
     max_abs_height_error: float | None
     mean_actuator_force_n: float | None
     mean_pin_hole_slip_mm: float | None
+    mean_signed_alpha_error: float | None = None
+    mean_signed_height_error: float | None = None
+    mean_abs_alpha_error: float | None = None
+    mean_abs_height_error: float | None = None
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -349,6 +353,10 @@ class CalibrationExperimentComparison:
             "heightRmse": self.height_rmse,
             "centerRmse": self.center_rmse,
             "maxAbsHeightError": self.max_abs_height_error,
+            "meanSignedAlphaError": self.mean_signed_alpha_error,
+            "meanSignedHeightError": self.mean_signed_height_error,
+            "meanAbsAlphaError": self.mean_abs_alpha_error,
+            "meanAbsHeightError": self.mean_abs_height_error,
             "meanActuatorForceN": self.mean_actuator_force_n,
             "meanPinHoleSlipMm": self.mean_pin_hole_slip_mm,
         }
@@ -963,6 +971,175 @@ def _mean_optional(values: list[float]) -> float | None:
     return float(np.mean(np.asarray(values, dtype=float)))
 
 
+CalibrationPair = tuple[int, int, float, float]
+
+
+def _calibration_linear_fit(pairs: list[CalibrationPair]) -> dict[str, object]:
+    sample_count = len(pairs)
+    if not pairs:
+        return {
+            "sampleCount": 0,
+            "gain": None,
+            "bias": None,
+            "suggestedGain": None,
+            "suggestedBias": None,
+            "gainIdentifiable": False,
+            "rmsRawError": None,
+            "rmsResidual": None,
+            "meanPredicted": None,
+            "meanMeasured": None,
+            "predictedRange": None,
+            "measuredRange": None,
+        }
+    predicted = np.asarray([pair[2] for pair in pairs], dtype=float)
+    measured = np.asarray([pair[3] for pair in pairs], dtype=float)
+    mean_predicted = float(np.mean(predicted))
+    mean_measured = float(np.mean(measured))
+    variance = float(np.sum((predicted - mean_predicted) ** 2))
+    covariance = float(np.sum((predicted - mean_predicted) * (measured - mean_measured)))
+    gain_identifiable = variance > 1e-12
+    gain = covariance / variance if gain_identifiable else None
+    suggested_gain = gain if gain_identifiable else 1.0
+    bias = (
+        mean_measured - suggested_gain * mean_predicted
+        if gain_identifiable
+        else float(np.mean(measured - predicted))
+    )
+    residuals = measured - (suggested_gain * predicted + bias)
+    raw_errors = measured - predicted
+    return {
+        "sampleCount": sample_count,
+        "gain": gain,
+        "bias": bias,
+        "suggestedGain": suggested_gain,
+        "suggestedBias": bias,
+        "gainIdentifiable": gain_identifiable,
+        "rmsRawError": float(np.sqrt(np.mean(raw_errors**2))),
+        "rmsResidual": float(np.sqrt(np.mean(residuals**2))),
+        "meanPredicted": mean_predicted,
+        "meanMeasured": mean_measured,
+        "predictedRange": [float(np.min(predicted)), float(np.max(predicted))],
+        "measuredRange": [float(np.min(measured)), float(np.max(measured))],
+    }
+
+
+def _calibration_error_field(
+    config: LatticeConfig,
+    alpha_pairs: list[CalibrationPair],
+    height_pairs: list[CalibrationPair],
+    *,
+    fit: dict[str, object] | None = None,
+) -> dict[str, object]:
+    alpha_error = np.zeros((config.rows, config.cols), dtype=float)
+    height_error = np.zeros((config.rows, config.cols), dtype=float)
+    sample_count = np.zeros((config.rows, config.cols), dtype=int)
+    alpha_sample_count = np.zeros((config.rows, config.cols), dtype=int)
+    height_sample_count = np.zeros((config.rows, config.cols), dtype=int)
+    touched: set[tuple[int, int]] = set()
+    alpha_fit = fit.get("alpha", {}) if isinstance(fit, dict) else {}
+    height_fit = fit.get("height", {}) if isinstance(fit, dict) else {}
+    alpha_gain = float(alpha_fit.get("suggestedGain") or 1.0)
+    alpha_bias = float(alpha_fit.get("suggestedBias") or 0.0)
+    height_gain = float(height_fit.get("suggestedGain") or 1.0)
+    height_bias = float(height_fit.get("suggestedBias") or 0.0)
+    for row, col, predicted, measured in alpha_pairs:
+        error = measured - (alpha_gain * predicted + alpha_bias)
+        alpha_error[row, col] += error
+        alpha_sample_count[row, col] += 1
+        touched.add((row, col))
+    for row, col, predicted, measured in height_pairs:
+        error = measured - (height_gain * predicted + height_bias)
+        height_error[row, col] += error
+        height_sample_count[row, col] += 1
+        touched.add((row, col))
+    for row, col in touched:
+        sample_count[row, col] += 1
+    nonzero_alpha = alpha_sample_count > 0
+    nonzero_height = height_sample_count > 0
+    alpha_error[nonzero_alpha] = alpha_error[nonzero_alpha] / alpha_sample_count[nonzero_alpha]
+    height_error[nonzero_height] = height_error[nonzero_height] / height_sample_count[nonzero_height]
+    combined = np.hypot(alpha_error, height_error)
+    max_combined = float(np.max(combined)) if combined.size else 0.0
+    worst_cell = None
+    if np.any(sample_count > 0):
+        row, col = np.unravel_index(int(np.argmax(combined)), combined.shape)
+        worst_cell = {
+            "row": int(row),
+            "col": int(col),
+            "alphaError": float(alpha_error[row, col]),
+            "heightError": float(height_error[row, col]),
+            "combinedError": float(combined[row, col]),
+            "sampleCount": int(sample_count[row, col]),
+            "alphaSampleCount": int(alpha_sample_count[row, col]),
+            "heightSampleCount": int(height_sample_count[row, col]),
+        }
+    return {
+        "alphaError": alpha_error.tolist(),
+        "heightError": height_error.tolist(),
+        "combinedError": combined.tolist(),
+        "sampleCount": sample_count.tolist(),
+        "alphaSampleCount": alpha_sample_count.tolist(),
+        "heightSampleCount": height_sample_count.tolist(),
+        "maxAbsAlphaError": float(np.max(np.abs(alpha_error))) if alpha_error.size else 0.0,
+        "maxAbsHeightError": float(np.max(np.abs(height_error))) if height_error.size else 0.0,
+        "maxCombinedError": max_combined,
+        "worstCell": worst_cell,
+    }
+
+
+def _summarize_calibration_comparison(
+    comparisons: tuple[CalibrationExperimentComparison, ...],
+    field: dict[str, object],
+    fit: dict[str, object],
+    fit_residual_field: dict[str, object],
+) -> dict[str, object]:
+    height_rmse = [item.height_rmse for item in comparisons if item.height_rmse is not None]
+    alpha_rmse = [item.alpha_rmse for item in comparisons if item.alpha_rmse is not None]
+    center_rmse = [item.center_rmse for item in comparisons if item.center_rmse is not None]
+    signed_alpha = [
+        item.mean_signed_alpha_error
+        for item in comparisons
+        if item.mean_signed_alpha_error is not None
+    ]
+    signed_height = [
+        item.mean_signed_height_error
+        for item in comparisons
+        if item.mean_signed_height_error is not None
+    ]
+    abs_alpha = [item.mean_abs_alpha_error for item in comparisons if item.mean_abs_alpha_error is not None]
+    abs_height = [item.mean_abs_height_error for item in comparisons if item.mean_abs_height_error is not None]
+    force = [item.mean_actuator_force_n for item in comparisons if item.mean_actuator_force_n is not None]
+    slip = [item.mean_pin_hole_slip_mm for item in comparisons if item.mean_pin_hole_slip_mm is not None]
+    worst = max(
+        (item for item in comparisons if item.max_abs_height_error is not None),
+        key=lambda item: abs(float(item.max_abs_height_error)),
+        default=None,
+    )
+    return {
+        "schema": "rad-sim.calibration-experiment-comparison-summary.v1",
+        "stepCount": len(comparisons),
+        "measuredCellCount": sum(item.measured_cell_count for item in comparisons),
+        "missingObservationCount": sum(item.missing_observation_count for item in comparisons),
+        "alphaRmseMean": _mean_optional(alpha_rmse),
+        "heightRmseMean": _mean_optional(height_rmse),
+        "centerRmseMean": _mean_optional(center_rmse),
+        "meanSignedAlphaError": _mean_optional(signed_alpha),
+        "meanSignedHeightError": _mean_optional(signed_height),
+        "meanAbsAlphaError": _mean_optional(abs_alpha),
+        "meanAbsHeightError": _mean_optional(abs_height),
+        "fit": fit,
+        "fitResidualMaxCombinedError": fit_residual_field.get("maxCombinedError"),
+        "fitResidualWorstCell": fit_residual_field.get("worstCell"),
+        "maxAbsHeightError": worst.max_abs_height_error if worst else None,
+        "maxAbsAlphaError": field.get("maxAbsAlphaError"),
+        "maxCombinedError": field.get("maxCombinedError"),
+        "worstCell": field.get("worstCell"),
+        "worstStepId": worst.step_id if worst else None,
+        "meanActuatorForceN": _mean_optional(force),
+        "meanPinHoleSlipMm": _mean_optional(slip),
+    }
+
+
 def compare_calibration_experiment_measurements(
     config: LatticeConfig,
     protocol: CalibrationExperimentProtocol,
@@ -1040,9 +1217,143 @@ def compare_calibration_experiment_measurements(
                 ),
                 mean_actuator_force_n=_mean_optional(force_values),
                 mean_pin_hole_slip_mm=_mean_optional(slip_values),
+                mean_signed_alpha_error=_mean_optional(alpha_errors),
+                mean_signed_height_error=_mean_optional(height_errors),
+                mean_abs_alpha_error=_mean_optional([abs(value) for value in alpha_errors]),
+                mean_abs_height_error=_mean_optional([abs(value) for value in height_errors]),
             )
         )
     return tuple(comparisons)
+
+
+def calibration_experiment_comparison_report(
+    config: LatticeConfig,
+    protocol: CalibrationExperimentProtocol,
+    measurements: CalibrationExperimentMeasurements,
+    *,
+    tolerance: float = 1e-9,
+) -> dict[str, object]:
+    """Build a JSON-ready simulator-vs-bench calibration comparison report."""
+
+    protocol_steps = {step.id: step for step in protocol.steps}
+    comparisons: list[CalibrationExperimentComparison] = []
+    alpha_pairs: list[CalibrationPair] = []
+    height_pairs: list[CalibrationPair] = []
+    for measured_step in measurements.steps:
+        step = protocol_steps.get(measured_step.step_id)
+        if step is None:
+            continue
+        response = characterize_response(
+            config,
+            step.commands,
+            locked_cells=step.locked_cells,
+            tolerance=tolerance,
+        )
+        baseline = simulate_kinematic(
+            config,
+            _state_with_commands(config, (), step.locked_cells),
+        )
+        result = simulate_kinematic(
+            config,
+            _state_with_commands(config, step.commands, step.locked_cells),
+        )
+        center_delta = result.deformed_centers_3d - baseline.deformed_centers_3d
+        observed = {measurement.cell: measurement for measurement in measured_step.cells}
+        alpha_errors: list[float] = []
+        height_errors: list[float] = []
+        center_errors: list[float] = []
+        slip_values: list[float] = []
+        force_values: list[float] = []
+        for measurement in measured_step.cells:
+            row, col = measurement.cell
+            if not (0 <= row < config.rows and 0 <= col < config.cols):
+                continue
+            if measurement.alpha_delta is not None:
+                predicted = float(response.alpha_delta[row, col])
+                alpha_errors.append(measurement.alpha_delta - predicted)
+                alpha_pairs.append((row, col, predicted, measurement.alpha_delta))
+            if measurement.height_delta is not None:
+                predicted = float(response.height_delta[row, col])
+                height_errors.append(measurement.height_delta - predicted)
+                height_pairs.append((row, col, predicted, measurement.height_delta))
+            if measurement.center_delta is not None:
+                simulated_center = center_delta[row, col, :]
+                center_errors.append(
+                    float(
+                        np.linalg.norm(
+                            np.asarray(measurement.center_delta, dtype=float)
+                            - simulated_center
+                        )
+                    )
+                )
+            if measurement.pin_hole_slip_mm is not None:
+                slip_values.append(measurement.pin_hole_slip_mm)
+            if measurement.actuator_force_n is not None:
+                force_values.append(measurement.actuator_force_n)
+        missing = sum(1 for cell in step.observation_cells if cell not in observed)
+        comparisons.append(
+            CalibrationExperimentComparison(
+                step_id=measured_step.step_id,
+                repeat_index=measured_step.repeat_index,
+                measured_cell_count=len(observed),
+                missing_observation_count=missing,
+                alpha_rmse=_rmse(alpha_errors),
+                height_rmse=_rmse(height_errors),
+                center_rmse=_rmse(center_errors),
+                max_abs_height_error=(
+                    max(abs(value) for value in height_errors) if height_errors else None
+                ),
+                mean_actuator_force_n=_mean_optional(force_values),
+                mean_pin_hole_slip_mm=_mean_optional(slip_values),
+                mean_signed_alpha_error=_mean_optional(alpha_errors),
+                mean_signed_height_error=_mean_optional(height_errors),
+                mean_abs_alpha_error=_mean_optional([abs(value) for value in alpha_errors]),
+                mean_abs_height_error=_mean_optional([abs(value) for value in height_errors]),
+            )
+        )
+    comparison_tuple = tuple(comparisons)
+    fit = {
+        "alpha": _calibration_linear_fit(alpha_pairs),
+        "height": _calibration_linear_fit(height_pairs),
+    }
+    field = _calibration_error_field(config, alpha_pairs, height_pairs)
+    fit_residual_field = _calibration_error_field(
+        config,
+        alpha_pairs,
+        height_pairs,
+        fit=fit,
+    )
+    summary = _summarize_calibration_comparison(
+        comparison_tuple,
+        field,
+        fit,
+        fit_residual_field,
+    )
+    hardware_profile = getattr(config, "hardware_profile", None)
+    profile_name = hardware_profile.name if hardware_profile else None
+    return {
+        "schema": "rad-sim.calibration-comparison-report.v1",
+        "grid": {
+            "rows": config.rows,
+            "cols": config.cols,
+            "cellSize": config.cell_size,
+            "backlash": config.backlash,
+            "couplingGain": config.coupling_gain,
+            "zCouplingGain": config.z_coupling_gain,
+            "pinRadius": config.pin_radius,
+            "holeRadius": config.hole_radius,
+        },
+        "hardwareProfile": profile_name,
+        "sourceResultsSchema": measurements.schema,
+        "summary": summary,
+        "comparison": {
+            "schema": "rad-sim.calibration-experiment-comparison.v1",
+            "comparisons": [comparison.to_dict() for comparison in comparison_tuple],
+            "field": field,
+            "fit": fit,
+            "fitResidualField": fit_residual_field,
+        },
+    }
 
 
 def export_calibration_experiment_comparison_json(
@@ -1053,6 +1364,24 @@ def export_calibration_experiment_comparison_json(
             "schema": "rad-sim.calibration-experiment-comparison.v1",
             "comparisons": [comparison.to_dict() for comparison in comparisons],
         },
+        indent=2,
+    )
+
+
+def export_calibration_experiment_comparison_report_json(
+    config: LatticeConfig,
+    protocol: CalibrationExperimentProtocol,
+    measurements: CalibrationExperimentMeasurements,
+    *,
+    tolerance: float = 1e-9,
+) -> str:
+    return json.dumps(
+        calibration_experiment_comparison_report(
+            config,
+            protocol,
+            measurements,
+            tolerance=tolerance,
+        ),
         indent=2,
     )
 

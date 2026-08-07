@@ -24,6 +24,7 @@ from rad_sim import (
     build_paper_rad_lattice_mesh,
     calibrate_paper_rad_config,
     calibration_experiment_measurements_from_json,
+    calibration_experiment_comparison_report,
     calibration_experiment_results_template,
     calibration_measurement_plan,
     calibration_readiness,
@@ -45,6 +46,7 @@ from rad_sim import (
     finite_die_off_radius,
     export_calibration_experiment_protocol_json,
     export_calibration_experiment_comparison_json,
+    export_calibration_experiment_comparison_report_json,
     export_calibration_experiment_results_template_json,
     hardware_profile_from_config,
     local_actuation_event,
@@ -736,10 +738,41 @@ class RadSimTests(unittest.TestCase):
         self.assertEqual(comparison.missing_observation_count, 0)
         self.assertAlmostEqual(comparison.alpha_rmse or 0.0, 0.0)
         self.assertAlmostEqual(comparison.height_rmse or 0.0, 0.0)
+        self.assertAlmostEqual(comparison.mean_signed_height_error or 0.0, 0.0)
+        self.assertAlmostEqual(comparison.mean_abs_height_error or 0.0, 0.0)
         self.assertAlmostEqual(comparison.mean_pin_hole_slip_mm or 0.0, 0.12)
         self.assertAlmostEqual(comparison.mean_actuator_force_n or 0.0, 3.4)
         exported = json.loads(export_calibration_experiment_comparison_json(comparisons))
         self.assertEqual(exported["schema"], "rad-sim.calibration-experiment-comparison.v1")
+        report = calibration_experiment_comparison_report(config, protocol, measurements)
+        self.assertEqual(report["schema"], "rad-sim.calibration-comparison-report.v1")
+        self.assertEqual(report["comparison"]["fit"]["height"]["sampleCount"], len(step_result["cells"]))
+        self.assertAlmostEqual(report["comparison"]["fit"]["height"]["suggestedGain"], 1.0)
+        self.assertAlmostEqual(report["comparison"]["fit"]["height"]["suggestedBias"], 0.0)
+        self.assertAlmostEqual(report["comparison"]["field"]["maxCombinedError"], 0.0)
+        self.assertAlmostEqual(report["comparison"]["fitResidualField"]["maxCombinedError"], 0.0)
+        self.assertIsNotNone(report["summary"]["worstCell"])
+        perturbed_json = json.loads(json.dumps(template_json))
+        perturbed_step = next(
+            step
+            for step in perturbed_json["steps"]
+            if step["stepId"] == "single_z_lift" and step["repeatIndex"] == 1
+        )
+        perturbed_step["cells"][0]["heightDelta"] += 0.05
+        perturbed = calibration_experiment_measurements_from_json(json.dumps(perturbed_json))
+        perturbed_report = calibration_experiment_comparison_report(config, protocol, perturbed)
+        self.assertGreater(perturbed_report["comparison"]["field"]["maxCombinedError"], 0.0)
+        self.assertGreater(perturbed_report["comparison"]["fit"]["height"]["rmsRawError"], 0.0)
+        self.assertTrue(
+            any(
+                any(value > 0 for value in row)
+                for row in perturbed_report["comparison"]["fitResidualField"]["sampleCount"]
+            )
+        )
+        exported_report = json.loads(
+            export_calibration_experiment_comparison_report_json(config, protocol, perturbed)
+        )
+        self.assertEqual(exported_report["schema"], report["schema"])
 
     def test_characterization_respects_locked_cells(self):
         config = LatticeConfig(rows=3, cols=3, backlash=0.0)
