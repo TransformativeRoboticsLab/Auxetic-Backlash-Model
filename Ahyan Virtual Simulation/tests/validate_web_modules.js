@@ -14,7 +14,7 @@ context.window.window = context.window;
 context.window.console = console;
 vm.createContext(context);
 
-for (const filename of ["state.js", "math.js", "inverse.js", "analysis.js"]) {
+for (const filename of ["state.js", "math.js", "inverse.js", "analysis.js", "mesh_export.js"]) {
   const source = fs.readFileSync(path.join(web, filename), "utf8");
   vm.runInContext(source, context, { filename });
 }
@@ -35,6 +35,7 @@ const scriptOrder = [
   "./math.js",
   "./inverse.js",
   "./analysis.js",
+  "./mesh_export.js",
   "./renderer.js",
   "./ui.js",
   "./app.js",
@@ -135,6 +136,15 @@ assert.strictEqual(Number(restored.cells.theta[2][3].toFixed(6)), Number(sim.the
 assert.strictEqual(Number(restored.cells.z[2][3].toFixed(6)), Number(sim.height[2][3].toFixed(6)));
 assert.ok(Number.isFinite(sim.metrics.meanAlpha));
 assert.ok(Number.isFinite(sim.metrics.rmsTargetError));
+const browserMesh = RAD.buildPaperRadMesh(restored, { sim, includePins: false });
+assert.ok(browserMesh.vertexCount > 0, "browser OBJ mesh should include vertices");
+assert.ok(browserMesh.faceCount > 0, "browser OBJ mesh should include faces");
+assert.ok(browserMesh.components.some((part) => part.kind === "connector"), "browser OBJ mesh should include connector components");
+const browserObj = RAD.exportPaperRadMeshObj(browserMesh);
+assert.ok(browserObj.includes("o cell_2_3_outer_plate"), "browser OBJ should include cell object names");
+assert.ok(browserObj.includes("# kind connector"), "browser OBJ should include connector metadata");
+assert.strictEqual((browserObj.match(/^v /gm) || []).length, browserMesh.vertexCount);
+assert.strictEqual((browserObj.match(/^f /gm) || []).length, browserMesh.faceCount);
 
 const zResidualState = RAD.createState(5, 5);
 zResidualState.grid.backlash = 0.02;

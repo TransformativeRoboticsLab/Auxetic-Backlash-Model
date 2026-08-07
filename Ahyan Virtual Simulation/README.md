@@ -74,6 +74,8 @@ For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
 paper RAD lattice into extruded plate, pin, and connector mesh components, and
 `export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for
 CAD-style review and downstream tooling; it is not yet a fabrication export.
+The browser Persistence panel also has `Save OBJ`, which exports the current
+visible simulation state as a normalized paper-RAD OBJ mesh.
 Saved `rad-sim.browser.v1` JSON includes both command inputs and derived cell
 state. `cells.commandAlpha`, `cells.commandZ`, and `cells.locked` remain the
 authoritative controls; `cells.alpha`, `cells.theta`, and `cells.z` are refreshed

@@ -25,6 +25,7 @@ class WebStaticTests(unittest.TestCase):
             "RAD.applyPreset",
             "RAD.exportExperimentSequence",
             "RAD.importExperimentSequence",
+            "RAD.exportPaperRadMeshObj",
             "localRefs",
             "validateLocalHttpEntry",
             "http.createServer",
@@ -56,12 +57,14 @@ class WebStaticTests(unittest.TestCase):
         self.assertNotIn("cdn.jsdelivr.net", html)
         self.assertLess(html.index("three.min.js"), html.index("./renderer.js"))
         self.assertLess(html.index("./math.js"), html.index("./analysis.js"))
-        self.assertLess(html.index("./analysis.js"), html.index("./renderer.js"))
+        self.assertLess(html.index("./analysis.js"), html.index("./mesh_export.js"))
+        self.assertLess(html.index("./mesh_export.js"), html.index("./renderer.js"))
 
     def test_browser_modules_expose_expected_api(self):
         expected = {
             "state.js": ["RAD.createState", "RAD.serialize", "RAD.updateDerivedCells", "RAD.exportExperimentSequence", "RAD.importExperimentSequence", "RAD.deserialize"],
             "analysis.js": ["RAD.analyzeExperimentSequence", "RAD.exportSequenceMetricsCsv", "RAD.sequenceFrames"],
+            "mesh_export.js": ["RAD.buildPaperRadMesh", "RAD.exportPaperRadMeshObj"],
             "math.js": [
                 "RAD.backlashActivation",
                 "RAD.alphaToTheta",
@@ -832,6 +835,27 @@ class WebStaticTests(unittest.TestCase):
         styles = (WEB / "styles.css").read_text(encoding="utf-8")
         for symbol in [".sequence-chart", "cursor: crosshair", ".sequence-legend", ".legend-rms", ".legend-saturation", ".legend-delta"]:
             self.assertIn(symbol, styles)
+
+    def test_browser_obj_export_controls_are_present(self):
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        self.assertIn('id="saveObj"', html)
+        self.assertLess(html.index("./analysis.js"), html.index("./mesh_export.js"))
+        self.assertLess(html.index("./mesh_export.js"), html.index("./renderer.js"))
+        mesh_js = (WEB / "mesh_export.js").read_text(encoding="utf-8")
+        for symbol in [
+            "buildPaperRadMesh",
+            "exportPaperRadMeshObj",
+            "outer_plate",
+            "inner_plate",
+            "connector",
+            "pinSegments",
+            "RAD.buildPaperRadMesh",
+            "RAD.exportPaperRadMeshObj",
+        ]:
+            self.assertIn(symbol, mesh_js)
+        ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
+        for symbol in ["saveObj", "rad-sim-paper-rad.obj", "RAD.buildPaperRadMesh", "RAD.exportPaperRadMeshObj"]:
+            self.assertIn(symbol, ui_js)
 
     def test_sequence_analysis_module_exports_csv_metrics(self):
         analysis_js = (WEB / "analysis.js").read_text(encoding="utf-8")

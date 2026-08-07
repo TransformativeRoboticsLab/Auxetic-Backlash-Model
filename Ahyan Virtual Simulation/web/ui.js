@@ -73,6 +73,7 @@
         sequenceChart: document.getElementById("sequenceChart"),
         fileInput: document.getElementById("fileInput"),
         sequenceFileInput: document.getElementById("sequenceFileInput"),
+        saveObj: document.getElementById("saveObj"),
       };
       this.playTimer = null;
       this.transitionFrame = null;
@@ -439,6 +440,7 @@
         });
       });
       document.getElementById("saveJson").addEventListener("click", () => this.saveJson());
+      this.els.saveObj.addEventListener("click", () => this.saveObj());
       document.getElementById("loadJson").addEventListener("click", () => this.els.fileInput.click());
       this.els.fileInput.addEventListener("change", () => this.loadJson());
     }
@@ -910,6 +912,19 @@
       const link = document.createElement("a");
       link.href = url;
       link.download = "rad-sim-state.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveObj() {
+      const mesh = RAD.buildPaperRadMesh(this.state);
+      const blob = new Blob([RAD.exportPaperRadMeshObj(mesh)], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "rad-sim-paper-rad.obj";
       document.body.appendChild(link);
       link.click();
       link.remove();
