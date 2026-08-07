@@ -625,6 +625,29 @@
       ];
     }
 
+    calibratedVisualDimensions(state, cellSize) {
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const modelFromMm = (value, fallback) => {
+        if (value === null || value === undefined || typeof RAD.mmToModelLength !== "function") return fallback;
+        return RAD.mmToModelLength(state, value);
+      };
+      const summary = typeof RAD.calibrationProfileSummary === "function" ? RAD.calibrationProfileSummary(state) : null;
+      const profile = summary?.profile || {};
+      const pinRadius = summary?.pinRadiusModel ?? Number(state.grid.pinRadius ?? 0.18) * cellSize * 0.32;
+      const holeRadius = summary?.holeRadiusModel ?? Number(state.grid.holeRadius ?? 0.225) * cellSize * 0.32;
+      const plateThickness = modelFromMm(profile.plateThicknessMm, 0.045 * cellSize);
+      const stackHeight = modelFromMm(profile.jointStackHeightMm, 0.075 * cellSize);
+      const bossRadius = modelFromMm(profile.bossRadiusMm, 0.058 * cellSize);
+      const clampedPinRadius = clamp(pinRadius, 0.02 * cellSize, 0.24 * cellSize);
+      return {
+        pinRadius: clampedPinRadius,
+        holeRadius: clamp(holeRadius, Math.max(0.026 * cellSize, clampedPinRadius + 0.006 * cellSize), 0.28 * cellSize),
+        plateThickness: clamp(plateThickness, 0.018 * cellSize, 0.18 * cellSize),
+        stackHeight: clamp(stackHeight, 0.055 * cellSize, 0.25 * cellSize),
+        bossRadius: clamp(bossRadius, 0.04 * cellSize, 0.2 * cellSize),
+      };
+    }
+
     renderState(state, sim) {
       this.targetState = state;
       this.targetSim = sim;
@@ -977,6 +1000,7 @@
       this.clearGroup(this.paintBrushPreviewRoot);
       const state = this.targetState;
       const { rows, cols, cellSize } = state.grid;
+      const calibratedDims = this.calibratedVisualDimensions(state, cellSize);
       for (let r = 0; r < rows; r += 1) {
         for (let c = 0; c < cols; c += 1) {
           const record = this.cellGroups.get(`${r},${c}`);
@@ -998,9 +1022,10 @@
           const visualMode = state.view.cellVisualMode || "abstract";
           const abstractMode = visualMode === "abstract";
           const paperRadMode = visualMode === "paperRad";
+          const calibratedRadMode = visualMode === "calibratedRad";
           const mechanismMode = visualMode === "mechanism";
           record.abstract.group.visible = abstractMode;
-          record.paperRad.group.visible = paperRadMode;
+          record.paperRad.group.visible = paperRadMode || calibratedRadMode;
           for (let i = 0; i < 4; i += 1) {
             const [px, py] = positions[i];
             const [ex, ey, ez] = explodedPositions[i];
@@ -1049,22 +1074,37 @@
           }
           const paperOuterSize = Math.max(0.44, radius * 2.05 + state.grid.backlash * 0.5);
           const paperInnerSize = Math.max(0.22, radius * 1.18);
-          const pinVisualRadius = Math.max(0.028, Math.min(0.14, Number(state.grid.pinRadius ?? 0.18) * cellSize * 0.32));
-          const holeVisualRadius = Math.max(pinVisualRadius + 0.006, Math.min(0.17, Number(state.grid.holeRadius ?? 0.225) * cellSize * 0.32));
+          const pinVisualRadius = calibratedRadMode
+            ? calibratedDims.pinRadius
+            : Math.max(0.028, Math.min(0.14, Number(state.grid.pinRadius ?? 0.18) * cellSize * 0.32));
+          const holeVisualRadius = calibratedRadMode
+            ? calibratedDims.holeRadius
+            : Math.max(pinVisualRadius + 0.006, Math.min(0.17, Number(state.grid.holeRadius ?? 0.225) * cellSize * 0.32));
+          const outerPlateZScale = calibratedRadMode ? calibratedDims.plateThickness / 0.045 : 1;
+          const innerPlateZScale = calibratedRadMode ? calibratedDims.plateThickness / 0.065 : 1;
+          const paperInnerZ = calibratedRadMode ? calibratedDims.stackHeight : 0.075;
+          const paperEdgeZ = calibratedRadMode ? calibratedDims.plateThickness * 0.55 : 0.035;
+          const paperInnerEdgeZ = paperInnerZ + (calibratedRadMode ? calibratedDims.plateThickness * 0.55 : 0.04);
+          const paperDatumZ = paperInnerEdgeZ + 0.02;
           record.paperRad.outer.material = material;
-          record.paperRad.outer.scale.set(paperOuterSize, paperOuterSize, 1);
-          record.paperRad.inner.scale.set(paperInnerSize, paperInnerSize, 1);
+          record.paperRad.outer.scale.set(paperOuterSize, paperOuterSize, outerPlateZScale);
+          record.paperRad.inner.scale.set(paperInnerSize, paperInnerSize, innerPlateZScale);
+          record.paperRad.inner.position.z = paperInnerZ;
           record.paperRad.inner.rotation.z = theta;
-          record.paperRad.outerEdge.scale.set(paperOuterSize, paperOuterSize, 1);
-          record.paperRad.innerEdge.scale.set(paperInnerSize, paperInnerSize, 1);
+          record.paperRad.outerEdge.position.z = paperEdgeZ;
+          record.paperRad.outerEdge.scale.set(paperOuterSize, paperOuterSize, outerPlateZScale);
+          record.paperRad.innerEdge.position.z = paperInnerEdgeZ;
+          record.paperRad.innerEdge.scale.set(paperInnerSize, paperInnerSize, innerPlateZScale);
           record.paperRad.innerEdge.rotation.z = theta;
+          record.paperRad.datumX.position.z = paperDatumZ;
+          record.paperRad.datumY.position.z = paperDatumZ;
           record.paperRad.datumX.scale.set(paperOuterSize * 0.92, 1, 1);
           record.paperRad.datumY.scale.set(paperOuterSize * 0.92, 1, 1);
           for (let i = 0; i < record.paperRad.pins.length; i += 1) {
             const [px, py] = positions[i];
-            record.paperRad.pins[i].position.set(px, py, 0.15);
-            record.paperRad.pins[i].scale.set(pinVisualRadius, pinVisualRadius, 1);
-            record.paperRad.clearanceRings[i].position.set(px, py, 0.17);
+            record.paperRad.pins[i].position.set(px, py, paperDatumZ + 0.015);
+            record.paperRad.pins[i].scale.set(pinVisualRadius, pinVisualRadius, calibratedRadMode ? Math.max(0.75, calibratedDims.stackHeight / 0.075) : 1);
+            record.paperRad.clearanceRings[i].position.set(px, py, paperDatumZ + 0.035);
             record.paperRad.clearanceRings[i].scale.set(holeVisualRadius, holeVisualRadius, holeVisualRadius);
           }
           record.gap.visible = cellVisible && state.view.gapsVisible;

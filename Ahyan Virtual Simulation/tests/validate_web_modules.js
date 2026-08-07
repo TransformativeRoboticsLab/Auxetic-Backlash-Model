@@ -25,6 +25,7 @@ assert.strictEqual(typeof RAD.modelProvenance, "function", "provenance module sh
 assert.strictEqual(typeof RAD.provenanceSummary, "function", "provenance module should expose provenance counts");
 assert.strictEqual(typeof RAD.calibrationProfileSummary, "function", "math module should expose calibration profile summary");
 assert.strictEqual(typeof RAD.applyHardwareProfileToGrid, "function", "math module should apply hardware profiles");
+assert.strictEqual(typeof RAD.calibratedMeshDimensions, "function", "mesh exporter should expose calibrated mesh dimensions");
 assert.strictEqual(typeof RAD.physicalPreviewComparison, "function", "analysis module should expose physical preview comparison");
 assert.strictEqual(typeof RAD.responseDecayProfile, "function", "analysis module should expose response decay profile");
 assert.strictEqual(typeof RAD.validateInversePlanPhysical, "function", "inverse module should expose physical inverse validation");
@@ -57,6 +58,7 @@ assert.ok(html.includes('id="hardwareProfileName"'), "browser UI should expose m
 assert.ok(html.includes('id="hardwarePinRadiusMm"'), "browser UI should expose measured pin-radius input");
 assert.ok(html.includes('id="hardwareHoleRadiusMm"'), "browser UI should expose measured hole-radius input");
 assert.ok(html.includes('id="applyHardwareProfile"'), "browser UI should expose hardware profile apply action");
+assert.ok(html.includes('value="calibratedRad"'), "browser UI should expose calibrated RAD visual mode");
 const scriptOrder = [
   "./vendor/three.min.js",
   "./state.js",
@@ -244,9 +246,15 @@ const browserMesh = RAD.buildPaperRadMesh(restored, { sim: activeSim, includePin
 assert.ok(browserMesh.vertexCount > 0, "browser OBJ mesh should include vertices");
 assert.ok(browserMesh.faceCount > 0, "browser OBJ mesh should include faces");
 assert.ok(browserMesh.components.some((part) => part.kind === "connector"), "browser OBJ mesh should include connector components");
+assert.strictEqual(browserMesh.source.calibrationProfile, "bench-v1");
+assert.strictEqual(browserMesh.source.measuredCalibrationFields, 3);
+assert.strictEqual(Number(browserMesh.source.plateThickness.toFixed(6)), Number((2.4 * 1.25 / 42).toFixed(6)));
+assert.strictEqual(Number(browserMesh.source.pinRadius.toFixed(6)), Number((7.56 * 1.25 / 42).toFixed(6)));
 const browserObj = RAD.exportPaperRadMeshObj(browserMesh);
 assert.ok(browserObj.includes("o cell_2_3_outer_plate"), "browser OBJ should include cell object names");
 assert.ok(browserObj.includes("# kind connector"), "browser OBJ should include connector metadata");
+assert.ok(browserObj.includes("# calibrationProfile bench-v1"), "browser OBJ should include calibration profile metadata");
+assert.ok(browserObj.includes("# measuredCalibrationFields 3"), "browser OBJ should include measured calibration count");
 assert.strictEqual((browserObj.match(/^v /gm) || []).length, browserMesh.vertexCount);
 assert.strictEqual((browserObj.match(/^f /gm) || []).length, browserMesh.faceCount);
 

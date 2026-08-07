@@ -91,8 +91,8 @@
       source: "Physical RAD hardware",
       pageRefs: ["RAD preprint p. 6"],
       evidence: "Prototype scale and tolerance are known, but full part dimensions are not.",
-      implementation: "hardwareProfile state, calibration profile summary, future calibrated CAD-like model",
-      limitation: "Measure pin/hole radii, thicknesses, bosses, stack height, and friction.",
+      implementation: "hardwareProfile state, calibratedRad visual mode, profile-aware OBJ export, future calibrated solver",
+      limitation: "Visual/export dimensions can use measurements; contact, friction, and dynamics still need hardware tests.",
     },
   ]);
 

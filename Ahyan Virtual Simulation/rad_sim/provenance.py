@@ -112,8 +112,8 @@ MODEL_PROVENANCE: tuple[ModelProvenanceItem, ...] = (
         source="Physical RAD hardware",
         page_refs=("RAD preprint p. 6",),
         evidence="The paper gives prototype scale and fabrication tolerance, but not all fabrication part dimensions.",
-        implementation="RADHardwareProfile, browser hardwareProfile, future calibrated CAD-like visual and solver parameters",
-        limitation="Measure pin radius, hole radius, plate thickness, boss dimensions, joint stack height, and friction.",
+        implementation="RADHardwareProfile, browser calibratedRad visual mode, profile-aware OBJ export, future calibrated solver parameters",
+        limitation="Visual/export dimensions can use measurements, but calibrated contact, friction, and dynamics still require hardware tests.",
     ),
 )
 

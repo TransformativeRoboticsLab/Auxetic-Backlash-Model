@@ -7,8 +7,11 @@ from typing import Iterable
 import numpy as np
 
 from .cell_geometry import (
+    PAPER_RAD_REFERENCE,
     PaperRADLatticeGeometry,
+    RADHardwareProfile,
     build_paper_rad_lattice_geometry,
+    config_with_hardware_profile,
 )
 from .models import LatticeConfig, LatticeState, SimulationResult
 
@@ -189,6 +192,7 @@ def build_paper_rad_lattice_mesh(
     connector_width: float = 0.045,
     include_pins: bool = True,
     include_connectors: bool = True,
+    hardware_profile: RADHardwareProfile | None = None,
 ) -> PaperRADMesh:
     """Build a CAD-style normalized triangle mesh for the paper RAD lattice.
 
@@ -196,10 +200,33 @@ def build_paper_rad_lattice_mesh(
     not a manufacturing model. Thicknesses and pin visual radii are configurable
     because the extracted RAD papers do not provide exact CAD part dimensions.
     """
+    mesh_config = (
+        config_with_hardware_profile(config, hardware_profile)
+        if hardware_profile is not None
+        else config
+    )
+    reference = hardware_profile.to_reference() if hardware_profile is not None else None
+    if hardware_profile is not None and hardware_profile.plate_thickness_mm is not None:
+        plate_thickness = hardware_profile.mm_to_model_length(
+            mesh_config, hardware_profile.plate_thickness_mm
+        )
+    if hardware_profile is not None and hardware_profile.joint_stack_height_mm is not None:
+        pin_height = hardware_profile.mm_to_model_length(
+            mesh_config, hardware_profile.joint_stack_height_mm
+        )
+    if hardware_profile is not None and hardware_profile.boss_radius_mm is not None:
+        connector_width = hardware_profile.mm_to_model_length(
+            mesh_config, hardware_profile.boss_radius_mm
+        )
+
     plate_thickness = _validate_positive("plate_thickness", plate_thickness)
     pin_height = _validate_positive("pin_height", pin_height)
     connector_width = _validate_positive("connector_width", connector_width)
-    lattice = build_paper_rad_lattice_geometry(config, state_or_result)
+    lattice = build_paper_rad_lattice_geometry(
+        mesh_config,
+        state_or_result,
+        reference=reference or PAPER_RAD_REFERENCE,
+    )
     components: list[MeshComponent] = []
 
     for record in lattice.cells:
@@ -223,10 +250,15 @@ def build_paper_rad_lattice_mesh(
             )
         )
         if include_pins:
-            pin_radius = max(
-                0.02 * config.cell_size,
-                config.pin_radius * config.cell_size * 0.32,
-            )
+            if hardware_profile is not None and hardware_profile.pin_radius_mm is not None:
+                pin_radius = hardware_profile.mm_to_model_length(
+                    mesh_config, hardware_profile.pin_radius_mm
+                )
+            else:
+                pin_radius = max(
+                    0.02 * mesh_config.cell_size,
+                    mesh_config.pin_radius * mesh_config.cell_size * 0.32,
+                )
             for joint in (*geometry.outer_joints, *geometry.inner_joints):
                 components.append(
                     _component(

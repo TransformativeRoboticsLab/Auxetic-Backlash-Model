@@ -348,6 +348,29 @@ class RadSimTests(unittest.TestCase):
         self.assertGreater(upper[2] - lower[2], 0.3)
         self.assertEqual(mesh.kind_counts()["connector"], 1)
 
+    def test_paper_rad_lattice_mesh_uses_hardware_profile_dimensions(self):
+        config = LatticeConfig(rows=1, cols=1, cell_size=1.0)
+        profile = RADHardwareProfile(
+            pin_radius_mm=7.0,
+            hole_radius_mm=8.0,
+            plate_thickness_mm=3.5,
+            joint_stack_height_mm=4.2,
+            boss_radius_mm=1.4,
+        )
+        mesh = build_paper_rad_lattice_mesh(
+            config,
+            hardware_profile=profile,
+            pin_segments=8,
+            include_connectors=False,
+        )
+        outer_plate = next(component for component in mesh.components if component.kind == "outer_plate")
+        pin = next(component for component in mesh.components if component.kind == "pin")
+        self.assertAlmostEqual(np.ptp(outer_plate.vertices[:, 2]), 0.1)
+        self.assertAlmostEqual(np.ptp(pin.vertices[:, 2]), 0.12)
+        center = pin.vertices[-2]
+        radial_distance = np.linalg.norm(pin.vertices[0, :2] - center[:2])
+        self.assertAlmostEqual(radial_distance, 0.2)
+
     def test_paper_rad_mesh_obj_export_has_valid_indices(self):
         config = LatticeConfig(rows=1, cols=1)
         mesh = build_paper_rad_lattice_mesh(

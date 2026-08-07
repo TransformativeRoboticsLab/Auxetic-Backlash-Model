@@ -137,17 +137,40 @@
     return { name, kind, cell, vertices: data.vertices, faces: data.faces };
   }
 
+  function calibratedMeshDimensions(state, options) {
+    const cellSize = Number(state.grid.cellSize || 1);
+    const summary = typeof RAD.calibrationProfileSummary === "function" ? RAD.calibrationProfileSummary(state) : null;
+    const profile = summary?.profile || {};
+    const measuredProfile = options.useHardwareProfile !== false;
+    const modelFromMm = (value, fallback) => {
+      if (!measuredProfile || value === null || value === undefined || typeof RAD.mmToModelLength !== "function") return fallback;
+      return Math.max(1e-6, RAD.mmToModelLength(state, value));
+    };
+    const pinRadius =
+      options.pinRadius !== undefined
+        ? Number(options.pinRadius)
+        : measuredProfile && summary?.pinRadiusModel !== null && summary?.pinRadiusModel !== undefined
+          ? summary.pinRadiusModel
+          : Number(state.grid.pinRadius ?? 0.18) * cellSize * 0.32;
+    return {
+      profileName: profile.name || "paper-reference",
+      measuredCount: summary?.measuredCount || 0,
+      plateThickness: Math.max(1e-4, Number(options.plateThickness ?? modelFromMm(profile.plateThicknessMm, 0.035))),
+      pinRadius: Math.max(0.02 * cellSize, pinRadius),
+      pinHeight: Math.max(1e-4, Number(options.pinHeight ?? modelFromMm(profile.jointStackHeightMm, 0.075))),
+      connectorWidth: Math.max(1e-4, Number(options.connectorWidth ?? modelFromMm(profile.bossRadiusMm, 0.045))),
+    };
+  }
+
   function buildPaperRadMesh(state, options = {}) {
     const sim = options.sim || RAD.simulate(state);
     const cellSize = Number(state.grid.cellSize || 1);
     const backlash = Math.max(0, Number(state.grid.backlash || 0));
-    const pinRadius = Math.max(
-      0.02 * cellSize,
-      Number(state.grid.pinRadius ?? 0.18) * cellSize * 0.32
-    );
-    const plateThickness = Math.max(1e-4, Number(options.plateThickness ?? 0.035));
-    const pinHeight = Math.max(1e-4, Number(options.pinHeight ?? 0.075));
-    const connectorWidth = Math.max(1e-4, Number(options.connectorWidth ?? 0.045));
+    const dimensions = calibratedMeshDimensions(state, options);
+    const pinRadius = dimensions.pinRadius;
+    const plateThickness = dimensions.plateThickness;
+    const pinHeight = dimensions.pinHeight;
+    const connectorWidth = dimensions.connectorWidth;
     const pinSegments = Math.max(6, Math.floor(Number(options.pinSegments ?? 12)));
     const includePins = options.includePins !== false;
     const includeConnectors = options.includeConnectors !== false;
@@ -237,7 +260,21 @@
 
     const vertexCount = components.reduce((sum, item) => sum + item.vertices.length, 0);
     const faceCount = components.reduce((sum, item) => sum + item.faces.length, 0);
-    return { components, source: { rows: state.grid.rows, cols: state.grid.cols }, vertexCount, faceCount };
+    return {
+      components,
+      source: {
+        rows: state.grid.rows,
+        cols: state.grid.cols,
+        calibrationProfile: dimensions.profileName,
+        measuredCalibrationFields: dimensions.measuredCount,
+        plateThickness,
+        pinRadius,
+        pinHeight,
+        connectorWidth,
+      },
+      vertexCount,
+      faceCount,
+    };
   }
 
   function exportPaperRadMeshObj(stateOrMesh, options = {}) {
@@ -248,6 +285,10 @@
       `# vertices ${mesh.vertexCount}`,
       `# faces ${mesh.faceCount}`,
     ];
+    if (mesh.source?.calibrationProfile) lines.push(`# calibrationProfile ${mesh.source.calibrationProfile}`);
+    if (mesh.source?.measuredCalibrationFields !== undefined) lines.push(`# measuredCalibrationFields ${mesh.source.measuredCalibrationFields}`);
+    if (mesh.source?.plateThickness !== undefined) lines.push(`# plateThickness ${fmt(mesh.source.plateThickness)}`);
+    if (mesh.source?.pinRadius !== undefined) lines.push(`# pinRadius ${fmt(mesh.source.pinRadius)}`);
     let offset = 1;
     for (const part of mesh.components) {
       lines.push(`o ${part.name}`);
@@ -264,6 +305,7 @@
     return `${lines.join("\n")}\n`;
   }
 
+  RAD.calibratedMeshDimensions = calibratedMeshDimensions;
   RAD.buildPaperRadMesh = buildPaperRadMesh;
   RAD.exportPaperRadMeshObj = exportPaperRadMeshObj;
 })();

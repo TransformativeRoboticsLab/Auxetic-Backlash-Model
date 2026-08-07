@@ -137,11 +137,16 @@ now includes a compact measured-profile editor, reports how many of those
 measurements are present, and lists which are still missing. `Apply Measured
 Dims` deliberately maps measured backlash, pin radius, and hole radius back into
 the normalized backlash/free-play controls; unfilled fields remain calibration
-gaps instead of silently changing the solver.
+gaps instead of silently changing the solver. The Display panel's `Calibrated
+RAD cell` mode uses the profile directly for visible plate thickness, pin/hole
+radii, and stack offset without requiring those values to alter the solver.
 For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
 paper RAD lattice into extruded plate, pin, and connector mesh components, and
 `export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for
 CAD-style review and downstream tooling; it is not yet a fabrication export.
+The browser OBJ export now records the active calibration profile in the header
+and uses measured profile defaults for plate thickness, pin radius, stack height,
+and connector width when available.
 The browser Persistence panel also has `Save OBJ`, which exports the current
 visible simulation state as a normalized paper-RAD OBJ mesh.
 The Display panel can switch the visible solver between `Kinematic` and
@@ -525,6 +530,10 @@ without requiring Playwright or a browser binary.
   dimensions before they are allowed to replace normalized model assumptions.
   The browser editor saves those values in `grid.hardwareProfile` and only
   applies measured backlash/radii to normalized controls on explicit command.
+- `web/renderer.js` `calibratedRad` mode and `web/mesh_export.js`
+  `calibratedMeshDimensions`: profile-aware visual/export layer that uses
+  measured dimensions for CAD-like inspection while keeping solver assumptions
+  explicit.
 - `web/analysis.js` `characterizeLocalResponse`: browser-side single, pair,
   cluster, and active-lattice response experiment metrics with superposition
   residuals, pairwise operator-interaction counts and hotspot maps, local
