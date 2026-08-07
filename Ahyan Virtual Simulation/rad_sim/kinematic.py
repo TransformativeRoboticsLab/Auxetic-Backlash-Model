@@ -1,79 +1,19 @@
 from __future__ import annotations
 
-from collections import deque
-
 import numpy as np
 
-from .coupling import alpha_to_theta, backlash_activation
-from .geometry import cell_corners, grid_centers, neighbor_indices
+from .coupling import alpha_to_theta
+from .geometry import cell_corners, grid_centers
 from .models import LatticeConfig, LatticeState, SimulationResult
-
-
-def _actuator_influence(config: LatticeConfig, actuator_grid: np.ndarray) -> np.ndarray:
-    influence = np.zeros((config.rows, config.cols), dtype=float)
-    steps = config.max_coupling_steps or (config.rows + config.cols)
-
-    for source in zip(*np.nonzero(np.abs(actuator_grid) > 1e-12), strict=False):
-        r0, c0 = int(source[0]), int(source[1])
-        queue: deque[tuple[int, int, float, int]] = deque(
-            [(r0, c0, float(actuator_grid[r0, c0]), 0)]
-        )
-        visited: dict[tuple[int, int], float] = {}
-        while queue:
-            r, c, signal, dist = queue.popleft()
-            if dist > steps:
-                continue
-            key = (r, c)
-            if abs(signal) <= abs(visited.get(key, 0.0)):
-                continue
-            visited[key] = signal
-            influence[r, c] += signal
-            next_signal = float(backlash_activation(signal, config.backlash)) * config.coupling_gain
-            if abs(next_signal) < 1e-9:
-                continue
-            for nr, nc in neighbor_indices(config.rows, config.cols, r, c):
-                queue.append((nr, nc, next_signal, dist + 1))
-
-    return influence
-
-
-def _vertical_residual(config: LatticeConfig, z_actuator_grid: np.ndarray) -> np.ndarray:
-    residual = np.zeros((config.rows, config.cols), dtype=float)
-    steps = config.max_coupling_steps or (config.rows + config.cols)
-    dead_zone = config.pin_hole_clearance
-
-    for source in zip(*np.nonzero(np.abs(z_actuator_grid) > 1e-12), strict=False):
-        r0, c0 = int(source[0]), int(source[1])
-        queue: deque[tuple[int, int, float, int]] = deque(
-            [(r0, c0, float(z_actuator_grid[r0, c0]), 0)]
-        )
-        visited: dict[tuple[int, int], float] = {}
-        while queue:
-            r, c, signal, dist = queue.popleft()
-            if dist > steps:
-                continue
-            key = (r, c)
-            if abs(signal) <= abs(visited.get(key, 0.0)):
-                continue
-            visited[key] = signal
-            residual[r, c] += signal
-            next_signal = (
-                float(backlash_activation(signal, dead_zone)) * config.z_coupling_gain
-            )
-            if abs(next_signal) < 1e-9:
-                continue
-            for nr, nc in neighbor_indices(config.rows, config.cols, r, c):
-                queue.append((nr, nc, next_signal, dist + 1))
-
-    return residual
+from .operators import evaluate_programmable_operators
 
 
 def simulate_kinematic(config: LatticeConfig, state: LatticeState) -> SimulationResult:
     state = state.normalized(config)
-    influence = _actuator_influence(config, state.actuator_grid)
-    z_residual = _vertical_residual(config, state.z_actuator_grid)
-    raw_alpha = state.alpha_grid + influence
-    alpha = np.where(state.locked_mask, state.alpha_grid, raw_alpha)
+    operators = evaluate_programmable_operators(config, state)
+    influence = operators["actuator_influence"]
+    z_residual = operators["z_residual"]
+    alpha = operators["alpha"]
     alpha = np.clip(alpha, config.alpha_min, config.alpha_max)
     theta = alpha_to_theta(alpha)
 
@@ -83,7 +23,7 @@ def simulate_kinematic(config: LatticeConfig, state: LatticeState) -> Simulation
         config, original_centers, np.full_like(alpha, config.initial_alpha)
     )
     deformed_corners = cell_corners(config, deformed_centers, alpha)
-    height = np.where(state.locked_mask, 0.0, -0.65 * config.cell_size * influence + z_residual)
+    height = operators["height"]
     original_centers_3d = np.dstack(
         [original_centers[..., 0], original_centers[..., 1], np.zeros_like(alpha)]
     )
@@ -117,7 +57,9 @@ def simulate_kinematic(config: LatticeConfig, state: LatticeState) -> Simulation
             "model": "kinematic",
             "mean_alpha": float(np.mean(alpha)),
             "actuator_influence": influence,
+            "die_off": operators["die_off"],
             "z_residual": z_residual,
+            "z_die_off": operators["z_die_off"],
             "z_dead_zone": config.pin_hole_clearance,
             "height": height,
         },

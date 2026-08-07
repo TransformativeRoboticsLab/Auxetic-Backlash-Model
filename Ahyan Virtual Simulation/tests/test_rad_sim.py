@@ -3,7 +3,16 @@ import unittest
 
 import numpy as np
 
-from rad_sim import LatticeConfig, LatticeState, backlash_activation, simulate_kinematic
+from rad_sim import (
+    DeadZonePropagationOperator,
+    LatticeConfig,
+    LatticeState,
+    backlash_activation,
+    evaluate_programmable_operators,
+    lock_projection,
+    simulate_kinematic,
+    vertical_clearance_operator,
+)
 from rad_sim.coupling import alpha_to_theta, theta_to_alpha
 from rad_sim.spring_hinge import hinge_energy, spring_energy
 
@@ -90,6 +99,46 @@ class RadSimTests(unittest.TestCase):
     def test_pin_hole_radius_validation(self):
         with self.assertRaises(ValueError):
             LatticeConfig(pin_radius=0.2, hole_radius=0.1)
+
+    def test_dead_zone_operator_has_no_neighbor_transmission_inside_gap(self):
+        op = DeadZonePropagationOperator("test", dead_zone=0.1, gain=0.5)
+        result = op.propagate(3, 3, [(1, 1, 0.05)])
+        self.assertAlmostEqual(result.field[1, 1], 0.05)
+        self.assertAlmostEqual(result.field[1, 2], 0.0)
+        self.assertTrue(np.isinf(result.die_off[1, 2]))
+
+    def test_dead_zone_operator_is_monotone_outside_gap(self):
+        op = DeadZonePropagationOperator("test", dead_zone=0.1, gain=0.5)
+        self.assertAlmostEqual(op.transmit(0.2), 0.05)
+        self.assertAlmostEqual(op.transmit(0.3), 0.1)
+        self.assertGreater(op.transmit(0.3), op.transmit(0.2))
+        self.assertLess(op.transmit(-0.3), op.transmit(-0.2))
+
+    def test_lock_projection_keeps_locked_cell_invariant(self):
+        reference = np.array([[1.0, 1.0], [1.0, 1.0]])
+        proposed = np.array([[0.7, 1.2], [1.4, 0.8]])
+        locked = np.array([[True, False], [False, True]])
+        projected = lock_projection(reference, proposed, locked)
+        np.testing.assert_allclose(projected, [[1.0, 1.2], [1.4, 1.0]])
+
+    def test_operator_stack_matches_kinematic_fields(self):
+        config = LatticeConfig(rows=4, cols=4, backlash=0.04, z_coupling_gain=0.35)
+        state = LatticeState.uniform(config)
+        state.actuator_grid[1, 1] = -0.3
+        state.z_actuator_grid[1, 1] = 0.35
+        state.locked_mask[0, 0] = True
+        operators = evaluate_programmable_operators(config, state)
+        result = simulate_kinematic(config, state)
+        np.testing.assert_allclose(operators["alpha"], result.alpha)
+        np.testing.assert_allclose(operators["height"], result.metadata["height"])
+        np.testing.assert_allclose(
+            operators["z_residual"], result.metadata["z_residual"]
+        )
+
+    def test_vertical_clearance_operator_uses_pin_hole_gap(self):
+        config = LatticeConfig(pin_radius=0.12, hole_radius=0.19)
+        op = vertical_clearance_operator(config)
+        self.assertAlmostEqual(op.dead_zone, 0.07)
 
     def test_zero_vertical_coupling_recovers_local_z_motion(self):
         config = LatticeConfig(rows=5, cols=5, backlash=0.02, z_coupling_gain=0.0)
