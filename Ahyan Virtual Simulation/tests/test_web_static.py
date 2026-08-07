@@ -34,6 +34,9 @@ class WebStaticTests(unittest.TestCase):
             "physicalHeightRmsError",
             "physicalHeightMaxError",
             "physicalPreviewAvailable",
+            "modelErrorHeight",
+            "physicalMaxHeightDelta",
+            "physicalRmsCenterDelta",
             "localRefs",
             "validateLocalHttpEntry",
             "http.createServer",
@@ -468,7 +471,7 @@ class WebStaticTests(unittest.TestCase):
         for control_id in ["overlayLegend", "overlayLegendTitle", "overlayLegendMin", "overlayLegendMax"]:
             self.assertIn(f'id="{control_id}"', html)
         app_js = (WEB / "app.js").read_text(encoding="utf-8")
-        for symbol in ["overlayLegendText", "updateOverlayLegend", "Target Error", "Reachability", "Cell State", "Z Residual"]:
+        for symbol in ["overlayLegendText", "updateOverlayLegend", "Target Error", "Reachability", "Cell State", "Z Residual", "Model Disagreement"]:
             self.assertIn(symbol, app_js)
         styles = (WEB / "styles.css").read_text(encoding="utf-8")
         for symbol in [".overlay-legend", ".legend-scale", ".legend-labels"]:
@@ -568,7 +571,7 @@ class WebStaticTests(unittest.TestCase):
         self.assertIn('value="paperRad"', html)
         self.assertIn('value="mechanism"', html)
         self.assertIn('value="springPreview"', html)
-        for option in ['value="zresidual"', 'value="error"', 'value="travel"', 'value="saturation"', 'value="strain"', 'value="displacement"', 'value="slope"', 'value="inverse"', 'value="sensitivity"', 'value="reachability"']:
+        for option in ['value="zresidual"', 'value="error"', 'value="travel"', 'value="saturation"', 'value="strain"', 'value="modelError"', 'value="displacement"', 'value="slope"', 'value="inverse"', 'value="sensitivity"', 'value="reachability"']:
             self.assertIn(option, html)
         for metric_id in ["recommendedActuators", "candidateActuators", "designScore", "projectedScore", "plannerSteps", "meanTravel", "maxSaturation", "saturatedActuators", "maxLinkStrain", "meanLinkStrain", "maxReferenceDisplacement", "maxSurfaceSlope", "meanSurfaceSlope", "signedTargetError", "targetErrorRange", "sensitivityCells", "meanSensitivity", "jacobianColumns", "meanReachability", "linearFitSteps", "linearFitError", "fps", "drawCalls", "triangles"]:
             self.assertIn(f'id="{metric_id}"', html)
@@ -614,8 +617,10 @@ class WebStaticTests(unittest.TestCase):
             self.assertIn(symbol, ui_js)
         for symbol in ["showTargetErrorVectors", "signedTargetError", "targetErrorRange", "meanSignedTargetError"]:
             self.assertIn(symbol, ui_js)
+        for symbol in ['this.state.view.overlayMode === "modelError"', 'this.state.view.simulationMode = "springPreview"']:
+            self.assertIn(symbol, ui_js)
         renderer_js = (WEB / "renderer.js").read_text(encoding="utf-8")
-        for symbol in ["targetErrorVectorsVisible", "renderErrorRods", "mean signed"]:
+        for symbol in ["targetErrorVectorsVisible", "renderErrorRods", "mean signed", 'mode === "modelError"', "modelErrorHeight", "modelErrorCenter", "physicalMaxHeightDelta"]:
             self.assertIn(symbol, renderer_js)
 
     def test_browser_programmable_discontinuity_controls_are_present(self):

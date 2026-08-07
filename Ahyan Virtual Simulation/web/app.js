@@ -32,6 +32,7 @@
     travel: ["Command Travel", "idle", "high travel"],
     saturation: ["Actuator Saturation", "inside limits", "near limit"],
     strain: ["Linkage Strain", "compressed", "stretched"],
+    modelError: ["Model Disagreement", "matches kinematic", "relaxed shift"],
     displacement: ["Reference Displacement", "small shift", "large shift"],
     slope: ["Surface Slope", "flat", "steep"],
     inverse: ["Inverse Plan", "low contribution", "high contribution"],

@@ -110,7 +110,10 @@ The Display panel can switch the visible solver between `Kinematic` and
 `3D spring preview`. Kinematic mode shows the direct backlash propagation model;
 spring preview runs a lightweight browser relaxation over the cell-center graph,
 then recomputes height, slope, and link-strain diagnostics for a more physical
-inspection view without replacing the Python spring-hinge solver.
+inspection view without replacing the Python spring-hinge solver. The
+`Model disagreement` overlay uses that same spring preview to color cells by
+per-cell height disagreement from the kinematic prediction, so suspicious
+regions can be inspected directly in the 3D lattice.
 Saved `rad-sim.browser.v1` JSON includes both command inputs and derived cell
 state. `cells.commandAlpha`, `cells.commandZ`, and `cells.locked` remain the
 authoritative controls; `cells.alpha`, `cells.theta`, and `cells.z` are refreshed
@@ -452,6 +455,10 @@ without requiring Playwright or a browser binary.
   cluster, and active-lattice response experiment metrics with superposition
   residuals, local response rank, underactuated-cell counts, and browser
   spring-preview disagreement metrics for programmable-discontinuity studies.
+- `web/physics.js` `simulatePhysicalRelaxation`: browser spring-preview
+  relaxation that now also exposes per-cell `modelErrorHeight` and
+  `modelErrorCenter` fields against the kinematic state for model-disagreement
+  overlays.
 - `compare_physical_response` / `compare_physical_pair` /
   `compare_physical_cluster`: single, pair, and cluster diagnostics that quantify
   the deviation between kinematic backlash propagation and the 3D spring-hinge

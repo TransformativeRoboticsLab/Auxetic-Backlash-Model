@@ -161,7 +161,17 @@ const activeSim = RAD.simulateActive(restored);
 assert.strictEqual(activeSim.metrics.model, "spring-preview");
 assert.strictEqual(activeSim.metrics.physicalPreview, true);
 assert.ok(Number.isFinite(activeSim.metrics.physicalRmsHeightDelta));
+assert.ok(Number.isFinite(activeSim.metrics.physicalMaxHeightDelta));
+assert.ok(Number.isFinite(activeSim.metrics.physicalRmsCenterDelta));
+assert.ok(Number.isFinite(activeSim.metrics.physicalMaxCenterDelta));
 assert.ok(activeSim.metrics.physicalIterations > 0);
+assert.strictEqual(activeSim.modelErrorHeight.length, restored.grid.rows);
+assert.strictEqual(activeSim.modelErrorCenter[0].length, restored.grid.cols);
+assert.strictEqual(
+  Number(activeSim.modelErrorHeight[2][3].toFixed(6)),
+  Number((activeSim.height[2][3] - sim.height[2][3]).toFixed(6)),
+  "spring preview should expose per-cell height disagreement from the kinematic state"
+);
 const browserMesh = RAD.buildPaperRadMesh(restored, { sim: activeSim, includePins: false });
 assert.ok(browserMesh.vertexCount > 0, "browser OBJ mesh should include vertices");
 assert.ok(browserMesh.faceCount > 0, "browser OBJ mesh should include faces");

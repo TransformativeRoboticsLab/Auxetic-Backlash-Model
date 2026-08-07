@@ -164,6 +164,10 @@
       });
       this.els.overlayMode.addEventListener("change", () => {
         this.state.view.overlayMode = this.els.overlayMode.value;
+        if (this.state.view.overlayMode === "modelError") {
+          this.state.view.simulationMode = "springPreview";
+          this.els.simulationMode.value = "springPreview";
+        }
         this.onChange(this.state);
       });
       this.els.showMembrane.addEventListener("change", () => {

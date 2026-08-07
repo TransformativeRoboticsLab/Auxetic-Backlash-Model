@@ -527,6 +527,7 @@
         else if (mode === "travel") t = (Math.abs(state.cells.commandAlpha[r][c]) + Math.abs(state.cells.commandZ[r][c])) / 1.55;
         else if (mode === "saturation") t = sim.saturation?.[r]?.[c] || RAD.commandSaturation(state, state.cells.commandAlpha[r][c], state.cells.commandZ[r][c]);
         else if (mode === "strain") t = this.localLinkStrainStrength(sim, r, c);
+        else if (mode === "modelError") t = Math.abs(sim.modelErrorHeight?.[r]?.[c] || 0) / Math.max(1e-9, sim.metrics?.physicalMaxHeightDelta || 1);
         else if (mode === "displacement") t = (sim.displacement?.[r]?.[c] || 0) / Math.max(1e-9, sim.metrics?.maxReferenceDisplacement || 1);
         else if (mode === "slope") t = (sim.slope?.magnitude?.[r]?.[c] || 0) / Math.max(1e-9, sim.metrics?.maxSurfaceSlope || 1);
         else if (mode === "inverse") t = this.inversePlanStrength(state, r, c);
@@ -1886,6 +1887,11 @@
       }
       if (mode === "height") {
         return `z ${height.toFixed(3)}\ncmd z ${state.cells.commandZ[r][c].toFixed(2)}\nz residual ${zResidual.toFixed(3)}\ntarget ${sim.target[r][c].toFixed(3)}\nresidual ${residual.toFixed(3)}\nmean signed ${sim.metrics.meanSignedTargetError.toFixed(3)}`;
+      }
+      if (mode === "modelError") {
+        const heightError = sim.modelErrorHeight?.[r]?.[c] || 0;
+        const centerError = sim.modelErrorCenter?.[r]?.[c] || 0;
+        return `model error z ${heightError.toFixed(3)}\ncenter shift ${centerError.toFixed(3)}\nrms z ${Number(sim.metrics?.physicalRmsHeightDelta || 0).toFixed(3)}\nmax z ${Number(sim.metrics?.physicalMaxHeightDelta || 0).toFixed(3)}\nmodel ${sim.metrics?.model || "kinematic"}`;
       }
       if (mode === "backlash") {
         return `backlash b ${backlash.toFixed(3)}\ninfluence ${influence.toFixed(3)}\ndie-off ${Number.isFinite(sim.dieOff[r][c]) ? sim.dieOff[r][c] : "locked"}\ndead-zone +/-${backlash.toFixed(2)}`;

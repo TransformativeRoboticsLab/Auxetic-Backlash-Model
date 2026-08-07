@@ -75,6 +75,41 @@
     };
   }
 
+  function computeModelError(base, centers, height) {
+    const rows = base.height.length;
+    const cols = base.height[0]?.length || 0;
+    const modelErrorHeight = RAD.matrix(rows, cols, 0);
+    const modelErrorCenter = RAD.matrix(rows, cols, 0);
+    let heightSquared = 0;
+    let centerSquared = 0;
+    let heightMax = 0;
+    let centerMax = 0;
+    let count = 0;
+    for (let r = 0; r < rows; r += 1) {
+      for (let c = 0; c < cols; c += 1) {
+        const heightDelta = height[r][c] - base.height[r][c];
+        const baseCenter = base.centers[r][c];
+        const center = centers[r][c];
+        const centerDelta = Math.hypot(center.x - baseCenter.x, center.y - baseCenter.y, center.z - baseCenter.z);
+        modelErrorHeight[r][c] = heightDelta;
+        modelErrorCenter[r][c] = centerDelta;
+        heightSquared += heightDelta * heightDelta;
+        centerSquared += centerDelta * centerDelta;
+        heightMax = Math.max(heightMax, Math.abs(heightDelta));
+        centerMax = Math.max(centerMax, centerDelta);
+        count += 1;
+      }
+    }
+    return {
+      modelErrorHeight,
+      modelErrorCenter,
+      physicalRmsHeightDelta: Math.sqrt(heightSquared / Math.max(1, count)),
+      physicalMaxHeightDelta: heightMax,
+      physicalRmsCenterDelta: Math.sqrt(centerSquared / Math.max(1, count)),
+      physicalMaxCenterDelta: centerMax,
+    };
+  }
+
   function simulatePhysicalRelaxation(state, options = {}) {
     const base = options.baseSim || RAD.simulate(state);
     const { rows, cols } = state.grid;
@@ -120,20 +155,19 @@
     const height = RAD.matrix(rows, cols, (r, c) => centers[r][c].z);
     const slope = recomputeSlope(state, height);
     const linkStrain = recomputeLinkStrain(state, centers);
+    const modelError = computeModelError(base, centers, height);
     let maxAbsHeight = 0;
-    let rmsDelta = 0;
     for (let r = 0; r < rows; r += 1) {
       for (let c = 0; c < cols; c += 1) {
         maxAbsHeight = Math.max(maxAbsHeight, Math.abs(height[r][c]));
-        const dz = height[r][c] - base.height[r][c];
-        rmsDelta += dz * dz;
       }
     }
-    rmsDelta = Math.sqrt(rmsDelta / Math.max(1, rows * cols));
     return {
       ...base,
       height,
       centers,
+      modelErrorHeight: modelError.modelErrorHeight,
+      modelErrorCenter: modelError.modelErrorCenter,
       slope,
       linkStrain,
       metrics: {
@@ -141,7 +175,10 @@
         model: "spring-preview",
         physicalPreview: true,
         physicalIterations: iterations,
-        physicalRmsHeightDelta: rmsDelta,
+        physicalRmsHeightDelta: modelError.physicalRmsHeightDelta,
+        physicalMaxHeightDelta: modelError.physicalMaxHeightDelta,
+        physicalRmsCenterDelta: modelError.physicalRmsCenterDelta,
+        physicalMaxCenterDelta: modelError.physicalMaxCenterDelta,
         maxAbsHeight,
         meanAbsLinkStrain: linkStrain.meanAbs,
         maxAbsLinkStrain: linkStrain.maxAbs,
