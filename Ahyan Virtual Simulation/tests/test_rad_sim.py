@@ -18,6 +18,9 @@ from rad_sim import (
     characterize_cluster,
     characterize_pair,
     characterize_single_cell,
+    compare_physical_cluster,
+    compare_physical_pair,
+    compare_physical_response,
     evaluate_programmable_operators,
     lock_projection,
     export_paper_rad_mesh_obj,
@@ -380,6 +383,51 @@ class RadSimTests(unittest.TestCase):
                 include_alpha=False,
                 include_z=False,
             )
+
+    def test_physical_response_comparison_reports_spring_hinge_deviation(self):
+        config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.0)
+        comparison = compare_physical_response(
+            config,
+            (SourceCommand((1, 1), z=0.35),),
+            load_case=LoadCase(lock_stiffness=500.0, maxiter=400),
+        )
+        self.assertTrue(comparison.physical_success)
+        self.assertEqual(comparison.physical_height_delta.shape, (3, 3))
+        self.assertEqual(comparison.physical_center_delta.shape, (3, 3, 3))
+        self.assertGreater(comparison.physical_height_delta[1, 1], 0.1)
+        self.assertGreaterEqual(comparison.height_rms_error, 0.0)
+        self.assertGreaterEqual(comparison.center_rms_error, 0.0)
+        self.assertGreaterEqual(comparison.physical_energy, 0.0)
+
+    def test_physical_pair_comparison_reports_pairwise_nonlocality(self):
+        config = LatticeConfig(rows=2, cols=2, z_coupling_gain=0.0)
+        pair = compare_physical_pair(
+            config,
+            SourceCommand((0, 1), z=0.2),
+            SourceCommand((1, 0), z=0.2),
+            load_case=LoadCase(lock_stiffness=400.0, maxiter=300),
+        )
+        self.assertTrue(pair.combined.physical_success)
+        self.assertEqual(len(pair.combined.commands), 2)
+        self.assertGreaterEqual(pair.physical_height_superposition_error, 0.0)
+        self.assertGreaterEqual(pair.physical_center_superposition_error, 0.0)
+        self.assertTrue(np.isfinite(pair.combined.center_rms_error))
+
+    def test_physical_cluster_comparison_accepts_multiple_commands(self):
+        config = LatticeConfig(rows=2, cols=2, z_coupling_gain=0.0)
+        cluster = compare_physical_cluster(
+            config,
+            (
+                SourceCommand((0, 1), z=0.18),
+                SourceCommand((1, 0), alpha=-0.12),
+                SourceCommand((1, 1), z=-0.08),
+            ),
+            load_case=LoadCase(lock_stiffness=350.0, maxiter=250),
+        )
+        self.assertTrue(cluster.physical_success)
+        self.assertEqual(len(cluster.commands), 3)
+        self.assertEqual(cluster.physical_center_delta.shape, (2, 2, 3))
+        self.assertTrue(np.isfinite(cluster.max_abs_center_error))
 
     def test_inverse_design_reduces_height_target_error(self):
         config = LatticeConfig(rows=5, cols=5, z_coupling_gain=0.25)

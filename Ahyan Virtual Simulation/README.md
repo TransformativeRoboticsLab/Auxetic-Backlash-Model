@@ -20,8 +20,12 @@ For numerical characterization of programmable discontinuities, the Python API
 also exposes `characterize_single_cell`, `characterize_pair`, and
 `characterize_cluster`. These helpers return response fields, vertical residuals,
 die-off distances, and pairwise superposition error from the same simulator used
-by the browser. `build_response_matrix` stacks those responses into alpha and
-height matrices for controllability checks and inverse-design experiments.
+by the browser. `compare_physical_response`, `compare_physical_pair`, and
+`compare_physical_cluster` run the same commands through the 3D spring-hinge
+relaxation and report where physical center/height deltas deviate from the
+kinematic backlash prediction.
+`build_response_matrix` stacks those responses into alpha and height matrices for
+controllability checks and inverse-design experiments.
 `solve_inverse_design` uses that response matrix in a bounded damped least-squares
 fit from target alpha/height fields to candidate actuator commands. This is the
 first Python-backed inverse layer for surface-shaping studies; it is linearized
@@ -393,5 +397,9 @@ without requiring Playwright or a browser binary.
 - `solve_spring_hinge_3d`: out-of-plane spring-hinge relaxation over 3D center
   nodes, so vertical actuation and pin-clearance residual height can participate
   in the same axial/hinge/penalty energy model.
+- `compare_physical_response` / `compare_physical_pair` /
+  `compare_physical_cluster`: single, pair, and cluster diagnostics that quantify
+  the deviation between kinematic backlash propagation and the 3D spring-hinge
+  physical response.
 - `plot_lattice`: four 3D panels showing the lattice, actuated surface,
   complex-plane displacement, and rotation-angle surface.

@@ -14,6 +14,8 @@ from .cell_geometry import (
 from .coupling import alpha_to_theta, backlash_activation, theta_to_alpha
 from .experiments import (
     PairCharacterization,
+    PhysicalPairComparison,
+    PhysicalResponseComparison,
     ResponseCharacterization,
     ResponseMatrix,
     SourceCommand,
@@ -22,6 +24,9 @@ from .experiments import (
     characterize_pair,
     characterize_response,
     characterize_single_cell,
+    compare_physical_cluster,
+    compare_physical_pair,
+    compare_physical_response,
 )
 from .kinematic import simulate_kinematic
 from .inverse import InverseDesignResult, solve_inverse_design
@@ -63,6 +68,8 @@ __all__ = [
     "SourceCommand",
     "ResponseCharacterization",
     "PairCharacterization",
+    "PhysicalResponseComparison",
+    "PhysicalPairComparison",
     "ResponseMatrix",
     "InverseDesignResult",
     "build_paper_rad_cell_geometry",
@@ -79,6 +86,9 @@ __all__ = [
     "characterize_single_cell",
     "characterize_pair",
     "characterize_cluster",
+    "compare_physical_response",
+    "compare_physical_pair",
+    "compare_physical_cluster",
     "alpha_backlash_operator",
     "vertical_clearance_operator",
     "lock_projection",
