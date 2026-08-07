@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Literal
 
 import numpy as np
 
+from .cell_geometry import RADHardwareProfile
 from .kinematic import simulate_kinematic
 from .models import LatticeConfig, LatticeState, LoadCase, SimulationResult
 from .spring_hinge import solve_spring_hinge_3d
@@ -185,6 +187,89 @@ class ResponseMatrix:
         return int(np.count_nonzero(np.any(np.abs(self.height) > tolerance, axis=1)))
 
 
+PROTOCOL_MEASUREMENT_FIELDS: tuple[str, ...] = (
+    "alpha_delta_grid",
+    "height_delta_grid",
+    "center_displacement_grid",
+    "actuator_command",
+    "lock_state",
+    "pin_hole_slip_mm",
+    "actuator_force_n",
+)
+
+
+@dataclass(frozen=True)
+class CalibrationExperimentStep:
+    id: str
+    scope: Literal["single", "pair", "cluster", "lock"]
+    commands: tuple[SourceCommand, ...]
+    observation_cells: tuple[tuple[int, int], ...]
+    locked_cells: tuple[tuple[int, int], ...]
+    measurement_fields: tuple[str, ...]
+    purpose: str
+    expected_response: str
+    repeat_count: int = 3
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "id": self.id,
+            "scope": self.scope,
+            "commands": [
+                {"row": row, "col": col, "alpha": command.alpha, "z": command.z}
+                for command in self.commands
+                for row, col in (command.cell,)
+            ],
+            "observationCells": [
+                {"row": row, "col": col} for row, col in self.observation_cells
+            ],
+            "lockedCells": [
+                {"row": row, "col": col} for row, col in self.locked_cells
+            ],
+            "measurementFields": list(self.measurement_fields),
+            "purpose": self.purpose,
+            "expectedResponse": self.expected_response,
+            "repeatCount": self.repeat_count,
+        }
+
+
+@dataclass(frozen=True)
+class CalibrationExperimentProtocol:
+    config_shape: tuple[int, int]
+    center_cell: tuple[int, int]
+    steps: tuple[CalibrationExperimentStep, ...]
+    hardware_profile_name: str = "paper-reference"
+    schema: str = "rad-sim.calibration-experiment-protocol.v1"
+    notes: str = (
+        "Protocol defines repeatable simulator/bench measurements; it does not "
+        "claim the current spring-hinge solver is calibrated."
+    )
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "hardwareProfile": self.hardware_profile_name,
+            "grid": {"rows": self.config_shape[0], "cols": self.config_shape[1]},
+            "centerCell": {"row": self.center_cell[0], "col": self.center_cell[1]},
+            "measurementFields": list(PROTOCOL_MEASUREMENT_FIELDS),
+            "notes": self.notes,
+            "steps": [step.to_dict() for step in self.steps],
+        }
+
+
+@dataclass(frozen=True)
+class CalibrationExperimentSimulation:
+    step_id: str
+    scope: str
+    command_count: int
+    alpha_reach: int
+    z_reach: int
+    max_abs_alpha_delta: float
+    max_abs_height_delta: float
+    physical_height_rms_error: float | None = None
+    physical_center_rms_error: float | None = None
+    physical_success: bool | None = None
+
+
 def _state_with_commands(
     config: LatticeConfig,
     commands: Iterable[SourceCommand],
@@ -234,6 +319,38 @@ def _nearest_source_distance(
     source_cells: tuple[tuple[int, int], ...],
 ) -> int:
     return min(abs(row - r) + abs(col - c) for r, c in source_cells)
+
+
+def _clamp_cell(config: LatticeConfig, cell: tuple[int, int]) -> tuple[int, int]:
+    return (
+        min(max(int(cell[0]), 0), config.rows - 1),
+        min(max(int(cell[1]), 0), config.cols - 1),
+    )
+
+
+def _unique_cells(cells: Iterable[tuple[int, int]]) -> tuple[tuple[int, int], ...]:
+    unique: list[tuple[int, int]] = []
+    seen: set[tuple[int, int]] = set()
+    for cell in cells:
+        normalized = (int(cell[0]), int(cell[1]))
+        if normalized in seen:
+            continue
+        seen.add(normalized)
+        unique.append(normalized)
+    return tuple(unique)
+
+
+def _neighbor_cells(config: LatticeConfig, center: tuple[int, int]) -> tuple[tuple[int, int], ...]:
+    row, col = center
+    return _unique_cells(
+        _clamp_cell(config, cell)
+        for cell in (
+            (row, col + 1),
+            (row + 1, col),
+            (row, col - 1),
+            (row - 1, col),
+        )
+    )
 
 
 def _fit_shell_decay(
@@ -523,6 +640,187 @@ def characterize_cluster(
     tolerance: float = 1e-9,
 ) -> ResponseCharacterization:
     return characterize_response(config, tuple(commands), locked_cells, tolerance)
+
+
+def build_calibration_experiment_protocol(
+    config: LatticeConfig,
+    center_cell: tuple[int, int] | None = None,
+    *,
+    alpha_step: float = -0.25,
+    z_step: float = 0.30,
+    hardware_profile: RADHardwareProfile | None = None,
+    repeat_count: int = 3,
+    include_lock_control: bool = True,
+) -> CalibrationExperimentProtocol:
+    """Build a repeatable single/pair/cluster protocol for physical calibration."""
+
+    center = _clamp_cell(
+        config,
+        center_cell if center_cell is not None else (config.rows // 2, config.cols // 2),
+    )
+    neighbors = tuple(cell for cell in _neighbor_cells(config, center) if cell != center)
+    primary_neighbor = neighbors[0] if neighbors else center
+    secondary_neighbor = neighbors[1] if len(neighbors) > 1 else primary_neighbor
+    observation_pair = _unique_cells((center, primary_neighbor))
+    observation_cluster = _unique_cells((center, primary_neighbor, secondary_neighbor, *neighbors))
+    measurement_fields = PROTOCOL_MEASUREMENT_FIELDS
+    alpha_expand = abs(float(alpha_step)) * 0.75
+    z_step = float(z_step)
+    alpha_step = float(alpha_step)
+
+    steps: list[CalibrationExperimentStep] = [
+        CalibrationExperimentStep(
+            id="single_alpha_contract",
+            scope="single",
+            commands=(SourceCommand(center, alpha=alpha_step),),
+            observation_cells=(center,),
+            locked_cells=(),
+            measurement_fields=measurement_fields,
+            purpose="Measure the local rotating-square dilation response to contraction.",
+            expected_response="Primary alpha change at the commanded cell with backlash-gated neighbor influence.",
+            repeat_count=repeat_count,
+        ),
+        CalibrationExperimentStep(
+            id="single_alpha_expand",
+            scope="single",
+            commands=(SourceCommand(center, alpha=alpha_expand),),
+            observation_cells=(center,),
+            locked_cells=(),
+            measurement_fields=measurement_fields,
+            purpose="Measure expansion-side travel and check for asymmetric backlash.",
+            expected_response="Positive alpha response at the commanded cell with smaller expansion command.",
+            repeat_count=repeat_count,
+        ),
+        CalibrationExperimentStep(
+            id="single_z_lift",
+            scope="single",
+            commands=(SourceCommand(center, z=z_step),),
+            observation_cells=observation_pair,
+            locked_cells=(),
+            measurement_fields=measurement_fields,
+            purpose="Measure direct vertical actuation and residual neighbor lift.",
+            expected_response="Commanded cell moves vertically; adjacent observation cell captures pin-hole residual coupling.",
+            repeat_count=repeat_count,
+        ),
+        CalibrationExperimentStep(
+            id="pair_z_residual",
+            scope="pair",
+            commands=(SourceCommand(center, z=z_step),),
+            observation_cells=observation_pair,
+            locked_cells=(),
+            measurement_fields=measurement_fields,
+            purpose="Quantify vertical die-off from one actuated cell into a neighboring cell.",
+            expected_response="Neighbor height response should decay with clearance, backlash, and graph distance.",
+            repeat_count=repeat_count,
+        ),
+        CalibrationExperimentStep(
+            id="pair_superposition",
+            scope="pair",
+            commands=(
+                SourceCommand(center, alpha=alpha_step, z=0.5 * z_step),
+                SourceCommand(primary_neighbor, alpha=alpha_step, z=0.5 * z_step),
+            ),
+            observation_cells=observation_pair,
+            locked_cells=(),
+            measurement_fields=measurement_fields,
+            purpose="Measure whether adjacent cell commands add linearly or interact through backlash.",
+            expected_response="Any deviation from summed single-cell responses identifies a programmable-discontinuity interaction.",
+            repeat_count=repeat_count,
+        ),
+        CalibrationExperimentStep(
+            id="cluster_mixed_actuation",
+            scope="cluster",
+            commands=(
+                SourceCommand(center, z=z_step),
+                SourceCommand(primary_neighbor, alpha=alpha_step),
+                SourceCommand(secondary_neighbor, alpha=0.5 * alpha_expand, z=-0.5 * z_step),
+            ),
+            observation_cells=observation_cluster,
+            locked_cells=(),
+            measurement_fields=measurement_fields,
+            purpose="Measure collective response of mixed horizontal and vertical actuation.",
+            expected_response="Cluster field should reveal multi-operator coupling, residual height spread, and reachable directions.",
+            repeat_count=repeat_count,
+        ),
+    ]
+    if include_lock_control:
+        steps.append(
+            CalibrationExperimentStep(
+                id="locked_cell_control",
+                scope="lock",
+                commands=(SourceCommand(center, alpha=alpha_step, z=z_step),),
+                observation_cells=observation_pair,
+                locked_cells=(center,),
+                measurement_fields=measurement_fields,
+                purpose="Verify lock enforcement against commanded alpha and vertical motion.",
+                expected_response="Locked cell should remain fixed while any neighbor residual exposes compliance leakage.",
+                repeat_count=repeat_count,
+            )
+        )
+
+    return CalibrationExperimentProtocol(
+        config_shape=(config.rows, config.cols),
+        center_cell=center,
+        hardware_profile_name=(
+            hardware_profile.name if hardware_profile is not None else "paper-reference"
+        ),
+        steps=tuple(steps),
+    )
+
+
+def export_calibration_experiment_protocol_json(
+    protocol: CalibrationExperimentProtocol,
+) -> str:
+    return json.dumps(protocol.to_dict(), indent=2)
+
+
+def run_calibration_experiment_protocol(
+    config: LatticeConfig,
+    protocol: CalibrationExperimentProtocol,
+    *,
+    physical: bool = False,
+    load_case: LoadCase | None = None,
+    tolerance: float = 1e-9,
+) -> tuple[CalibrationExperimentSimulation, ...]:
+    """Run protocol steps through the current simulator for baseline expectations."""
+
+    simulations: list[CalibrationExperimentSimulation] = []
+    for step in protocol.steps:
+        response = characterize_response(
+            config,
+            step.commands,
+            locked_cells=step.locked_cells,
+            tolerance=tolerance,
+        )
+        physical_height_rms_error: float | None = None
+        physical_center_rms_error: float | None = None
+        physical_success: bool | None = None
+        if physical:
+            comparison = compare_physical_response(
+                config,
+                step.commands,
+                locked_cells=step.locked_cells,
+                load_case=load_case,
+                tolerance=tolerance,
+            )
+            physical_height_rms_error = comparison.height_rms_error
+            physical_center_rms_error = comparison.center_rms_error
+            physical_success = comparison.physical_success
+        simulations.append(
+            CalibrationExperimentSimulation(
+                step_id=step.id,
+                scope=step.scope,
+                command_count=len(step.commands),
+                alpha_reach=response.alpha_reach,
+                z_reach=response.z_reach,
+                max_abs_alpha_delta=response.max_abs_alpha_delta,
+                max_abs_height_delta=response.max_abs_height_delta,
+                physical_height_rms_error=physical_height_rms_error,
+                physical_center_rms_error=physical_center_rms_error,
+                physical_success=physical_success,
+            )
+        )
+    return tuple(simulations)
 
 
 def compare_physical_response(

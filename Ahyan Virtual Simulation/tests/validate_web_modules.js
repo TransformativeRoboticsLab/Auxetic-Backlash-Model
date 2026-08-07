@@ -31,6 +31,8 @@ assert.strictEqual(typeof RAD.applyHardwareProfileToGrid, "function", "math modu
 assert.strictEqual(typeof RAD.calibratedMeshDimensions, "function", "mesh exporter should expose calibrated mesh dimensions");
 assert.strictEqual(typeof RAD.physicalPreviewComparison, "function", "analysis module should expose physical preview comparison");
 assert.strictEqual(typeof RAD.responseDecayProfile, "function", "analysis module should expose response decay profile");
+assert.strictEqual(typeof RAD.calibrationExperimentProtocol, "function", "analysis module should expose calibration experiment protocol");
+assert.strictEqual(typeof RAD.exportCalibrationExperimentProtocol, "function", "analysis module should export calibration experiment protocol");
 assert.strictEqual(typeof RAD.validateInversePlanPhysical, "function", "inverse module should expose physical inverse validation");
 const provenance = RAD.modelProvenance();
 assert.ok(
@@ -51,6 +53,7 @@ for (const ref of localRefs) {
 assert.ok(!/https?:\/\//.test(html), "browser entry should not require external scripts or styles");
 assert.ok(html.includes('value="operatorInteraction"'), "operator interaction overlay should be available in the browser UI");
 assert.ok(html.includes('id="selectInteractionHotspot"'), "response panel should expose a hotspot selection button");
+assert.ok(html.includes('id="saveExperimentProtocol"'), "response panel should expose a protocol export button");
 assert.ok(html.includes('id="characterizationHotspot"'), "response panel should expose a hotspot readout");
 assert.ok(html.includes("./provenance.js"), "provenance module should be loaded by the browser entry");
 assert.ok(html.includes('id="modelProvenanceList"'), "browser UI should expose model provenance list");
@@ -230,6 +233,17 @@ assert.strictEqual(readyReadiness.solverReady, false);
 const readyMeasurementPlan = RAD.calibrationMeasurementPlan(readyState);
 assert.ok(readyMeasurementPlan.filter((task) => task.category === "geometry").every((task) => task.status === "done"));
 assert.ok(readyMeasurementPlan.filter((task) => task.category === "solver").every((task) => task.status === "missing"));
+readyState.selection = { r: 1, c: 1 };
+const experimentProtocol = RAD.calibrationExperimentProtocol(readyState);
+assert.strictEqual(experimentProtocol.schema, "rad-sim.calibration-experiment-protocol.v1");
+assert.strictEqual(experimentProtocol.hardwareProfile, "bench-v1");
+assert.strictEqual(experimentProtocol.steps.length, 7);
+assert.ok(experimentProtocol.steps.some((step) => step.id === "pair_z_residual" && step.scope === "pair"));
+assert.ok(experimentProtocol.steps.some((step) => step.id === "locked_cell_control" && step.lockedCells.length === 1));
+assert.ok(experimentProtocol.measurementFields.includes("pin_hole_slip_mm"));
+const exportedExperimentProtocol = JSON.parse(RAD.exportCalibrationExperimentProtocol(readyState));
+assert.strictEqual(exportedExperimentProtocol.schema, experimentProtocol.schema);
+assert.strictEqual(exportedExperimentProtocol.steps[0].id, "single_alpha_contract");
 const appliedProfileState = RAD.createState(2, 2);
 appliedProfileState.grid.cellSize = 1.25;
 appliedProfileState.grid.hardwareProfile = JSON.parse(JSON.stringify(state.grid.hardwareProfile));

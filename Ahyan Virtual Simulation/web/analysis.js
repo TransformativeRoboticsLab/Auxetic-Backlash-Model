@@ -663,6 +663,151 @@
     };
   }
 
+  const PROTOCOL_MEASUREMENT_FIELDS = Object.freeze([
+    "alpha_delta_grid",
+    "height_delta_grid",
+    "center_displacement_grid",
+    "actuator_command",
+    "lock_state",
+    "pin_hole_slip_mm",
+    "actuator_force_n",
+  ]);
+
+  function protocolCell(cell) {
+    return { row: cell.r, col: cell.c };
+  }
+
+  function protocolCommand(cell, alpha = 0, z = 0) {
+    return { row: cell.r, col: cell.c, alpha, z };
+  }
+
+  function uniqueProtocolCells(cells) {
+    const seen = new Set();
+    const unique = [];
+    for (const cell of cells) {
+      const key = cellKey(cell);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(cell);
+    }
+    return unique;
+  }
+
+  function calibrationExperimentProtocol(state, options = {}) {
+    const limits = typeof RAD.commandLimits === "function" ? RAD.commandLimits(state) : { alphaContract: 0.55, z: 0.8 };
+    const center = {
+      r: clampIndex(options.r ?? state.selection?.r ?? 0, state.grid.rows),
+      c: clampIndex(options.c ?? state.selection?.c ?? 0, state.grid.cols),
+    };
+    const pairCells = characterizationCells(state, center.r, center.c, "pair");
+    const clusterCells = characterizationCells(state, center.r, center.c, "cluster");
+    const primaryNeighbor = pairCells.find((cell) => cellKey(cell) !== cellKey(center)) || center;
+    const secondaryNeighbor =
+      clusterCells.find((cell) => cellKey(cell) !== cellKey(center) && cellKey(cell) !== cellKey(primaryNeighbor)) || primaryNeighbor;
+    const alphaStep = Number(options.alphaStep ?? -Math.min(0.25, limits.alphaContract || 0.25));
+    const alphaExpand = Math.abs(alphaStep) * 0.75;
+    const zStep = Number(options.zStep ?? Math.min(0.3, limits.z || 0.3));
+    const repeatCount = Math.max(1, Math.round(Number(options.repeatCount ?? 3)));
+    const observationPair = uniqueProtocolCells([center, primaryNeighbor]);
+    const observationCluster = uniqueProtocolCells([center, primaryNeighbor, secondaryNeighbor, ...clusterCells]);
+    const step = (id, scope, commands, observationCells, lockedCells, purpose, expectedResponse) => ({
+      id,
+      scope,
+      commands,
+      observationCells: observationCells.map(protocolCell),
+      lockedCells: lockedCells.map(protocolCell),
+      measurementFields: [...PROTOCOL_MEASUREMENT_FIELDS],
+      purpose,
+      expectedResponse,
+      repeatCount,
+    });
+    const steps = [
+      step(
+        "single_alpha_contract",
+        "single",
+        [protocolCommand(center, alphaStep, 0)],
+        [center],
+        [],
+        "Measure the local rotating-square dilation response to contraction.",
+        "Primary alpha change at the commanded cell with backlash-gated neighbor influence."
+      ),
+      step(
+        "single_alpha_expand",
+        "single",
+        [protocolCommand(center, alphaExpand, 0)],
+        [center],
+        [],
+        "Measure expansion-side travel and check for asymmetric backlash.",
+        "Positive alpha response at the commanded cell with smaller expansion command."
+      ),
+      step(
+        "single_z_lift",
+        "single",
+        [protocolCommand(center, 0, zStep)],
+        observationPair,
+        [],
+        "Measure direct vertical actuation and residual neighbor lift.",
+        "Commanded cell moves vertically; adjacent observation cell captures pin-hole residual coupling."
+      ),
+      step(
+        "pair_z_residual",
+        "pair",
+        [protocolCommand(center, 0, zStep)],
+        observationPair,
+        [],
+        "Quantify vertical die-off from one actuated cell into a neighboring cell.",
+        "Neighbor height response should decay with clearance, backlash, and graph distance."
+      ),
+      step(
+        "pair_superposition",
+        "pair",
+        [protocolCommand(center, alphaStep, 0.5 * zStep), protocolCommand(primaryNeighbor, alphaStep, 0.5 * zStep)],
+        observationPair,
+        [],
+        "Measure whether adjacent cell commands add linearly or interact through backlash.",
+        "Any deviation from summed single-cell responses identifies a programmable-discontinuity interaction."
+      ),
+      step(
+        "cluster_mixed_actuation",
+        "cluster",
+        [
+          protocolCommand(center, 0, zStep),
+          protocolCommand(primaryNeighbor, alphaStep, 0),
+          protocolCommand(secondaryNeighbor, 0.5 * alphaExpand, -0.5 * zStep),
+        ],
+        observationCluster,
+        [],
+        "Measure collective response of mixed horizontal and vertical actuation.",
+        "Cluster field should reveal multi-operator coupling, residual height spread, and reachable directions."
+      ),
+      step(
+        "locked_cell_control",
+        "lock",
+        [protocolCommand(center, alphaStep, zStep)],
+        observationPair,
+        [center],
+        "Verify lock enforcement against commanded alpha and vertical motion.",
+        "Locked cell should remain fixed while any neighbor residual exposes compliance leakage."
+      ),
+    ];
+    const profile = typeof RAD.hardwareProfile === "function" ? RAD.hardwareProfile(state) : { name: "paper-reference" };
+    return {
+      schema: "rad-sim.calibration-experiment-protocol.v1",
+      hardwareProfile: profile.name || "paper-reference",
+      readiness: typeof RAD.calibrationReadiness === "function" ? RAD.calibrationReadiness(state) : null,
+      measurementPlan: typeof RAD.calibrationMeasurementPlan === "function" ? RAD.calibrationMeasurementPlan(state) : [],
+      grid: { rows: state.grid.rows, cols: state.grid.cols },
+      centerCell: protocolCell(center),
+      measurementFields: [...PROTOCOL_MEASUREMENT_FIELDS],
+      notes: "Protocol defines repeatable simulator/bench measurements; it does not claim the current spring-hinge solver is calibrated.",
+      steps,
+    };
+  }
+
+  function exportCalibrationExperimentProtocol(state, options = {}) {
+    return JSON.stringify(calibrationExperimentProtocol(state, options), null, 2);
+  }
+
   function analyzeExperimentSequence(state) {
     const frames = sequenceFrames(state);
     const frameMetrics = frames.map((frame, frameIndex) => {
@@ -792,6 +937,8 @@
   RAD.analyzeExperimentSequence = analyzeExperimentSequence;
   RAD.exportSequenceMetricsCsv = exportSequenceMetricsCsv;
   RAD.characterizeLocalResponse = characterizeLocalResponse;
+  RAD.calibrationExperimentProtocol = calibrationExperimentProtocol;
+  RAD.exportCalibrationExperimentProtocol = exportCalibrationExperimentProtocol;
   RAD.physicalPreviewComparison = physicalPreviewComparison;
   RAD.responseDecayProfile = responseDecayProfile;
 })();

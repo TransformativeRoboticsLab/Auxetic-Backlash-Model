@@ -147,7 +147,10 @@ solver gaps that still require stiffness, actuator, friction/contact, and
 response measurements. `calibration_measurement_plan` and the browser `Save
 Calibration Plan` action turn those gaps into an ordered JSON checklist of the
 next geometry and solver measurements needed before treating a RAD cell as
-physically calibrated.
+physically calibrated. `build_calibration_experiment_protocol` and the browser
+Response Experiments `Save Protocol` action generate a repeatable single-cell,
+pair-cell, cluster, and locked-cell test protocol for collecting those response
+measurements against the same simulator coordinates.
 For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
 paper RAD lattice into extruded plate, pin, and connector mesh components, and
 `export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for
@@ -544,6 +547,10 @@ without requiring Playwright or a browser binary.
 - `calibration_measurement_plan` / `web/math.js` `calibrationMeasurementPlan`:
   ordered geometry and solver measurement tasks that show what must be measured
   next before the visual CAD profile can become a calibrated physical model.
+- `build_calibration_experiment_protocol` / `web/analysis.js`
+  `calibrationExperimentProtocol`: repeatable single, pair, cluster, and lock
+  response protocol exports for matching simulator response fields against
+  physical bench measurements.
 - `web/renderer.js` `calibratedRad` mode and `web/mesh_export.js`
   `calibratedMeshDimensions`: profile-aware visual/export layer that uses
   measured dimensions for CAD-like inspection while keeping solver assumptions

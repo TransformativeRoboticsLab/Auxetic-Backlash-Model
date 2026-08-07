@@ -1,3 +1,4 @@
+import json
 import math
 import unittest
 
@@ -16,6 +17,7 @@ from rad_sim import (
     SourceCommand,
     apply_event_sequence,
     backlash_activation,
+    build_calibration_experiment_protocol,
     build_response_matrix,
     build_paper_rad_cell_geometry,
     build_paper_rad_lattice_geometry,
@@ -26,6 +28,7 @@ from rad_sim import (
     characterize_cluster,
     characterize_pair,
     characterize_pairwise_interactions,
+    characterize_response,
     characterize_single_cell,
     compare_physical_cluster,
     compare_physical_pair,
@@ -37,6 +40,7 @@ from rad_sim import (
     diagnose_programmable_discontinuity,
     evaluate_programmable_operators,
     finite_die_off_radius,
+    export_calibration_experiment_protocol_json,
     hardware_profile_from_config,
     local_actuation_event,
     lock_event,
@@ -47,6 +51,7 @@ from rad_sim import (
     export_paper_rad_mesh_obj,
     iter_obj_vertices,
     release_event,
+    run_calibration_experiment_protocol,
     response_decay_profile,
     simulate_kinematic,
     solve_inverse_design,
@@ -639,6 +644,54 @@ class RadSimTests(unittest.TestCase):
         self.assertGreater(cluster.alpha_reach, 1)
         self.assertGreater(cluster.z_reach, 1)
         self.assertGreater(cluster.max_abs_height_delta, 0)
+
+    def test_calibration_experiment_protocol_covers_single_pair_cluster_and_lock(self):
+        config = LatticeConfig(rows=5, cols=5, z_coupling_gain=0.35)
+        profile = RADHardwareProfile(name="bench-v1", pin_radius_mm=6.3, hole_radius_mm=7.875)
+        protocol = build_calibration_experiment_protocol(
+            config,
+            center_cell=(2, 2),
+            hardware_profile=profile,
+        )
+        self.assertEqual(protocol.schema, "rad-sim.calibration-experiment-protocol.v1")
+        self.assertEqual(protocol.hardware_profile_name, "bench-v1")
+        self.assertEqual(protocol.center_cell, (2, 2))
+        self.assertEqual(len(protocol.steps), 7)
+        self.assertEqual(
+            {step.scope for step in protocol.steps},
+            {"single", "pair", "cluster", "lock"},
+        )
+        residual = next(step for step in protocol.steps if step.id == "pair_z_residual")
+        self.assertEqual(residual.scope, "pair")
+        self.assertEqual(len(residual.commands), 1)
+        self.assertGreaterEqual(len(residual.observation_cells), 2)
+        locked = next(step for step in protocol.steps if step.id == "locked_cell_control")
+        self.assertEqual(locked.locked_cells, ((2, 2),))
+        exported = json.loads(export_calibration_experiment_protocol_json(protocol))
+        self.assertEqual(exported["schema"], protocol.schema)
+        self.assertEqual(exported["hardwareProfile"], "bench-v1")
+        self.assertEqual(exported["steps"][0]["id"], "single_alpha_contract")
+        self.assertIn("pin_hole_slip_mm", exported["measurementFields"])
+
+    def test_calibration_experiment_protocol_runs_kinematic_expectations(self):
+        config = LatticeConfig(rows=3, cols=3, backlash=0.02, z_coupling_gain=0.35)
+        protocol = build_calibration_experiment_protocol(config, center_cell=(1, 1))
+        simulations = run_calibration_experiment_protocol(config, protocol)
+        self.assertEqual(len(simulations), len(protocol.steps))
+        single_z = next(result for result in simulations if result.step_id == "single_z_lift")
+        self.assertGreater(single_z.z_reach, 1)
+        self.assertGreater(single_z.max_abs_height_delta, 0.0)
+        locked = next(result for result in simulations if result.step_id == "locked_cell_control")
+        self.assertGreaterEqual(locked.max_abs_height_delta, 0.0)
+        locked_step = next(step for step in protocol.steps if step.id == "locked_cell_control")
+        locked_response = characterize_response(
+            config,
+            locked_step.commands,
+            locked_cells=locked_step.locked_cells,
+        )
+        row, col = locked_step.locked_cells[0]
+        self.assertEqual(locked_response.alpha_delta[row, col], 0.0)
+        self.assertEqual(locked_response.height_delta[row, col], 0.0)
 
     def test_characterization_respects_locked_cells(self):
         config = LatticeConfig(rows=3, cols=3, backlash=0.0)

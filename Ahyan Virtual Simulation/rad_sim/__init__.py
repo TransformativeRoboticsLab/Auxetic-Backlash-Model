@@ -27,6 +27,9 @@ from .cell_geometry import (
 )
 from .coupling import alpha_to_theta, backlash_activation, theta_to_alpha
 from .experiments import (
+    CalibrationExperimentProtocol,
+    CalibrationExperimentSimulation,
+    CalibrationExperimentStep,
     OperatorInteractionGraph,
     OperatorPairInteraction,
     PairCharacterization,
@@ -37,6 +40,7 @@ from .experiments import (
     ResponseMatrix,
     SourceCommand,
     build_response_matrix,
+    build_calibration_experiment_protocol,
     characterize_cluster,
     characterize_pair,
     characterize_pairwise_interactions,
@@ -45,6 +49,8 @@ from .experiments import (
     compare_physical_cluster,
     compare_physical_pair,
     compare_physical_response,
+    export_calibration_experiment_protocol_json,
+    run_calibration_experiment_protocol,
     response_decay_profile,
 )
 from .framework import (
@@ -134,6 +140,9 @@ __all__ = [
     "PhysicalResponseComparison",
     "PhysicalPairComparison",
     "ResponseMatrix",
+    "CalibrationExperimentStep",
+    "CalibrationExperimentProtocol",
+    "CalibrationExperimentSimulation",
     "ProgrammableDiscontinuityDiagnostic",
     "InverseDesignResult",
     "InversePhysicalValidation",
@@ -153,6 +162,9 @@ __all__ = [
     "export_paper_rad_mesh_obj",
     "iter_obj_vertices",
     "build_response_matrix",
+    "build_calibration_experiment_protocol",
+    "export_calibration_experiment_protocol_json",
+    "run_calibration_experiment_protocol",
     "solve_inverse_design",
     "validate_inverse_design_physical",
     "alpha_to_theta",
