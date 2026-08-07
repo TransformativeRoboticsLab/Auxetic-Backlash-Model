@@ -94,10 +94,10 @@ class LatticeState:
 @dataclass(frozen=True)
 class LoadCase:
     fixed_cells: tuple[tuple[int, int], ...] = ((0, 0),)
-    prescribed_displacements: dict[tuple[int, int], tuple[float, float]] = field(
+    prescribed_displacements: dict[tuple[int, int], tuple[float, ...]] = field(
         default_factory=dict
     )
-    external_forces: dict[tuple[int, int], tuple[float, float]] = field(default_factory=dict)
+    external_forces: dict[tuple[int, int], tuple[float, ...]] = field(default_factory=dict)
     axial_stiffness: float = 25.0
     hinge_stiffness: float = 1.0
     lock_stiffness: float = 100.0

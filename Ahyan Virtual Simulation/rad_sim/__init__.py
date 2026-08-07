@@ -23,7 +23,7 @@ from .operators import (
     lock_projection,
     vertical_clearance_operator,
 )
-from .spring_hinge import solve_spring_hinge
+from .spring_hinge import solve_spring_hinge, solve_spring_hinge_3d
 from .visualization import interactive_app, plot_lattice
 
 __all__ = [
@@ -53,6 +53,7 @@ __all__ = [
     "evaluate_programmable_operators",
     "simulate_kinematic",
     "solve_spring_hinge",
+    "solve_spring_hinge_3d",
     "plot_lattice",
     "interactive_app",
 ]

@@ -7,6 +7,7 @@ from rad_sim import (
     DeadZonePropagationOperator,
     LatticeConfig,
     LatticeState,
+    LoadCase,
     SourceCommand,
     backlash_activation,
     build_response_matrix,
@@ -17,6 +18,7 @@ from rad_sim import (
     lock_projection,
     simulate_kinematic,
     solve_inverse_design,
+    solve_spring_hinge_3d,
     vertical_clearance_operator,
 )
 from rad_sim.coupling import alpha_to_theta, theta_to_alpha
@@ -310,6 +312,36 @@ class RadSimTests(unittest.TestCase):
         points = np.array([[1.0, 0.0], [0.0, 0.0], [0.0, 1.0]])
         energy = hinge_energy(points, [(0, 1, 2)], np.array([math.pi]), 2.0)
         self.assertAlmostEqual(energy, 0.5 * 2.0 * (angle - math.pi) ** 2)
+
+    def test_spring_hinge_3d_relaxes_vertical_actuation(self):
+        config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.0)
+        state = LatticeState.uniform(config)
+        state.z_actuator_grid[1, 1] = 0.35
+        result = solve_spring_hinge_3d(
+            config,
+            state,
+            LoadCase(lock_stiffness=500.0, maxiter=400),
+        )
+        self.assertEqual(result.metadata["model"], "spring_hinge_3d")
+        self.assertTrue(result.metadata["success"])
+        self.assertGreater(result.deformed_centers_3d[1, 1, 2], 0.1)
+        self.assertAlmostEqual(result.deformed_centers_3d[0, 0, 2], 0.0)
+        np.testing.assert_allclose(
+            result.metadata["height"], result.deformed_centers_3d[..., 2]
+        )
+
+    def test_spring_hinge_3d_respects_locked_height_target(self):
+        config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.0)
+        state = LatticeState.uniform(config)
+        state.locked_mask[1, 1] = True
+        state.z_actuator_grid[1, 1] = 0.4
+        result = solve_spring_hinge_3d(
+            config,
+            state,
+            LoadCase(lock_stiffness=800.0, maxiter=400),
+        )
+        self.assertTrue(result.metadata["success"])
+        self.assertLess(abs(result.deformed_centers_3d[1, 1, 2]), 0.02)
 
     def test_auxetic_poisson_trend(self):
         c1 = LatticeConfig(rows=4, cols=4)

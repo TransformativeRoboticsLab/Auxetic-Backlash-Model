@@ -360,5 +360,8 @@ without requiring Playwright or a browser binary.
   coupling, angle/dilation mapping, and synthetic out-of-plane height.
 - `solve_spring_hinge`: reduced center-node spring-hinge quasistatic solver using
   SciPy optimization and penalty locks.
+- `solve_spring_hinge_3d`: out-of-plane spring-hinge relaxation over 3D center
+  nodes, so vertical actuation and pin-clearance residual height can participate
+  in the same axial/hinge/penalty energy model.
 - `plot_lattice`: four 3D panels showing the lattice, actuated surface,
   complex-plane displacement, and rotation-angle surface.
