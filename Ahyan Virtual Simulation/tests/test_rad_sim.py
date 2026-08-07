@@ -14,11 +14,14 @@ from rad_sim import (
     build_response_matrix,
     build_paper_rad_cell_geometry,
     build_paper_rad_lattice_geometry,
+    build_paper_rad_lattice_mesh,
     characterize_cluster,
     characterize_pair,
     characterize_single_cell,
     evaluate_programmable_operators,
     lock_projection,
+    export_paper_rad_mesh_obj,
+    iter_obj_vertices,
     simulate_kinematic,
     solve_inverse_design,
     solve_spring_hinge_3d,
@@ -202,6 +205,50 @@ class RadSimTests(unittest.TestCase):
         self.assertEqual(connector.axis, "x")
         self.assertAlmostEqual(connector.height_delta, 0.2)
         self.assertAlmostEqual(connector.backlash_gap, 0.0)
+
+    def test_paper_rad_lattice_mesh_contains_plates_pins_and_connectors(self):
+        config = LatticeConfig(rows=2, cols=2)
+        mesh = build_paper_rad_lattice_mesh(config, pin_segments=8)
+        counts = mesh.kind_counts()
+        self.assertEqual(counts["outer_plate"], 4)
+        self.assertEqual(counts["inner_plate"], 4)
+        self.assertEqual(counts["pin"], 32)
+        self.assertEqual(counts["connector"], 4)
+        self.assertGreater(mesh.vertex_count, 0)
+        self.assertGreater(mesh.face_count, 0)
+
+    def test_paper_rad_lattice_mesh_tracks_vertical_deformation(self):
+        config = LatticeConfig(rows=1, cols=2, z_coupling_gain=0.0)
+        state = LatticeState.uniform(config)
+        state.z_actuator_grid[0, 1] = 0.3
+        mesh = build_paper_rad_lattice_mesh(config, state, include_pins=False)
+        lower, upper = mesh.bounds
+        self.assertGreater(upper[2] - lower[2], 0.3)
+        self.assertEqual(mesh.kind_counts()["connector"], 1)
+
+    def test_paper_rad_mesh_obj_export_has_valid_indices(self):
+        config = LatticeConfig(rows=1, cols=1)
+        mesh = build_paper_rad_lattice_mesh(
+            config,
+            include_pins=False,
+            include_connectors=False,
+        )
+        obj = export_paper_rad_mesh_obj(mesh)
+        self.assertIn("o cell_0_0_outer_plate", obj)
+        self.assertIn("o cell_0_0_inner_plate", obj)
+        vertices = list(iter_obj_vertices(obj))
+        faces = [line for line in obj.splitlines() if line.startswith("f ")]
+        self.assertEqual(len(vertices), mesh.vertex_count)
+        self.assertEqual(len(faces), mesh.face_count)
+        max_face_index = max(int(index) for face in faces for index in face.split()[1:])
+        self.assertLessEqual(max_face_index, mesh.vertex_count)
+
+    def test_paper_rad_mesh_rejects_invalid_dimensions(self):
+        with self.assertRaises(ValueError):
+            build_paper_rad_lattice_mesh(
+                LatticeConfig(rows=1, cols=1),
+                plate_thickness=0.0,
+            )
 
     def test_dead_zone_operator_has_no_neighbor_transmission_inside_gap(self):
         op = DeadZonePropagationOperator("test", dead_zone=0.1, gain=0.5)

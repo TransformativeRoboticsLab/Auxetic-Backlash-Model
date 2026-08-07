@@ -70,6 +70,10 @@ full-lattice inspection. The embedded reference values come from the RAD
 preprint text: 35 mm prototype side length, normalized backlash `b = 0.1`, and
 target effective Poisson ratio `-0.4`; exact CAD thicknesses and tolerances
 remain configurable until measured from the physical parts.
+For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
+paper RAD lattice into extruded plate, pin, and connector mesh components, and
+`export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for
+CAD-style review and downstream tooling; it is not yet a fabrication export.
 Saved `rad-sim.browser.v1` JSON includes both command inputs and derived cell
 state. `cells.commandAlpha`, `cells.commandZ`, and `cells.locked` remain the
 authoritative controls; `cells.alpha`, `cells.theta`, and `cells.z` are refreshed
@@ -374,6 +378,9 @@ without requiring Playwright or a browser binary.
 - `build_paper_rad_lattice_geometry`: full-lattice paper RAD geometry records
   derived from a `LatticeState` or `SimulationResult`, including inter-cell
   connector spans and neighbor alpha/height jumps.
+- `build_paper_rad_lattice_mesh` / `export_paper_rad_mesh_obj`: normalized
+  CAD-style triangle mesh and OBJ export for paper RAD plates, pins, and
+  connectors.
 - `solve_spring_hinge`: reduced center-node spring-hinge quasistatic solver using
   SciPy optimization and penalty locks.
 - `solve_spring_hinge_3d`: out-of-plane spring-hinge relaxation over 3D center

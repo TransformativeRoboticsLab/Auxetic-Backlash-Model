@@ -25,6 +25,13 @@ from .experiments import (
 )
 from .kinematic import simulate_kinematic
 from .inverse import InverseDesignResult, solve_inverse_design
+from .mesh_export import (
+    MeshComponent,
+    PaperRADMesh,
+    build_paper_rad_lattice_mesh,
+    export_paper_rad_mesh_obj,
+    iter_obj_vertices,
+)
 from .models import LatticeConfig, LatticeState, LoadCase, SimulationResult
 from .operators import (
     DeadZonePropagationOperator,
@@ -48,6 +55,8 @@ __all__ = [
     "PaperRADCellRecord",
     "PaperRADConnectorGeometry",
     "PaperRADLatticeGeometry",
+    "MeshComponent",
+    "PaperRADMesh",
     "PAPER_RAD_REFERENCE",
     "PropagationResult",
     "DeadZonePropagationOperator",
@@ -58,6 +67,9 @@ __all__ = [
     "InverseDesignResult",
     "build_paper_rad_cell_geometry",
     "build_paper_rad_lattice_geometry",
+    "build_paper_rad_lattice_mesh",
+    "export_paper_rad_mesh_obj",
+    "iter_obj_vertices",
     "build_response_matrix",
     "solve_inverse_design",
     "alpha_to_theta",
