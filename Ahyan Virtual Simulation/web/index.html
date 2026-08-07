@@ -309,6 +309,7 @@
             <button id="analyzeSensitivity" type="button">Analyze Sensitivity</button>
             <button id="buildJacobian" type="button">Build Jacobian</button>
             <button id="solveLinearFit" type="button">Solve Linear Fit</button>
+            <button id="validatePhysicalFit" type="button">Validate Physical</button>
             <button id="applyInversePlan" type="button">Apply Plan</button>
             <button id="applyLinearFit" type="button">Apply Linear Fit</button>
             <button id="seedTargetFit" type="button">Seed Fit</button>
@@ -323,6 +324,10 @@
             <span id="inversePlanSummary">No plan analyzed</span>
             <span id="inversePlanDelta">delta 0.000</span>
             <span id="inversePreviewSummary">No actuator preview</span>
+          </div>
+          <div class="selected-readout">
+            <span id="inversePhysicalSummary">physical validation not run</span>
+            <span id="inversePhysicalModel">model delta 0.000</span>
           </div>
           <label>Preview plan step <output id="inverseStepPreviewOut">0</output><input id="inverseStepPreview" type="range" min="0" max="0" step="1" value="0" /></label>
           <div class="button-row">

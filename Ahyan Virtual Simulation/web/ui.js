@@ -387,6 +387,22 @@
         this.syncControls();
         this.onChange(this.state);
       });
+      document.getElementById("validatePhysicalFit").addEventListener("click", () => {
+        const validation = RAD.validateInversePlanPhysical(this.state);
+        RAD.recordEvent(this.state, {
+          type: "inverse-physical-validated",
+          source: validation.source,
+          actuators: validation.commandCount,
+          physicalError: validation.physicalProjectedError,
+          modelError: validation.centerModelRms,
+        });
+        this.state.view.simulationMode = "springPreview";
+        this.els.simulationMode.value = "springPreview";
+        this.state.view.overlayMode = "modelError";
+        this.state.view.targetVisible = this.state.target.type !== "none";
+        this.syncControls();
+        this.onChange(this.state);
+      });
       document.getElementById("applyInversePlan").addEventListener("click", () => {
         RAD.applyInverseDesignPlan(this.state);
         this.state.view.targetVisible = this.state.target.type !== "none";
@@ -422,6 +438,7 @@
         this.state.inverse.sensitivity = { candidates: [], map: RAD.matrix(this.state.grid.rows, this.state.grid.cols, 0), stepZ: 0.12, stepAlpha: 0.12, controllableCells: 0, meanGain: 0, maxGain: 0 };
         this.state.inverse.jacobian = { columns: [], coverageMap: RAD.matrix(this.state.grid.rows, this.state.grid.cols, 0), actuatorCount: 0, columnCount: 0, meanCoverage: 0, maxCoverage: 0, stepZ: 0.12, stepAlpha: 0.12, conditionEstimate: 0 };
         this.state.inverse.linearSolution = { commands: [], history: [], steps: 0, baseError: 0, predictedError: 0, projectedError: 0, projectedActuators: 0 };
+        this.state.inverse.physicalValidation = null;
         this.syncControls();
         this.onChange(this.state);
       });
@@ -549,6 +566,7 @@
       this.state.cells.commandAlpha[r][c] = RAD.clampCommandAlpha(this.state, this.els.alphaCommand.value);
       this.state.cells.commandZ[r][c] = RAD.clampCommandZ(this.state, this.els.zCommand.value);
       this.state.cells.locked[r][c] = this.els.locked.checked;
+      this.state.inverse.physicalValidation = null;
       this.onChange(this.state);
     }
 
@@ -571,6 +589,7 @@
       this.state.inverse.plan = { candidates: [], commands: [], history: [] };
       this.state.inverse.preview = null;
       this.state.inverse.sensitivity = { candidates: [], map: RAD.matrix(this.state.grid.rows, this.state.grid.cols, 0), stepZ: 0.12, stepAlpha: 0.12, controllableCells: 0, meanGain: 0, maxGain: 0 };
+      this.state.inverse.physicalValidation = null;
       this.onChange(this.state);
     }
 
@@ -582,6 +601,7 @@
       this.state.inverse.plan = { candidates: [], commands: [], history: [] };
       this.state.inverse.preview = null;
       this.state.inverse.sensitivity = { candidates: [], map: RAD.matrix(this.state.grid.rows, this.state.grid.cols, 0), stepZ: 0.12, stepAlpha: 0.12, controllableCells: 0, meanGain: 0, maxGain: 0 };
+      this.state.inverse.physicalValidation = null;
       this.syncControls();
       this.onChange(this.state);
     }
@@ -606,6 +626,7 @@
       this.state.inverse.plan = { candidates: [], commands: [], history: [] };
       this.state.inverse.preview = null;
       this.state.inverse.sensitivity = { candidates: [], map: RAD.matrix(rows, cols, 0), stepZ: 0.12, stepAlpha: 0.12, controllableCells: 0, meanGain: 0, maxGain: 0 };
+      this.state.inverse.physicalValidation = null;
       RAD.recordEvent(this.state, { type: "actuator-mask", name, allowed });
       this.syncControls();
       this.onChange(this.state);
@@ -618,6 +639,7 @@
       this.state.cells.commandZ[r][c] = 0;
       this.state.cells.locked[r][c] = false;
       if (this.state.cells.lockAlpha) this.state.cells.lockAlpha[r][c] = this.state.grid.initialAlpha;
+      this.state.inverse.physicalValidation = null;
       RAD.recordEvent(this.state, { type: "cell-clear", r, c });
       this.syncControls();
       this.onChange(this.state);
@@ -1040,6 +1062,7 @@
       const linearCommands = this.state.inverse?.linearSolution?.commands || [];
       const sensitivityCandidates = this.state.inverse?.sensitivity?.candidates || [];
       const preview = this.state.inverse?.preview;
+      const validation = this.state.inverse?.physicalValidation;
       this.els.inverseStepPreview.max = commands.length;
       this.els.inverseStepPreview.value = preview?.type === "plan-step" ? preview.step : 0;
       document.getElementById("inverseStepPreviewOut").textContent = `${this.els.inverseStepPreview.value} / ${commands.length}`;
@@ -1052,6 +1075,12 @@
         : linearCommands.length
           ? `linear fit: ${linearCommands.length} actuators, err ${Number(this.state.inverse.linearSolution.projectedError || 0).toFixed(3)}`
           : "No actuator preview";
+      document.getElementById("inversePhysicalSummary").textContent = validation
+        ? `${validation.source} physical err ${Number(validation.physicalProjectedError || 0).toFixed(3)}, d ${Number(validation.physicalErrorDelta || 0).toFixed(3)}`
+        : "physical validation not run";
+      document.getElementById("inversePhysicalModel").textContent = validation
+        ? `model rms h${Number(validation.heightModelRms || 0).toFixed(3)} c${Number(validation.centerModelRms || 0).toFixed(3)}`
+        : "model delta 0.000";
       this.els.inversePlanHistory.innerHTML = "";
       for (const step of (plan?.history || []).slice(-6)) {
         const item = document.createElement("div");
@@ -1461,6 +1490,7 @@
       if (event.type === "jacobian-built") return `jacobian: ${event.columns || 0} columns, reach ${Number(event.meanCoverage || 0).toFixed(3)}`;
       if (event.type === "linear-fit-solved") return `linear solve: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}`;
       if (event.type === "linear-fit-applied") return `linear apply: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}`;
+      if (event.type === "inverse-physical-validated") return `physical validate: ${event.source || "plan"}, err ${Number(event.physicalError || 0).toFixed(3)}, model ${Number(event.modelError || 0).toFixed(3)}`;
       if (event.type === "characterization") return `characterize: ${event.scope}, ${event.responseCells || 0} cells, sup ${Number(event.superpositionError || 0).toFixed(3)}`;
       if (event.type === "operator-lock") return `event lock: r${event.r}, c${event.c} a ${Number(event.lockAlpha || 0).toFixed(3)}`;
       if (event.type === "operator-release") return `event release: r${event.r}, c${event.c}`;

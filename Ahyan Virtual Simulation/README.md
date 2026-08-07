@@ -334,9 +334,12 @@ and exposes a Reachability overlay. `Solve Linear Fit` uses those columns in a
 first greedy linearized residual projection and `Apply Linear Fit` commits the
 resulting clamped commands. These response columns are still computed from the
 current synthetic kinematic model rather than from a calibrated quasistatic
-mechanism. The next solver should replace the greedy projection with a proper
-nonlinear least-squares objective with actuator placement constraints, travel
-limits, and continuation from previous equilibria.
+mechanism. `Validate Physical` checks the current linear fit or analyzed plan
+against the browser spring-preview relaxation and reports physical target error
+plus kinematic/physical center-height disagreement. The next solver should
+replace the greedy projection with a proper nonlinear least-squares objective
+with actuator placement constraints, travel limits, and continuation from
+previous equilibria.
 
 The target surface panel includes a custom analytic expression mode for early
 inverse-design experiments. Expressions are evaluated on normalized coordinates
@@ -485,6 +488,9 @@ without requiring Playwright or a browser binary.
   residuals, local response rank, underactuated-cell counts, browser
   spring-preview disagreement metrics, and log-linear locality/decay estimates
   for programmable-discontinuity studies.
+- `web/inverse.js` `validateInversePlanPhysical`: browser-side physical
+  validation of analyzed inverse plans and linear fits against spring-preview
+  relaxation, including physical target residual and model-disagreement metrics.
 - `web/physics.js` `simulatePhysicalRelaxation`: browser spring-preview
   relaxation that now also exposes per-cell `modelErrorHeight` and
   `modelErrorCenter` fields against the kinematic state for model-disagreement

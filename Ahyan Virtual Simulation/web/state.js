@@ -150,6 +150,7 @@
         sensitivity: { candidates: [], map: matrix(rows, cols, 0), stepZ: 0.12, stepAlpha: 0.12, controllableCells: 0, meanGain: 0, maxGain: 0 },
         jacobian: { columns: [], coverageMap: matrix(rows, cols, 0), actuatorCount: 0, columnCount: 0, meanCoverage: 0, maxCoverage: 0, stepZ: 0.12, stepAlpha: 0.12, conditionEstimate: 0 },
         linearSolution: { commands: [], history: [], steps: 0, baseError: 0, predictedError: 0, projectedError: 0, projectedActuators: 0 },
+        physicalValidation: null,
       },
       timeline: {
         playing: false,
@@ -179,7 +180,7 @@
     next.grid = { ...state.grid, rows, cols };
     next.view = { ...state.view };
     next.target = { ...state.target };
-    next.inverse = { ...state.inverse, plan: { candidates: [], commands: [], history: [] }, jacobian: { columns: [], coverageMap: matrix(rows, cols, 0), actuatorCount: 0, columnCount: 0, meanCoverage: 0, maxCoverage: 0, stepZ: 0.12, stepAlpha: 0.12, conditionEstimate: 0 } };
+    next.inverse = { ...state.inverse, plan: { candidates: [], commands: [], history: [] }, jacobian: { columns: [], coverageMap: matrix(rows, cols, 0), actuatorCount: 0, columnCount: 0, meanCoverage: 0, maxCoverage: 0, stepZ: 0.12, stepAlpha: 0.12, conditionEstimate: 0 }, physicalValidation: null };
     next.timeline = { ...state.timeline, index: Math.min(state.timeline.index, next.experiment.eventList.length) };
     next.experiment = { ...state.experiment };
     next.selection = {
@@ -473,6 +474,7 @@
     if (!state.inverse.linearSolution) {
       state.inverse.linearSolution = { commands: [], history: [], steps: 0, baseError: 0, predictedError: 0, projectedError: 0, projectedActuators: 0 };
     }
+    if (state.inverse.physicalValidation === undefined) state.inverse.physicalValidation = null;
     state.timeline = { ...state.timeline, ...parsed.timeline };
     if (state.timeline.smooth === undefined) state.timeline.smooth = true;
     if (!state.timeline.transitionMs) state.timeline.transitionMs = 900;

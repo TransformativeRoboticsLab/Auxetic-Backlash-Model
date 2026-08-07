@@ -43,6 +43,27 @@
     return { rms: Math.sqrt(sum / Math.max(1, count)), peak };
   }
 
+  function rmsTargetResidual(target, height) {
+    let sum = 0;
+    let count = 0;
+    let maxAbs = 0;
+    let bias = 0;
+    for (let r = 0; r < target.length; r += 1) {
+      for (let c = 0; c < target[r].length; c += 1) {
+        const residual = target[r][c] - height[r][c];
+        sum += residual * residual;
+        bias += residual;
+        maxAbs = Math.max(maxAbs, Math.abs(residual));
+        count += 1;
+      }
+    }
+    return {
+      rms: Math.sqrt(sum / Math.max(1, count)),
+      maxAbs,
+      bias: bias / Math.max(1, count),
+    };
+  }
+
   function countResponsiveCells(a, b, threshold) {
     let count = 0;
     for (let r = 0; r < a.length; r += 1) {
@@ -194,7 +215,7 @@
       candidates: candidates.slice(0, Math.min(48, candidates.length)),
       commands,
     };
-    state.inverse = { ...(state.inverse || {}), maxActuators, lastScore: baseScore, plan, preview: null };
+    state.inverse = { ...(state.inverse || {}), maxActuators, lastScore: baseScore, plan, preview: null, physicalValidation: null };
     return plan;
   }
 
@@ -274,7 +295,7 @@
       maxGain,
       baseScore,
     };
-    state.inverse = { ...(state.inverse || {}), sensitivity, preview: null };
+    state.inverse = { ...(state.inverse || {}), sensitivity, preview: null, physicalValidation: null };
     return sensitivity;
   }
 
@@ -417,7 +438,7 @@
       baseError: baseSim.metrics.rmsTargetError,
       columns: columns.slice(0, Math.min(96, columns.length)),
     };
-    state.inverse = { ...(state.inverse || {}), jacobian, preview: null };
+    state.inverse = { ...(state.inverse || {}), jacobian, preview: null, physicalValidation: null };
     return jacobian;
   }
 
@@ -502,7 +523,7 @@
       }),
       history: accepted,
     };
-    state.inverse = { ...(state.inverse || {}), jacobian, linearSolution: solution, preview: null };
+    state.inverse = { ...(state.inverse || {}), jacobian, linearSolution: solution, preview: null, physicalValidation: null };
     return solution;
   }
 
@@ -522,7 +543,73 @@
       baseError: solution.baseError,
       projectedError: solution.projectedError,
     });
+    state.inverse = { ...(state.inverse || {}), physicalValidation: null };
     return solution;
+  }
+
+  function inverseCommandSet(state, source = "auto") {
+    const linear = state.inverse?.linearSolution?.commands || [];
+    const plan = state.inverse?.plan?.commands || [];
+    if (source === "linear") return { source: "linear", commands: linear };
+    if (source === "plan") return { source: "plan", commands: plan };
+    if (linear.length) return { source: "linear", commands: linear };
+    return { source: "plan", commands: plan };
+  }
+
+  function validateInversePlanPhysical(state, options = {}) {
+    const selected = inverseCommandSet(state, options.source || "auto");
+    const commands = selected.commands || [];
+    const planningState = planningStateFrom(state);
+    const baseKinematic = RAD.simulate(planningState);
+    const commandState = cloneState(planningState);
+    for (const command of commands) {
+      commandState.cells.commandZ[command.r][command.c] = command.commandZ;
+      commandState.cells.commandAlpha[command.r][command.c] = command.commandAlpha;
+    }
+    const projectedKinematic = RAD.simulate(commandState);
+    const physicalAvailable = typeof RAD.simulatePhysicalRelaxation === "function";
+    const basePhysical = physicalAvailable
+      ? RAD.simulatePhysicalRelaxation(planningState, {
+          baseSim: baseKinematic,
+          iterations: options.iterations ?? 24,
+        })
+      : baseKinematic;
+    const projectedPhysical = physicalAvailable
+      ? RAD.simulatePhysicalRelaxation(commandState, {
+          baseSim: projectedKinematic,
+          iterations: options.iterations ?? 24,
+        })
+      : projectedKinematic;
+    const baseResidual = rmsTargetResidual(basePhysical.target, basePhysical.height);
+    const projectedResidual = rmsTargetResidual(projectedPhysical.target, projectedPhysical.height);
+    const validation = {
+      strategy: "spring-preview-inverse-validation",
+      source: selected.source,
+      physicalAvailable,
+      physicalSuccess: physicalAvailable,
+      iterations: projectedPhysical.metrics?.physicalIterations || 0,
+      commandCount: commands.length,
+      baseKinematicError: baseKinematic.metrics.rmsTargetError,
+      projectedKinematicError: projectedKinematic.metrics.rmsTargetError,
+      physicalBaseError: baseResidual.rms,
+      physicalProjectedError: projectedResidual.rms,
+      physicalErrorDelta: baseResidual.rms - projectedResidual.rms,
+      physicalMaxAbsResidual: projectedResidual.maxAbs,
+      physicalMeanResidual: projectedResidual.bias,
+      heightModelRms: projectedPhysical.metrics?.physicalRmsHeightDelta || 0,
+      heightModelMax: projectedPhysical.metrics?.physicalMaxHeightDelta || 0,
+      centerModelRms: projectedPhysical.metrics?.physicalRmsCenterDelta || 0,
+      centerModelMax: projectedPhysical.metrics?.physicalMaxCenterDelta || 0,
+      modelAgreementScore: 1 / (1 + (projectedPhysical.metrics?.physicalRmsCenterDelta || 0)),
+      commands: commands.map((command) => ({
+        r: command.r,
+        c: command.c,
+        commandZ: command.commandZ,
+        commandAlpha: command.commandAlpha,
+      })),
+    };
+    state.inverse = { ...(state.inverse || {}), physicalValidation: validation };
+    return validation;
   }
 
   function previewFromCommands(state, commands, meta = {}) {
@@ -618,6 +705,7 @@
       actuators: plan.commands.length,
       score: plan.baseScore,
     });
+    state.inverse = { ...(state.inverse || {}), physicalValidation: null };
     return plan;
   }
 
@@ -626,6 +714,7 @@
   RAD.buildResponseJacobian = buildResponseJacobian;
   RAD.solveLinearizedTargetFit = solveLinearizedTargetFit;
   RAD.applyLinearizedTargetFit = applyLinearizedTargetFit;
+  RAD.validateInversePlanPhysical = validateInversePlanPhysical;
   RAD.setInversePreview = setInversePreview;
   RAD.setInversePlanStepPreview = setInversePlanStepPreview;
   RAD.applyInverseDesignPlan = applyInverseDesignPlan;

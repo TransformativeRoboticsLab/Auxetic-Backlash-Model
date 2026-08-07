@@ -23,6 +23,7 @@ const RAD = context.window.RAD;
 assert.ok(RAD, "RAD namespace should load");
 assert.strictEqual(typeof RAD.physicalPreviewComparison, "function", "analysis module should expose physical preview comparison");
 assert.strictEqual(typeof RAD.responseDecayProfile, "function", "analysis module should expose response decay profile");
+assert.strictEqual(typeof RAD.validateInversePlanPhysical, "function", "inverse module should expose physical inverse validation");
 
 const html = fs.readFileSync(path.join(web, "index.html"), "utf8");
 const localRefs = Array.from(html.matchAll(/(?:src|href)="(\.\/[^"]+)"/g)).map((match) => match[1]);
@@ -182,6 +183,25 @@ assert.ok(browserObj.includes("o cell_2_3_outer_plate"), "browser OBJ should inc
 assert.ok(browserObj.includes("# kind connector"), "browser OBJ should include connector metadata");
 assert.strictEqual((browserObj.match(/^v /gm) || []).length, browserMesh.vertexCount);
 assert.strictEqual((browserObj.match(/^f /gm) || []).length, browserMesh.faceCount);
+
+const inverseValidationState = RAD.createState(3, 3);
+RAD.clearCommands(inverseValidationState);
+inverseValidationState.target.type = "gaussian";
+inverseValidationState.target.amplitude = 0.28;
+inverseValidationState.grid.zCouplingGain = 0.0;
+const linearFit = RAD.solveLinearizedTargetFit(inverseValidationState, { maxActuators: 3, maxColumns: 4 });
+const physicalValidation = RAD.validateInversePlanPhysical(inverseValidationState);
+assert.strictEqual(physicalValidation.strategy, "spring-preview-inverse-validation");
+assert.strictEqual(physicalValidation.source, linearFit.commands.length ? "linear" : "plan");
+assert.strictEqual(physicalValidation.physicalAvailable, true);
+assert.ok(Number.isFinite(physicalValidation.physicalProjectedError), "physical inverse validation should report finite target error");
+assert.ok(Number.isFinite(physicalValidation.centerModelRms), "physical inverse validation should report finite model disagreement");
+assert.ok(physicalValidation.modelAgreementScore > 0 && physicalValidation.modelAgreementScore <= 1, "model agreement score should be normalized");
+assert.deepStrictEqual(
+  JSON.parse(JSON.stringify(inverseValidationState.inverse.physicalValidation)),
+  JSON.parse(JSON.stringify(physicalValidation)),
+  "physical inverse validation should be stored on state.inverse"
+);
 
 const operatorState = RAD.createState(3, 3);
 RAD.clearCommands(operatorState);
