@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RAD CAD-Like Lattice Simulator</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace" aria-label="RAD simulator workspace">
+        <header class="topbar">
+          <div class="title-block">
+            <h1>RAD CAD-Like Lattice Simulator</h1>
+            <p>Interactive 3D rotating-square auxetic lattice with backlash, locks, actuators, and membrane shaping.</p>
+            <button id="metricDensity" class="metric-density" type="button" aria-pressed="false">All Metrics</button>
+          </div>
+          <div class="stats" aria-label="Simulation statistics">
+            <div><span id="meanAlpha">1.000</span><small>mean alpha</small></div>
+            <div><span id="maxHeight">0.000</span><small>max height</small></div>
+            <div><span id="activeCells">0</span><small>active cells</small></div>
+            <div><span id="targetError">0.000</span><small>target error</small></div>
+            <div><span id="thetaRange">0.0</span><small>theta range</small></div>
+            <div><span id="recommendedActuators">0</span><small>recommended actuators</small></div>
+            <div><span id="fps">0</span><small>fps</small></div>
+            <div class="advanced-metric"><span id="dieOff">0</span><small>die-off cells</small></div>
+            <div class="advanced-metric"><span id="signedTargetError">0.000</span><small>signed error</small></div>
+            <div class="advanced-metric"><span id="targetErrorRange">0.000</span><small>error range</small></div>
+            <div class="advanced-metric"><span id="candidateActuators">0</span><small>candidate cells</small></div>
+            <div class="advanced-metric"><span id="designScore">0.000</span><small>design score</small></div>
+            <div class="advanced-metric"><span id="projectedScore">0.000</span><small>projected score</small></div>
+            <div class="advanced-metric"><span id="plannerSteps">0</span><small>planner steps</small></div>
+            <div class="advanced-metric"><span id="meanTravel">0.000</span><small>mean travel</small></div>
+            <div class="advanced-metric"><span id="maxSaturation">0.000</span><small>max saturation</small></div>
+            <div class="advanced-metric"><span id="saturatedActuators">0</span><small>saturated actuators</small></div>
+            <div class="advanced-metric"><span id="maxLinkStrain">0.000</span><small>max link strain</small></div>
+            <div class="advanced-metric"><span id="meanLinkStrain">0.000</span><small>mean link strain</small></div>
+            <div class="advanced-metric"><span id="maxReferenceDisplacement">0.000</span><small>max ref disp</small></div>
+            <div class="advanced-metric"><span id="maxSurfaceSlope">0.000</span><small>max slope</small></div>
+            <div class="advanced-metric"><span id="meanSurfaceSlope">0.000</span><small>mean slope</small></div>
+            <div class="advanced-metric"><span id="maxNormalTilt">0.0</span><small>max normal tilt</small></div>
+            <div class="advanced-metric"><span id="meanNormalTilt">0.0</span><small>mean normal tilt</small></div>
+            <div class="advanced-metric"><span id="sensitivityCells">0</span><small>sensitivity cells</small></div>
+            <div class="advanced-metric"><span id="meanSensitivity">0.000</span><small>mean sensitivity</small></div>
+            <div class="advanced-metric"><span id="jacobianColumns">0</span><small>jacobian cols</small></div>
+            <div class="advanced-metric"><span id="meanReachability">0.000</span><small>mean reach</small></div>
+            <div class="advanced-metric"><span id="linearFitSteps">0</span><small>linear fit steps</small></div>
+            <div class="advanced-metric"><span id="linearFitError">0.000</span><small>linear fit err</small></div>
+            <div class="advanced-metric"><span id="drawCalls">0</span><small>draw calls</small></div>
+            <div class="advanced-metric"><span id="triangles">0</span><small>triangles</small></div>
+          </div>
+        </header>
+
+        <section class="viewport primary-view">
+          <div class="viewport-header">
+            <h2>3D Cell Abstraction</h2>
+            <div class="view-buttons" role="group" aria-label="View controls">
+              <button id="modeInspect" type="button" data-workspace-mode="inspect" aria-pressed="true">Inspect</button>
+              <button id="modeEdit" type="button" data-workspace-mode="edit" aria-pressed="false">Edit</button>
+              <button id="modeAnalyze" type="button" data-workspace-mode="analyze" aria-pressed="false">Analyze</button>
+              <button id="viewIso" type="button" data-view-mode="iso" aria-pressed="true">Iso</button>
+              <button id="viewTop" type="button" data-view-mode="top" aria-pressed="false">Top</button>
+              <button id="viewFront" type="button" data-view-mode="front" aria-pressed="false">Front</button>
+              <button id="viewSide" type="button" data-view-mode="side" aria-pressed="false">Side</button>
+              <button id="projectionMode" type="button" aria-pressed="false">Ortho</button>
+              <button id="frameCell" type="button">Frame Cell</button>
+              <button id="isolateCell" type="button" aria-pressed="false">Isolate Cell</button>
+              <button id="explodeCell" type="button" aria-pressed="false">Explode Cell</button>
+              <button id="resetView" type="button">Reset</button>
+              <button id="focusMode" type="button" aria-pressed="false">Focus</button>
+            </div>
+          </div>
+          <div id="threeMount" class="three-mount" aria-label="3D CAD-like RAD lattice visualization"></div>
+          <div id="selectionHud" class="selection-hud" aria-label="Selected cell viewport readout">
+            <span id="hudCell">Cell r3 c3</span>
+            <dl>
+              <div><dt>alpha</dt><dd id="hudAlpha">1.000</dd></div>
+              <div><dt>theta</dt><dd id="hudTheta">10.0 deg</dd></div>
+              <div><dt>z</dt><dd id="hudHeight">0.000</dd></div>
+              <div><dt>cmd</dt><dd id="hudCommand">a 0.00 / z 0.00</dd></div>
+              <div><dt>state</dt><dd id="hudState">free</dd></div>
+            </dl>
+          </div>
+          <section class="quick-actuation-dock" aria-label="Selected cell manipulation controls">
+            <div class="quick-dock-header">
+              <div>
+                <h2>Selected Cell</h2>
+                <span id="quickDockMini" class="quick-dock-mini">r3 c3 / a -0.35 / z 0.00</span>
+              </div>
+              <button id="toggleQuickDock" type="button" aria-pressed="false">Hide</button>
+            </div>
+            <div class="quick-dock-body">
+              <div class="selected-readout">
+                <span id="selectedCell">row 3, col 3</span>
+                <span id="selectedValues">alpha 1.000, z 0.000</span>
+              </div>
+              <dl id="couplingInspector" class="coupling-inspector" aria-label="Selected cell coupling inspector">
+                <div><dt>a next</dt><dd id="alphaNeighborSignal">0.000</dd></div>
+                <div><dt>z next</dt><dd id="zNeighborSignal">0.000</dd></div>
+                <div><dt>a reach</dt><dd id="alphaReachCells">0</dd></div>
+                <div><dt>z reach</dt><dd id="zReachCells">0</dd></div>
+              </dl>
+              <div class="coupling-state-row" aria-label="Selected cell dead-zone state">
+                <span id="alphaDeadZoneState" class="coupling-state is-gap">alpha free gap</span>
+                <span id="zDeadZoneState" class="coupling-state is-gap">z free gap</span>
+              </div>
+              <label>Alpha command <output id="alphaCommandOut">-0.35</output><input id="alphaCommand" type="range" min="-0.75" max="0.75" step="0.01" value="-0.35" /></label>
+              <label>Vertical command <output id="zCommandOut">0.00</output><input id="zCommand" type="range" min="-0.8" max="0.8" step="0.01" value="0.00" /></label>
+              <div class="quick-nudge-grid" aria-label="Quick selected-cell actuation">
+                <button id="nudgeAlphaContract" type="button">Contract</button>
+                <button id="nudgeAlphaExpand" type="button">Expand</button>
+                <button id="nudgeZDown" type="button">Z Down</button>
+                <button id="nudgeZUp" type="button">Z Up</button>
+                <button id="zeroSelectedCommand" type="button">Zero Command</button>
+              </div>
+              <div class="quick-toggle-row">
+                <label class="toggle"><input id="locked" type="checkbox" /> Lock cell</label>
+                <label class="toggle"><input id="actuatorAllowed" type="checkbox" checked /> Inverse actuator</label>
+              </div>
+              <button id="paintMode" class="paint-mode-button" type="button" aria-pressed="false">Paint Clicks Off</button>
+              <label class="paint-radius-control">Paint radius <output id="paintRadiusOut">0</output><input id="paintRadius" type="range" min="0" max="2" step="1" value="0" /></label>
+              <div class="button-row">
+                <button id="applyCommand" type="button">Apply</button>
+                <button id="clearCell" type="button">Clear Cell</button>
+              </div>
+              <div class="button-row actuator-mask-row">
+                <button id="allowAllActuators" type="button">Allow All</button>
+                <button id="blockRimActuators" type="button">Block Rim</button>
+                <button id="allowCenterActuators" type="button">Center Only</button>
+                <button id="invertActuatorMask" type="button">Invert Mask</button>
+              </div>
+              <div class="quick-preset-strip" aria-label="Quick lattice presets">
+                <span>Presets</span>
+                <button data-preset="center" type="button" title="Center pull">Center</button>
+                <button data-preset="dome" type="button" title="Dome surface">Dome</button>
+                <button data-preset="saddle" type="button" title="Saddle surface">Saddle</button>
+                <button data-preset="ridge" type="button" title="Ridge surface">Ridge</button>
+                <button data-preset="wave" type="button" title="Wave surface">Wave</button>
+                <button data-preset="corner" type="button" title="Corner lift">Corner</button>
+                <button data-preset="twist" type="button" title="Diagonal twist">Twist</button>
+                <button data-preset="ring" type="button" title="Ring contraction">Ring</button>
+                <button data-preset="checker" type="button" title="Checkerboard pattern">Check</button>
+                <button data-preset="clear" type="button" title="Clear commands">Clear</button>
+              </div>
+            </div>
+          </section>
+          <div id="overlayLegend" class="overlay-legend" aria-label="Active overlay legend">
+            <span id="overlayLegendTitle">Alpha</span>
+            <div class="legend-scale" aria-hidden="true"></div>
+            <div class="legend-labels"><span id="overlayLegendMin">low dilation</span><span id="overlayLegendMax">high dilation</span></div>
+          </div>
+          <div id="orientationHud" class="orientation-hud" aria-label="Camera orientation readout">
+            <div class="orientation-axis-row" aria-hidden="true">
+              <span class="axis-chip axis-x">X</span>
+              <span class="axis-chip axis-y">Y</span>
+              <span class="axis-chip axis-z">Z</span>
+            </div>
+            <dl>
+              <div><dt>view</dt><dd id="cameraViewAxis">+Z</dd></div>
+              <div><dt>up</dt><dd id="cameraUpAxis">+Y</dd></div>
+              <div><dt>mode</dt><dd id="cameraProjection">persp</dd></div>
+            </dl>
+          </div>
+          <div id="statusLine" class="status-line">Loading 3D simulator...</div>
+        </section>
+      </section>
+
+      <aside class="control-panel" aria-label="Simulator controls">
+        <section>
+          <h2>Lattice</h2>
+          <label>Rows <output id="rowsOut">7</output><input id="rows" type="range" min="2" max="14" value="7" /></label>
+          <label>Cols <output id="colsOut">7</output><input id="cols" type="range" min="2" max="14" value="7" /></label>
+          <label>Backlash <output id="backlashOut">0.10</output><input id="backlash" type="range" min="0" max="0.5" step="0.01" value="0.10" /></label>
+          <label>Coupling <output id="couplingOut">0.55</output><input id="coupling" type="range" min="0" max="1" step="0.01" value="0.55" /></label>
+          <label>Z coupling <output id="zCouplingOut">0.32</output><input id="zCoupling" type="range" min="0" max="0.8" step="0.01" value="0.32" /></label>
+        </section>
+
+        <section>
+          <h2>Display</h2>
+          <label>Cell visual
+            <select id="cellVisualMode">
+              <option value="abstract">Cell abstraction</option>
+              <option value="mechanism">Mechanism detail</option>
+            </select>
+          </label>
+          <label>Overlay
+            <select id="overlayMode">
+              <option value="alpha">Alpha</option>
+              <option value="height">Height</option>
+              <option value="zresidual">Z residual</option>
+              <option value="influence">Influence</option>
+              <option value="theta">Theta</option>
+              <option value="error">Target error</option>
+              <option value="travel">Actuator travel</option>
+              <option value="saturation">Actuator saturation</option>
+              <option value="strain">Linkage strain</option>
+              <option value="displacement">Reference displacement</option>
+              <option value="slope">Surface slope</option>
+              <option value="inverse">Inverse plan</option>
+              <option value="sensitivity">Sensitivity</option>
+              <option value="reachability">Reachability</option>
+              <option value="state">State</option>
+            </select>
+          </label>
+          <label class="toggle"><input id="showMembrane" type="checkbox" checked /> Show membrane</label>
+          <label class="toggle"><input id="showReference" type="checkbox" checked /> Show reference lattice</label>
+          <label class="toggle"><input id="showDisplacementVectors" type="checkbox" checked /> Show displacement vectors</label>
+          <label class="toggle"><input id="showGaps" type="checkbox" checked /> Show backlash gaps</label>
+          <label class="toggle"><input id="showStops" type="checkbox" checked /> Show limit stops</label>
+          <label class="toggle"><input id="showPivots" type="checkbox" checked /> Show pivots/braces</label>
+          <label class="toggle"><input id="showLinkages" type="checkbox" checked /> Show cell linkages</label>
+          <label class="toggle"><input id="showFasteners" type="checkbox" checked /> Show plate fasteners</label>
+          <label class="toggle"><input id="showActuators" type="checkbox" checked /> Show actuators</label>
+          <label>Actuator display
+            <select id="actuatorDisplayMode">
+              <option value="selected">Selected/plan</option>
+              <option value="planned">Inverse plan</option>
+              <option value="active">All active</option>
+            </select>
+          </label>
+          <label class="toggle"><input id="showInfluenceFootprint" type="checkbox" checked /> Show influence footprint</label>
+          <label class="toggle"><input id="showMeasurements" type="checkbox" checked /> Show measurements</label>
+          <label class="toggle"><input id="showMeasurementLabels" type="checkbox" /> Show off-lattice measurement label</label>
+          <label class="toggle"><input id="showTargetErrorVectors" type="checkbox" checked /> Show target error vectors</label>
+          <label class="toggle"><input id="showSurfaceNormals" type="checkbox" /> Show surface normals</label>
+          <label>Measurement
+            <select id="measurementMode">
+              <option value="all">All values</option>
+              <option value="alpha">Alpha/dilation</option>
+              <option value="theta">Rotation theta</option>
+              <option value="height">Height z</option>
+              <option value="backlash">Backlash gap</option>
+            </select>
+          </label>
+          <label class="toggle"><input id="showTarget" type="checkbox" /> Show target surface</label>
+          <label>Surface interpolation
+            <select id="surfaceInterpolation">
+              <option value="smooth">Smooth Catmull-Rom</option>
+              <option value="linear">Linear facets</option>
+            </select>
+          </label>
+          <label>Surface samples <output id="surfaceSubdivisionsOut">5</output><input id="surfaceSubdivisions" type="range" min="2" max="8" step="1" value="5" /></label>
+          <label class="toggle"><input id="showSurfaceContours" type="checkbox" /> Show surface contours</label>
+          <label>Contour field
+            <select id="contourMode">
+              <option value="membrane">Membrane z</option>
+              <option value="target">Target z</option>
+              <option value="error">Target error</option>
+            </select>
+          </label>
+          <label>Animation response <output id="animationResponseOut">0.18</output><input id="animationResponse" type="range" min="0.04" max="0.55" step="0.01" value="0.18" /></label>
+        </section>
+
+        <section>
+          <h2>Target Surface</h2>
+          <label>Surface
+            <select id="targetType">
+              <option value="none">None</option>
+              <option value="dome">Dome</option>
+              <option value="saddle">Saddle</option>
+              <option value="wave">Wave</option>
+              <option value="gaussian">Gaussian bump</option>
+              <option value="tilt">Tilt plane</option>
+              <option value="custom">Custom expression</option>
+            </select>
+          </label>
+          <label>Amplitude <output id="targetAmpOut">0.45</output><input id="targetAmp" type="range" min="-0.8" max="0.8" step="0.01" value="0.45" /></label>
+          <label>Frequency <output id="targetFreqOut">1.00</output><input id="targetFreq" type="range" min="0.5" max="4" step="0.25" value="1" /></label>
+          <label>Custom z expression <textarea id="customTargetExpression" rows="3">0.35 * exp(-3 * (nr*nr + nc*nc))</textarea></label>
+          <div id="targetExpressionStatus" class="status-line">Variables: nr, nc, r, c, d, amplitude, frequency</div>
+          <label>Iterations <output id="optimizerIterationsOut">48</output><input id="optimizerIterations" type="range" min="8" max="120" step="4" value="48" /></label>
+          <label>Actuator penalty <output id="actuatorPenaltyOut">0.012</output><input id="actuatorPenalty" type="range" min="0" max="0.08" step="0.002" value="0.012" /></label>
+          <label>Travel penalty <output id="travelPenaltyOut">0.018</output><input id="travelPenalty" type="range" min="0" max="0.08" step="0.002" value="0.018" /></label>
+          <label>Max actuators <output id="maxActuatorsOut">24</output><input id="maxActuators" type="range" min="1" max="80" step="1" value="24" /></label>
+          <label>Z travel limit <output id="zTravelLimitOut">0.80</output><input id="zTravelLimit" type="range" min="0.1" max="1.4" step="0.05" value="0.8" /></label>
+          <label>Alpha contract limit <output id="alphaContractLimitOut">0.55</output><input id="alphaContractLimit" type="range" min="0.1" max="0.9" step="0.05" value="0.55" /></label>
+          <label>Alpha expand limit <output id="alphaExpandLimitOut">0.35</output><input id="alphaExpandLimit" type="range" min="0.1" max="0.9" step="0.05" value="0.35" /></label>
+          <div class="button-row">
+            <button id="analyzeInversePlan" type="button">Analyze Plan</button>
+            <button id="analyzeSensitivity" type="button">Analyze Sensitivity</button>
+            <button id="buildJacobian" type="button">Build Jacobian</button>
+            <button id="solveLinearFit" type="button">Solve Linear Fit</button>
+            <button id="applyInversePlan" type="button">Apply Plan</button>
+            <button id="applyLinearFit" type="button">Apply Linear Fit</button>
+            <button id="seedTargetFit" type="button">Seed Fit</button>
+            <button id="optimizeTargetFit" type="button">Optimize Fit</button>
+            <button id="clearTarget" type="button">Clear Target</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>Inverse Plan</h2>
+          <div class="selected-readout">
+            <span id="inversePlanSummary">No plan analyzed</span>
+            <span id="inversePlanDelta">delta 0.000</span>
+            <span id="inversePreviewSummary">No actuator preview</span>
+          </div>
+          <label>Preview plan step <output id="inverseStepPreviewOut">0</output><input id="inverseStepPreview" type="range" min="0" max="0" step="1" value="0" /></label>
+          <div class="button-row">
+            <button id="captureInversePreview" type="button">Capture Preview</button>
+            <button id="clearInversePreview" type="button">Clear Preview</button>
+          </div>
+          <div id="inversePlanHistory" class="plan-history" aria-label="Accepted inverse design steps"></div>
+          <div id="inverseCandidateList" class="candidate-list" aria-label="Ranked inverse design candidates"></div>
+        </section>
+
+        <section>
+          <h2>Timeline</h2>
+          <div class="selected-readout sequence-readout">
+            <span id="sequenceSummary">No sequence frames</span>
+            <span id="sequenceAnalysisSummary">No sequence analysis</span>
+            <span id="sequenceFrameDetail">Frame 0: initial</span>
+          </div>
+          <canvas id="sequenceChart" class="sequence-chart" width="320" height="150" aria-label="Sequence error, saturation, and command delta chart"></canvas>
+          <div class="sequence-legend" aria-label="Sequence chart legend">
+            <span><i class="legend-rms"></i>RMS error</span>
+            <span><i class="legend-saturation"></i>Saturation</span>
+            <span><i class="legend-delta"></i>Command delta</span>
+          </div>
+          <label>Event <output id="timelineOut">0 / 0</output><input id="timelineIndex" type="range" min="0" max="0" value="0" /></label>
+          <label>Speed <output id="timelineSpeedOut">1.0x</output><input id="timelineSpeed" type="range" min="0.25" max="3" step="0.25" value="1" /></label>
+          <label>Transition <output id="transitionMsOut">900 ms</output><input id="transitionMs" type="range" min="150" max="2500" step="50" value="900" /></label>
+          <label class="toggle"><input id="smoothTimeline" type="checkbox" checked /> Smooth event transitions</label>
+          <label>Keyframe name <input id="keyframeName" type="text" value="pose" maxlength="32" /></label>
+          <div class="button-row">
+            <button id="playTimeline" type="button">Play</button>
+            <button id="stepTimeline" type="button">Step</button>
+            <button id="captureKeyframe" type="button">Capture</button>
+          </div>
+          <div class="button-row">
+            <button id="firstKeyframe" type="button">First</button>
+            <button id="prevKeyframe" type="button">Prev</button>
+            <button id="nextKeyframe" type="button">Next</button>
+            <button id="lastKeyframe" type="button">Last</button>
+            <button id="saveSequence" type="button">Save Sequence</button>
+            <button id="loadSequence" type="button">Load Sequence</button>
+            <button id="analyzeSequence" type="button">Analyze</button>
+            <button id="jumpBestFrame" type="button">Best Error</button>
+            <button id="jumpMaxSaturationFrame" type="button">Max Sat</button>
+            <button id="selectWorstResidualCell" type="button">Worst Cell</button>
+            <button id="saveSequenceCsv" type="button">Save CSV</button>
+            <button id="clearTimeline" type="button">Clear Events</button>
+          </div>
+          <input id="sequenceFileInput" class="hidden-file" type="file" accept="application/json,.json" />
+          <ol id="eventList" class="event-list" aria-label="Recent simulator events"></ol>
+        </section>
+
+        <section>
+          <h2>Cell Grid</h2>
+          <div id="cellGrid" class="cell-grid" aria-label="Selectable lattice cell grid"></div>
+        </section>
+
+        <section>
+          <h2>Presets</h2>
+          <div class="button-row">
+            <button data-preset="center" type="button">Center</button>
+            <button data-preset="dome" type="button">Dome</button>
+            <button data-preset="saddle" type="button">Saddle</button>
+            <button data-preset="ridge" type="button">Ridge</button>
+            <button data-preset="wave" type="button">Wave</button>
+            <button data-preset="corner" type="button">Corner</button>
+            <button data-preset="twist" type="button">Twist</button>
+            <button data-preset="ring" type="button">Ring</button>
+            <button data-preset="checker" type="button">Checker</button>
+            <button data-preset="clear" type="button">Clear</button>
+          </div>
+        </section>
+
+        <section>
+          <h2>Persistence</h2>
+          <div class="button-row">
+            <button id="saveJson" type="button">Save JSON</button>
+            <button id="loadJson" type="button">Load JSON</button>
+          </div>
+          <input id="fileInput" class="hidden-file" type="file" accept="application/json,.json" />
+        </section>
+      </aside>
+    </main>
+
+    <script src="./vendor/three.min.js"></script>
+    <script src="./state.js"></script>
+    <script src="./math.js"></script>
+    <script src="./inverse.js"></script>
+    <script src="./analysis.js"></script>
+    <script src="./renderer.js"></script>
+    <script src="./ui.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,251 @@
+const assert = require("assert");
+const fs = require("fs");
+const http = require("http");
+const path = require("path");
+const vm = require("vm");
+
+const root = path.resolve(__dirname, "..");
+const web = path.join(root, "web");
+const context = {
+  console,
+  window: {},
+};
+context.window.window = context.window;
+context.window.console = console;
+vm.createContext(context);
+
+for (const filename of ["state.js", "math.js", "inverse.js", "analysis.js"]) {
+  const source = fs.readFileSync(path.join(web, filename), "utf8");
+  vm.runInContext(source, context, { filename });
+}
+
+const RAD = context.window.RAD;
+assert.ok(RAD, "RAD namespace should load");
+
+const html = fs.readFileSync(path.join(web, "index.html"), "utf8");
+const localRefs = Array.from(html.matchAll(/(?:src|href)="(\.\/[^"]+)"/g)).map((match) => match[1]);
+assert.ok(localRefs.includes("./vendor/three.min.js"), "local Three.js asset should be referenced");
+for (const ref of localRefs) {
+  assert.ok(fs.existsSync(path.join(web, ref.replace("./", ""))), `missing local browser asset: ${ref}`);
+}
+assert.ok(!/https?:\/\//.test(html), "browser entry should not require external scripts or styles");
+const scriptOrder = [
+  "./vendor/three.min.js",
+  "./state.js",
+  "./math.js",
+  "./inverse.js",
+  "./analysis.js",
+  "./renderer.js",
+  "./ui.js",
+  "./app.js",
+];
+for (let i = 1; i < scriptOrder.length; i += 1) {
+  assert.ok(html.indexOf(scriptOrder[i - 1]) < html.indexOf(scriptOrder[i]), `${scriptOrder[i - 1]} should load before ${scriptOrder[i]}`);
+}
+
+const threeContext = { console: { ...console, warn: () => {} }, window: {} };
+threeContext.self = threeContext.window;
+threeContext.globalThis = threeContext;
+threeContext.window.window = threeContext.window;
+vm.createContext(threeContext);
+vm.runInContext(fs.readFileSync(path.join(web, "vendor", "three.min.js"), "utf8"), threeContext, { filename: "three.min.js" });
+const THREE = threeContext.THREE;
+assert.ok(THREE, "vendored Three.js should expose THREE");
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 200);
+const orthoCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 200);
+const group = new THREE.Group();
+const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 0.1), new THREE.MeshStandardMaterial({ color: 0x14799d }));
+group.add(mesh);
+scene.add(group);
+assert.strictEqual(scene.children.length, 1);
+assert.strictEqual(group.children.length, 1);
+assert.strictEqual(camera.isPerspectiveCamera, true);
+assert.strictEqual(orthoCamera.isOrthographicCamera, true);
+assert.strictEqual(typeof THREE.Raycaster, "function");
+assert.strictEqual(typeof THREE.Vector2, "function");
+
+assert.strictEqual(RAD.backlashActivation(-0.05, 0.1), 0);
+assert.strictEqual(RAD.backlashActivation(0.05, 0.1), 0);
+assert.strictEqual(Number(RAD.backlashActivation(0.2, 0.1).toFixed(6)), 0.1);
+assert.strictEqual(Number(RAD.backlashActivation(-0.2, 0.1).toFixed(6)), -0.1);
+
+const state = RAD.createState(5, 6);
+assert.strictEqual(state.cells.alpha.length, 5);
+assert.strictEqual(state.cells.theta[0].length, 6);
+assert.strictEqual(state.cells.z[2][3], 0);
+state.grid.cellSize = 1.25;
+state.grid.backlash = 0.18;
+state.grid.couplingGain = 0.42;
+state.grid.zCouplingGain = 0.37;
+state.view.camera = {
+  mode: "custom",
+  projection: "orthographic",
+  radius: 18.25,
+  theta: -0.7,
+  phi: 0.9,
+  target: { x: 0.2, y: -0.1, z: 0.05 },
+};
+state.view.overlayMode = "height";
+state.view.membraneVisible = false;
+state.view.paintRadius = 2;
+state.cells.commandAlpha[2][3] = -0.24;
+state.cells.commandZ[2][3] = 0.31;
+state.cells.locked[0][0] = true;
+state.cells.actuatorAllowed[4][5] = false;
+state.selection = { r: 2, c: 3 };
+state.experiment.presetName = "custom-roundtrip";
+state.experiment.notes = "roundtrip validation";
+
+const serialized = RAD.serialize(state);
+const parsedSerialized = JSON.parse(serialized);
+assert.ok(Array.isArray(parsedSerialized.cells.alpha), "serialized cells should include derived alpha");
+assert.ok(Array.isArray(parsedSerialized.cells.theta), "serialized cells should include derived theta");
+assert.ok(Array.isArray(parsedSerialized.cells.z), "serialized cells should include derived z");
+const restored = RAD.deserialize(serialized);
+assert.deepStrictEqual(restored.grid.rows, 5);
+assert.deepStrictEqual(restored.grid.cols, 6);
+assert.strictEqual(restored.grid.cellSize, 1.25);
+assert.strictEqual(restored.grid.backlash, 0.18);
+assert.strictEqual(restored.grid.couplingGain, 0.42);
+assert.strictEqual(restored.grid.zCouplingGain, 0.37);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(restored.view.camera)), state.view.camera);
+assert.strictEqual(restored.view.overlayMode, "height");
+assert.strictEqual(restored.view.membraneVisible, false);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(restored.selection)), state.selection);
+assert.strictEqual(restored.view.paintRadius, 2);
+assert.strictEqual(restored.cells.commandAlpha[2][3], -0.24);
+assert.strictEqual(restored.cells.commandZ[2][3], 0.31);
+assert.strictEqual(restored.cells.locked[0][0], true);
+assert.strictEqual(restored.cells.actuatorAllowed[4][5], false);
+assert.strictEqual(restored.experiment.presetName, "custom-roundtrip");
+assert.strictEqual(restored.experiment.notes, "roundtrip validation");
+
+const sim = RAD.simulate(restored);
+RAD.updateDerivedCells(restored, sim);
+assert.strictEqual(sim.alpha.length, 5);
+assert.strictEqual(sim.alpha[0].length, 6);
+assert.strictEqual(Number(restored.cells.alpha[2][3].toFixed(6)), Number(sim.alpha[2][3].toFixed(6)));
+assert.strictEqual(Number(restored.cells.theta[2][3].toFixed(6)), Number(sim.theta[2][3].toFixed(6)));
+assert.strictEqual(Number(restored.cells.z[2][3].toFixed(6)), Number(sim.height[2][3].toFixed(6)));
+assert.ok(Number.isFinite(sim.metrics.meanAlpha));
+assert.ok(Number.isFinite(sim.metrics.rmsTargetError));
+
+const zResidualState = RAD.createState(5, 5);
+zResidualState.grid.backlash = 0.02;
+zResidualState.grid.zCouplingGain = 0.35;
+zResidualState.cells.commandAlpha = RAD.matrix(5, 5, 0);
+zResidualState.cells.commandZ[2][2] = 0.4;
+const zResidualSim = RAD.simulate(zResidualState);
+assert.strictEqual(Number(zResidualSim.height[2][2].toFixed(6)), 0.4);
+assert.ok(zResidualSim.height[2][3] > 0, "vertical actuation should leave residual motion in neighboring cells");
+assert.ok(Math.abs(zResidualSim.height[2][3]) < Math.abs(zResidualSim.height[2][2]), "neighbor residual should decay");
+const zFootprint = RAD.selectedCellFootprint(zResidualState, 2, 2);
+assert.strictEqual(Number(zFootprint.zResidual[2][2].toFixed(6)), 0.4);
+assert.ok(zFootprint.zResidual[2][3] > 0, "selected footprint should expose vertical spillover neighbors");
+assert.ok(Number.isFinite(zFootprint.zDieOff[2][3]), "selected footprint should expose z die-off distance");
+const zMetrics = RAD.selectedCellCouplingMetrics(zResidualState, 2, 2);
+assert.strictEqual(Number(zMetrics.zNeighborSignal.toFixed(6)), Number(zFootprint.zResidual[2][3].toFixed(6)));
+assert.ok(zMetrics.zReachCells > 0, "selected coupling metrics should count z spillover reach");
+assert.strictEqual(zMetrics.zCoupled, true, "selected coupling metrics should report z coupled outside dead-zone");
+zResidualState.grid.zCouplingGain = 0;
+const localZSim = RAD.simulate(zResidualState);
+assert.strictEqual(Number(localZSim.height[2][3].toFixed(6)), 0);
+const localFootprint = RAD.selectedCellFootprint(zResidualState, 2, 2);
+assert.strictEqual(Number(localFootprint.zResidual[2][3].toFixed(6)), 0);
+const localMetrics = RAD.selectedCellCouplingMetrics(zResidualState, 2, 2);
+assert.strictEqual(localMetrics.zReachCells, 0);
+assert.strictEqual(localMetrics.zCoupled, false, "selected coupling metrics should report z free when coupling is zero");
+
+const alphaFootprintState = RAD.createState(5, 5);
+alphaFootprintState.grid.backlash = 0.05;
+alphaFootprintState.grid.couplingGain = 0.5;
+alphaFootprintState.cells.commandAlpha[2][2] = -0.35;
+const alphaFootprint = RAD.selectedCellFootprint(alphaFootprintState, 2, 2);
+assert.ok(alphaFootprint.alpha[2][3] < 0, "selected footprint should expose alpha coupling neighbors");
+assert.ok(Math.abs(alphaFootprint.alpha[2][3]) < Math.abs(alphaFootprint.alpha[2][2]), "alpha footprint should decay from selected cell");
+const alphaMetrics = RAD.selectedCellCouplingMetrics(alphaFootprintState, 2, 2);
+assert.strictEqual(Number(alphaMetrics.alphaNeighborSignal.toFixed(6)), Number(alphaFootprint.alpha[2][3].toFixed(6)));
+assert.ok(alphaMetrics.alphaReachCells > 0, "selected coupling metrics should count alpha footprint reach");
+assert.strictEqual(alphaMetrics.alphaCoupled, true, "selected coupling metrics should report alpha coupled outside dead-zone");
+alphaFootprintState.cells.commandAlpha[2][2] = -0.02;
+const alphaGapMetrics = RAD.selectedCellCouplingMetrics(alphaFootprintState, 2, 2);
+assert.strictEqual(alphaGapMetrics.alphaCoupled, false, "selected coupling metrics should report alpha free inside backlash gap");
+
+const brushState = RAD.createState(5, 5);
+const brushPairs = (radius) => JSON.stringify(RAD.brushCells(brushState, 2, 2, radius).map((cell) => [cell.r, cell.c]));
+assert.strictEqual(brushPairs(0), JSON.stringify([[2, 2]]));
+assert.strictEqual(brushPairs(1), JSON.stringify([[1, 2], [2, 1], [2, 2], [2, 3], [3, 2]]));
+assert.strictEqual(RAD.brushCells(brushState, 2, 2, 2).length, 13, "radius 2 brush should include a Manhattan diamond");
+
+const presetSignatures = ["center", "dome", "saddle", "ridge", "wave", "corner", "twist", "ring", "checker"].map((preset) => {
+  const presetState = RAD.createState(7, 7);
+  RAD.applyPreset(presetState, preset);
+  const presetSim = RAD.simulate(presetState);
+  return JSON.stringify({
+    preset,
+    target: presetState.target.type,
+    commandAlpha: presetState.cells.commandAlpha,
+    commandZ: presetState.cells.commandZ,
+    locked: presetState.cells.locked,
+    meanAlpha: Number(presetSim.metrics.meanAlpha.toFixed(4)),
+    maxHeight: Number(presetSim.metrics.maxAbsHeight.toFixed(4)),
+  });
+});
+assert.ok(new Set(presetSignatures).size > 6, "presets should produce varied simulator states");
+
+const sequenceState = RAD.createState(4, 4);
+RAD.applyPreset(sequenceState, "center");
+RAD.recordEvent(sequenceState, { type: "keyframe", name: "center pose" });
+const sequenceJson = RAD.exportExperimentSequence(sequenceState);
+const imported = RAD.createState(2, 2);
+RAD.importExperimentSequence(imported, sequenceJson);
+assert.strictEqual(imported.grid.rows, 4);
+assert.strictEqual(imported.grid.cols, 4);
+assert.strictEqual(imported.experiment.eventList.length, 2);
+assert.deepStrictEqual(JSON.parse(JSON.stringify(imported.experiment.eventList.map((event) => event.type))), ["preset", "keyframe"]);
+
+async function validateLocalHttpEntry() {
+  const contentTypes = {
+    ".css": "text/css",
+    ".html": "text/html",
+    ".js": "application/javascript",
+  };
+  const server = http.createServer((request, response) => {
+    const urlPath = request.url === "/" ? "/index.html" : request.url.split("?")[0];
+    const resolved = path.normalize(path.join(web, urlPath));
+    if (!resolved.startsWith(web)) {
+      response.writeHead(403);
+      response.end("Forbidden");
+      return;
+    }
+    if (!fs.existsSync(resolved) || fs.statSync(resolved).isDirectory()) {
+      response.writeHead(404);
+      response.end("Not found");
+      return;
+    }
+    response.writeHead(200, { "Content-Type": contentTypes[path.extname(resolved)] || "application/octet-stream" });
+    response.end(fs.readFileSync(resolved));
+  });
+  await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+  const { port } = server.address();
+  try {
+    const base = `http://127.0.0.1:${port}`;
+    const page = await fetch(`${base}/index.html`);
+    assert.strictEqual(page.status, 200);
+    assert.ok((await page.text()).includes("RAD CAD-Like Lattice Simulator"));
+    for (const ref of localRefs) {
+      const asset = await fetch(`${base}/${ref.replace("./", "")}`);
+      assert.strictEqual(asset.status, 200, `asset should load over local HTTP: ${ref}`);
+    }
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+}
+
+validateLocalHttpEntry()
+  .then(() => console.log("web module validation passed"))
+  .catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
