@@ -144,7 +144,10 @@ radii, and stack offset without requiring those values to alter the solver.
 classify the current profile as paper-scale, partial-measured,
 visual-calibrated, or mesh-calibrated, while separately listing the physical
 solver gaps that still require stiffness, actuator, friction/contact, and
-response measurements.
+response measurements. `calibration_measurement_plan` and the browser `Save
+Calibration Plan` action turn those gaps into an ordered JSON checklist of the
+next geometry and solver measurements needed before treating a RAD cell as
+physically calibrated.
 For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
 paper RAD lattice into extruded plate, pin, and connector mesh components, and
 `export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for
@@ -538,6 +541,9 @@ without requiring Playwright or a browser binary.
 - `calibration_readiness` / `web/math.js` `calibrationReadiness`: conservative
   readiness gate for calibrated geometry versus still-uncalibrated physical
   solver behavior.
+- `calibration_measurement_plan` / `web/math.js` `calibrationMeasurementPlan`:
+  ordered geometry and solver measurement tasks that show what must be measured
+  next before the visual CAD profile can become a calibrated physical model.
 - `web/renderer.js` `calibratedRad` mode and `web/mesh_export.js`
   `calibratedMeshDimensions`: profile-aware visual/export layer that uses
   measured dimensions for CAD-like inspection while keeping solver assumptions

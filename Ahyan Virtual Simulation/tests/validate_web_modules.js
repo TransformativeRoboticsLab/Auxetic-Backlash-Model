@@ -25,6 +25,8 @@ assert.strictEqual(typeof RAD.modelProvenance, "function", "provenance module sh
 assert.strictEqual(typeof RAD.provenanceSummary, "function", "provenance module should expose provenance counts");
 assert.strictEqual(typeof RAD.calibrationProfileSummary, "function", "math module should expose calibration profile summary");
 assert.strictEqual(typeof RAD.calibrationReadiness, "function", "math module should expose calibration readiness");
+assert.strictEqual(typeof RAD.calibrationMeasurementPlan, "function", "math module should expose calibration measurement plan");
+assert.strictEqual(typeof RAD.exportCalibrationMeasurementPlan, "function", "math module should export calibration measurement plan");
 assert.strictEqual(typeof RAD.applyHardwareProfileToGrid, "function", "math module should apply hardware profiles");
 assert.strictEqual(typeof RAD.calibratedMeshDimensions, "function", "mesh exporter should expose calibrated mesh dimensions");
 assert.strictEqual(typeof RAD.physicalPreviewComparison, "function", "analysis module should expose physical preview comparison");
@@ -57,10 +59,12 @@ assert.ok(html.includes('id="hardwareCoverageOut"'), "browser UI should expose h
 assert.ok(html.includes('id="hardwareMissingOut"'), "browser UI should expose missing calibration fields");
 assert.ok(html.includes('id="hardwareReadinessOut"'), "browser UI should expose calibration readiness");
 assert.ok(html.includes('id="hardwareSolverGapOut"'), "browser UI should expose solver calibration gaps");
+assert.ok(html.includes('id="hardwareMeasurementPlanOut"'), "browser UI should expose next calibration measurements");
 assert.ok(html.includes('id="hardwareProfileName"'), "browser UI should expose measured profile name input");
 assert.ok(html.includes('id="hardwarePinRadiusMm"'), "browser UI should expose measured pin-radius input");
 assert.ok(html.includes('id="hardwareHoleRadiusMm"'), "browser UI should expose measured hole-radius input");
 assert.ok(html.includes('id="applyHardwareProfile"'), "browser UI should expose hardware profile apply action");
+assert.ok(html.includes('id="saveCalibrationPlan"'), "browser UI should expose calibration plan export action");
 assert.ok(html.includes('value="calibratedRad"'), "browser UI should expose calibrated RAD visual mode");
 const scriptOrder = [
   "./vendor/three.min.js",
@@ -197,6 +201,21 @@ assert.strictEqual(partialReadiness.visualReady, false);
 assert.strictEqual(partialReadiness.meshReady, false);
 assert.strictEqual(partialReadiness.solverReady, false);
 assert.ok(partialReadiness.solverGaps.includes("friction and contact characterization"), "readiness should preserve solver calibration gaps");
+const partialMeasurementPlan = RAD.calibrationMeasurementPlan(restored);
+const missingPlanTasks = partialMeasurementPlan.filter((task) => task.status === "missing");
+const donePlanTasks = partialMeasurementPlan.filter((task) => task.status === "done");
+assert.strictEqual(missingPlanTasks[0].id, "geometry_jointStackHeightMm");
+assert.strictEqual(missingPlanTasks[1].id, "geometry_bossRadiusMm");
+assert.strictEqual(donePlanTasks[0].id, "geometry_pinRadiusMm");
+assert.ok(
+  missingPlanTasks.some((task) => task.id === "solver_response_data" && task.category === "solver"),
+  "measurement plan should include response-data solver task"
+);
+const exportedPlan = JSON.parse(RAD.exportCalibrationMeasurementPlan(restored));
+assert.strictEqual(exportedPlan.schema, "rad-sim.calibration-plan.v1");
+assert.strictEqual(exportedPlan.profile.name, "bench-v1");
+assert.strictEqual(exportedPlan.readiness.level, "partial-measured");
+assert.strictEqual(exportedPlan.tasks.length, partialMeasurementPlan.length);
 const readyState = RAD.createState(2, 2);
 readyState.grid.hardwareProfile = {
   ...state.grid.hardwareProfile,
@@ -208,6 +227,9 @@ assert.strictEqual(readyReadiness.level, "mesh-calibrated");
 assert.strictEqual(readyReadiness.visualReady, true);
 assert.strictEqual(readyReadiness.meshReady, true);
 assert.strictEqual(readyReadiness.solverReady, false);
+const readyMeasurementPlan = RAD.calibrationMeasurementPlan(readyState);
+assert.ok(readyMeasurementPlan.filter((task) => task.category === "geometry").every((task) => task.status === "done"));
+assert.ok(readyMeasurementPlan.filter((task) => task.category === "solver").every((task) => task.status === "missing"));
 const appliedProfileState = RAD.createState(2, 2);
 appliedProfileState.grid.cellSize = 1.25;
 appliedProfileState.grid.hardwareProfile = JSON.parse(JSON.stringify(state.grid.hardwareProfile));

@@ -77,6 +77,35 @@ CALIBRATION_SOLVER_GAPS: tuple[str, ...] = (
     "friction and contact characterization",
     "measured single, pair, and cluster response data",
 )
+CALIBRATION_FIELD_LABELS: dict[str, str] = {
+    "pin_radius_mm": "hinge pin radius",
+    "hole_radius_mm": "mating hole radius",
+    "plate_thickness_mm": "plate thickness",
+    "joint_stack_height_mm": "joint stack height",
+    "boss_radius_mm": "pivot boss radius",
+}
+CALIBRATION_SOLVER_TASKS: tuple[tuple[str, str, str], ...] = (
+    (
+        "solver_axial_hinge_stiffness",
+        "Measure axial and hinge stiffness",
+        "Run isolated bar and hinge displacement tests before fitting spring-hinge constants.",
+    ),
+    (
+        "solver_actuator_force_stroke",
+        "Measure actuator force and stroke",
+        "Record commanded stroke, realized travel, and force limits for the installed linear actuators.",
+    ),
+    (
+        "solver_friction_contact",
+        "Characterize friction and contact",
+        "Measure pin-hole slip, contact onset, and hysteresis under repeated actuation.",
+    ),
+    (
+        "solver_response_data",
+        "Measure single, pair, and cluster response",
+        "Capture alpha and vertical displacement fields for one cell, adjacent pairs, and small clusters.",
+    ),
+)
 CalibrationReadinessLevel = Literal[
     "paper-scale",
     "partial-measured",
@@ -189,6 +218,17 @@ class RADCalibrationReadiness:
         return "paper-scale defaults only; solver still lacks measured hardware geometry"
 
 
+@dataclass(frozen=True)
+class RADCalibrationMeasurementTask:
+    id: str
+    label: str
+    category: Literal["geometry", "solver"]
+    status: Literal["done", "missing"]
+    priority: int
+    evidence_field: str | None
+    notes: str
+
+
 def calibration_readiness(profile: RADHardwareProfile) -> RADCalibrationReadiness:
     measured = profile.measured_fields
     visual_missing = tuple(
@@ -220,6 +260,45 @@ def calibration_readiness(profile: RADHardwareProfile) -> RADCalibrationReadines
         mesh_ready=mesh_ready,
         solver_ready=False,
     )
+
+
+def calibration_measurement_plan(
+    profile: RADHardwareProfile,
+) -> tuple[RADCalibrationMeasurementTask, ...]:
+    """Return ordered measurement tasks needed before claiming calibrated physics."""
+
+    tasks: list[RADCalibrationMeasurementTask] = []
+    for index, field_name in enumerate(HARDWARE_PROFILE_DIMENSIONS, start=1):
+        measured = getattr(profile, field_name) is not None
+        label = CALIBRATION_FIELD_LABELS[field_name]
+        tasks.append(
+            RADCalibrationMeasurementTask(
+                id=f"geometry_{field_name}",
+                label=f"Measure {label}",
+                category="geometry",
+                status="done" if measured else "missing",
+                priority=index if not measured else 100 + index,
+                evidence_field=field_name,
+                notes=(
+                    "Available in the active hardware profile."
+                    if measured
+                    else "Required for real-cell visual/export geometry before solver calibration."
+                ),
+            )
+        )
+    for index, (task_id, label, notes) in enumerate(CALIBRATION_SOLVER_TASKS, start=1):
+        tasks.append(
+            RADCalibrationMeasurementTask(
+                id=task_id,
+                label=label,
+                category="solver",
+                status="missing",
+                priority=50 + index,
+                evidence_field=None,
+                notes=notes,
+            )
+        )
+    return tuple(sorted(tasks, key=lambda task: (task.status == "done", task.priority, task.id)))
 
 
 def config_with_hardware_profile(

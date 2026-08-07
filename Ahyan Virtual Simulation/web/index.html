@@ -196,6 +196,7 @@
           <div class="help-text">Paper scale: backlash <span id="backlashMmOut">3.500</span> mm, free play <span id="pinHoleClearanceMmOut">1.575</span> mm, tol <span id="holeToleranceModelOut">0.0029</span> model units.</div>
           <div class="help-text">Calibration profile: <span id="hardwareProfileOut">paper-reference</span>, measured <span id="hardwareCoverageOut">0/5</span>, missing <span id="hardwareMissingOut">pin, hole, plate, stack, boss</span>.</div>
           <div class="help-text">Readiness: <span id="hardwareReadinessOut">paper-scale</span>, solver gaps <span id="hardwareSolverGapOut">stiffness, actuator, friction, response</span>.</div>
+          <div class="help-text">Next measurements: <span id="hardwareMeasurementPlanOut">pin radius, hole radius, plate thickness</span>.</div>
           <div class="calibration-editor" aria-label="Measured hardware calibration profile">
             <label>Profile <input id="hardwareProfileName" type="text" value="paper-reference" /></label>
             <label>Source <input id="hardwareProfileSource" type="text" value="RAD preprint defaults" /></label>
@@ -209,6 +210,7 @@
           <div class="button-row calibration-actions">
             <button id="applyHardwareProfile" type="button">Apply Measured Dims</button>
             <button id="clearHardwareProfile" type="button">Clear Measurements</button>
+            <button id="saveCalibrationPlan" type="button">Save Calibration Plan</button>
           </div>
         </section>
 

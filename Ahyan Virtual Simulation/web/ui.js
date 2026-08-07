@@ -27,6 +27,7 @@
         hardwareBossRadiusMm: document.getElementById("hardwareBossRadiusMm"),
         applyHardwareProfile: document.getElementById("applyHardwareProfile"),
         clearHardwareProfile: document.getElementById("clearHardwareProfile"),
+        saveCalibrationPlan: document.getElementById("saveCalibrationPlan"),
         quickDock: document.querySelector(".quick-actuation-dock"),
         toggleQuickDock: document.getElementById("toggleQuickDock"),
         quickDockMini: document.getElementById("quickDockMini"),
@@ -168,6 +169,7 @@
       }
       this.els.applyHardwareProfile.addEventListener("click", () => this.applyHardwareProfile());
       this.els.clearHardwareProfile.addEventListener("click", () => this.clearHardwareProfileMeasurements());
+      this.els.saveCalibrationPlan.addEventListener("click", () => this.saveCalibrationPlan());
       this.els.toggleQuickDock.addEventListener("click", () => {
         this.state.view.quickDockCollapsed = !this.state.view.quickDockCollapsed;
         this.syncQuickDock();
@@ -1036,6 +1038,11 @@
           document.getElementById("hardwareSolverGapOut").textContent =
             readiness.solverGaps.map((gap) => gap.split(" ")[0]).join(", ");
         }
+        if (typeof RAD.calibrationMeasurementPlan === "function") {
+          const missingTasks = RAD.calibrationMeasurementPlan(s).filter((task) => task.status === "missing");
+          document.getElementById("hardwareMeasurementPlanOut").textContent =
+            missingTasks.slice(0, 3).map((task) => task.label.replace(/^Measure /, "")).join(", ") || "none";
+        }
       }
       document.getElementById("alphaCommandOut").textContent = Number(this.els.alphaCommand.value).toFixed(2);
       document.getElementById("zCommandOut").textContent = Number(this.els.zCommand.value).toFixed(2);
@@ -1343,6 +1350,22 @@
       const link = document.createElement("a");
       link.href = url;
       link.download = "rad-sim-paper-rad.obj";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveCalibrationPlan() {
+      const payload =
+        typeof RAD.exportCalibrationMeasurementPlan === "function"
+          ? RAD.exportCalibrationMeasurementPlan(this.state)
+          : JSON.stringify({ schema: "rad-sim.calibration-plan.v1" }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "rad-sim-calibration-plan.json";
       document.body.appendChild(link);
       link.click();
       link.remove();

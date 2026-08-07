@@ -10,6 +10,7 @@ from rad_sim import (
     LatticeState,
     LoadCase,
     CALIBRATION_SOLVER_GAPS,
+    CALIBRATION_SOLVER_TASKS,
     PAPER_RAD_REFERENCE,
     RADHardwareProfile,
     SourceCommand,
@@ -20,6 +21,7 @@ from rad_sim import (
     build_paper_rad_lattice_geometry,
     build_paper_rad_lattice_mesh,
     calibrate_paper_rad_config,
+    calibration_measurement_plan,
     calibration_readiness,
     characterize_cluster,
     characterize_pair,
@@ -238,6 +240,40 @@ class RadSimTests(unittest.TestCase):
         self.assertFalse(readiness.solver_ready)
         self.assertEqual(readiness.mesh_missing_fields, ())
         self.assertIn("solver still", readiness.summary)
+
+    def test_calibration_measurement_plan_lists_missing_geometry_before_solver(self):
+        profile = RADHardwareProfile(
+            pin_radius_mm=6.3,
+            hole_radius_mm=7.875,
+            plate_thickness_mm=2.1,
+        )
+        plan = calibration_measurement_plan(profile)
+        missing = [task for task in plan if task.status == "missing"]
+        done = [task for task in plan if task.status == "done"]
+        self.assertEqual(missing[0].id, "geometry_joint_stack_height_mm")
+        self.assertEqual(missing[1].id, "geometry_boss_radius_mm")
+        self.assertEqual(missing[0].category, "geometry")
+        self.assertEqual(missing[0].evidence_field, "joint_stack_height_mm")
+        self.assertIn("Required", missing[0].notes)
+        self.assertTrue(any(task.id == "solver_response_data" for task in missing))
+        self.assertEqual(len([task for task in plan if task.category == "solver"]), len(CALIBRATION_SOLVER_TASKS))
+        self.assertTrue(all(task.status == "missing" for task in plan if task.category == "solver"))
+        self.assertEqual(done[0].id, "geometry_pin_radius_mm")
+
+    def test_calibration_measurement_plan_keeps_solver_tasks_missing_after_mesh_calibration(self):
+        profile = RADHardwareProfile(
+            pin_radius_mm=6.3,
+            hole_radius_mm=7.875,
+            plate_thickness_mm=2.1,
+            joint_stack_height_mm=4.0,
+            boss_radius_mm=2.2,
+        )
+        plan = calibration_measurement_plan(profile)
+        geometry = [task for task in plan if task.category == "geometry"]
+        solver = [task for task in plan if task.category == "solver"]
+        self.assertTrue(all(task.status == "done" for task in geometry))
+        self.assertTrue(all(task.status == "missing" for task in solver))
+        self.assertEqual(solver[0].id, "solver_axial_hinge_stiffness")
 
     def test_hardware_profile_updates_config_from_measured_radii(self):
         config = LatticeConfig(cell_size=1.0, pin_radius=0.1, hole_radius=0.12, backlash=0.05)

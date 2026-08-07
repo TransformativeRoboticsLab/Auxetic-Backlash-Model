@@ -67,6 +67,35 @@
     "friction and contact characterization",
     "measured single, pair, and cluster response data",
   ]);
+  const CALIBRATION_FIELD_LABELS = Object.freeze({
+    pinRadiusMm: "hinge pin radius",
+    holeRadiusMm: "mating hole radius",
+    plateThicknessMm: "plate thickness",
+    jointStackHeightMm: "joint stack height",
+    bossRadiusMm: "pivot boss radius",
+  });
+  const CALIBRATION_SOLVER_TASKS = Object.freeze([
+    {
+      id: "solver_axial_hinge_stiffness",
+      label: "Measure axial and hinge stiffness",
+      notes: "Run isolated bar and hinge displacement tests before fitting spring-hinge constants.",
+    },
+    {
+      id: "solver_actuator_force_stroke",
+      label: "Measure actuator force and stroke",
+      notes: "Record commanded stroke, realized travel, and force limits for the installed linear actuators.",
+    },
+    {
+      id: "solver_friction_contact",
+      label: "Characterize friction and contact",
+      notes: "Measure pin-hole slip, contact onset, and hysteresis under repeated actuation.",
+    },
+    {
+      id: "solver_response_data",
+      label: "Measure single, pair, and cluster response",
+      notes: "Capture alpha and vertical displacement fields for one cell, adjacent pairs, and small clusters.",
+    },
+  ]);
 
   function nonNegativeNumberOrNull(value) {
     if (value === null || value === undefined || value === "") return null;
@@ -159,6 +188,55 @@
       solverReady: false,
       summary: summaryText,
     };
+  }
+
+  function calibrationMeasurementPlan(state) {
+    const profile = hardwareProfile(state);
+    const tasks = [];
+    for (const [index, field] of HARDWARE_PROFILE_DIMENSIONS.entries()) {
+      const measured = profile[field] !== null && profile[field] !== undefined;
+      const label = CALIBRATION_FIELD_LABELS[field] || field;
+      tasks.push({
+        id: `geometry_${field}`,
+        label: `Measure ${label}`,
+        category: "geometry",
+        status: measured ? "done" : "missing",
+        priority: measured ? 101 + index : 1 + index,
+        evidenceField: field,
+        notes: measured
+          ? "Available in the active hardware profile."
+          : "Required for real-cell visual/export geometry before solver calibration.",
+      });
+    }
+    for (const [index, task] of CALIBRATION_SOLVER_TASKS.entries()) {
+      tasks.push({
+        id: task.id,
+        label: task.label,
+        category: "solver",
+        status: "missing",
+        priority: 51 + index,
+        evidenceField: null,
+        notes: task.notes,
+      });
+    }
+    return tasks.sort((a, b) => {
+      if (a.status !== b.status) return a.status === "done" ? 1 : -1;
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      return a.id.localeCompare(b.id);
+    });
+  }
+
+  function exportCalibrationMeasurementPlan(state) {
+    return JSON.stringify(
+      {
+        schema: "rad-sim.calibration-plan.v1",
+        profile: hardwareProfile(state),
+        readiness: calibrationReadiness(state),
+        tasks: calibrationMeasurementPlan(state),
+      },
+      null,
+      2
+    );
   }
 
   function applyHardwareProfileToGrid(state) {
@@ -891,6 +969,8 @@
   RAD.hardwareMissingFields = hardwareMissingFields;
   RAD.calibrationProfileSummary = calibrationProfileSummary;
   RAD.calibrationReadiness = calibrationReadiness;
+  RAD.calibrationMeasurementPlan = calibrationMeasurementPlan;
+  RAD.exportCalibrationMeasurementPlan = exportCalibrationMeasurementPlan;
   RAD.applyHardwareProfileToGrid = applyHardwareProfileToGrid;
   RAD.paperRadReference = paperRadReference;
   RAD.modelLengthToMm = modelLengthToMm;
