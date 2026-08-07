@@ -33,6 +33,9 @@ from rad_sim import (
     local_actuation_event,
     lock_event,
     lock_projection,
+    model_provenance,
+    provenance_by_status,
+    provenance_summary,
     export_paper_rad_mesh_obj,
     iter_obj_vertices,
     release_event,
@@ -138,6 +141,21 @@ class RadSimTests(unittest.TestCase):
         self.assertAlmostEqual(PAPER_RAD_REFERENCE.side_length_mm, 35.0)
         self.assertAlmostEqual(PAPER_RAD_REFERENCE.fabrication_hole_tolerance_mm, 0.1)
         self.assertAlmostEqual(PAPER_RAD_REFERENCE.reference_backlash_mm, 3.5)
+
+    def test_model_provenance_classifies_evidence_and_assumptions(self):
+        items = model_provenance()
+        ids = {item.id for item in items}
+        self.assertIn("backlash_dead_zone", ids)
+        self.assertIn("vertical_residual_coupling", ids)
+        self.assertGreaterEqual(len(provenance_by_status("paper-supported")), 3)
+        summary = provenance_summary()
+        self.assertGreaterEqual(summary["paper-supported"], 3)
+        self.assertGreaterEqual(summary["implementation-assumption"], 1)
+        self.assertGreaterEqual(summary["simulator-diagnostic"], 1)
+        self.assertGreaterEqual(summary["calibration-gap"], 1)
+        backlash = next(item for item in items if item.id == "backlash_dead_zone")
+        self.assertEqual(backlash.status, "paper-supported")
+        self.assertTrue(any("Eq. 2" in ref for ref in backlash.page_refs))
 
     def test_paper_rad_calibration_converts_model_units_to_mm(self):
         config = LatticeConfig(

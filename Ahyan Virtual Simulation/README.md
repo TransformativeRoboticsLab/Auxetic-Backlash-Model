@@ -6,7 +6,9 @@ dimensionless: it is meant to expose the backlash-coupled lattice mechanics befo
 CAD calibration while target-surface inverse design is still experimental.
 Paper-supported formulas, prototype values, and current modeling assumptions are
 tracked in `docs/research_grounding.md`; use that note before changing RAD cell
-geometry or coupling laws.
+geometry or coupling laws. `model_provenance` in Python and
+`RAD.modelProvenance()` in the browser expose the same paper-supported,
+assumption, diagnostic, and calibration-gap classifications inside the simulator.
 
 ## Run
 
@@ -41,6 +43,9 @@ three-event local sequence probe that reverses the sequence and swaps adjacent
 events, giving a measured `maxOrderError` for path dependence.
 `build_response_matrix` stacks those responses into alpha and height matrices for
 controllability checks and inverse-design experiments.
+`model_provenance` and `provenance_summary` return the current evidence ledger
+for solver features, separating paper-supported equations from assumptions,
+diagnostics, and missing calibration data.
 `response_decay_profile` fits the shellwise maximum response versus Manhattan
 distance from active source cells, matching the browser Response Experiments
 decay readout for notebook-side locality studies.
@@ -501,6 +506,9 @@ without requiring Playwright or a browser binary.
   viewport dock.
 - `web/math.js` `paperRadCalibration`: browser-side paper scale conversion for
   backlash, pin-hole clearance, and fabrication tolerance readouts.
+- `model_provenance` / `web/provenance.js`: shared evidence ledger that marks
+  formulas and simulator layers as paper-supported, assumptions, diagnostics, or
+  calibration gaps.
 - `web/analysis.js` `characterizeLocalResponse`: browser-side single, pair,
   cluster, and active-lattice response experiment metrics with superposition
   residuals, pairwise operator-interaction counts and hotspot maps, local

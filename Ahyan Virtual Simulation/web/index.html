@@ -451,11 +451,25 @@
           </div>
           <input id="fileInput" class="hidden-file" type="file" accept="application/json,.json" />
         </section>
+
+        <section>
+          <h2>Model Provenance</h2>
+          <div class="selected-readout">
+            <span id="provenancePaper">paper 0</span>
+            <span id="provenanceAssumptions">assumptions 0</span>
+          </div>
+          <div class="selected-readout">
+            <span id="provenanceDiagnostics">diagnostics 0</span>
+            <span id="provenanceGaps">gaps 0</span>
+          </div>
+          <div id="modelProvenanceList" class="provenance-list" aria-label="Model provenance summary"></div>
+        </section>
       </aside>
     </main>
 
     <script src="./vendor/three.min.js"></script>
     <script src="./state.js"></script>
+    <script src="./provenance.js"></script>
     <script src="./math.js"></script>
     <script src="./operators.js"></script>
     <script src="./inverse.js"></script>

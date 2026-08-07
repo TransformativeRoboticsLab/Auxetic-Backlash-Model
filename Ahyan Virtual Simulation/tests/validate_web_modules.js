@@ -14,16 +14,27 @@ context.window.window = context.window;
 context.window.console = console;
 vm.createContext(context);
 
-for (const filename of ["state.js", "math.js", "operators.js", "inverse.js", "analysis.js", "physics.js", "mesh_export.js"]) {
+for (const filename of ["state.js", "provenance.js", "math.js", "operators.js", "inverse.js", "analysis.js", "physics.js", "mesh_export.js"]) {
   const source = fs.readFileSync(path.join(web, filename), "utf8");
   vm.runInContext(source, context, { filename });
 }
 
 const RAD = context.window.RAD;
 assert.ok(RAD, "RAD namespace should load");
+assert.strictEqual(typeof RAD.modelProvenance, "function", "provenance module should expose model provenance");
+assert.strictEqual(typeof RAD.provenanceSummary, "function", "provenance module should expose provenance counts");
 assert.strictEqual(typeof RAD.physicalPreviewComparison, "function", "analysis module should expose physical preview comparison");
 assert.strictEqual(typeof RAD.responseDecayProfile, "function", "analysis module should expose response decay profile");
 assert.strictEqual(typeof RAD.validateInversePlanPhysical, "function", "inverse module should expose physical inverse validation");
+const provenance = RAD.modelProvenance();
+assert.ok(
+  provenance.some((item) => item.id === "backlash_dead_zone" && item.status === "paper-supported"),
+  "backlash dead-zone should be marked paper-supported"
+);
+assert.ok(provenance.some((item) => item.status === "implementation-assumption"), "provenance should expose implementation assumptions");
+assert.ok(provenance.some((item) => item.status === "calibration-gap"), "provenance should expose calibration gaps");
+const provenanceSummary = RAD.provenanceSummary();
+assert.ok(provenanceSummary["paper-supported"] >= 1, "provenance summary should count paper-supported items");
 
 const html = fs.readFileSync(path.join(web, "index.html"), "utf8");
 const localRefs = Array.from(html.matchAll(/(?:src|href)="(\.\/[^"]+)"/g)).map((match) => match[1]);
@@ -35,9 +46,13 @@ assert.ok(!/https?:\/\//.test(html), "browser entry should not require external 
 assert.ok(html.includes('value="operatorInteraction"'), "operator interaction overlay should be available in the browser UI");
 assert.ok(html.includes('id="selectInteractionHotspot"'), "response panel should expose a hotspot selection button");
 assert.ok(html.includes('id="characterizationHotspot"'), "response panel should expose a hotspot readout");
+assert.ok(html.includes("./provenance.js"), "provenance module should be loaded by the browser entry");
+assert.ok(html.includes('id="modelProvenanceList"'), "browser UI should expose model provenance list");
+assert.ok(html.includes('id="provenancePaper"'), "browser UI should expose paper-supported provenance count");
 const scriptOrder = [
   "./vendor/three.min.js",
   "./state.js",
+  "./provenance.js",
   "./math.js",
   "./operators.js",
   "./inverse.js",

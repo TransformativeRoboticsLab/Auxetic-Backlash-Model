@@ -78,6 +78,11 @@
         fileInput: document.getElementById("fileInput"),
         sequenceFileInput: document.getElementById("sequenceFileInput"),
         saveObj: document.getElementById("saveObj"),
+        provenancePaper: document.getElementById("provenancePaper"),
+        provenanceAssumptions: document.getElementById("provenanceAssumptions"),
+        provenanceDiagnostics: document.getElementById("provenanceDiagnostics"),
+        provenanceGaps: document.getElementById("provenanceGaps"),
+        modelProvenanceList: document.getElementById("modelProvenanceList"),
         operatorCommitLock: document.getElementById("operatorCommitLock"),
         operatorReleaseLock: document.getElementById("operatorReleaseLock"),
         operatorCheckOrder: document.getElementById("operatorCheckOrder"),
@@ -97,6 +102,7 @@
       this.lastOperatorDiagnostic = null;
       this.bind();
       this.syncControls();
+      this.renderModelProvenance();
     }
 
     bind() {
@@ -862,6 +868,27 @@
       this.els.paintMode.classList.toggle("is-active", enabled);
       this.els.paintMode.setAttribute("aria-pressed", String(enabled));
       this.els.paintMode.textContent = enabled ? "Paint Clicks On" : "Paint Clicks Off";
+    }
+
+    renderModelProvenance() {
+      if (typeof RAD.modelProvenance !== "function" || !this.els.modelProvenanceList) return;
+      const summary = typeof RAD.provenanceSummary === "function" ? RAD.provenanceSummary() : {};
+      this.els.provenancePaper.textContent = `paper ${summary["paper-supported"] || 0}`;
+      this.els.provenanceAssumptions.textContent = `assumptions ${summary["implementation-assumption"] || 0}`;
+      this.els.provenanceDiagnostics.textContent = `diagnostics ${summary["simulator-diagnostic"] || 0}`;
+      this.els.provenanceGaps.textContent = `gaps ${summary["calibration-gap"] || 0}`;
+      this.els.modelProvenanceList.replaceChildren();
+      for (const item of RAD.modelProvenance()) {
+        const row = document.createElement("div");
+        row.className = `provenance-item provenance-${item.status}`;
+        row.title = `${item.source}: ${item.evidence} Limitation: ${item.limitation}`;
+        const label = document.createElement("span");
+        label.textContent = item.label;
+        const status = document.createElement("small");
+        status.textContent = item.status;
+        row.append(label, status);
+        this.els.modelProvenanceList.append(row);
+      }
     }
 
     updateLabels(sim) {

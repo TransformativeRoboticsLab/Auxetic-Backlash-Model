@@ -76,6 +76,13 @@ from .operators import (
     release_event,
     vertical_clearance_operator,
 )
+from .provenance import (
+    MODEL_PROVENANCE,
+    ModelProvenanceItem,
+    model_provenance,
+    provenance_by_status,
+    provenance_summary,
+)
 from .spring_hinge import solve_spring_hinge, solve_spring_hinge_3d
 from .visualization import interactive_app, plot_lattice
 
@@ -113,6 +120,8 @@ __all__ = [
     "ProgrammableDiscontinuityDiagnostic",
     "InverseDesignResult",
     "InversePhysicalValidation",
+    "ModelProvenanceItem",
+    "MODEL_PROVENANCE",
     "build_paper_rad_cell_geometry",
     "build_paper_rad_lattice_geometry",
     "calibrate_paper_rad_config",
@@ -148,6 +157,9 @@ __all__ = [
     "compare_sequence_order",
     "lock_projection",
     "evaluate_programmable_operators",
+    "model_provenance",
+    "provenance_by_status",
+    "provenance_summary",
     "simulate_kinematic",
     "solve_spring_hinge",
     "solve_spring_hinge_3d",

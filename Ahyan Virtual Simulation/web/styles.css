@@ -945,6 +945,48 @@ output {
   box-shadow: 0 0 0 1px var(--actuated);
 }
 
+.provenance-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.provenance-item {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 7px;
+  background: #f8fafc;
+}
+
+.provenance-item span {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.provenance-item small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.provenance-paper-supported {
+  border-left-color: #407f52;
+}
+
+.provenance-implementation-assumption {
+  border-left-color: #b07a2a;
+}
+
+.provenance-simulator-diagnostic {
+  border-left-color: #386fb4;
+}
+
+.provenance-calibration-gap {
+  border-left-color: #9a4b58;
+}
+
 @media (max-width: 1100px) {
   body {
     overflow: auto;
