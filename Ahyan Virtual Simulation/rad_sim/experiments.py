@@ -35,6 +35,23 @@ class ResponseCharacterization:
 
 
 @dataclass(frozen=True)
+class ResponseDecayProfile:
+    model: str
+    alpha_ratio: float
+    z_ratio: float
+    alpha_length: float
+    z_length: float
+    alpha_shells: int
+    z_shells: int
+    alpha_reach: int
+    z_reach: int
+    alpha_first: float
+    z_first: float
+    alpha_last: float
+    z_last: float
+
+
+@dataclass(frozen=True)
 class PairCharacterization:
     combined: ResponseCharacterization
     first: ResponseCharacterization
@@ -120,6 +137,132 @@ def _effective_die_off(delta: np.ndarray, die_off: np.ndarray, tolerance: float)
 
 def _reach(delta: np.ndarray, tolerance: float) -> int:
     return int(np.count_nonzero(np.abs(delta) > tolerance))
+
+
+def _source_cells_from_commands(
+    commands: Iterable[SourceCommand],
+) -> tuple[tuple[int, int], ...]:
+    cells: list[tuple[int, int]] = []
+    seen: set[tuple[int, int]] = set()
+    for command in commands:
+        cell = (int(command.cell[0]), int(command.cell[1]))
+        if cell in seen:
+            continue
+        seen.add(cell)
+        cells.append(cell)
+    return tuple(cells)
+
+
+def _nearest_source_distance(
+    row: int,
+    col: int,
+    source_cells: tuple[tuple[int, int], ...],
+) -> int:
+    return min(abs(row - r) + abs(col - c) for r, c in source_cells)
+
+
+def _fit_shell_decay(
+    shells: dict[int, dict[str, float]],
+    key: str,
+    tolerance: float,
+) -> tuple[float, float, int, int, float, float]:
+    values = [
+        (distance, metrics[key])
+        for distance, metrics in sorted(shells.items())
+        if metrics[key] > tolerance
+    ]
+    if not values:
+        return 0.0, 0.0, 0, 0, 0.0, 0.0
+
+    shell_count = len(values)
+    reach = int(values[-1][0])
+    first = float(values[0][1])
+    last = float(values[-1][1])
+    if shell_count < 2:
+        return 0.0, 0.0, shell_count, reach, first, last
+
+    distances = np.array([distance for distance, _ in values], dtype=float)
+    magnitudes = np.array([value for _, value in values], dtype=float)
+    slope = float(np.polyfit(distances, np.log(magnitudes), 1)[0])
+    ratio = float(np.exp(slope))
+    length = float(-1.0 / slope) if slope < -tolerance else 0.0
+    return ratio, length, shell_count, reach, first, last
+
+
+def response_decay_profile(
+    response: ResponseCharacterization,
+    source_cells: Iterable[tuple[int, int]] | None = None,
+    tolerance: float = 1e-9,
+) -> ResponseDecayProfile:
+    """Fit shellwise response attenuation from active source cells.
+
+    This mirrors the browser locality diagnostic: cells are grouped by Manhattan
+    distance from the nearest source, each shell uses its maximum absolute
+    response, and a log-linear fit estimates the per-shell decay ratio.
+    """
+
+    sources = (
+        _source_cells_from_commands(response.commands)
+        if source_cells is None
+        else tuple((int(r), int(c)) for r, c in source_cells)
+    )
+    if not sources:
+        return ResponseDecayProfile(
+            model="log-linear shell max",
+            alpha_ratio=0.0,
+            z_ratio=0.0,
+            alpha_length=0.0,
+            z_length=0.0,
+            alpha_shells=0,
+            z_shells=0,
+            alpha_reach=0,
+            z_reach=0,
+            alpha_first=0.0,
+            z_first=0.0,
+            alpha_last=0.0,
+            z_last=0.0,
+        )
+
+    shells: dict[int, dict[str, float]] = {}
+    rows, cols = response.alpha_delta.shape
+    for row in range(rows):
+        for col in range(cols):
+            distance = _nearest_source_distance(row, col, sources)
+            shell = shells.setdefault(distance, {"alpha": 0.0, "z": 0.0})
+            shell["alpha"] = max(shell["alpha"], abs(float(response.alpha_delta[row, col])))
+            shell["z"] = max(shell["z"], abs(float(response.height_delta[row, col])))
+
+    (
+        alpha_ratio,
+        alpha_length,
+        alpha_shells,
+        alpha_reach,
+        alpha_first,
+        alpha_last,
+    ) = _fit_shell_decay(shells, "alpha", tolerance)
+    (
+        z_ratio,
+        z_length,
+        z_shells,
+        z_reach,
+        z_first,
+        z_last,
+    ) = _fit_shell_decay(shells, "z", tolerance)
+    return ResponseDecayProfile(
+        model="log-linear shell max",
+        alpha_ratio=alpha_ratio,
+        z_ratio=z_ratio,
+        alpha_length=alpha_length,
+        z_length=z_length,
+        alpha_shells=alpha_shells,
+        z_shells=z_shells,
+        alpha_reach=alpha_reach,
+        z_reach=z_reach,
+        alpha_first=alpha_first,
+        z_first=z_first,
+        alpha_last=alpha_last,
+        z_last=z_last,
+    )
 
 
 def characterize_response(

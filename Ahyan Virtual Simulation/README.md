@@ -38,13 +38,17 @@ three-event local sequence probe that reverses the sequence and swaps adjacent
 events, giving a measured `maxOrderError` for path dependence.
 `build_response_matrix` stacks those responses into alpha and height matrices for
 controllability checks and inverse-design experiments.
+`response_decay_profile` fits the shellwise maximum response versus Manhattan
+distance from active source cells, matching the browser Response Experiments
+decay readout for notebook-side locality studies.
 `diagnose_programmable_discontinuity` packages the same response fields into an
 operator diagnostic: locality radius, reachable cells, response rank,
-underactuated cells, superposition residual, and optional event-sequence order
-sensitivity. The dead-zone law and rotating-square kinematics are
-paper-supported; the superposition residual and sequence-order error are new
-diagnostics for detecting when composed operators stop behaving additively or
-commutatively because of backlash thresholds, locks, or saturation.
+underactuated cells, fitted decay ratio/length, superposition residual, and
+optional event-sequence order sensitivity. The dead-zone law and rotating-square
+kinematics are paper-supported; the superposition residual, fitted decay profile,
+and sequence-order error are new diagnostics for detecting when composed
+operators stop behaving additively or commutatively because of backlash
+thresholds, locks, or saturation.
 `solve_inverse_design` uses that response matrix in a bounded damped least-squares
 fit from target alpha/height fields to candidate actuator commands. This is the
 first Python-backed inverse layer for surface-shaping studies; it is linearized
@@ -452,9 +456,11 @@ without requiring Playwright or a browser binary.
   discontinuity operators for sequence studies, lock invariance, locality
   checks, adjacent-swap sensitivity, and event-order noncommutativity.
 - `diagnose_programmable_discontinuity`: Python operator diagnostic for locality,
-  reachable sets, response rank, underactuated regions, and additive versus
-  non-additive operator composition. When given an `event_sequence`, it also
-  reports reversal/adjacent-swap order sensitivity.
+  reachable sets, response rank, underactuated regions, shellwise response decay,
+  and additive versus non-additive operator composition. When given an
+  `event_sequence`, it also reports reversal/adjacent-swap order sensitivity.
+- `response_decay_profile`: Python log-linear shell-max locality diagnostic that
+  mirrors the browser Response Experiments decay ratio/length readout.
 - `web/operators.js`: browser-side version of the event operators with committed
   `lockAlpha` state, selected-cell order diagnostics, and
   `compareSequenceOrder` adjacent-swap/reversal sensitivity checks in the

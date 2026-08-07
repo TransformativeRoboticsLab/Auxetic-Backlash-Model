@@ -19,6 +19,7 @@ from .experiments import (
     PhysicalPairComparison,
     PhysicalResponseComparison,
     ResponseCharacterization,
+    ResponseDecayProfile,
     ResponseMatrix,
     SourceCommand,
     build_response_matrix,
@@ -29,6 +30,7 @@ from .experiments import (
     compare_physical_cluster,
     compare_physical_pair,
     compare_physical_response,
+    response_decay_profile,
 )
 from .framework import (
     ProgrammableDiscontinuityDiagnostic,
@@ -93,6 +95,7 @@ __all__ = [
     "SequenceOrderDiagnostic",
     "SourceCommand",
     "ResponseCharacterization",
+    "ResponseDecayProfile",
     "PairCharacterization",
     "PhysicalResponseComparison",
     "PhysicalPairComparison",
@@ -117,6 +120,7 @@ __all__ = [
     "compare_physical_response",
     "compare_physical_pair",
     "compare_physical_cluster",
+    "response_decay_profile",
     "diagnose_programmable_discontinuity",
     "alpha_backlash_operator",
     "vertical_clearance_operator",

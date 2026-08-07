@@ -35,6 +35,7 @@ from rad_sim import (
     export_paper_rad_mesh_obj,
     iter_obj_vertices,
     release_event,
+    response_decay_profile,
     simulate_kinematic,
     solve_inverse_design,
     solve_spring_hinge_3d,
@@ -525,6 +526,20 @@ class RadSimTests(unittest.TestCase):
                 include_z=False,
             )
 
+    def test_response_decay_profile_fits_shell_decay(self):
+        config = LatticeConfig(rows=5, cols=5, backlash=0.02, z_coupling_gain=0.35)
+        response = characterize_single_cell(config, (2, 2), alpha=-0.3, z=0.4)
+        decay = response_decay_profile(response)
+        self.assertEqual(decay.model, "log-linear shell max")
+        self.assertGreater(decay.alpha_shells, 1)
+        self.assertGreater(decay.z_shells, 1)
+        self.assertGreaterEqual(decay.alpha_reach, 1)
+        self.assertGreaterEqual(decay.z_reach, 1)
+        self.assertTrue(np.isfinite(decay.alpha_ratio))
+        self.assertTrue(np.isfinite(decay.z_ratio))
+        self.assertGreaterEqual(decay.alpha_length, 0.0)
+        self.assertGreaterEqual(decay.z_length, 0.0)
+
     def test_programmable_discontinuity_diagnostic_reports_locality_and_rank(self):
         config = LatticeConfig(rows=5, cols=5, backlash=0.02, z_coupling_gain=0.35)
         diagnostic = diagnose_programmable_discontinuity(
@@ -538,6 +553,11 @@ class RadSimTests(unittest.TestCase):
         self.assertGreater(diagnostic.reachable_height_cells, 1)
         self.assertGreater(diagnostic.alpha_rank, 0)
         self.assertGreater(diagnostic.height_rank, 0)
+        self.assertIsNotNone(diagnostic.decay_profile)
+        self.assertTrue(np.isfinite(diagnostic.alpha_decay_ratio))
+        self.assertTrue(np.isfinite(diagnostic.z_decay_ratio))
+        self.assertGreaterEqual(diagnostic.alpha_decay_length, 0.0)
+        self.assertGreaterEqual(diagnostic.z_decay_length, 0.0)
         self.assertFalse(diagnostic.nonadditive)
 
     def test_programmable_discontinuity_diagnostic_reports_sequence_order(self):

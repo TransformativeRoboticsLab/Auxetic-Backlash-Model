@@ -7,11 +7,13 @@ import numpy as np
 
 from .experiments import (
     ResponseCharacterization,
+    ResponseDecayProfile,
     ResponseMatrix,
     SourceCommand,
     build_response_matrix,
     characterize_cluster,
     characterize_response,
+    response_decay_profile,
 )
 from .models import LatticeConfig, LatticeState
 from .operators import (
@@ -40,6 +42,7 @@ class ProgrammableDiscontinuityDiagnostic:
     tolerance: float
     event_sequence: tuple[ProgrammableDiscontinuityEvent, ...] = ()
     sequence_order: SequenceOrderDiagnostic | None = None
+    decay_profile: ResponseDecayProfile | None = None
 
     @property
     def active_operator_count(self) -> int:
@@ -56,6 +59,22 @@ class ProgrammableDiscontinuityDiagnostic:
     @property
     def z_locality_radius(self) -> int:
         return self.combined.effective_z_die_off
+
+    @property
+    def alpha_decay_ratio(self) -> float:
+        return 0.0 if self.decay_profile is None else self.decay_profile.alpha_ratio
+
+    @property
+    def z_decay_ratio(self) -> float:
+        return 0.0 if self.decay_profile is None else self.decay_profile.z_ratio
+
+    @property
+    def alpha_decay_length(self) -> float:
+        return 0.0 if self.decay_profile is None else self.decay_profile.alpha_length
+
+    @property
+    def z_decay_length(self) -> float:
+        return 0.0 if self.decay_profile is None else self.decay_profile.z_length
 
     @property
     def reachable_alpha_cells(self) -> int:
@@ -198,6 +217,7 @@ def diagnose_programmable_discontinuity(
         if event_tuple
         else None
     )
+    decay_profile = response_decay_profile(combined, tolerance=tolerance)
     return ProgrammableDiscontinuityDiagnostic(
         commands=command_tuple,
         locked_cells=locked_tuple,
@@ -208,4 +228,5 @@ def diagnose_programmable_discontinuity(
         tolerance=tolerance,
         event_sequence=event_tuple,
         sequence_order=sequence_order,
+        decay_profile=decay_profile,
     )
