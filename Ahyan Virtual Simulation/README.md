@@ -40,10 +40,11 @@ events, giving a measured `maxOrderError` for path dependence.
 controllability checks and inverse-design experiments.
 `diagnose_programmable_discontinuity` packages the same response fields into an
 operator diagnostic: locality radius, reachable cells, response rank,
-underactuated cells, and superposition residual. The dead-zone law and
-rotating-square kinematics are paper-supported; the superposition residual is a
-new diagnostic for detecting when composed actuation operators stop behaving
-additively because of backlash thresholds, locks, or saturation.
+underactuated cells, superposition residual, and optional event-sequence order
+sensitivity. The dead-zone law and rotating-square kinematics are
+paper-supported; the superposition residual and sequence-order error are new
+diagnostics for detecting when composed operators stop behaving additively or
+commutatively because of backlash thresholds, locks, or saturation.
 `solve_inverse_design` uses that response matrix in a bounded damped least-squares
 fit from target alpha/height fields to candidate actuator commands. This is the
 first Python-backed inverse layer for surface-shaping studies; it is linearized
@@ -452,7 +453,8 @@ without requiring Playwright or a browser binary.
   checks, adjacent-swap sensitivity, and event-order noncommutativity.
 - `diagnose_programmable_discontinuity`: Python operator diagnostic for locality,
   reachable sets, response rank, underactuated regions, and additive versus
-  non-additive operator composition.
+  non-additive operator composition. When given an `event_sequence`, it also
+  reports reversal/adjacent-swap order sensitivity.
 - `web/operators.js`: browser-side version of the event operators with committed
   `lockAlpha` state, selected-cell order diagnostics, and
   `compareSequenceOrder` adjacent-swap/reversal sensitivity checks in the

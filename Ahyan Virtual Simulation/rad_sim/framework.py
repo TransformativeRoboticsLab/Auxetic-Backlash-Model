@@ -13,7 +13,12 @@ from .experiments import (
     characterize_cluster,
     characterize_response,
 )
-from .models import LatticeConfig
+from .models import LatticeConfig, LatticeState
+from .operators import (
+    ProgrammableDiscontinuityEvent,
+    SequenceOrderDiagnostic,
+    compare_sequence_order,
+)
 
 
 @dataclass(frozen=True)
@@ -33,6 +38,8 @@ class ProgrammableDiscontinuityDiagnostic:
     alpha_superposition_error: float
     height_superposition_error: float
     tolerance: float
+    event_sequence: tuple[ProgrammableDiscontinuityEvent, ...] = ()
+    sequence_order: SequenceOrderDiagnostic | None = None
 
     @property
     def active_operator_count(self) -> int:
@@ -72,6 +79,18 @@ class ProgrammableDiscontinuityDiagnostic:
             self.alpha_superposition_error > self.tolerance
             or self.height_superposition_error > self.tolerance
         )
+
+    @property
+    def order_sensitive(self) -> bool:
+        return bool(self.sequence_order and self.sequence_order.order_sensitive)
+
+    @property
+    def noncommuting_adjacent_pairs(self) -> int:
+        return 0 if self.sequence_order is None else self.sequence_order.noncommuting_adjacent_pairs
+
+    @property
+    def max_order_error(self) -> float:
+        return 0.0 if self.sequence_order is None else self.sequence_order.max_order_error
 
     @property
     def total_cells(self) -> int:
@@ -134,6 +153,7 @@ def diagnose_programmable_discontinuity(
     z_step: float = 0.12,
     include_alpha: bool = True,
     include_z: bool = True,
+    event_sequence: Iterable[ProgrammableDiscontinuityEvent] | None = None,
     tolerance: float = 1e-9,
 ) -> ProgrammableDiscontinuityDiagnostic:
     """Measure a command set as a programmable-discontinuity operator.
@@ -145,6 +165,7 @@ def diagnose_programmable_discontinuity(
 
     command_tuple = tuple(commands)
     locked_tuple = tuple((int(r), int(c)) for r, c in locked_cells)
+    event_tuple = tuple(event_sequence or ())
     cells = tuple(actuator_cells) if actuator_cells is not None else _unique_command_cells(command_tuple)
     combined = characterize_cluster(
         config,
@@ -169,6 +190,14 @@ def diagnose_programmable_discontinuity(
         locked_tuple,
         tolerance,
     )
+    event_base_state = LatticeState.uniform(config)
+    for r, c in locked_tuple:
+        event_base_state.locked_mask[r, c] = True
+    sequence_order = (
+        compare_sequence_order(config, event_base_state, event_tuple, tolerance=tolerance)
+        if event_tuple
+        else None
+    )
     return ProgrammableDiscontinuityDiagnostic(
         commands=command_tuple,
         locked_cells=locked_tuple,
@@ -177,4 +206,6 @@ def diagnose_programmable_discontinuity(
         alpha_superposition_error=alpha_error,
         height_superposition_error=height_error,
         tolerance=tolerance,
+        event_sequence=event_tuple,
+        sequence_order=sequence_order,
     )

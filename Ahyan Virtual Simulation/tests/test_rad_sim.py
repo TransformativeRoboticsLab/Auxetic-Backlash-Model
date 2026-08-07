@@ -540,6 +540,23 @@ class RadSimTests(unittest.TestCase):
         self.assertGreater(diagnostic.height_rank, 0)
         self.assertFalse(diagnostic.nonadditive)
 
+    def test_programmable_discontinuity_diagnostic_reports_sequence_order(self):
+        config = LatticeConfig(rows=3, cols=3, backlash=0.0)
+        diagnostic = diagnose_programmable_discontinuity(
+            config,
+            (SourceCommand((1, 1), alpha=-0.3, z=0.2),),
+            event_sequence=(
+                local_actuation_event((1, 1), alpha=-0.3, z=0.2),
+                lock_event((1, 1)),
+                clear_actuation_event((1, 1)),
+            ),
+        )
+        self.assertEqual(len(diagnostic.event_sequence), 3)
+        self.assertIsNotNone(diagnostic.sequence_order)
+        self.assertTrue(diagnostic.order_sensitive)
+        self.assertGreater(diagnostic.noncommuting_adjacent_pairs, 0)
+        self.assertGreater(diagnostic.max_order_error, 0.1)
+
     def test_programmable_discontinuity_diagnostic_counts_underactuated_regions(self):
         config = LatticeConfig(rows=3, cols=3, backlash=0.2, z_coupling_gain=0.0)
         diagnostic = diagnose_programmable_discontinuity(
