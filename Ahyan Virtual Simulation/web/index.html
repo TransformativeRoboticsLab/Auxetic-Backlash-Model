@@ -45,6 +45,7 @@
             <div class="advanced-metric"><span id="meanSensitivity">0.000</span><small>mean sensitivity</small></div>
             <div class="advanced-metric"><span id="jacobianColumns">0</span><small>jacobian cols</small></div>
             <div class="advanced-metric"><span id="meanReachability">0.000</span><small>mean reach</small></div>
+            <div class="advanced-metric"><span id="underTargetCells">0</span><small>under targets</small></div>
             <div class="advanced-metric"><span id="linearFitSteps">0</span><small>linear fit steps</small></div>
             <div class="advanced-metric"><span id="linearFitError">0.000</span><small>linear fit err</small></div>
             <div class="advanced-metric"><span id="drawCalls">0</span><small>draw calls</small></div>
@@ -250,6 +251,7 @@
               <option value="inverse">Inverse plan</option>
               <option value="sensitivity">Sensitivity</option>
               <option value="reachability">Reachability</option>
+              <option value="underactuated">Underactuated target</option>
               <option value="state">State</option>
             </select>
           </label>
@@ -330,6 +332,7 @@
             <button id="analyzeInversePlan" type="button">Analyze Plan</button>
             <button id="analyzeSensitivity" type="button">Analyze Sensitivity</button>
             <button id="buildJacobian" type="button">Build Jacobian</button>
+            <button id="selectUnderactuatedTarget" type="button">Select Under Target</button>
             <button id="solveLinearFit" type="button">Solve Linear Fit</button>
             <button id="validatePhysicalFit" type="button">Validate Physical</button>
             <button id="applyInversePlan" type="button">Apply Plan</button>
@@ -345,6 +348,7 @@
           <div class="selected-readout">
             <span id="inversePlanSummary">No plan analyzed</span>
             <span id="inversePlanDelta">delta 0.000</span>
+            <span id="inverseReachabilitySummary">under targets 0</span>
             <span id="inversePreviewSummary">No actuator preview</span>
           </div>
           <div class="selected-readout">

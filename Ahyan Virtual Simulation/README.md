@@ -399,11 +399,14 @@ Jacobian-based inverse design. The `Build Jacobian` button now materializes that
 next layer: it stores finite-difference height and dilation response columns for
 positive/negative z commands and contraction/expansion alpha commands, records
 per-cell reachability coverage, estimates a simple response conditioning ratio,
-and exposes a Reachability overlay. `Solve Linear Fit` uses those columns in a
-first greedy linearized residual projection and `Apply Linear Fit` commits the
-resulting clamped commands. These response columns are still computed from the
-current synthetic kinematic model rather than from a calibrated quasistatic
-mechanism. `Validate Physical` checks the current linear fit or analyzed plan
+and exposes a Reachability overlay. It also compares the current target residual
+against finite response columns, counts target cells with requested height motion
+outside the reachable set, and exposes an `Underactuated target` overlay plus
+`Select Under Target` for the worst unreachable target cell. `Solve Linear Fit`
+uses those columns in a first greedy linearized residual projection and `Apply
+Linear Fit` commits the resulting clamped commands. These response columns are
+still computed from the current synthetic kinematic model rather than from a
+calibrated quasistatic mechanism. `Validate Physical` checks the current linear fit or analyzed plan
 against the browser spring-preview relaxation and reports physical target error
 plus kinematic/physical center-height disagreement. The next solver should
 replace the greedy projection with a proper nonlinear least-squares objective
@@ -600,6 +603,8 @@ without requiring Playwright or a browser binary.
 - `web/inverse.js` `validateInversePlanPhysical`: browser-side physical
   validation of analyzed inverse plans and linear fits against spring-preview
   relaxation, including physical target residual and model-disagreement metrics.
+- `web/inverse.js` `buildResponseJacobian`: browser-side target reachability and
+  underactuated-height diagnostics for finite response columns.
 - `web/physics.js` `simulatePhysicalRelaxation`: browser spring-preview
   relaxation that now also exposes per-cell `modelErrorHeight` and
   `modelErrorCenter` fields against the kinematic state for model-disagreement

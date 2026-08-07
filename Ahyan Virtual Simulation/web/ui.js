@@ -402,11 +402,13 @@
           actuators: jacobian.actuatorCount,
           meanCoverage: jacobian.meanCoverage,
           conditionEstimate: jacobian.conditionEstimate,
+          underactuatedTargets: jacobian.targetReachability?.underactuatedHeightCells || 0,
         });
-        this.state.view.overlayMode = "reachability";
+        this.state.view.overlayMode = jacobian.targetReachability?.underactuatedHeightCells ? "underactuated" : "reachability";
         this.syncControls();
         this.onChange(this.state);
       });
+      document.getElementById("selectUnderactuatedTarget").addEventListener("click", () => this.selectUnderactuatedTarget());
       document.getElementById("solveLinearFit").addEventListener("click", () => {
         const solution = RAD.solveLinearizedTargetFit(this.state);
         RAD.recordEvent(this.state, {
@@ -415,6 +417,7 @@
           steps: solution.steps,
           baseError: solution.baseError,
           projectedError: solution.projectedError,
+          underactuatedTargets: solution.underactuatedHeightCells || 0,
         });
         this.state.view.overlayMode = "inverse";
         this.state.view.targetVisible = this.state.target.type !== "none";
@@ -470,8 +473,8 @@
         this.state.inverse.preview = null;
         this.state.inverse.lastScore = 0;
         this.state.inverse.sensitivity = { candidates: [], map: RAD.matrix(this.state.grid.rows, this.state.grid.cols, 0), stepZ: 0.12, stepAlpha: 0.12, controllableCells: 0, meanGain: 0, maxGain: 0 };
-        this.state.inverse.jacobian = { columns: [], coverageMap: RAD.matrix(this.state.grid.rows, this.state.grid.cols, 0), actuatorCount: 0, columnCount: 0, meanCoverage: 0, maxCoverage: 0, stepZ: 0.12, stepAlpha: 0.12, conditionEstimate: 0 };
-        this.state.inverse.linearSolution = { commands: [], history: [], steps: 0, baseError: 0, predictedError: 0, projectedError: 0, projectedActuators: 0 };
+        this.state.inverse.jacobian = { columns: [], coverageMap: RAD.matrix(this.state.grid.rows, this.state.grid.cols, 0), actuatorCount: 0, columnCount: 0, meanCoverage: 0, maxCoverage: 0, stepZ: 0.12, stepAlpha: 0.12, conditionEstimate: 0, targetReachability: null };
+        this.state.inverse.linearSolution = { commands: [], history: [], steps: 0, baseError: 0, predictedError: 0, projectedError: 0, projectedActuators: 0, targetReachability: null };
         this.state.inverse.physicalValidation = null;
         this.syncControls();
         this.onChange(this.state);
@@ -1112,6 +1115,7 @@
         document.getElementById("meanSensitivity").textContent = Number(s.inverse?.sensitivity?.meanGain || 0).toFixed(3);
         document.getElementById("jacobianColumns").textContent = String(s.inverse?.jacobian?.columnCount || 0);
         document.getElementById("meanReachability").textContent = Number(s.inverse?.jacobian?.meanCoverage || 0).toFixed(3);
+        document.getElementById("underTargetCells").textContent = String(s.inverse?.jacobian?.targetReachability?.underactuatedHeightCells || 0);
         document.getElementById("linearFitSteps").textContent = String(s.inverse?.linearSolution?.steps || 0);
         document.getElementById("linearFitError").textContent = Number(s.inverse?.linearSolution?.projectedError || 0).toFixed(3);
       }
@@ -1271,6 +1275,20 @@
       this.onChange(this.state);
     }
 
+    selectUnderactuatedTarget() {
+      if (!this.state.inverse?.jacobian?.targetReachability && typeof RAD.buildResponseJacobian === "function") {
+        RAD.buildResponseJacobian(this.state);
+      }
+      const report = this.state.inverse?.jacobian?.targetReachability || this.state.inverse?.linearSolution?.targetReachability;
+      const cell = report?.worstUnderactuatedCell;
+      if (!cell) return;
+      this.state.selection = { r: cell.row, c: cell.col };
+      this.state.view.overlayMode = "underactuated";
+      this.state.view.targetVisible = this.state.target.type !== "none";
+      this.syncControls();
+      this.onChange(this.state);
+    }
+
     updateCouplingInspector(r, c) {
       if (typeof RAD.selectedCellCouplingMetrics !== "function") return;
       const metrics = RAD.selectedCellCouplingMetrics(this.state, r, c);
@@ -1341,6 +1359,10 @@
         ? `${commands.length} actuators, error ${Number(plan.projectedError || 0).toFixed(3)}`
         : "No plan analyzed";
       document.getElementById("inversePlanDelta").textContent = `delta ${Number(plan?.totalImprovement || 0).toFixed(3)}`;
+      const reachability = this.state.inverse?.jacobian?.targetReachability || this.state.inverse?.linearSolution?.targetReachability;
+      document.getElementById("inverseReachabilitySummary").textContent = reachability
+        ? `under targets ${reachability.underactuatedHeightCells || 0}, rms ${Number(reachability.unreachableHeightRms || 0).toFixed(3)}`
+        : "under targets 0";
       document.getElementById("inversePreviewSummary").textContent = preview
         ? this.formatInversePreview(preview)
         : linearCommands.length
@@ -1870,8 +1892,8 @@
       if (event.type === "inverse-plan-analyzed") return `analyze: ${event.target}, ${event.actuators} cells`;
       if (event.type === "inverse-plan-applied") return `apply plan: ${event.target}, ${event.actuators} cells`;
       if (event.type === "sensitivity-analyzed") return `sensitivity: ${event.cells || 0} cells, mean ${Number(event.meanGain || 0).toFixed(3)}`;
-      if (event.type === "jacobian-built") return `jacobian: ${event.columns || 0} columns, reach ${Number(event.meanCoverage || 0).toFixed(3)}`;
-      if (event.type === "linear-fit-solved") return `linear solve: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}`;
+      if (event.type === "jacobian-built") return `jacobian: ${event.columns || 0} columns, reach ${Number(event.meanCoverage || 0).toFixed(3)}, under ${event.underactuatedTargets || 0}`;
+      if (event.type === "linear-fit-solved") return `linear solve: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}, under ${event.underactuatedTargets || 0}`;
       if (event.type === "linear-fit-applied") return `linear apply: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}`;
       if (event.type === "inverse-physical-validated") return `physical validate: ${event.source || "plan"}, err ${Number(event.physicalError || 0).toFixed(3)}, model ${Number(event.modelError || 0).toFixed(3)}`;
       if (event.type === "characterization") return `characterize: ${event.scope}, ${event.responseCells || 0} cells, sup ${Number(event.superpositionError || 0).toFixed(3)}, pairs ${event.pairwiseNonadditive || 0}/${event.pairwisePairs || 0}, deg ${event.pairwiseMaxDegree || 0}`;

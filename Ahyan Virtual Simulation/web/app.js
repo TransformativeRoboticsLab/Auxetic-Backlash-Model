@@ -40,6 +40,7 @@
     inverse: ["Inverse Plan", "low contribution", "high contribution"],
     sensitivity: ["Sensitivity", "low response", "high response"],
     reachability: ["Reachability", "weak coverage", "strong coverage"],
+    underactuated: ["Underactuated Target", "reachable/requested", "unreachable target"],
     state: ["Cell State", "free/idle", "locked/active"],
   };
   let state = RAD.createState(7, 7);

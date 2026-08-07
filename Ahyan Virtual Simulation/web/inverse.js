@@ -103,6 +103,60 @@
     return values;
   }
 
+  function targetReachabilityReport(state, baseSim, columns, options = {}) {
+    const { rows, cols } = state.grid;
+    const responseThreshold = options.responseThreshold ?? 0.012;
+    const targetThreshold = options.targetThreshold ?? responseThreshold;
+    const heightReachableMap = RAD.matrix(rows, cols, false);
+    const targetHeightMap = RAD.matrix(rows, cols, 0);
+    const underactuatedHeightMap = RAD.matrix(rows, cols, 0);
+    let heightReachableCells = 0;
+    let targetHeightCells = 0;
+    let underactuatedHeightCells = 0;
+    let unreachableSquared = 0;
+    let maxUnreachableHeightResidual = 0;
+    let worstUnderactuatedCell = null;
+
+    for (let index = 0; index < rows * cols; index += 1) {
+      const r = Math.floor(index / cols);
+      const c = index % cols;
+      const reachable = columns.some((column) => Math.abs(column.heightDelta?.[index] || 0) >= responseThreshold);
+      heightReachableMap[r][c] = reachable;
+      if (reachable) heightReachableCells += 1;
+      const residual = (baseSim.target?.[r]?.[c] || 0) - (baseSim.height?.[r]?.[c] || 0);
+      const requested = Math.abs(residual) >= targetThreshold;
+      if (requested) {
+        targetHeightCells += 1;
+        targetHeightMap[r][c] = residual;
+      }
+      if (requested && !reachable) {
+        const magnitude = Math.abs(residual);
+        underactuatedHeightCells += 1;
+        underactuatedHeightMap[r][c] = magnitude;
+        unreachableSquared += residual * residual;
+        if (magnitude > maxUnreachableHeightResidual) {
+          maxUnreachableHeightResidual = magnitude;
+          worstUnderactuatedCell = { row: r, col: c, residual, absResidual: magnitude };
+        }
+      }
+    }
+
+    return {
+      model: "finite-response-height-reachability",
+      responseThreshold,
+      targetThreshold,
+      heightReachableMap,
+      targetHeightMap,
+      underactuatedHeightMap,
+      heightReachableCells,
+      targetHeightCells,
+      underactuatedHeightCells,
+      unreachableHeightRms: Math.sqrt(unreachableSquared / Math.max(1, underactuatedHeightCells)),
+      maxUnreachableHeightResidual,
+      worstUnderactuatedCell,
+    };
+  }
+
   function commandFromResidual(state, residual) {
     return {
       commandZ: RAD.clampCommandZ(state, residual * 0.82),
@@ -421,6 +475,10 @@
       }
     }
 
+    const targetReachability = targetReachabilityReport(projectedState, baseSim, columns, {
+      responseThreshold: options.responseThreshold ?? 0.012,
+      targetThreshold: options.targetThreshold,
+    });
     const norms = columns.map((column) => column.heightNorm).filter((value) => value > 1e-9).sort((a, b) => a - b);
     const conditionEstimate = norms.length > 1 ? norms[norms.length - 1] / norms[0] : 0;
     columns.sort((a, b) => b.targetAlignment - a.targetAlignment || b.heightNorm - a.heightNorm);
@@ -435,6 +493,7 @@
       meanCoverage: meanCoverage / Math.max(1, actuatorCount),
       maxCoverage,
       conditionEstimate,
+      targetReachability,
       baseError: baseSim.metrics.rmsTargetError,
       columns: columns.slice(0, Math.min(96, columns.length)),
     };
@@ -454,6 +513,10 @@
     const damping = options.damping ?? 0.018;
     const minGain = options.minGain ?? 1e-5;
     const jacobian = state.inverse?.jacobian?.columns?.length ? state.inverse.jacobian : buildResponseJacobian(state, options);
+    jacobian.targetReachability = targetReachabilityReport(projectedState, baseSim, jacobian.columns || [], {
+      responseThreshold: options.responseThreshold ?? jacobian.targetReachability?.responseThreshold ?? 0.012,
+      targetThreshold: options.targetThreshold ?? jacobian.targetReachability?.targetThreshold,
+    });
     const limits = RAD.commandLimits(projectedState);
     const residual = targetResidualVector(baseSim);
     const accepted = [];
@@ -516,6 +579,10 @@
       predictedError: residualNorm(residual),
       projectedError: projectedSim.metrics.rmsTargetError,
       projectedActuators: projectedSim.metrics.recommendedActuators,
+      targetReachability: jacobian.targetReachability,
+      underactuatedHeightCells: jacobian.targetReachability?.underactuatedHeightCells || 0,
+      unreachableHeightRms: jacobian.targetReachability?.unreachableHeightRms || 0,
+      maxUnreachableHeightResidual: jacobian.targetReachability?.maxUnreachableHeightResidual || 0,
       steps: accepted.length,
       commands: Array.from(commandsByCell.entries()).map(([key, command], index) => {
         const [r, c] = key.split(",").map(Number);

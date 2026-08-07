@@ -1112,20 +1112,21 @@ class WebStaticTests(unittest.TestCase):
 
     def test_inverse_response_jacobian_is_present(self):
         html = (WEB / "index.html").read_text(encoding="utf-8")
-        for control_id in ["buildJacobian", "solveLinearFit", "applyLinearFit", "jacobianColumns", "meanReachability", "linearFitSteps", "linearFitError"]:
+        for control_id in ["buildJacobian", "selectUnderactuatedTarget", "solveLinearFit", "applyLinearFit", "jacobianColumns", "meanReachability", "underTargetCells", "linearFitSteps", "linearFitError", "inverseReachabilitySummary"]:
             self.assertIn(f'id="{control_id}"', html)
         self.assertIn('value="reachability"', html)
+        self.assertIn('value="underactuated"', html)
         state_js = (WEB / "state.js").read_text(encoding="utf-8")
-        for symbol in ["jacobian:", "linearSolution:", "coverageMap", "columnCount", "meanCoverage", "conditionEstimate", "predictedError", "projectedError"]:
+        for symbol in ["jacobian:", "linearSolution:", "coverageMap", "columnCount", "meanCoverage", "conditionEstimate", "targetReachability", "predictedError", "projectedError"]:
             self.assertIn(symbol, state_js)
         inverse_js = (WEB / "inverse.js").read_text(encoding="utf-8")
-        for symbol in ["buildResponseJacobian", "solveLinearizedTargetFit", "applyLinearizedTargetFit", "linearized-jacobian-greedy-fit", "finite-difference-response-jacobian", "flattenDelta", "targetResidualVector", "heightDelta", "alphaDelta", "targetAlignment", "conditionEstimate", "commandZ", "commandAlpha", "z+", "z-", "alpha-", "alpha+", "RAD.buildResponseJacobian"]:
+        for symbol in ["buildResponseJacobian", "solveLinearizedTargetFit", "applyLinearizedTargetFit", "linearized-jacobian-greedy-fit", "finite-difference-response-jacobian", "finite-response-height-reachability", "targetReachabilityReport", "underactuatedHeightCells", "worstUnderactuatedCell", "flattenDelta", "targetResidualVector", "heightDelta", "alphaDelta", "targetAlignment", "conditionEstimate", "commandZ", "commandAlpha", "z+", "z-", "alpha-", "alpha+", "RAD.buildResponseJacobian"]:
             self.assertIn(symbol, inverse_js)
         ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
-        for symbol in ["buildJacobian", "solveLinearFit", "applyLinearFit", "jacobian-built", "linear-fit-solved", "linear-fit-applied", "jacobianColumns", "meanReachability", "linearFitSteps", "linearFitError", 'this.state.view.overlayMode = "reachability"']:
+        for symbol in ["buildJacobian", "selectUnderactuatedTarget", "solveLinearFit", "applyLinearFit", "jacobian-built", "linear-fit-solved", "linear-fit-applied", "jacobianColumns", "meanReachability", "underTargetCells", "linearFitSteps", "linearFitError", '"underactuated" : "reachability"']:
             self.assertIn(symbol, ui_js)
         renderer_js = (WEB / "renderer.js").read_text(encoding="utf-8")
-        for symbol in ['mode === "reachability"', "reachabilityStrength", "state.inverse?.jacobian", "linearSolution", "coverageMap", "maxCoverage"]:
+        for symbol in ['mode === "reachability"', 'mode === "underactuated"', "reachabilityStrength", "underactuatedStrength", "state.inverse?.jacobian", "linearSolution", "coverageMap", "maxCoverage", "underactuatedHeightMap"]:
             self.assertIn(symbol, renderer_js)
 
     def test_inverse_sensitivity_analysis_is_present(self):

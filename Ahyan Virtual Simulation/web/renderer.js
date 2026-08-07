@@ -533,6 +533,7 @@
         else if (mode === "inverse") t = this.inversePlanStrength(state, r, c);
         else if (mode === "sensitivity") t = this.sensitivityStrength(state, r, c);
         else if (mode === "reachability") t = this.reachabilityStrength(state, r, c);
+        else if (mode === "underactuated") t = this.underactuatedStrength(state, r, c);
         else if (mode === "operatorInteraction") t = this.operatorInteractionStrength(state, r, c);
         else if (mode === "calibrationError") t = this.calibrationErrorStrength(state, r, c);
         else if (mode === "calibrationResidual") t = this.calibrationErrorStrength(state, r, c, "fitResidualField");
@@ -567,6 +568,13 @@
       const jacobian = state.inverse?.jacobian;
       const value = jacobian?.coverageMap?.[r]?.[c] || 0;
       const scale = Math.max(1e-9, jacobian?.maxCoverage || 0);
+      return value / scale;
+    }
+
+    underactuatedStrength(state, r, c) {
+      const report = state.inverse?.jacobian?.targetReachability || state.inverse?.linearSolution?.targetReachability;
+      const value = report?.underactuatedHeightMap?.[r]?.[c] || 0;
+      const scale = Math.max(1e-9, report?.maxUnreachableHeightResidual || 0);
       return value / scale;
     }
 

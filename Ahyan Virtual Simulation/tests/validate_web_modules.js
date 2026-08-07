@@ -62,10 +62,14 @@ assert.ok(!/https?:\/\//.test(html), "browser entry should not require external 
 assert.ok(html.includes('value="operatorInteraction"'), "operator interaction overlay should be available in the browser UI");
 assert.ok(html.includes('value="calibrationError"'), "calibration error overlay should be available in the browser UI");
 assert.ok(html.includes('value="calibrationResidual"'), "calibration residual overlay should be available in the browser UI");
+assert.ok(html.includes('value="underactuated"'), "underactuated target overlay should be available in the browser UI");
 assert.ok(html.includes('id="selectInteractionHotspot"'), "response panel should expose a hotspot selection button");
 assert.ok(html.includes('id="saveResponseMatrix"'), "response panel should expose a response-matrix export button");
 assert.ok(html.includes('id="selectCalibrationHotspot"'), "response panel should expose a calibration-error selection button");
 assert.ok(html.includes('id="nextCalibrationHotspot"'), "response panel should expose ranked calibration-error navigation");
+assert.ok(html.includes('id="selectUnderactuatedTarget"'), "inverse panel should expose underactuated target selection");
+assert.ok(html.includes('id="underTargetCells"'), "metric strip should count underactuated targets");
+assert.ok(html.includes('id="inverseReachabilitySummary"'), "inverse plan readout should summarize underactuated targets");
 assert.ok(html.includes('id="saveExperimentProtocol"'), "response panel should expose a protocol export button");
 assert.ok(html.includes('id="saveResultsTemplate"'), "response panel should expose a results-template export button");
 assert.ok(html.includes('id="loadResultsJson"'), "response panel should expose a results import button");
@@ -450,6 +454,27 @@ assert.deepStrictEqual(
   JSON.parse(JSON.stringify(physicalValidation)),
   "physical inverse validation should be stored on state.inverse"
 );
+const underactuatedTargetState = RAD.createState(3, 3);
+RAD.clearCommands(underactuatedTargetState);
+underactuatedTargetState.grid.zCouplingGain = 0;
+underactuatedTargetState.target.type = "custom";
+underactuatedTargetState.target.amplitude = 0.3;
+underactuatedTargetState.target.customExpression = "r==2&&c==2?amplitude:0";
+for (let r = 0; r < underactuatedTargetState.grid.rows; r += 1) {
+  for (let c = 0; c < underactuatedTargetState.grid.cols; c += 1) {
+    underactuatedTargetState.cells.actuatorAllowed[r][c] = r === 0 && c === 0;
+  }
+}
+const underactuatedJacobian = RAD.buildResponseJacobian(underactuatedTargetState, { responseThreshold: 0.01 });
+assert.strictEqual(underactuatedJacobian.targetReachability.model, "finite-response-height-reachability");
+assert.strictEqual(underactuatedJacobian.targetReachability.targetHeightCells, 1);
+assert.strictEqual(underactuatedJacobian.targetReachability.underactuatedHeightCells, 1);
+assert.strictEqual(underactuatedJacobian.targetReachability.worstUnderactuatedCell.row, 2);
+assert.strictEqual(underactuatedJacobian.targetReachability.worstUnderactuatedCell.col, 2);
+assert.ok(underactuatedJacobian.targetReachability.maxUnreachableHeightResidual > 0, "underactuated target report should expose residual magnitude");
+const underactuatedFit = RAD.solveLinearizedTargetFit(underactuatedTargetState, { maxActuators: 1, maxColumns: 2 });
+assert.strictEqual(underactuatedFit.underactuatedHeightCells, 1, "linear fit should carry underactuated target count");
+assert.strictEqual(underactuatedFit.targetReachability.worstUnderactuatedCell.col, 2);
 
 const operatorState = RAD.createState(3, 3);
 RAD.clearCommands(operatorState);
