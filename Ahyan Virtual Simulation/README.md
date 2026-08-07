@@ -150,7 +150,10 @@ next geometry and solver measurements needed before treating a RAD cell as
 physically calibrated. `build_calibration_experiment_protocol` and the browser
 Response Experiments `Save Protocol` action generate a repeatable single-cell,
 pair-cell, cluster, and locked-cell test protocol for collecting those response
-measurements against the same simulator coordinates.
+measurements against the same simulator coordinates. The companion results
+template and comparison helpers accept optional measured alpha, height, center
+displacement, slip, and actuator-force values, then report error against the
+current simulator without treating the measurement set as a calibrated solver.
 For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
 paper RAD lattice into extruded plate, pin, and connector mesh components, and
 `export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for
@@ -551,6 +554,10 @@ without requiring Playwright or a browser binary.
   `calibrationExperimentProtocol`: repeatable single, pair, cluster, and lock
   response protocol exports for matching simulator response fields against
   physical bench measurements.
+- `calibration_experiment_results_template` /
+  `compare_calibration_experiment_measurements` and the browser matching
+  helpers: fillable bench-results schema plus simulator-vs-measurement error
+  report for the calibration protocol.
 - `web/renderer.js` `calibratedRad` mode and `web/mesh_export.js`
   `calibratedMeshDimensions`: profile-aware visual/export layer that uses
   measured dimensions for CAD-like inspection while keeping solver assumptions

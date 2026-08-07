@@ -33,6 +33,9 @@ assert.strictEqual(typeof RAD.physicalPreviewComparison, "function", "analysis m
 assert.strictEqual(typeof RAD.responseDecayProfile, "function", "analysis module should expose response decay profile");
 assert.strictEqual(typeof RAD.calibrationExperimentProtocol, "function", "analysis module should expose calibration experiment protocol");
 assert.strictEqual(typeof RAD.exportCalibrationExperimentProtocol, "function", "analysis module should export calibration experiment protocol");
+assert.strictEqual(typeof RAD.calibrationExperimentResultsTemplate, "function", "analysis module should expose calibration results template");
+assert.strictEqual(typeof RAD.exportCalibrationExperimentResultsTemplate, "function", "analysis module should export calibration results template");
+assert.strictEqual(typeof RAD.compareCalibrationExperimentResults, "function", "analysis module should compare calibration results");
 assert.strictEqual(typeof RAD.validateInversePlanPhysical, "function", "inverse module should expose physical inverse validation");
 const provenance = RAD.modelProvenance();
 assert.ok(
@@ -54,6 +57,7 @@ assert.ok(!/https?:\/\//.test(html), "browser entry should not require external 
 assert.ok(html.includes('value="operatorInteraction"'), "operator interaction overlay should be available in the browser UI");
 assert.ok(html.includes('id="selectInteractionHotspot"'), "response panel should expose a hotspot selection button");
 assert.ok(html.includes('id="saveExperimentProtocol"'), "response panel should expose a protocol export button");
+assert.ok(html.includes('id="saveResultsTemplate"'), "response panel should expose a results-template export button");
 assert.ok(html.includes('id="characterizationHotspot"'), "response panel should expose a hotspot readout");
 assert.ok(html.includes("./provenance.js"), "provenance module should be loaded by the browser entry");
 assert.ok(html.includes('id="modelProvenanceList"'), "browser UI should expose model provenance list");
@@ -244,6 +248,47 @@ assert.ok(experimentProtocol.measurementFields.includes("pin_hole_slip_mm"));
 const exportedExperimentProtocol = JSON.parse(RAD.exportCalibrationExperimentProtocol(readyState));
 assert.strictEqual(exportedExperimentProtocol.schema, experimentProtocol.schema);
 assert.strictEqual(exportedExperimentProtocol.steps[0].id, "single_alpha_contract");
+const resultsTemplate = RAD.calibrationExperimentResultsTemplate(readyState, { protocol: experimentProtocol });
+assert.strictEqual(resultsTemplate.schema, "rad-sim.calibration-experiment-results.v1");
+assert.strictEqual(resultsTemplate.steps.length, experimentProtocol.steps.reduce((sum, step) => sum + step.repeatCount, 0));
+const exportedResultsTemplate = JSON.parse(RAD.exportCalibrationExperimentResultsTemplate(readyState, { protocol: experimentProtocol }));
+assert.strictEqual(exportedResultsTemplate.schema, resultsTemplate.schema);
+const liftStep = experimentProtocol.steps.find((step) => step.id === "single_z_lift");
+const liftResult = resultsTemplate.steps.find((step) => step.stepId === "single_z_lift" && step.repeatIndex === 1);
+function stateForProtocolStep(baseState, step, includeCommands) {
+  const temp = RAD.deserialize(RAD.serialize(baseState));
+  for (let r = 0; r < temp.grid.rows; r += 1) {
+    for (let c = 0; c < temp.grid.cols; c += 1) {
+      temp.cells.commandAlpha[r][c] = 0;
+      temp.cells.commandZ[r][c] = 0;
+      temp.cells.locked[r][c] = false;
+    }
+  }
+  for (const locked of step.lockedCells || []) temp.cells.locked[locked.row][locked.col] = true;
+  if (includeCommands) {
+    for (const command of step.commands || []) {
+      temp.cells.commandAlpha[command.row][command.col] += Number(command.alpha) || 0;
+      temp.cells.commandZ[command.row][command.col] += Number(command.z) || 0;
+    }
+  }
+  return temp;
+}
+const liftCommandState = stateForProtocolStep(readyState, liftStep, true);
+const liftBaselineState = stateForProtocolStep(readyState, liftStep, false);
+const liftSim = RAD.simulate(liftCommandState);
+const liftBaseline = RAD.simulate(liftBaselineState);
+for (const cell of liftResult.cells) {
+  cell.alphaDelta = (liftSim.alpha[cell.row][cell.col] || 0) - (liftBaseline.alpha[cell.row][cell.col] || 0);
+  cell.heightDelta = (liftSim.height[cell.row][cell.col] || 0) - (liftBaseline.height[cell.row][cell.col] || 0);
+  cell.pinHoleSlipMm = 0.11;
+  cell.actuatorForceN = 2.5;
+}
+const comparison = RAD.compareCalibrationExperimentResults(readyState, resultsTemplate, { protocol: experimentProtocol });
+const liftComparison = comparison.comparisons.find((item) => item.stepId === "single_z_lift" && item.repeatIndex === 1);
+assert.strictEqual(comparison.schema, "rad-sim.calibration-experiment-comparison.v1");
+assert.strictEqual(liftComparison.missingObservationCount, 0);
+assert.strictEqual(Number(liftComparison.heightRmse.toFixed(8)), 0);
+assert.strictEqual(Number(liftComparison.meanPinHoleSlipMm.toFixed(8)), 0.11);
 const appliedProfileState = RAD.createState(2, 2);
 appliedProfileState.grid.cellSize = 1.25;
 appliedProfileState.grid.hardwareProfile = JSON.parse(JSON.stringify(state.grid.hardwareProfile));

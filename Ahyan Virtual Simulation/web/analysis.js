@@ -808,6 +808,146 @@
     return JSON.stringify(calibrationExperimentProtocol(state, options), null, 2);
   }
 
+  function protocolStepState(state, step, includeCommands = true) {
+    const temp = cloneForCharacterization(state);
+    for (let r = 0; r < temp.grid.rows; r += 1) {
+      for (let c = 0; c < temp.grid.cols; c += 1) {
+        temp.cells.commandAlpha[r][c] = 0;
+        temp.cells.commandZ[r][c] = 0;
+        temp.cells.locked[r][c] = false;
+      }
+    }
+    for (const locked of step.lockedCells || []) {
+      if (temp.cells.locked?.[locked.row]?.[locked.col] !== undefined) temp.cells.locked[locked.row][locked.col] = true;
+    }
+    if (includeCommands) {
+      for (const command of step.commands || []) {
+        if (temp.cells.commandAlpha?.[command.row]?.[command.col] === undefined) continue;
+        temp.cells.commandAlpha[command.row][command.col] += Number(command.alpha) || 0;
+        temp.cells.commandZ[command.row][command.col] += Number(command.z) || 0;
+      }
+    }
+    return temp;
+  }
+
+  function calibrationExperimentResultsTemplate(state, options = {}) {
+    const protocol = options.protocol || calibrationExperimentProtocol(state, options);
+    const steps = [];
+    for (const step of protocol.steps || []) {
+      const repeats = Math.max(1, Math.round(Number(step.repeatCount) || 1));
+      for (let repeatIndex = 1; repeatIndex <= repeats; repeatIndex += 1) {
+        steps.push({
+          stepId: step.id,
+          repeatIndex,
+          cells: (step.observationCells || []).map((cell) => ({
+            row: cell.row,
+            col: cell.col,
+            alphaDelta: null,
+            heightDelta: null,
+            centerDelta: null,
+            pinHoleSlipMm: null,
+            actuatorForceN: null,
+          })),
+          notes: "Replace null fields with measured bench data.",
+        });
+      }
+    }
+    return {
+      schema: "rad-sim.calibration-experiment-results.v1",
+      protocolSchema: protocol.schema,
+      hardwareProfile: protocol.hardwareProfile,
+      notes: "Fill optional measured fields with real bench measurements.",
+      steps,
+    };
+  }
+
+  function exportCalibrationExperimentResultsTemplate(state, options = {}) {
+    return JSON.stringify(calibrationExperimentResultsTemplate(state, options), null, 2);
+  }
+
+  function numericOrNull(value) {
+    if (value === null || value === undefined || value === "") return null;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  }
+
+  function rmse(values) {
+    if (!values.length) return null;
+    const mean = values.reduce((sum, value) => sum + value * value, 0) / values.length;
+    return Math.sqrt(mean);
+  }
+
+  function meanOrNull(values) {
+    if (!values.length) return null;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  }
+
+  function compareCalibrationExperimentResults(state, results, options = {}) {
+    const parsed = typeof results === "string" ? JSON.parse(results) : results;
+    if (parsed?.schema !== "rad-sim.calibration-experiment-results.v1") {
+      throw new Error("unsupported calibration experiment results schema");
+    }
+    const protocol = options.protocol || calibrationExperimentProtocol(state, options);
+    const stepsById = new Map((protocol.steps || []).map((step) => [step.id, step]));
+    const comparisons = [];
+    for (const measuredStep of parsed.steps || []) {
+      const step = stepsById.get(measuredStep.stepId);
+      if (!step) continue;
+      const commandState = protocolStepState(state, step, true);
+      const baselineState = protocolStepState(state, step, false);
+      const sim = RAD.simulate(commandState);
+      const baseline = RAD.simulate(baselineState);
+      const alphaErrors = [];
+      const heightErrors = [];
+      const centerErrors = [];
+      const slipValues = [];
+      const forceValues = [];
+      const observed = new Set();
+      for (const cell of measuredStep.cells || []) {
+        const row = Number(cell.row);
+        const col = Number(cell.col);
+        if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || col < 0 || row >= state.grid.rows || col >= state.grid.cols) continue;
+        observed.add(`${row},${col}`);
+        const alpha = numericOrNull(cell.alphaDelta);
+        const height = numericOrNull(cell.heightDelta);
+        if (alpha !== null) alphaErrors.push(alpha - ((sim.alpha?.[row]?.[col] || 0) - (baseline.alpha?.[row]?.[col] || 0)));
+        if (height !== null) heightErrors.push(height - ((sim.height?.[row]?.[col] || 0) - (baseline.height?.[row]?.[col] || 0)));
+        if (Array.isArray(cell.centerDelta) && cell.centerDelta.length === 3) {
+          const current = sim.centers?.[row]?.[col] || { x: 0, y: 0, z: 0 };
+          const base = baseline.centers?.[row]?.[col] || { x: 0, y: 0, z: 0 };
+          centerErrors.push(
+            Math.hypot(
+              Number(cell.centerDelta[0]) - (current.x - base.x),
+              Number(cell.centerDelta[1]) - (current.y - base.y),
+              Number(cell.centerDelta[2]) - (current.z - base.z)
+            )
+          );
+        }
+        const slip = numericOrNull(cell.pinHoleSlipMm);
+        const force = numericOrNull(cell.actuatorForceN);
+        if (slip !== null) slipValues.push(slip);
+        if (force !== null) forceValues.push(force);
+      }
+      const missingObservationCount = (step.observationCells || []).filter((cell) => !observed.has(`${cell.row},${cell.col}`)).length;
+      comparisons.push({
+        stepId: measuredStep.stepId,
+        repeatIndex: Number(measuredStep.repeatIndex) || 1,
+        measuredCellCount: observed.size,
+        missingObservationCount,
+        alphaRmse: rmse(alphaErrors),
+        heightRmse: rmse(heightErrors),
+        centerRmse: rmse(centerErrors),
+        maxAbsHeightError: heightErrors.length ? Math.max(...heightErrors.map(Math.abs)) : null,
+        meanActuatorForceN: meanOrNull(forceValues),
+        meanPinHoleSlipMm: meanOrNull(slipValues),
+      });
+    }
+    return {
+      schema: "rad-sim.calibration-experiment-comparison.v1",
+      comparisons,
+    };
+  }
+
   function analyzeExperimentSequence(state) {
     const frames = sequenceFrames(state);
     const frameMetrics = frames.map((frame, frameIndex) => {
@@ -939,6 +1079,9 @@
   RAD.characterizeLocalResponse = characterizeLocalResponse;
   RAD.calibrationExperimentProtocol = calibrationExperimentProtocol;
   RAD.exportCalibrationExperimentProtocol = exportCalibrationExperimentProtocol;
+  RAD.calibrationExperimentResultsTemplate = calibrationExperimentResultsTemplate;
+  RAD.exportCalibrationExperimentResultsTemplate = exportCalibrationExperimentResultsTemplate;
+  RAD.compareCalibrationExperimentResults = compareCalibrationExperimentResults;
   RAD.physicalPreviewComparison = physicalPreviewComparison;
   RAD.responseDecayProfile = responseDecayProfile;
 })();

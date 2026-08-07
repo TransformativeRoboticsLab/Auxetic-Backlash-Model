@@ -496,6 +496,7 @@
       document.getElementById("runCharacterization").addEventListener("click", () => this.runCharacterization());
       document.getElementById("selectInteractionHotspot").addEventListener("click", () => this.selectInteractionHotspot());
       document.getElementById("saveExperimentProtocol").addEventListener("click", () => this.saveExperimentProtocol());
+      document.getElementById("saveResultsTemplate").addEventListener("click", () => this.saveResultsTemplate());
       document.getElementById("playTimeline").addEventListener("click", () => this.toggleTimeline());
       document.getElementById("stepTimeline").addEventListener("click", () => this.stepTimeline());
       document.getElementById("captureKeyframe").addEventListener("click", () => this.captureKeyframe());
@@ -1383,6 +1384,22 @@
       const link = document.createElement("a");
       link.href = url;
       link.download = "rad-sim-calibration-experiment-protocol.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveResultsTemplate() {
+      const payload =
+        typeof RAD.exportCalibrationExperimentResultsTemplate === "function"
+          ? RAD.exportCalibrationExperimentResultsTemplate(this.state)
+          : JSON.stringify({ schema: "rad-sim.calibration-experiment-results.v1" }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "rad-sim-calibration-results-template.json";
       document.body.appendChild(link);
       link.click();
       link.remove();

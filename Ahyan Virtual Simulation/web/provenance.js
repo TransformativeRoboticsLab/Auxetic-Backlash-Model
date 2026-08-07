@@ -71,8 +71,8 @@
       source: "Programmable-discontinuity framework",
       pageRefs: ["monograph pp. 23, 42, 55"],
       evidence: "Event operators should be studied for composition, commutation, locality, and reachability.",
-      implementation: "pair residuals, hotspot/degree maps, event-order checks, calibration experiment protocols",
-      limitation: "Reveals non-additivity; not a material constitutive law.",
+      implementation: "pair residuals, hotspot/degree maps, event-order checks, calibration experiment protocols and result comparisons",
+      limitation: "Reveals disagreement and non-additivity; not a material constitutive law.",
     },
     {
       id: "inverse_design_linearization",
@@ -91,7 +91,7 @@
       source: "Physical RAD hardware",
       pageRefs: ["RAD preprint p. 6"],
       evidence: "Prototype scale and tolerance are known, but full part dimensions are not.",
-      implementation: "hardwareProfile state, calibrationReadiness, calibrationMeasurementPlan, calibrationExperimentProtocol, calibratedRad visual mode, profile-aware OBJ export, future calibrated solver",
+      implementation: "hardwareProfile state, calibrationReadiness, calibrationMeasurementPlan, calibrationExperimentProtocol/results, calibratedRad visual mode, profile-aware OBJ export, future calibrated solver",
       limitation: "Visual/export dimensions can use measurements; contact, friction, and dynamics still need hardware tests.",
     },
   ]);

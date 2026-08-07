@@ -270,6 +270,90 @@ class CalibrationExperimentSimulation:
     physical_success: bool | None = None
 
 
+@dataclass(frozen=True)
+class CalibrationCellMeasurement:
+    cell: tuple[int, int]
+    alpha_delta: float | None = None
+    height_delta: float | None = None
+    center_delta: tuple[float, float, float] | None = None
+    pin_hole_slip_mm: float | None = None
+    actuator_force_n: float | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        row, col = self.cell
+        return {
+            "row": row,
+            "col": col,
+            "alphaDelta": self.alpha_delta,
+            "heightDelta": self.height_delta,
+            "centerDelta": list(self.center_delta) if self.center_delta is not None else None,
+            "pinHoleSlipMm": self.pin_hole_slip_mm,
+            "actuatorForceN": self.actuator_force_n,
+        }
+
+
+@dataclass(frozen=True)
+class CalibrationStepMeasurement:
+    step_id: str
+    repeat_index: int
+    cells: tuple[CalibrationCellMeasurement, ...]
+    notes: str = ""
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "stepId": self.step_id,
+            "repeatIndex": self.repeat_index,
+            "cells": [cell.to_dict() for cell in self.cells],
+            "notes": self.notes,
+        }
+
+
+@dataclass(frozen=True)
+class CalibrationExperimentMeasurements:
+    protocol_schema: str
+    hardware_profile_name: str
+    steps: tuple[CalibrationStepMeasurement, ...]
+    schema: str = "rad-sim.calibration-experiment-results.v1"
+    notes: str = "Fill optional measured fields with real bench measurements."
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "protocolSchema": self.protocol_schema,
+            "hardwareProfile": self.hardware_profile_name,
+            "notes": self.notes,
+            "steps": [step.to_dict() for step in self.steps],
+        }
+
+
+@dataclass(frozen=True)
+class CalibrationExperimentComparison:
+    step_id: str
+    repeat_index: int
+    measured_cell_count: int
+    missing_observation_count: int
+    alpha_rmse: float | None
+    height_rmse: float | None
+    center_rmse: float | None
+    max_abs_height_error: float | None
+    mean_actuator_force_n: float | None
+    mean_pin_hole_slip_mm: float | None
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "stepId": self.step_id,
+            "repeatIndex": self.repeat_index,
+            "measuredCellCount": self.measured_cell_count,
+            "missingObservationCount": self.missing_observation_count,
+            "alphaRmse": self.alpha_rmse,
+            "heightRmse": self.height_rmse,
+            "centerRmse": self.center_rmse,
+            "maxAbsHeightError": self.max_abs_height_error,
+            "meanActuatorForceN": self.mean_actuator_force_n,
+            "meanPinHoleSlipMm": self.mean_pin_hole_slip_mm,
+        }
+
+
 def _state_with_commands(
     config: LatticeConfig,
     commands: Iterable[SourceCommand],
@@ -772,6 +856,205 @@ def export_calibration_experiment_protocol_json(
     protocol: CalibrationExperimentProtocol,
 ) -> str:
     return json.dumps(protocol.to_dict(), indent=2)
+
+
+def calibration_experiment_results_template(
+    protocol: CalibrationExperimentProtocol,
+) -> CalibrationExperimentMeasurements:
+    steps = tuple(
+        CalibrationStepMeasurement(
+            step_id=step.id,
+            repeat_index=repeat_index,
+            cells=tuple(
+                CalibrationCellMeasurement(cell=cell)
+                for cell in step.observation_cells
+            ),
+            notes="Replace null fields with measured bench data.",
+        )
+        for step in protocol.steps
+        for repeat_index in range(1, step.repeat_count + 1)
+    )
+    return CalibrationExperimentMeasurements(
+        protocol_schema=protocol.schema,
+        hardware_profile_name=protocol.hardware_profile_name,
+        steps=steps,
+    )
+
+
+def export_calibration_experiment_results_template_json(
+    protocol: CalibrationExperimentProtocol,
+) -> str:
+    return json.dumps(calibration_experiment_results_template(protocol).to_dict(), indent=2)
+
+
+def _optional_float(value: object) -> float | None:
+    if value is None or value == "":
+        return None
+    return float(value)
+
+
+def _measurement_cell_from_dict(raw: dict[str, object]) -> CalibrationCellMeasurement:
+    center_delta_raw = raw.get("centerDelta")
+    center_delta: tuple[float, float, float] | None = None
+    if isinstance(center_delta_raw, (list, tuple)) and len(center_delta_raw) == 3:
+        center_delta = tuple(float(value) for value in center_delta_raw)  # type: ignore[assignment]
+    return CalibrationCellMeasurement(
+        cell=(int(raw["row"]), int(raw["col"])),
+        alpha_delta=_optional_float(raw.get("alphaDelta")),
+        height_delta=_optional_float(raw.get("heightDelta")),
+        center_delta=center_delta,
+        pin_hole_slip_mm=_optional_float(raw.get("pinHoleSlipMm")),
+        actuator_force_n=_optional_float(raw.get("actuatorForceN")),
+    )
+
+
+def calibration_experiment_measurements_from_dict(
+    raw: dict[str, object],
+) -> CalibrationExperimentMeasurements:
+    schema = str(raw.get("schema", ""))
+    if schema != "rad-sim.calibration-experiment-results.v1":
+        raise ValueError("unsupported calibration experiment results schema")
+    steps_raw = raw.get("steps")
+    if not isinstance(steps_raw, list):
+        raise ValueError("calibration experiment results require a steps list")
+    steps: list[CalibrationStepMeasurement] = []
+    for step_raw in steps_raw:
+        if not isinstance(step_raw, dict):
+            raise ValueError("each calibration result step must be an object")
+        cells_raw = step_raw.get("cells", [])
+        if not isinstance(cells_raw, list):
+            raise ValueError("each calibration result step requires a cells list")
+        steps.append(
+            CalibrationStepMeasurement(
+                step_id=str(step_raw["stepId"]),
+                repeat_index=int(step_raw.get("repeatIndex", 1)),
+                cells=tuple(
+                    _measurement_cell_from_dict(cell)
+                    for cell in cells_raw
+                    if isinstance(cell, dict)
+                ),
+                notes=str(step_raw.get("notes", "")),
+            )
+        )
+    return CalibrationExperimentMeasurements(
+        protocol_schema=str(raw.get("protocolSchema", "")),
+        hardware_profile_name=str(raw.get("hardwareProfile", "")),
+        steps=tuple(steps),
+        notes=str(raw.get("notes", "")),
+    )
+
+
+def calibration_experiment_measurements_from_json(
+    text: str,
+) -> CalibrationExperimentMeasurements:
+    return calibration_experiment_measurements_from_dict(json.loads(text))
+
+
+def _rmse(values: list[float]) -> float | None:
+    if not values:
+        return None
+    array = np.asarray(values, dtype=float)
+    return float(np.sqrt(np.mean(array**2)))
+
+
+def _mean_optional(values: list[float]) -> float | None:
+    if not values:
+        return None
+    return float(np.mean(np.asarray(values, dtype=float)))
+
+
+def compare_calibration_experiment_measurements(
+    config: LatticeConfig,
+    protocol: CalibrationExperimentProtocol,
+    measurements: CalibrationExperimentMeasurements,
+    *,
+    tolerance: float = 1e-9,
+) -> tuple[CalibrationExperimentComparison, ...]:
+    """Compare imported bench measurements against current simulated protocol response."""
+
+    protocol_steps = {step.id: step for step in protocol.steps}
+    comparisons: list[CalibrationExperimentComparison] = []
+    for measured_step in measurements.steps:
+        step = protocol_steps.get(measured_step.step_id)
+        if step is None:
+            continue
+        response = characterize_response(
+            config,
+            step.commands,
+            locked_cells=step.locked_cells,
+            tolerance=tolerance,
+        )
+        baseline = simulate_kinematic(
+            config,
+            _state_with_commands(config, (), step.locked_cells),
+        )
+        result = simulate_kinematic(
+            config,
+            _state_with_commands(config, step.commands, step.locked_cells),
+        )
+        center_delta = result.deformed_centers_3d - baseline.deformed_centers_3d
+        observed = {measurement.cell: measurement for measurement in measured_step.cells}
+        alpha_errors: list[float] = []
+        height_errors: list[float] = []
+        center_errors: list[float] = []
+        slip_values: list[float] = []
+        force_values: list[float] = []
+        for measurement in measured_step.cells:
+            row, col = measurement.cell
+            if not (0 <= row < config.rows and 0 <= col < config.cols):
+                continue
+            if measurement.alpha_delta is not None:
+                alpha_errors.append(
+                    measurement.alpha_delta - float(response.alpha_delta[row, col])
+                )
+            if measurement.height_delta is not None:
+                height_errors.append(
+                    measurement.height_delta - float(response.height_delta[row, col])
+                )
+            if measurement.center_delta is not None:
+                simulated_center = center_delta[row, col, :]
+                center_errors.append(
+                    float(
+                        np.linalg.norm(
+                            np.asarray(measurement.center_delta, dtype=float)
+                            - simulated_center
+                        )
+                    )
+                )
+            if measurement.pin_hole_slip_mm is not None:
+                slip_values.append(measurement.pin_hole_slip_mm)
+            if measurement.actuator_force_n is not None:
+                force_values.append(measurement.actuator_force_n)
+        missing = sum(1 for cell in step.observation_cells if cell not in observed)
+        comparisons.append(
+            CalibrationExperimentComparison(
+                step_id=measured_step.step_id,
+                repeat_index=measured_step.repeat_index,
+                measured_cell_count=len(observed),
+                missing_observation_count=missing,
+                alpha_rmse=_rmse(alpha_errors),
+                height_rmse=_rmse(height_errors),
+                center_rmse=_rmse(center_errors),
+                max_abs_height_error=(
+                    max(abs(value) for value in height_errors) if height_errors else None
+                ),
+                mean_actuator_force_n=_mean_optional(force_values),
+                mean_pin_hole_slip_mm=_mean_optional(slip_values),
+            )
+        )
+    return tuple(comparisons)
+
+
+def export_calibration_experiment_comparison_json(
+    comparisons: Iterable[CalibrationExperimentComparison],
+) -> str:
+    return json.dumps(
+        {
+            "schema": "rad-sim.calibration-experiment-comparison.v1",
+            "comparisons": [comparison.to_dict() for comparison in comparisons],
+        },
+        indent=2,
+    )
 
 
 def run_calibration_experiment_protocol(

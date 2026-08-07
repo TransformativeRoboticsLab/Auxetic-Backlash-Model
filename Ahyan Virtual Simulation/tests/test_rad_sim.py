@@ -23,6 +23,8 @@ from rad_sim import (
     build_paper_rad_lattice_geometry,
     build_paper_rad_lattice_mesh,
     calibrate_paper_rad_config,
+    calibration_experiment_measurements_from_json,
+    calibration_experiment_results_template,
     calibration_measurement_plan,
     calibration_readiness,
     characterize_cluster,
@@ -33,6 +35,7 @@ from rad_sim import (
     compare_physical_cluster,
     compare_physical_pair,
     compare_physical_response,
+    compare_calibration_experiment_measurements,
     compare_event_order,
     compare_sequence_order,
     config_with_hardware_profile,
@@ -41,6 +44,8 @@ from rad_sim import (
     evaluate_programmable_operators,
     finite_die_off_radius,
     export_calibration_experiment_protocol_json,
+    export_calibration_experiment_comparison_json,
+    export_calibration_experiment_results_template_json,
     hardware_profile_from_config,
     local_actuation_event,
     lock_event,
@@ -692,6 +697,49 @@ class RadSimTests(unittest.TestCase):
         row, col = locked_step.locked_cells[0]
         self.assertEqual(locked_response.alpha_delta[row, col], 0.0)
         self.assertEqual(locked_response.height_delta[row, col], 0.0)
+
+    def test_calibration_results_template_roundtrips_and_compares_to_simulation(self):
+        config = LatticeConfig(rows=3, cols=3, backlash=0.02, z_coupling_gain=0.35)
+        protocol = build_calibration_experiment_protocol(
+            config,
+            center_cell=(1, 1),
+            repeat_count=2,
+        )
+        template = calibration_experiment_results_template(protocol)
+        self.assertEqual(
+            len(template.steps),
+            sum(step.repeat_count for step in protocol.steps),
+        )
+        template_json = json.loads(export_calibration_experiment_results_template_json(protocol))
+        self.assertEqual(template_json["schema"], "rad-sim.calibration-experiment-results.v1")
+        step_result = next(
+            step
+            for step in template_json["steps"]
+            if step["stepId"] == "single_z_lift" and step["repeatIndex"] == 1
+        )
+        protocol_step = next(step for step in protocol.steps if step.id == "single_z_lift")
+        simulated = characterize_response(
+            config,
+            protocol_step.commands,
+            locked_cells=protocol_step.locked_cells,
+        )
+        for cell in step_result["cells"]:
+            row = cell["row"]
+            col = cell["col"]
+            cell["alphaDelta"] = float(simulated.alpha_delta[row, col])
+            cell["heightDelta"] = float(simulated.height_delta[row, col])
+            cell["pinHoleSlipMm"] = 0.12
+            cell["actuatorForceN"] = 3.4
+        measurements = calibration_experiment_measurements_from_json(json.dumps(template_json))
+        comparisons = compare_calibration_experiment_measurements(config, protocol, measurements)
+        comparison = next(item for item in comparisons if item.step_id == "single_z_lift" and item.repeat_index == 1)
+        self.assertEqual(comparison.missing_observation_count, 0)
+        self.assertAlmostEqual(comparison.alpha_rmse or 0.0, 0.0)
+        self.assertAlmostEqual(comparison.height_rmse or 0.0, 0.0)
+        self.assertAlmostEqual(comparison.mean_pin_hole_slip_mm or 0.0, 0.12)
+        self.assertAlmostEqual(comparison.mean_actuator_force_n or 0.0, 3.4)
+        exported = json.loads(export_calibration_experiment_comparison_json(comparisons))
+        self.assertEqual(exported["schema"], "rad-sim.calibration-experiment-comparison.v1")
 
     def test_characterization_respects_locked_cells(self):
         config = LatticeConfig(rows=3, cols=3, backlash=0.0)
