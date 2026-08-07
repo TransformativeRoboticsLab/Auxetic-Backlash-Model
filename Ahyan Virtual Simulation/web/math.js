@@ -47,10 +47,90 @@
     return Math.max(0, holeRadius - pinRadius);
   }
 
+  const HARDWARE_PROFILE_DIMENSIONS = Object.freeze([
+    "pinRadiusMm",
+    "holeRadiusMm",
+    "plateThicknessMm",
+    "jointStackHeightMm",
+    "bossRadiusMm",
+  ]);
+
+  function nonNegativeNumberOrNull(value) {
+    if (value === null || value === undefined || value === "") return null;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric >= 0 ? numeric : null;
+  }
+
+  function hardwareProfile(state) {
+    const raw = state.grid.hardwareProfile || {};
+    const sideLengthMm = Math.max(1e-9, Number(raw.sideLengthMm ?? state.grid.paperSideLengthMm ?? 35));
+    const fabricationHoleToleranceMm = Math.max(0, Number(raw.fabricationHoleToleranceMm ?? state.grid.paperHoleToleranceMm ?? 0.1));
+    const pinRadiusMm = nonNegativeNumberOrNull(raw.pinRadiusMm);
+    let holeRadiusMm = nonNegativeNumberOrNull(raw.holeRadiusMm);
+    if (pinRadiusMm !== null && holeRadiusMm !== null && holeRadiusMm < pinRadiusMm) holeRadiusMm = pinRadiusMm;
+    return {
+      name: String(raw.name || "paper-reference"),
+      source: String(raw.source || "RAD preprint defaults"),
+      sideLengthMm,
+      fabricationHoleToleranceMm,
+      backlashMm: nonNegativeNumberOrNull(raw.backlashMm),
+      pinRadiusMm,
+      holeRadiusMm,
+      plateThicknessMm: nonNegativeNumberOrNull(raw.plateThicknessMm),
+      jointStackHeightMm: nonNegativeNumberOrNull(raw.jointStackHeightMm),
+      bossRadiusMm: nonNegativeNumberOrNull(raw.bossRadiusMm),
+      notes: String(raw.notes || ""),
+    };
+  }
+
+  function hardwareMeasuredFields(profile) {
+    const p = profile || {};
+    return HARDWARE_PROFILE_DIMENSIONS.filter((field) => p[field] !== null && p[field] !== undefined);
+  }
+
+  function hardwareMissingFields(profile) {
+    const p = profile || {};
+    return HARDWARE_PROFILE_DIMENSIONS.filter((field) => p[field] === null || p[field] === undefined);
+  }
+
+  function calibrationProfileSummary(state) {
+    const profile = hardwareProfile(state);
+    const measuredFields = hardwareMeasuredFields(profile);
+    const missingFields = hardwareMissingFields(profile);
+    const modelScale = Math.max(1e-9, Number(state.grid.cellSize || 1)) / profile.sideLengthMm;
+    const pinHoleClearanceMm =
+      profile.pinRadiusMm !== null && profile.holeRadiusMm !== null ? profile.holeRadiusMm - profile.pinRadiusMm : null;
+    return {
+      profile,
+      measuredFields,
+      missingFields,
+      measuredCount: measuredFields.length,
+      totalCount: HARDWARE_PROFILE_DIMENSIONS.length,
+      coverageRatio: measuredFields.length / HARDWARE_PROFILE_DIMENSIONS.length,
+      pinHoleClearanceMm,
+      pinRadiusModel: profile.pinRadiusMm === null ? null : profile.pinRadiusMm * modelScale,
+      holeRadiusModel: profile.holeRadiusMm === null ? null : profile.holeRadiusMm * modelScale,
+      backlashModel: profile.backlashMm === null ? null : profile.backlashMm / profile.sideLengthMm,
+    };
+  }
+
+  function applyHardwareProfileToGrid(state) {
+    const summary = calibrationProfileSummary(state);
+    const profile = summary.profile;
+    state.grid.hardwareProfile = profile;
+    state.grid.paperSideLengthMm = profile.sideLengthMm;
+    state.grid.paperHoleToleranceMm = profile.fabricationHoleToleranceMm;
+    if (summary.backlashModel !== null) state.grid.backlash = summary.backlashModel;
+    if (summary.pinRadiusModel !== null) state.grid.pinRadius = summary.pinRadiusModel;
+    if (summary.holeRadiusModel !== null) state.grid.holeRadius = Math.max(summary.holeRadiusModel, state.grid.pinRadius);
+    return summary;
+  }
+
   function paperRadReference(state) {
-    const sideLengthMm = Math.max(1e-9, Number(state.grid.paperSideLengthMm ?? 35));
+    const profile = state.grid.hardwareProfile || {};
+    const sideLengthMm = Math.max(1e-9, Number(profile.sideLengthMm ?? state.grid.paperSideLengthMm ?? 35));
     const normalizedBacklash = 0.1;
-    const fabricationHoleToleranceMm = Math.max(0, Number(state.grid.paperHoleToleranceMm ?? 0.1));
+    const fabricationHoleToleranceMm = Math.max(0, Number(profile.fabricationHoleToleranceMm ?? state.grid.paperHoleToleranceMm ?? 0.1));
     return {
       sideLengthMm,
       normalizedBacklash,
@@ -755,6 +835,12 @@
   RAD.clampCommandAlpha = clampCommandAlpha;
   RAD.commandSaturation = commandSaturation;
   RAD.pinHoleClearance = pinHoleClearance;
+  RAD.HARDWARE_PROFILE_DIMENSIONS = HARDWARE_PROFILE_DIMENSIONS;
+  RAD.hardwareProfile = hardwareProfile;
+  RAD.hardwareMeasuredFields = hardwareMeasuredFields;
+  RAD.hardwareMissingFields = hardwareMissingFields;
+  RAD.calibrationProfileSummary = calibrationProfileSummary;
+  RAD.applyHardwareProfileToGrid = applyHardwareProfileToGrid;
   RAD.paperRadReference = paperRadReference;
   RAD.modelLengthToMm = modelLengthToMm;
   RAD.mmToModelLength = mmToModelLength;

@@ -5,10 +5,12 @@ import numpy as np
 
 from rad_sim import (
     DeadZonePropagationOperator,
+    HARDWARE_PROFILE_DIMENSIONS,
     LatticeConfig,
     LatticeState,
     LoadCase,
     PAPER_RAD_REFERENCE,
+    RADHardwareProfile,
     SourceCommand,
     apply_event_sequence,
     backlash_activation,
@@ -26,10 +28,12 @@ from rad_sim import (
     compare_physical_response,
     compare_event_order,
     compare_sequence_order,
+    config_with_hardware_profile,
     clear_actuation_event,
     diagnose_programmable_discontinuity,
     evaluate_programmable_operators,
     finite_die_off_radius,
+    hardware_profile_from_config,
     local_actuation_event,
     lock_event,
     lock_projection,
@@ -182,6 +186,60 @@ class RadSimTests(unittest.TestCase):
         self.assertAlmostEqual(calibration.configured_backlash_mm, 3.5)
         self.assertAlmostEqual(calibration.pin_hole_clearance_mm, 1.75)
         self.assertAlmostEqual(calibration.fabrication_hole_tolerance_model, 0.1 * 2.0 / 35.0)
+
+    def test_hardware_profile_tracks_measured_dimension_coverage(self):
+        profile = RADHardwareProfile(
+            name="bench-measurement-v1",
+            source="caliper",
+            pin_radius_mm=6.3,
+            hole_radius_mm=7.875,
+            plate_thickness_mm=2.1,
+        )
+        self.assertEqual(
+            profile.measured_fields,
+            ("pin_radius_mm", "hole_radius_mm", "plate_thickness_mm"),
+        )
+        self.assertEqual(len(profile.missing_fields), len(HARDWARE_PROFILE_DIMENSIONS) - 3)
+        self.assertAlmostEqual(profile.coverage_ratio, 3 / len(HARDWARE_PROFILE_DIMENSIONS))
+        self.assertAlmostEqual(profile.pin_hole_clearance_mm, 1.575)
+        reference = profile.to_reference()
+        self.assertAlmostEqual(reference.side_length_mm, 35.0)
+        self.assertAlmostEqual(reference.fabrication_hole_tolerance_mm, 0.1)
+
+    def test_hardware_profile_updates_config_from_measured_radii(self):
+        config = LatticeConfig(cell_size=1.0, pin_radius=0.1, hole_radius=0.12, backlash=0.05)
+        profile = RADHardwareProfile(
+            side_length_mm=35.0,
+            backlash_mm=3.5,
+            pin_radius_mm=6.3,
+            hole_radius_mm=7.875,
+        )
+        updated = config_with_hardware_profile(config, profile)
+        self.assertAlmostEqual(updated.backlash, 0.1)
+        self.assertAlmostEqual(updated.pin_radius, 0.18)
+        self.assertAlmostEqual(updated.hole_radius, 0.225)
+        self.assertAlmostEqual(updated.pin_hole_clearance, 0.045)
+
+    def test_partial_hardware_profile_keeps_config_radii_valid(self):
+        config = LatticeConfig(cell_size=1.0, pin_radius=0.1, hole_radius=0.12)
+        profile = RADHardwareProfile(pin_radius_mm=7.0)
+        updated = config_with_hardware_profile(config, profile)
+        self.assertAlmostEqual(updated.pin_radius, 0.2)
+        self.assertGreaterEqual(updated.hole_radius, updated.pin_radius)
+
+    def test_hardware_profile_from_config_marks_current_values_as_estimates(self):
+        config = LatticeConfig(cell_size=2.0, pin_radius=0.2, hole_radius=0.3, backlash=0.1)
+        profile = hardware_profile_from_config(config)
+        self.assertEqual(profile.name, "current-config-estimate")
+        self.assertEqual(profile.source, "normalized simulator controls")
+        self.assertAlmostEqual(profile.pin_radius_mm, 3.5)
+        self.assertAlmostEqual(profile.hole_radius_mm, 5.25)
+        self.assertAlmostEqual(profile.pin_hole_clearance_mm, 1.75)
+        self.assertIn("plate_thickness_mm", profile.missing_fields)
+
+    def test_hardware_profile_rejects_inverted_pin_hole_radii(self):
+        with self.assertRaises(ValueError):
+            RADHardwareProfile(pin_radius_mm=2.0, hole_radius_mm=1.0)
 
     def test_paper_rad_cell_has_two_four_joint_parts(self):
         config = LatticeConfig(pin_radius=0.12, hole_radius=0.19)

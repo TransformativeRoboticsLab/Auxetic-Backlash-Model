@@ -21,6 +21,22 @@
     };
   }
 
+  function defaultHardwareProfile() {
+    return {
+      name: "paper-reference",
+      source: "RAD preprint defaults",
+      sideLengthMm: 35,
+      fabricationHoleToleranceMm: 0.1,
+      backlashMm: null,
+      pinRadiusMm: null,
+      holeRadiusMm: null,
+      plateThicknessMm: null,
+      jointStackHeightMm: null,
+      bossRadiusMm: null,
+      notes: "",
+    };
+  }
+
   function updateDerivedCells(state, sim) {
     if (!state?.cells || !sim) return state;
     const { rows, cols } = state.grid;
@@ -51,6 +67,30 @@
     if (state.grid.holeRadius === undefined) state.grid.holeRadius = 0.225;
     if (state.grid.paperSideLengthMm === undefined) state.grid.paperSideLengthMm = 35;
     if (state.grid.paperHoleToleranceMm === undefined) state.grid.paperHoleToleranceMm = 0.1;
+    const rawHardwareProfile = state.grid.hardwareProfile || {};
+    state.grid.hardwareProfile = {
+      ...defaultHardwareProfile(),
+      ...rawHardwareProfile,
+    };
+    if (rawHardwareProfile.sideLengthMm === undefined || rawHardwareProfile.sideLengthMm === null) {
+      state.grid.hardwareProfile.sideLengthMm = state.grid.paperSideLengthMm;
+    }
+    if (
+      rawHardwareProfile.fabricationHoleToleranceMm === undefined ||
+      rawHardwareProfile.fabricationHoleToleranceMm === null
+    ) {
+      state.grid.hardwareProfile.fabricationHoleToleranceMm = state.grid.paperHoleToleranceMm;
+    }
+    if (!Number.isFinite(Number(state.grid.hardwareProfile.sideLengthMm))) {
+      state.grid.hardwareProfile.sideLengthMm = state.grid.paperSideLengthMm;
+    }
+    if (!Number.isFinite(Number(state.grid.hardwareProfile.fabricationHoleToleranceMm))) {
+      state.grid.hardwareProfile.fabricationHoleToleranceMm = state.grid.paperHoleToleranceMm;
+    }
+    state.grid.hardwareProfile.sideLengthMm = Math.max(1e-9, Number(state.grid.hardwareProfile.sideLengthMm));
+    state.grid.hardwareProfile.fabricationHoleToleranceMm = Math.max(0, Number(state.grid.hardwareProfile.fabricationHoleToleranceMm));
+    state.grid.paperSideLengthMm = state.grid.hardwareProfile.sideLengthMm;
+    state.grid.paperHoleToleranceMm = state.grid.hardwareProfile.fabricationHoleToleranceMm;
     if (state.grid.holeRadius < state.grid.pinRadius) state.grid.holeRadius = state.grid.pinRadius;
     return state;
   }
@@ -77,6 +117,7 @@
         holeRadius: 0.225,
         paperSideLengthMm: 35,
         paperHoleToleranceMm: 0.1,
+        hardwareProfile: defaultHardwareProfile(),
         initialAlpha: 1,
         alphaMin: 0.25,
         alphaMax: 1.75,
@@ -238,7 +279,11 @@
 
   function restoreSnapshot(state, snapshot) {
     if (!snapshot) return state;
-    state.grid = { ...state.grid, ...cloneData(snapshot.grid) };
+    const snapshotGrid = cloneData(snapshot.grid) || {};
+    state.grid = { ...state.grid, ...snapshotGrid };
+    if (!Object.prototype.hasOwnProperty.call(snapshotGrid, "hardwareProfile")) {
+      delete state.grid.hardwareProfile;
+    }
     ensureGridSchema(state);
     state.cells = cloneData(snapshot.cells);
     ensureCellSchema(state);
@@ -404,7 +449,12 @@
     }
     const lastSnapshot = importedEvents.at(-1).snapshot;
     restoreSnapshot(state, lastSnapshot);
-    state.grid = { ...state.grid, ...cloneData(parsed.grid || lastSnapshot.grid) };
+    const importedGrid = cloneData(parsed.grid || lastSnapshot.grid) || {};
+    state.grid = { ...state.grid, ...importedGrid };
+    if (!Object.prototype.hasOwnProperty.call(importedGrid, "hardwareProfile")) {
+      delete state.grid.hardwareProfile;
+    }
+    ensureGridSchema(state);
     state.target = { ...state.target, ...cloneData(parsed.target || lastSnapshot.target) };
     state.timeline = {
       ...state.timeline,
@@ -425,6 +475,9 @@
     const cols = parsed.grid.cols;
     const state = createState(rows, cols);
     state.grid = { ...state.grid, ...parsed.grid };
+    if (!Object.prototype.hasOwnProperty.call(parsed.grid, "hardwareProfile")) {
+      delete state.grid.hardwareProfile;
+    }
     ensureGridSchema(state);
     if (!state.grid.zTravelLimit) state.grid.zTravelLimit = 0.8;
     if (!state.grid.alphaContractLimit) state.grid.alphaContractLimit = 0.55;
@@ -485,6 +538,7 @@
   }
 
   RAD.matrix = matrix;
+  RAD.defaultHardwareProfile = defaultHardwareProfile;
   RAD.createState = createState;
   RAD.resizeState = resizeState;
   RAD.clearCommands = clearCommands;

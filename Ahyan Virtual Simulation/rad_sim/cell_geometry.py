@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 
 import numpy as np
@@ -30,6 +30,9 @@ class PaperRADReference:
         return float(value_mm) * config.cell_size / self.side_length_mm
 
 
+PAPER_RAD_REFERENCE = PaperRADReference()
+
+
 @dataclass(frozen=True)
 class PaperRADCalibration:
     reference: PaperRADReference
@@ -52,6 +55,136 @@ class PaperRADCalibration:
 
     def mm_to_model_length(self, value_mm: float) -> float:
         return float(value_mm) / self.mm_per_model_unit
+
+
+HARDWARE_PROFILE_DIMENSIONS: tuple[str, ...] = (
+    "pin_radius_mm",
+    "hole_radius_mm",
+    "plate_thickness_mm",
+    "joint_stack_height_mm",
+    "boss_radius_mm",
+)
+
+
+@dataclass(frozen=True)
+class RADHardwareProfile:
+    """Measured hardware dimensions for moving from paper-scale to real-cell CAD.
+
+    ``side_length_mm`` and ``fabrication_hole_tolerance_mm`` can come from the
+    paper reference. The remaining fields are treated as measured hardware
+    dimensions only when they are explicitly provided.
+    """
+
+    name: str = "paper-reference"
+    source: str = "RAD preprint defaults"
+    side_length_mm: float = PAPER_RAD_REFERENCE.side_length_mm
+    fabrication_hole_tolerance_mm: float = (
+        PAPER_RAD_REFERENCE.fabrication_hole_tolerance_mm
+    )
+    backlash_mm: float | None = None
+    pin_radius_mm: float | None = None
+    hole_radius_mm: float | None = None
+    plate_thickness_mm: float | None = None
+    joint_stack_height_mm: float | None = None
+    boss_radius_mm: float | None = None
+    notes: str = ""
+
+    def __post_init__(self) -> None:
+        if self.side_length_mm <= 0:
+            raise ValueError("side_length_mm must be positive")
+        if self.fabrication_hole_tolerance_mm < 0:
+            raise ValueError("fabrication_hole_tolerance_mm must be non-negative")
+        for field_name in ("backlash_mm", *HARDWARE_PROFILE_DIMENSIONS):
+            value = getattr(self, field_name)
+            if value is not None and value < 0:
+                raise ValueError(f"{field_name} must be non-negative when provided")
+        if (
+            self.pin_radius_mm is not None
+            and self.hole_radius_mm is not None
+            and self.hole_radius_mm < self.pin_radius_mm
+        ):
+            raise ValueError("hole_radius_mm must be greater than or equal to pin_radius_mm")
+
+    @property
+    def measured_fields(self) -> tuple[str, ...]:
+        return tuple(
+            field_name
+            for field_name in HARDWARE_PROFILE_DIMENSIONS
+            if getattr(self, field_name) is not None
+        )
+
+    @property
+    def missing_fields(self) -> tuple[str, ...]:
+        return tuple(
+            field_name
+            for field_name in HARDWARE_PROFILE_DIMENSIONS
+            if getattr(self, field_name) is None
+        )
+
+    @property
+    def coverage_ratio(self) -> float:
+        return len(self.measured_fields) / len(HARDWARE_PROFILE_DIMENSIONS)
+
+    @property
+    def pin_hole_clearance_mm(self) -> float | None:
+        if self.pin_radius_mm is None or self.hole_radius_mm is None:
+            return None
+        return self.hole_radius_mm - self.pin_radius_mm
+
+    def to_reference(self) -> PaperRADReference:
+        return PaperRADReference(
+            side_length_mm=self.side_length_mm,
+            normalized_backlash=PAPER_RAD_REFERENCE.normalized_backlash,
+            poisson_ratio=PAPER_RAD_REFERENCE.poisson_ratio,
+            concentric_parts=PAPER_RAD_REFERENCE.concentric_parts,
+            joints_per_part=PAPER_RAD_REFERENCE.joints_per_part,
+            fabrication_hole_tolerance_mm=self.fabrication_hole_tolerance_mm,
+        )
+
+    def mm_to_model_length(self, config: LatticeConfig, value_mm: float) -> float:
+        return float(value_mm) * config.cell_size / self.side_length_mm
+
+
+def config_with_hardware_profile(
+    config: LatticeConfig,
+    profile: RADHardwareProfile,
+) -> LatticeConfig:
+    """Return a config whose available radii/backlash come from measurements."""
+
+    updates: dict[str, float] = {}
+    if profile.backlash_mm is not None:
+        updates["backlash"] = profile.backlash_mm / profile.side_length_mm
+    pin_radius = config.pin_radius
+    hole_radius = config.hole_radius
+    if profile.pin_radius_mm is not None:
+        pin_radius = profile.mm_to_model_length(config, profile.pin_radius_mm)
+        updates["pin_radius"] = pin_radius
+    if profile.hole_radius_mm is not None:
+        hole_radius = profile.mm_to_model_length(config, profile.hole_radius_mm)
+    if hole_radius < pin_radius:
+        hole_radius = pin_radius
+    if profile.hole_radius_mm is not None or "pin_radius" in updates:
+        updates["hole_radius"] = hole_radius
+    return replace(config, **updates) if updates else config
+
+
+def hardware_profile_from_config(
+    config: LatticeConfig,
+    reference: PaperRADReference = PAPER_RAD_REFERENCE,
+) -> RADHardwareProfile:
+    """Expose the current normalized radii as a configured hardware estimate."""
+
+    calibration = calibrate_paper_rad_config(config, reference)
+    return RADHardwareProfile(
+        name="current-config-estimate",
+        source="normalized simulator controls",
+        side_length_mm=calibration.side_length_mm,
+        fabrication_hole_tolerance_mm=calibration.fabrication_hole_tolerance_mm,
+        backlash_mm=calibration.configured_backlash_mm,
+        pin_radius_mm=calibration.pin_radius_mm,
+        hole_radius_mm=calibration.hole_radius_mm,
+        notes="Derived from current normalized grid values; verify against hardware.",
+    )
 
 
 @dataclass(frozen=True)
@@ -157,10 +290,6 @@ class PaperRADLatticeGeometry:
         if not (0 <= row < rows and 0 <= col < cols):
             raise IndexError("cell index out of range")
         return self.cells[row * cols + col]
-
-
-PAPER_RAD_REFERENCE = PaperRADReference()
-
 
 def calibrate_paper_rad_config(
     config: LatticeConfig,

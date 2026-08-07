@@ -137,10 +137,18 @@
       });
       this.els.paperSideLengthMm.addEventListener("input", () => {
         this.state.grid.paperSideLengthMm = Math.max(1e-9, Number(this.els.paperSideLengthMm.value));
+        this.state.grid.hardwareProfile = {
+          ...(this.state.grid.hardwareProfile || {}),
+          sideLengthMm: this.state.grid.paperSideLengthMm,
+        };
         this.onChange(this.state);
       });
       this.els.paperHoleToleranceMm.addEventListener("input", () => {
         this.state.grid.paperHoleToleranceMm = Math.max(0, Number(this.els.paperHoleToleranceMm.value));
+        this.state.grid.hardwareProfile = {
+          ...(this.state.grid.hardwareProfile || {}),
+          fabricationHoleToleranceMm: this.state.grid.paperHoleToleranceMm,
+        };
         this.onChange(this.state);
       });
       this.els.toggleQuickDock.addEventListener("click", () => {
@@ -908,6 +916,20 @@
       document.getElementById("backlashMmOut").textContent = calibration.configuredBacklashMm.toFixed(3);
       document.getElementById("pinHoleClearanceMmOut").textContent = calibration.pinHoleClearanceMm.toFixed(3);
       document.getElementById("holeToleranceModelOut").textContent = calibration.fabricationHoleToleranceModel.toFixed(4);
+      if (typeof RAD.calibrationProfileSummary === "function") {
+        const profileSummary = RAD.calibrationProfileSummary(s);
+        document.getElementById("hardwareProfileOut").textContent = profileSummary.profile.name;
+        document.getElementById("hardwareCoverageOut").textContent = `${profileSummary.measuredCount}/${profileSummary.totalCount}`;
+        const labels = {
+          pinRadiusMm: "pin",
+          holeRadiusMm: "hole",
+          plateThicknessMm: "plate",
+          jointStackHeightMm: "stack",
+          bossRadiusMm: "boss",
+        };
+        document.getElementById("hardwareMissingOut").textContent =
+          profileSummary.missingFields.map((field) => labels[field] || field).join(", ") || "none";
+      }
       document.getElementById("alphaCommandOut").textContent = Number(this.els.alphaCommand.value).toFixed(2);
       document.getElementById("zCommandOut").textContent = Number(this.els.zCommand.value).toFixed(2);
       document.getElementById("targetAmpOut").textContent = Number(s.target.amplitude).toFixed(2);

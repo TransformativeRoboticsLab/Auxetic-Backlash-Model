@@ -2,6 +2,7 @@
 
 from .cell_geometry import (
     PAPER_RAD_REFERENCE,
+    HARDWARE_PROFILE_DIMENSIONS,
     PaperRADCalibration,
     PaperRADCellGeometry,
     PaperRADCellRecord,
@@ -9,9 +10,12 @@ from .cell_geometry import (
     PaperRADLatticeGeometry,
     PaperRADReference,
     RADJointGeometry,
+    RADHardwareProfile,
     build_paper_rad_cell_geometry,
     build_paper_rad_lattice_geometry,
     calibrate_paper_rad_config,
+    config_with_hardware_profile,
+    hardware_profile_from_config,
 )
 from .coupling import alpha_to_theta, backlash_activation, theta_to_alpha
 from .experiments import (
@@ -101,6 +105,7 @@ __all__ = [
     "MeshComponent",
     "PaperRADMesh",
     "PAPER_RAD_REFERENCE",
+    "HARDWARE_PROFILE_DIMENSIONS",
     "PropagationResult",
     "DeadZonePropagationOperator",
     "ProgrammableDiscontinuityEvent",
@@ -122,9 +127,12 @@ __all__ = [
     "InversePhysicalValidation",
     "ModelProvenanceItem",
     "MODEL_PROVENANCE",
+    "RADHardwareProfile",
     "build_paper_rad_cell_geometry",
     "build_paper_rad_lattice_geometry",
     "calibrate_paper_rad_config",
+    "config_with_hardware_profile",
+    "hardware_profile_from_config",
     "build_paper_rad_lattice_mesh",
     "export_paper_rad_mesh_obj",
     "iter_obj_vertices",

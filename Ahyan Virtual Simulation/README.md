@@ -46,6 +46,10 @@ controllability checks and inverse-design experiments.
 `model_provenance` and `provenance_summary` return the current evidence ledger
 for solver features, separating paper-supported equations from assumptions,
 diagnostics, and missing calibration data.
+`RADHardwareProfile`, `config_with_hardware_profile`, and
+`hardware_profile_from_config` provide the first explicit bridge from normalized
+simulator controls to measured real-cell dimensions. They track which key
+hardware dimensions have been measured and which remain calibration gaps.
 `response_decay_profile` fits the shellwise maximum response versus Manhattan
 distance from active source cells, matching the browser Response Experiments
 decay readout for notebook-side locality studies.
@@ -126,7 +130,10 @@ The browser Lattice panel exposes the same scale bridge through `Paper side mm`
 and `Hole tol mm` controls. Its live readouts report configured backlash,
 pin-hole free play, and tolerance in millimeters/model units so abstract
 simulator values can be compared against prototype measurements without
-changing the normalized solver.
+changing the normalized solver. Browser JSON now also carries a
+`grid.hardwareProfile` record for measured dimensions such as pin radius, hole
+radius, plate thickness, joint stack height, and boss radius; the Lattice panel
+reports how many of those measurements are present and which are still missing.
 For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
 paper RAD lattice into extruded plate, pin, and connector mesh components, and
 `export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for
@@ -509,6 +516,9 @@ without requiring Playwright or a browser binary.
 - `model_provenance` / `web/provenance.js`: shared evidence ledger that marks
   formulas and simulator layers as paper-supported, assumptions, diagnostics, or
   calibration gaps.
+- `RADHardwareProfile` / `web/math.js` `calibrationProfileSummary`: measured
+  hardware profile scaffolding that tracks pin, hole, plate, stack, and boss
+  dimensions before they are allowed to replace normalized model assumptions.
 - `web/analysis.js` `characterizeLocalResponse`: browser-side single, pair,
   cluster, and active-lattice response experiment metrics with superposition
   residuals, pairwise operator-interaction counts and hotspot maps, local

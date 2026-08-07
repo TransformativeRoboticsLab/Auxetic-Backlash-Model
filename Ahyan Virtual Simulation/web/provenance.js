@@ -91,7 +91,7 @@
       source: "Physical RAD hardware",
       pageRefs: ["RAD preprint p. 6"],
       evidence: "Prototype scale and tolerance are known, but full part dimensions are not.",
-      implementation: "Future calibrated CAD-like model",
+      implementation: "hardwareProfile state, calibration profile summary, future calibrated CAD-like model",
       limitation: "Measure pin/hole radii, thicknesses, bosses, stack height, and friction.",
     },
   ]);

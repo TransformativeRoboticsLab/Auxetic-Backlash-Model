@@ -23,6 +23,8 @@ const RAD = context.window.RAD;
 assert.ok(RAD, "RAD namespace should load");
 assert.strictEqual(typeof RAD.modelProvenance, "function", "provenance module should expose model provenance");
 assert.strictEqual(typeof RAD.provenanceSummary, "function", "provenance module should expose provenance counts");
+assert.strictEqual(typeof RAD.calibrationProfileSummary, "function", "math module should expose calibration profile summary");
+assert.strictEqual(typeof RAD.applyHardwareProfileToGrid, "function", "math module should apply hardware profiles");
 assert.strictEqual(typeof RAD.physicalPreviewComparison, "function", "analysis module should expose physical preview comparison");
 assert.strictEqual(typeof RAD.responseDecayProfile, "function", "analysis module should expose response decay profile");
 assert.strictEqual(typeof RAD.validateInversePlanPhysical, "function", "inverse module should expose physical inverse validation");
@@ -49,6 +51,8 @@ assert.ok(html.includes('id="characterizationHotspot"'), "response panel should 
 assert.ok(html.includes("./provenance.js"), "provenance module should be loaded by the browser entry");
 assert.ok(html.includes('id="modelProvenanceList"'), "browser UI should expose model provenance list");
 assert.ok(html.includes('id="provenancePaper"'), "browser UI should expose paper-supported provenance count");
+assert.ok(html.includes('id="hardwareCoverageOut"'), "browser UI should expose hardware profile coverage");
+assert.ok(html.includes('id="hardwareMissingOut"'), "browser UI should expose missing calibration fields");
 const scriptOrder = [
   "./vendor/three.min.js",
   "./state.js",
@@ -110,6 +114,19 @@ state.grid.pinRadius = 0.16;
 state.grid.holeRadius = 0.22;
 state.grid.paperSideLengthMm = 42;
 state.grid.paperHoleToleranceMm = 0.12;
+state.grid.hardwareProfile = {
+  name: "bench-v1",
+  source: "caliper",
+  sideLengthMm: 42,
+  fabricationHoleToleranceMm: 0.12,
+  backlashMm: 4.2,
+  pinRadiusMm: 7.56,
+  holeRadiusMm: 9.45,
+  plateThicknessMm: 2.4,
+  jointStackHeightMm: null,
+  bossRadiusMm: null,
+  notes: "validator profile",
+};
 state.view.camera = {
   mode: "custom",
   projection: "orthographic",
@@ -157,6 +174,29 @@ assert.strictEqual(Number(calibration.pinHoleClearanceMm.toFixed(6)), Number(((0
 assert.strictEqual(Number(calibration.fabricationHoleToleranceModel.toFixed(6)), Number((0.12 * 1.25 / 42).toFixed(6)));
 assert.strictEqual(Number(RAD.modelLengthToMm(restored, 1.25).toFixed(6)), 42);
 assert.strictEqual(Number(RAD.mmToModelLength(restored, 42).toFixed(6)), 1.25);
+assert.strictEqual(restored.grid.hardwareProfile.name, "bench-v1");
+assert.strictEqual(restored.grid.hardwareProfile.source, "caliper");
+const profileSummary = RAD.calibrationProfileSummary(restored);
+assert.strictEqual(profileSummary.measuredCount, 3);
+assert.strictEqual(profileSummary.totalCount, 5);
+assert.strictEqual(Number(profileSummary.pinHoleClearanceMm.toFixed(6)), 1.89);
+assert.strictEqual(Number(profileSummary.pinRadiusModel.toFixed(6)), Number((7.56 * 1.25 / 42).toFixed(6)));
+assert.ok(profileSummary.missingFields.includes("jointStackHeightMm"), "profile summary should list missing stack measurement");
+const appliedProfileState = RAD.createState(2, 2);
+appliedProfileState.grid.cellSize = 1.25;
+appliedProfileState.grid.hardwareProfile = JSON.parse(JSON.stringify(state.grid.hardwareProfile));
+const appliedProfile = RAD.applyHardwareProfileToGrid(appliedProfileState);
+assert.strictEqual(Number(appliedProfileState.grid.backlash.toFixed(6)), 0.1);
+assert.strictEqual(Number(appliedProfileState.grid.pinRadius.toFixed(6)), Number((7.56 * 1.25 / 42).toFixed(6)));
+assert.strictEqual(Number(appliedProfileState.grid.holeRadius.toFixed(6)), Number((9.45 * 1.25 / 42).toFixed(6)));
+assert.strictEqual(appliedProfile.measuredCount, 3);
+const legacyProfileJson = JSON.parse(RAD.serialize(RAD.createState(2, 2)));
+legacyProfileJson.grid.paperSideLengthMm = 44;
+legacyProfileJson.grid.paperHoleToleranceMm = 0.18;
+delete legacyProfileJson.grid.hardwareProfile;
+const migratedLegacy = RAD.deserialize(JSON.stringify(legacyProfileJson));
+assert.strictEqual(migratedLegacy.grid.hardwareProfile.sideLengthMm, 44);
+assert.strictEqual(migratedLegacy.grid.hardwareProfile.fabricationHoleToleranceMm, 0.18);
 assert.deepStrictEqual(JSON.parse(JSON.stringify(restored.view.camera)), state.view.camera);
 assert.strictEqual(restored.view.overlayMode, "height");
 assert.strictEqual(restored.view.simulationMode, "springPreview");
