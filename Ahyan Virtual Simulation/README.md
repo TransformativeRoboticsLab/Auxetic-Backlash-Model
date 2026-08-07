@@ -255,14 +255,16 @@ pair, local cluster, or active lattice command set. It reports active command
 sources, total responding cells, alpha and z reach, alpha/z die-off, paper-scale
 pin-hole clearance, local response rank, underactuated cells, and a
 superposition residual that compares the combined response against the sum of
-isolated source responses. It also compares the same response against the
-browser 3D spring preview and reports height/center disagreement from the
-kinematic backlash prediction. The reported decay ratio and decay length come
-from a simulator-side log-linear fit to shellwise maximum response versus
-Manhattan distance from the active sources; this is a locality diagnostic, not a
-paper-derived material law. This is an early numerical probe for programmable-
-discontinuity behavior: nonzero residual indicates that backlash, locks, or
-saturation are making the local operators interact non-additively.
+isolated source responses. It also reports a bounded pairwise interaction scan
+that identifies how many source pairs create non-additive alpha/height residuals
+and the largest pairwise interaction error. It also compares the same response
+against the browser 3D spring preview and reports height/center disagreement
+from the kinematic backlash prediction. The reported decay ratio and decay
+length come from a simulator-side log-linear fit to shellwise maximum response
+versus Manhattan distance from the active sources; this is a locality diagnostic,
+not a paper-derived material law. This is an early numerical probe for
+programmable-discontinuity behavior: nonzero residual indicates that backlash,
+locks, or saturation are making the local operators interact non-additively.
 
 Actuator display can be filtered to the selected cell and accepted inverse-plan
 cells, inverse-plan cells only, or all active cells. This keeps dense patterns
@@ -492,9 +494,9 @@ without requiring Playwright or a browser binary.
   backlash, pin-hole clearance, and fabrication tolerance readouts.
 - `web/analysis.js` `characterizeLocalResponse`: browser-side single, pair,
   cluster, and active-lattice response experiment metrics with superposition
-  residuals, local response rank, underactuated-cell counts, browser
-  spring-preview disagreement metrics, and log-linear locality/decay estimates
-  for programmable-discontinuity studies.
+  residuals, pairwise operator-interaction counts, local response rank,
+  underactuated-cell counts, browser spring-preview disagreement metrics, and
+  log-linear locality/decay estimates for programmable-discontinuity studies.
 - `web/inverse.js` `validateInversePlanPhysical`: browser-side physical
   validation of analyzed inverse plans and linear fits against spring-preview
   relaxation, including physical target residual and model-disagreement metrics.

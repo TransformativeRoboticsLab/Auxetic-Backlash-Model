@@ -276,6 +276,16 @@ assert.strictEqual(pairCharacterization.regionCellCount, 2);
 assert.strictEqual(pairCharacterization.activeSources, 2);
 assert.ok(pairCharacterization.responseCells >= singleCharacterization.responseCells, "pair characterization should include at least the single-cell response footprint");
 assert.ok(Number.isFinite(pairCharacterization.superpositionError), "pair characterization should report finite superposition residual");
+assert.strictEqual(pairCharacterization.pairwiseInteractionModel, "pairwise superposition residual", "pair characterization should report pairwise interaction model");
+assert.strictEqual(pairCharacterization.pairwiseTotalPairs, 1, "selected pair should have one source pair");
+assert.strictEqual(pairCharacterization.pairwiseEvaluatedPairs, 1, "selected pair should evaluate one source pair");
+assert.ok(Number.isFinite(pairCharacterization.pairwiseMaxInteractionError), "pair characterization should report finite pairwise max interaction");
+assert.ok(pairCharacterization.pairwiseInteractions.length <= 1, "pair characterization should store bounded pairwise rows");
+assert.deepStrictEqual(
+  JSON.parse(JSON.stringify(pairCharacterization.pairwiseAlphaErrorMatrix)),
+  JSON.parse(JSON.stringify(pairCharacterization.pairwiseAlphaErrorMatrix.map((row, r) => row.map((_, c) => pairCharacterization.pairwiseAlphaErrorMatrix[c][r])))),
+  "pairwise alpha interaction matrix should be symmetric"
+);
 assert.ok(pairCharacterization.pinHoleClearanceMm > 0, "characterization should carry paper-scale clearance");
 assert.ok(pairCharacterization.diagnosticColumnCount >= 4, "pair characterization should build alpha and z response columns");
 assert.ok(pairCharacterization.responseRankAlpha > 0, "pair characterization should report alpha response rank");

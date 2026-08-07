@@ -959,6 +959,9 @@
         activeSources: result.activeSources,
         responseCells: result.responseCells,
         superpositionError: result.superpositionError,
+        pairwisePairs: result.pairwiseEvaluatedPairs,
+        pairwiseNonadditive: result.pairwiseNonadditivePairs,
+        pairwiseMaxError: result.pairwiseMaxInteractionError,
       });
       this.syncControls();
       this.onChange(this.state);
@@ -971,6 +974,8 @@
         document.getElementById("characterizationDetail").textContent = "reach a0 z0";
         document.getElementById("characterizationSuperposition").textContent = "superposition 0.000";
         document.getElementById("characterizationScale").textContent = "clearance 0.000 mm";
+        document.getElementById("characterizationPairwise").textContent = "pairs 0/0 nonadd 0";
+        document.getElementById("characterizationPairwiseMax").textContent = "pair max 0.000";
         document.getElementById("characterizationRank").textContent = "rank a0 z0";
         document.getElementById("characterizationUnderactuated").textContent = "under a0 z0";
         document.getElementById("characterizationPhysical").textContent = "phys rms 0.000";
@@ -986,6 +991,8 @@
       document.getElementById("characterizationDetail").textContent = `reach a${result.alphaReachCells} z${result.zReachCells}, die ${result.alphaDieOff}/${result.zDieOff}`;
       document.getElementById("characterizationSuperposition").textContent = superposition;
       document.getElementById("characterizationScale").textContent = `clearance ${Number(result.pinHoleClearanceMm || 0).toFixed(3)} mm`;
+      document.getElementById("characterizationPairwise").textContent = `pairs ${result.pairwiseEvaluatedPairs || 0}/${result.pairwiseTotalPairs || 0} nonadd ${result.pairwiseNonadditivePairs || 0}${result.pairwiseTruncated ? " trunc" : ""}`;
+      document.getElementById("characterizationPairwiseMax").textContent = `pair max ${Number(result.pairwiseMaxInteractionError || 0).toFixed(3)}`;
       document.getElementById("characterizationRank").textContent = `rank a${result.responseRankAlpha || 0} z${result.responseRankHeight || 0}`;
       document.getElementById("characterizationUnderactuated").textContent = `under a${result.alphaUnderactuatedCells || 0} z${result.heightUnderactuatedCells || 0}`;
       const physicalLabel = result.physicalPreviewAvailable
@@ -1491,7 +1498,7 @@
       if (event.type === "linear-fit-solved") return `linear solve: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}`;
       if (event.type === "linear-fit-applied") return `linear apply: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}`;
       if (event.type === "inverse-physical-validated") return `physical validate: ${event.source || "plan"}, err ${Number(event.physicalError || 0).toFixed(3)}, model ${Number(event.modelError || 0).toFixed(3)}`;
-      if (event.type === "characterization") return `characterize: ${event.scope}, ${event.responseCells || 0} cells, sup ${Number(event.superpositionError || 0).toFixed(3)}`;
+      if (event.type === "characterization") return `characterize: ${event.scope}, ${event.responseCells || 0} cells, sup ${Number(event.superpositionError || 0).toFixed(3)}, pairs ${event.pairwiseNonadditive || 0}/${event.pairwisePairs || 0}`;
       if (event.type === "operator-lock") return `event lock: r${event.r}, c${event.c} a ${Number(event.lockAlpha || 0).toFixed(3)}`;
       if (event.type === "operator-release") return `event release: r${event.r}, c${event.c}`;
       if (event.type === "operator-order-check") return `order check: r${event.r}, c${event.c} da ${Number(event.finalAlphaError || 0).toFixed(3)} dz ${Number(event.finalHeightError || 0).toFixed(3)} max ${Number(event.maxOrderError || 0).toFixed(3)}`;

@@ -255,6 +255,110 @@
     return { rms: Math.sqrt(squared / Math.max(1, rows * cols * 2)), max, skipped: false, sourceCount: activeSources.length };
   }
 
+  function pairwiseInteractionGraph(state, sourceCells, baselineSim, tolerance = 1e-9, maxPairs = 64) {
+    const activeSources = sourceCells.filter((cell) => Math.abs(state.cells.commandAlpha?.[cell.r]?.[cell.c] || 0) > tolerance || Math.abs(state.cells.commandZ?.[cell.r]?.[cell.c] || 0) > tolerance);
+    const totalPairCount = (activeSources.length * (activeSources.length - 1)) / 2;
+    const alphaErrorMatrix = RAD.matrix(activeSources.length, activeSources.length, 0);
+    const heightErrorMatrix = RAD.matrix(activeSources.length, activeSources.length, 0);
+    if (activeSources.length < 2) {
+      return {
+        pairwiseInteractionModel: "pairwise superposition residual",
+        pairwiseTotalPairs: totalPairCount,
+        pairwiseEvaluatedPairs: 0,
+        pairwiseNonadditivePairs: 0,
+        pairwiseTruncated: false,
+        pairwiseMaxAlphaError: 0,
+        pairwiseMaxHeightError: 0,
+        pairwiseMaxInteractionError: 0,
+        pairwiseInteractions: [],
+        pairwiseAlphaErrorMatrix: alphaErrorMatrix,
+        pairwiseHeightErrorMatrix: heightErrorMatrix,
+      };
+    }
+
+    const singles = activeSources.map((source) => {
+      const singleState = scopedState(state, [source]);
+      const singleSim = RAD.simulate(singleState);
+      return {
+        source,
+        alphaDelta: responseVector(singleSim, baselineSim, "alpha"),
+        heightDelta: responseVector(singleSim, baselineSim, "height"),
+      };
+    });
+    const interactions = [];
+    let evaluated = 0;
+    let nonadditive = 0;
+    let maxAlpha = 0;
+    let maxHeight = 0;
+    const limit = Math.max(0, Math.min(totalPairCount, Number(maxPairs) || 0));
+
+    for (let i = 0; i < activeSources.length; i += 1) {
+      for (let j = i + 1; j < activeSources.length; j += 1) {
+        if (evaluated >= limit) {
+          interactions.sort((a, b) => b.maxError - a.maxError);
+          return {
+            pairwiseInteractionModel: "pairwise superposition residual",
+            pairwiseTotalPairs: totalPairCount,
+            pairwiseEvaluatedPairs: evaluated,
+            pairwiseNonadditivePairs: nonadditive,
+            pairwiseTruncated: true,
+            pairwiseMaxAlphaError: maxAlpha,
+            pairwiseMaxHeightError: maxHeight,
+            pairwiseMaxInteractionError: Math.max(maxAlpha, maxHeight),
+            pairwiseInteractions: interactions.slice(0, 16),
+            pairwiseAlphaErrorMatrix: alphaErrorMatrix,
+            pairwiseHeightErrorMatrix: heightErrorMatrix,
+          };
+        }
+        const combinedState = scopedState(state, [activeSources[i], activeSources[j]]);
+        const combinedSim = RAD.simulate(combinedState);
+        const combinedAlpha = responseVector(combinedSim, baselineSim, "alpha");
+        const combinedHeight = responseVector(combinedSim, baselineSim, "height");
+        let alphaError = 0;
+        let heightError = 0;
+        for (let k = 0; k < combinedAlpha.length; k += 1) {
+          alphaError = Math.max(alphaError, Math.abs(combinedAlpha[k] - singles[i].alphaDelta[k] - singles[j].alphaDelta[k]));
+          heightError = Math.max(heightError, Math.abs(combinedHeight[k] - singles[i].heightDelta[k] - singles[j].heightDelta[k]));
+        }
+        const maxError = Math.max(alphaError, heightError);
+        alphaErrorMatrix[i][j] = alphaError;
+        alphaErrorMatrix[j][i] = alphaError;
+        heightErrorMatrix[i][j] = heightError;
+        heightErrorMatrix[j][i] = heightError;
+        maxAlpha = Math.max(maxAlpha, alphaError);
+        maxHeight = Math.max(maxHeight, heightError);
+        if (maxError > tolerance) nonadditive += 1;
+        interactions.push({
+          firstIndex: i,
+          secondIndex: j,
+          first: activeSources[i],
+          second: activeSources[j],
+          manhattanDistance: Math.abs(activeSources[i].r - activeSources[j].r) + Math.abs(activeSources[i].c - activeSources[j].c),
+          alphaSuperpositionError: alphaError,
+          heightSuperpositionError: heightError,
+          maxError,
+          nonadditive: maxError > tolerance,
+        });
+        evaluated += 1;
+      }
+    }
+
+    interactions.sort((a, b) => b.maxError - a.maxError);
+    return {
+      pairwiseInteractionModel: "pairwise superposition residual",
+      pairwiseTotalPairs: totalPairCount,
+      pairwiseEvaluatedPairs: evaluated,
+      pairwiseNonadditivePairs: nonadditive,
+      pairwiseTruncated: false,
+      pairwiseMaxAlphaError: maxAlpha,
+      pairwiseMaxHeightError: maxHeight,
+      pairwiseMaxInteractionError: Math.max(maxAlpha, maxHeight),
+      pairwiseInteractions: interactions.slice(0, 16),
+      pairwiseAlphaErrorMatrix: alphaErrorMatrix,
+      pairwiseHeightErrorMatrix: heightErrorMatrix,
+    };
+  }
+
   function responseVector(next, base, field) {
     const values = [];
     for (let r = 0; r < next[field].length; r += 1) {
@@ -486,6 +590,7 @@
     const baselineSim = RAD.simulate(baselineState);
     const stats = localResponseStats(combinedState, sim, baselineSim, sourceCells);
     const interaction = superpositionError(combinedState, sourceCells, sim, baselineSim);
+    const pairwiseInteractions = pairwiseInteractionGraph(combinedState, sourceCells, baselineSim);
     const matrixDiagnostic = responseMatrixDiagnostic(combinedState, sourceCells, baselineSim);
     const decayProfile = responseDecayProfile(combinedState, sim, baselineSim, sourceCells);
     const physicalComparison = physicalPreviewComparison(combinedState, baselineState, sim, baselineSim);
@@ -504,6 +609,7 @@
       superpositionSkipped: interaction.skipped,
       superpositionSources: interaction.sourceCount,
       nonadditive: !interaction.skipped && (interaction.rms || 0) > 1e-9,
+      ...pairwiseInteractions,
       backlash: Number(combinedState.grid.backlash) || 0,
       zDeadZone: RAD.verticalDeadZone(combinedState),
       pinHoleClearance: RAD.pinHoleClearance(combinedState),
