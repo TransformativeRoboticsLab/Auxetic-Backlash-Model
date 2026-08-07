@@ -238,7 +238,10 @@ pin-hole clearance, local response rank, underactuated cells, and a
 superposition residual that compares the combined response against the sum of
 isolated source responses. It also compares the same response against the
 browser 3D spring preview and reports height/center disagreement from the
-kinematic backlash prediction. This is an early numerical probe for programmable-
+kinematic backlash prediction. The reported decay ratio and decay length come
+from a simulator-side log-linear fit to shellwise maximum response versus
+Manhattan distance from the active sources; this is a locality diagnostic, not a
+paper-derived material law. This is an early numerical probe for programmable-
 discontinuity behavior: nonzero residual indicates that backlash, locks, or
 saturation are making the local operators interact non-additively.
 
@@ -453,8 +456,9 @@ without requiring Playwright or a browser binary.
   backlash, pin-hole clearance, and fabrication tolerance readouts.
 - `web/analysis.js` `characterizeLocalResponse`: browser-side single, pair,
   cluster, and active-lattice response experiment metrics with superposition
-  residuals, local response rank, underactuated-cell counts, and browser
-  spring-preview disagreement metrics for programmable-discontinuity studies.
+  residuals, local response rank, underactuated-cell counts, browser
+  spring-preview disagreement metrics, and log-linear locality/decay estimates
+  for programmable-discontinuity studies.
 - `web/physics.js` `simulatePhysicalRelaxation`: browser spring-preview
   relaxation that now also exposes per-cell `modelErrorHeight` and
   `modelErrorCenter` fields against the kinematic state for model-disagreement

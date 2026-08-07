@@ -22,6 +22,7 @@ for (const filename of ["state.js", "math.js", "operators.js", "inverse.js", "an
 const RAD = context.window.RAD;
 assert.ok(RAD, "RAD namespace should load");
 assert.strictEqual(typeof RAD.physicalPreviewComparison, "function", "analysis module should expose physical preview comparison");
+assert.strictEqual(typeof RAD.responseDecayProfile, "function", "analysis module should expose response decay profile");
 
 const html = fs.readFileSync(path.join(web, "index.html"), "utf8");
 const localRefs = Array.from(html.matchAll(/(?:src|href)="(\.\/[^"]+)"/g)).map((match) => match[1]);
@@ -250,6 +251,15 @@ assert.ok(pairCharacterization.reachableAlphaCells > 0, "pair characterization s
 assert.ok(pairCharacterization.reachableHeightCells > 0, "pair characterization should report reachable height cells");
 assert.ok(pairCharacterization.alphaUnderactuatedCells >= 0, "pair characterization should report alpha underactuation");
 assert.ok(pairCharacterization.heightUnderactuatedCells >= 0, "pair characterization should report height underactuation");
+assert.strictEqual(pairCharacterization.decayModel, "log-linear shell max", "characterization should report the decay fitting model");
+assert.ok(Number.isFinite(pairCharacterization.alphaDecayRatio), "pair characterization should report finite alpha decay ratio");
+assert.ok(Number.isFinite(pairCharacterization.zDecayRatio), "pair characterization should report finite z decay ratio");
+assert.ok(Number.isFinite(pairCharacterization.alphaDecayLength), "pair characterization should report finite alpha decay length");
+assert.ok(Number.isFinite(pairCharacterization.zDecayLength), "pair characterization should report finite z decay length");
+assert.ok(pairCharacterization.alphaDecayShells > 0, "pair characterization should count alpha decay shells");
+assert.ok(pairCharacterization.zDecayShells > 0, "pair characterization should count z decay shells");
+assert.ok(pairCharacterization.alphaDecayReach >= 0, "pair characterization should report alpha decay reach");
+assert.ok(pairCharacterization.zDecayReach >= 0, "pair characterization should report z decay reach");
 assert.strictEqual(pairCharacterization.physicalPreviewAvailable, true, "characterization should compare against the browser physical preview");
 assert.strictEqual(pairCharacterization.physicalPreviewSuccess, true, "physical preview comparison should complete");
 assert.ok(Number.isFinite(pairCharacterization.physicalHeightRmsError), "physical preview comparison should report finite height RMS error");

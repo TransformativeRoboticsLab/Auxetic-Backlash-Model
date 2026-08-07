@@ -933,6 +933,8 @@
         document.getElementById("characterizationUnderactuated").textContent = "under a0 z0";
         document.getElementById("characterizationPhysical").textContent = "phys rms 0.000";
         document.getElementById("characterizationPhysicalMax").textContent = "phys max 0.000";
+        document.getElementById("characterizationDecay").textContent = "decay a0.00 z0.00";
+        document.getElementById("characterizationDecayLength").textContent = "len a0.0 z0.0";
         return;
       }
       const superposition = result.superpositionSkipped
@@ -952,6 +954,8 @@
         : "phys max --";
       document.getElementById("characterizationPhysical").textContent = physicalLabel;
       document.getElementById("characterizationPhysicalMax").textContent = physicalMaxLabel;
+      document.getElementById("characterizationDecay").textContent = `decay a${Number(result.alphaDecayRatio || 0).toFixed(2)} z${Number(result.zDecayRatio || 0).toFixed(2)}`;
+      document.getElementById("characterizationDecayLength").textContent = `len a${Number(result.alphaDecayLength || 0).toFixed(1)} z${Number(result.zDecayLength || 0).toFixed(1)}`;
     }
 
     updateCouplingInspector(r, c) {

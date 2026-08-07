@@ -337,6 +337,78 @@
     };
   }
 
+  function nearestSourceDistance(r, c, sourceCells) {
+    let best = Infinity;
+    for (const source of sourceCells) best = Math.min(best, Math.abs(r - source.r) + Math.abs(c - source.c));
+    return Number.isFinite(best) ? best : 0;
+  }
+
+  function fitShellDecay(shells, key, tolerance = 1e-8) {
+    const entries = shells
+      .filter((shell) => shell[key] > tolerance)
+      .sort((a, b) => a.distance - b.distance);
+    const first = entries[0]?.[key] || 0;
+    const last = entries.at(-1)?.[key] || 0;
+    const reach = entries.at(-1)?.distance || 0;
+    if (entries.length < 2) {
+      return { ratio: 0, length: 0, shells: entries.length, reach, first, last };
+    }
+    let sumX = 0;
+    let sumY = 0;
+    let sumXX = 0;
+    let sumXY = 0;
+    for (const entry of entries) {
+      const x = entry.distance;
+      const y = Math.log(Math.max(tolerance, entry[key]));
+      sumX += x;
+      sumY += y;
+      sumXX += x * x;
+      sumXY += x * y;
+    }
+    const n = entries.length;
+    const denom = n * sumXX - sumX * sumX;
+    const slope = Math.abs(denom) > tolerance ? (n * sumXY - sumX * sumY) / denom : 0;
+    const ratio = Math.exp(slope);
+    const length = slope < -tolerance ? -1 / slope : 0;
+    return { ratio, length, shells: entries.length, reach, first, last };
+  }
+
+  function responseDecayProfile(state, sim, baselineSim, sourceCells, tolerance = 1e-8) {
+    const shellMap = new Map();
+    for (let r = 0; r < state.grid.rows; r += 1) {
+      for (let c = 0; c < state.grid.cols; c += 1) {
+        const distance = nearestSourceDistance(r, c, sourceCells);
+        if (!shellMap.has(distance)) {
+          shellMap.set(distance, { distance, count: 0, alphaMax: 0, zMax: 0 });
+        }
+        const shell = shellMap.get(distance);
+        const alphaDelta = Math.abs((sim.alpha?.[r]?.[c] || 0) - (baselineSim.alpha?.[r]?.[c] || 0));
+        const zDelta = Math.abs((sim.height?.[r]?.[c] || 0) - (baselineSim.height?.[r]?.[c] || 0));
+        shell.alphaMax = Math.max(shell.alphaMax, alphaDelta);
+        shell.zMax = Math.max(shell.zMax, zDelta);
+        shell.count += 1;
+      }
+    }
+    const shells = Array.from(shellMap.values()).sort((a, b) => a.distance - b.distance);
+    const alpha = fitShellDecay(shells, "alphaMax", tolerance);
+    const z = fitShellDecay(shells, "zMax", tolerance);
+    return {
+      decayModel: "log-linear shell max",
+      alphaDecayRatio: alpha.ratio,
+      zDecayRatio: z.ratio,
+      alphaDecayLength: alpha.length,
+      zDecayLength: z.length,
+      alphaDecayShells: alpha.shells,
+      zDecayShells: z.shells,
+      alphaDecayReach: alpha.reach,
+      zDecayReach: z.reach,
+      alphaDecayFirst: alpha.first,
+      zDecayFirst: z.first,
+      alphaDecayLast: alpha.last,
+      zDecayLast: z.last,
+    };
+  }
+
   function physicalPreviewComparison(state, baselineState, sim, baselineSim) {
     const unavailable = {
       physicalPreviewAvailable: false,
@@ -415,6 +487,7 @@
     const stats = localResponseStats(combinedState, sim, baselineSim, sourceCells);
     const interaction = superpositionError(combinedState, sourceCells, sim, baselineSim);
     const matrixDiagnostic = responseMatrixDiagnostic(combinedState, sourceCells, baselineSim);
+    const decayProfile = responseDecayProfile(combinedState, sim, baselineSim, sourceCells);
     const physicalComparison = physicalPreviewComparison(combinedState, baselineState, sim, baselineSim);
     const calibration = RAD.paperRadCalibration(combinedState);
     return {
@@ -424,6 +497,7 @@
       regionCellCount: sourceCells.length,
       ...stats,
       ...matrixDiagnostic,
+      ...decayProfile,
       ...physicalComparison,
       superpositionError: interaction.rms,
       maxSuperpositionError: interaction.max,
@@ -569,4 +643,5 @@
   RAD.exportSequenceMetricsCsv = exportSequenceMetricsCsv;
   RAD.characterizeLocalResponse = characterizeLocalResponse;
   RAD.physicalPreviewComparison = physicalPreviewComparison;
+  RAD.responseDecayProfile = responseDecayProfile;
 })();

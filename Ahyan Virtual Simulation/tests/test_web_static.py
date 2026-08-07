@@ -31,6 +31,11 @@ class WebStaticTests(unittest.TestCase):
             "RAD.paperRadCalibration",
             "RAD.characterizeLocalResponse",
             "RAD.physicalPreviewComparison",
+            "RAD.responseDecayProfile",
+            "alphaDecayRatio",
+            "zDecayRatio",
+            "alphaDecayLength",
+            "zDecayLength",
             "physicalHeightRmsError",
             "physicalHeightMaxError",
             "physicalPreviewAvailable",
@@ -81,7 +86,7 @@ class WebStaticTests(unittest.TestCase):
         expected = {
             "state.js": ["RAD.createState", "RAD.serialize", "RAD.updateDerivedCells", "RAD.exportExperimentSequence", "RAD.importExperimentSequence", "RAD.deserialize"],
             "operators.js": ["RAD.localActuationEvent", "RAD.lockEvent", "RAD.applyEventSequence", "RAD.compareEventOrder", "RAD.finiteDieOffRadius"],
-            "analysis.js": ["RAD.analyzeExperimentSequence", "RAD.exportSequenceMetricsCsv", "RAD.sequenceFrames", "RAD.characterizeLocalResponse", "RAD.physicalPreviewComparison"],
+            "analysis.js": ["RAD.analyzeExperimentSequence", "RAD.exportSequenceMetricsCsv", "RAD.sequenceFrames", "RAD.characterizeLocalResponse", "RAD.physicalPreviewComparison", "RAD.responseDecayProfile"],
             "physics.js": ["RAD.simulatePhysicalRelaxation", "RAD.simulateActive"],
             "mesh_export.js": ["RAD.buildPaperRadMesh", "RAD.exportPaperRadMeshObj"],
             "math.js": [
@@ -149,17 +154,23 @@ class WebStaticTests(unittest.TestCase):
         html = (WEB / "index.html").read_text(encoding="utf-8")
         ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
         analysis_js = (WEB / "analysis.js").read_text(encoding="utf-8")
-        for control_id in ["characterizationPhysical", "characterizationPhysicalMax"]:
+        for control_id in ["characterizationPhysical", "characterizationPhysicalMax", "characterizationDecay", "characterizationDecayLength"]:
             self.assertIn(f'id="{control_id}"', html)
         for symbol in [
             "physicalPreviewAvailable",
             "physicalHeightRmsError",
             "physicalHeightMaxError",
+            "alphaDecayRatio",
+            "zDecayRatio",
+            "alphaDecayLength",
+            "zDecayLength",
         ]:
             self.assertIn(symbol, ui_js)
             self.assertIn(symbol, analysis_js)
-        for label in ["phys rms", "phys max"]:
+        for label in ["phys rms", "phys max", "decay a", "len a"]:
             self.assertIn(label, ui_js)
+        for symbol in ["responseDecayProfile", "log-linear shell max", "fitShellDecay", "nearestSourceDistance"]:
+            self.assertIn(symbol, analysis_js)
 
     def test_desktop_layout_keeps_lattice_visible_while_controls_scroll(self):
         css = (WEB / "styles.css").read_text(encoding="utf-8")
