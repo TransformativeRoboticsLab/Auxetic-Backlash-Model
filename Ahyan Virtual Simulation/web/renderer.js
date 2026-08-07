@@ -534,6 +534,7 @@
         else if (mode === "sensitivity") t = this.sensitivityStrength(state, r, c);
         else if (mode === "reachability") t = this.reachabilityStrength(state, r, c);
         else if (mode === "operatorInteraction") t = this.operatorInteractionStrength(state, r, c);
+        else if (mode === "calibrationError") t = this.calibrationErrorStrength(state, r, c);
         else t = (sim.alpha[r][c] - state.grid.alphaMin) / (state.grid.alphaMax - state.grid.alphaMin);
         return this.overlayMaterial(mode, t);
       }
@@ -545,6 +546,13 @@
       const value = Math.abs(characterization?.pairwiseInteractionMap?.[r]?.[c] || 0);
       const scale = Math.max(1e-9, characterization?.pairwiseInteractionMapMax || characterization?.pairwiseMaxInteractionError || 0);
       return value / scale;
+    }
+
+    calibrationErrorStrength(state, r, c) {
+      const field = state.experiment?.calibrationComparison?.field;
+      const value = Number(field?.combinedError?.[r]?.[c]) || 0;
+      const scale = Math.max(1e-9, Number(field?.maxCombinedError) || 0);
+      return Math.abs(value) / scale;
     }
 
     sensitivityStrength(state, r, c) {

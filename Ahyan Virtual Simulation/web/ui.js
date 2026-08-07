@@ -1196,9 +1196,10 @@
       const stepCount = Number(summary.stepCount || 0);
       const height = summary.heightRmseMean === null || summary.heightRmseMean === undefined ? "--" : Number(summary.heightRmseMean).toFixed(4);
       const alpha = summary.alphaRmseMean === null || summary.alphaRmseMean === undefined ? "--" : Number(summary.alphaRmseMean).toFixed(4);
+      const max = summary.maxCombinedError === null || summary.maxCombinedError === undefined ? "--" : Number(summary.maxCombinedError).toFixed(4);
       const worst = summary.worstStepId ? ` worst ${summary.worstStepId}` : "";
       document.getElementById("calibrationResultsSummary").textContent = `cal results ${stepCount} steps, ${measured} cells, missing ${missing}`;
-      document.getElementById("calibrationResultsError").textContent = `height ${height}, alpha ${alpha}${worst}`;
+      document.getElementById("calibrationResultsError").textContent = `height ${height}, alpha ${alpha}, max ${max}${worst}`;
     }
 
     strongestInteractionHotspot(result) {
@@ -1443,6 +1444,8 @@
           this.state.experiment.calibrationResults = results;
           this.state.experiment.calibrationComparison = comparison;
           this.state.experiment.calibrationComparisonSummary = summary;
+          this.state.view.overlayMode = "calibrationError";
+          this.syncControls();
           this.renderCalibrationResults();
           this.onChange(this.state);
         } catch (error) {

@@ -56,6 +56,7 @@ for (const ref of localRefs) {
 }
 assert.ok(!/https?:\/\//.test(html), "browser entry should not require external scripts or styles");
 assert.ok(html.includes('value="operatorInteraction"'), "operator interaction overlay should be available in the browser UI");
+assert.ok(html.includes('value="calibrationError"'), "calibration error overlay should be available in the browser UI");
 assert.ok(html.includes('id="selectInteractionHotspot"'), "response panel should expose a hotspot selection button");
 assert.ok(html.includes('id="saveExperimentProtocol"'), "response panel should expose a protocol export button");
 assert.ok(html.includes('id="saveResultsTemplate"'), "response panel should expose a results-template export button");
@@ -294,11 +295,21 @@ assert.strictEqual(comparison.schema, "rad-sim.calibration-experiment-comparison
 assert.strictEqual(liftComparison.missingObservationCount, 0);
 assert.strictEqual(Number(liftComparison.heightRmse.toFixed(8)), 0);
 assert.strictEqual(Number(liftComparison.meanPinHoleSlipMm.toFixed(8)), 0.11);
+assert.ok(Array.isArray(comparison.field.combinedError), "calibration comparison should include per-cell error field");
+assert.ok(comparison.field.sampleCount.some((row) => row.some((value) => value > 0)), "calibration field should count measured cells");
+assert.strictEqual(Number(comparison.field.maxCombinedError.toFixed(8)), 0);
 const comparisonSummary = RAD.summarizeCalibrationComparison(comparison);
 assert.strictEqual(comparisonSummary.schema, "rad-sim.calibration-experiment-comparison-summary.v1");
 assert.strictEqual(comparisonSummary.stepCount, comparison.comparisons.length);
 assert.ok(comparisonSummary.measuredCellCount >= liftResult.cells.length);
 assert.strictEqual(Number(comparisonSummary.heightRmseMean.toFixed(8)), 0);
+assert.strictEqual(Number(comparisonSummary.maxCombinedError.toFixed(8)), 0);
+const perturbedResults = JSON.parse(JSON.stringify(resultsTemplate));
+const perturbedLift = perturbedResults.steps.find((step) => step.stepId === "single_z_lift" && step.repeatIndex === 1);
+perturbedLift.cells[0].heightDelta += 0.05;
+const perturbedComparison = RAD.compareCalibrationExperimentResults(readyState, perturbedResults, { protocol: experimentProtocol });
+assert.ok(perturbedComparison.field.maxAbsHeightError > 0, "perturbed height measurement should produce a height-error field");
+assert.ok(perturbedComparison.field.maxCombinedError > 0, "perturbed height measurement should produce a visible calibration-error overlay scale");
 const appliedProfileState = RAD.createState(2, 2);
 appliedProfileState.grid.cellSize = 1.25;
 appliedProfileState.grid.hardwareProfile = JSON.parse(JSON.stringify(state.grid.hardwareProfile));

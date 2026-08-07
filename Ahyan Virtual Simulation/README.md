@@ -156,7 +156,10 @@ displacement, slip, and actuator-force values, then report error against the
 current simulator without treating the measurement set as a calibrated solver.
 The browser Response Experiments panel can export a fillable results template,
 load the completed JSON, and display compact measured-cell, missing-observation,
-alpha RMSE, height RMSE, and worst-step readouts.
+alpha RMSE, height RMSE, maximum combined per-cell error, and worst-step readouts.
+Loading completed results also switches the Display panel to the `Calibration
+error` overlay, which colors the 3D lattice by the averaged per-cell alpha/height
+measurement disagreement.
 For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
 paper RAD lattice into extruded plate, pin, and connector mesh components, and
 `export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for

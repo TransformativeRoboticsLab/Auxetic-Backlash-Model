@@ -882,6 +882,41 @@
     return values.reduce((sum, value) => sum + value, 0) / values.length;
   }
 
+  function createCalibrationErrorField(state) {
+    const rows = state.grid.rows;
+    const cols = state.grid.cols;
+    return {
+      alphaError: RAD.matrix(rows, cols, 0),
+      heightError: RAD.matrix(rows, cols, 0),
+      combinedError: RAD.matrix(rows, cols, 0),
+      sampleCount: RAD.matrix(rows, cols, 0),
+      alphaSampleCount: RAD.matrix(rows, cols, 0),
+      heightSampleCount: RAD.matrix(rows, cols, 0),
+      maxAbsAlphaError: 0,
+      maxAbsHeightError: 0,
+      maxCombinedError: 0,
+    };
+  }
+
+  function finalizeCalibrationErrorField(field) {
+    for (let r = 0; r < field.sampleCount.length; r += 1) {
+      for (let c = 0; c < field.sampleCount[r].length; c += 1) {
+        const alphaCount = field.alphaSampleCount[r][c];
+        const heightCount = field.heightSampleCount[r][c];
+        const alpha = alphaCount ? field.alphaError[r][c] / alphaCount : 0;
+        const height = heightCount ? field.heightError[r][c] / heightCount : 0;
+        const combined = Math.hypot(alpha, height);
+        field.alphaError[r][c] = alpha;
+        field.heightError[r][c] = height;
+        field.combinedError[r][c] = combined;
+        field.maxAbsAlphaError = Math.max(field.maxAbsAlphaError, Math.abs(alpha));
+        field.maxAbsHeightError = Math.max(field.maxAbsHeightError, Math.abs(height));
+        field.maxCombinedError = Math.max(field.maxCombinedError, combined);
+      }
+    }
+    return field;
+  }
+
   function compareCalibrationExperimentResults(state, results, options = {}) {
     const parsed = typeof results === "string" ? JSON.parse(results) : results;
     if (parsed?.schema !== "rad-sim.calibration-experiment-results.v1") {
@@ -890,6 +925,7 @@
     const protocol = options.protocol || calibrationExperimentProtocol(state, options);
     const stepsById = new Map((protocol.steps || []).map((step) => [step.id, step]));
     const comparisons = [];
+    const field = createCalibrationErrorField(state);
     for (const measuredStep of parsed.steps || []) {
       const step = stepsById.get(measuredStep.stepId);
       if (!step) continue;
@@ -910,8 +946,22 @@
         observed.add(`${row},${col}`);
         const alpha = numericOrNull(cell.alphaDelta);
         const height = numericOrNull(cell.heightDelta);
-        if (alpha !== null) alphaErrors.push(alpha - ((sim.alpha?.[row]?.[col] || 0) - (baseline.alpha?.[row]?.[col] || 0)));
-        if (height !== null) heightErrors.push(height - ((sim.height?.[row]?.[col] || 0) - (baseline.height?.[row]?.[col] || 0)));
+        let measuredField = false;
+        if (alpha !== null) {
+          const alphaError = alpha - ((sim.alpha?.[row]?.[col] || 0) - (baseline.alpha?.[row]?.[col] || 0));
+          alphaErrors.push(alphaError);
+          field.alphaError[row][col] += alphaError;
+          field.alphaSampleCount[row][col] += 1;
+          measuredField = true;
+        }
+        if (height !== null) {
+          const heightError = height - ((sim.height?.[row]?.[col] || 0) - (baseline.height?.[row]?.[col] || 0));
+          heightErrors.push(heightError);
+          field.heightError[row][col] += heightError;
+          field.heightSampleCount[row][col] += 1;
+          measuredField = true;
+        }
+        if (measuredField) field.sampleCount[row][col] += 1;
         if (Array.isArray(cell.centerDelta) && cell.centerDelta.length === 3) {
           const current = sim.centers?.[row]?.[col] || { x: 0, y: 0, z: 0 };
           const base = baseline.centers?.[row]?.[col] || { x: 0, y: 0, z: 0 };
@@ -945,6 +995,7 @@
     return {
       schema: "rad-sim.calibration-experiment-comparison.v1",
       comparisons,
+      field: finalizeCalibrationErrorField(field),
     };
   }
 
@@ -961,6 +1012,7 @@
     const centerErrors = comparisons.map((item) => item.centerRmse).filter(Number.isFinite);
     const forceValues = comparisons.map((item) => item.meanActuatorForceN).filter(Number.isFinite);
     const slipValues = comparisons.map((item) => item.meanPinHoleSlipMm).filter(Number.isFinite);
+    const field = comparison?.field || {};
     let worst = null;
     for (const item of comparisons) {
       const value = Number(item.maxAbsHeightError);
@@ -976,6 +1028,8 @@
       heightRmseMean: finiteAverage(heightErrors),
       centerRmseMean: finiteAverage(centerErrors),
       maxAbsHeightError: worst ? Number(worst.maxAbsHeightError) : null,
+      maxAbsAlphaError: Number.isFinite(field.maxAbsAlphaError) ? field.maxAbsAlphaError : null,
+      maxCombinedError: Number.isFinite(field.maxCombinedError) ? field.maxCombinedError : null,
       worstStepId: worst?.stepId || null,
       meanActuatorForceN: finiteAverage(forceValues),
       meanPinHoleSlipMm: finiteAverage(slipValues),
