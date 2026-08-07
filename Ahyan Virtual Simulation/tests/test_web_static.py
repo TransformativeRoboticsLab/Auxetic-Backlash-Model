@@ -1112,7 +1112,7 @@ class WebStaticTests(unittest.TestCase):
 
     def test_inverse_response_jacobian_is_present(self):
         html = (WEB / "index.html").read_text(encoding="utf-8")
-        for control_id in ["buildJacobian", "selectUnderactuatedTarget", "solveLinearFit", "applyLinearFit", "jacobianColumns", "meanReachability", "underTargetCells", "linearFitSteps", "linearFitError", "inverseReachabilitySummary"]:
+        for control_id in ["buildJacobian", "selectUnderactuatedTarget", "solveLinearFit", "applyLinearFit", "saveInverseReport", "jacobianColumns", "meanReachability", "underTargetCells", "linearFitSteps", "linearFitError", "inverseReachabilitySummary"]:
             self.assertIn(f'id="{control_id}"', html)
         self.assertIn('value="reachability"', html)
         self.assertIn('value="underactuated"', html)
@@ -1120,10 +1120,10 @@ class WebStaticTests(unittest.TestCase):
         for symbol in ["jacobian:", "linearSolution:", "coverageMap", "columnCount", "meanCoverage", "conditionEstimate", "targetReachability", "predictedError", "projectedError"]:
             self.assertIn(symbol, state_js)
         inverse_js = (WEB / "inverse.js").read_text(encoding="utf-8")
-        for symbol in ["buildResponseJacobian", "solveLinearizedTargetFit", "applyLinearizedTargetFit", "linearized-jacobian-greedy-fit", "finite-difference-response-jacobian", "finite-response-height-reachability", "targetReachabilityReport", "underactuatedHeightCells", "worstUnderactuatedCell", "flattenDelta", "targetResidualVector", "heightDelta", "alphaDelta", "targetAlignment", "conditionEstimate", "commandZ", "commandAlpha", "z+", "z-", "alpha-", "alpha+", "RAD.buildResponseJacobian"]:
+        for symbol in ["buildResponseJacobian", "solveLinearizedTargetFit", "applyLinearizedTargetFit", "inverseDesignReport", "exportInverseDesignReport", "rad-sim.inverse-design-report.v1", "linearized-jacobian-greedy-fit", "finite-difference-response-jacobian", "finite-response-height-reachability", "targetReachabilityReport", "underactuatedHeightCells", "worstUnderactuatedCell", "flattenDelta", "targetResidualVector", "heightDelta", "alphaDelta", "targetAlignment", "conditionEstimate", "commandZ", "commandAlpha", "z+", "z-", "alpha-", "alpha+", "RAD.buildResponseJacobian"]:
             self.assertIn(symbol, inverse_js)
         ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
-        for symbol in ["buildJacobian", "selectUnderactuatedTarget", "solveLinearFit", "applyLinearFit", "jacobian-built", "linear-fit-solved", "linear-fit-applied", "jacobianColumns", "meanReachability", "underTargetCells", "linearFitSteps", "linearFitError", '"underactuated" : "reachability"']:
+        for symbol in ["buildJacobian", "selectUnderactuatedTarget", "solveLinearFit", "applyLinearFit", "saveInverseReport", "jacobian-built", "linear-fit-solved", "linear-fit-applied", "jacobianColumns", "meanReachability", "underTargetCells", "linearFitSteps", "linearFitError", '"underactuated" : "reachability"']:
             self.assertIn(symbol, ui_js)
         renderer_js = (WEB / "renderer.js").read_text(encoding="utf-8")
         for symbol in ['mode === "reachability"', 'mode === "underactuated"', "reachabilityStrength", "underactuatedStrength", "state.inverse?.jacobian", "linearSolution", "coverageMap", "maxCoverage", "underactuatedHeightMap"]:

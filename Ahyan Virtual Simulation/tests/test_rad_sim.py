@@ -48,8 +48,10 @@ from rad_sim import (
     export_calibration_experiment_comparison_json,
     export_calibration_experiment_comparison_report_json,
     export_calibration_experiment_results_template_json,
+    export_inverse_design_report_json,
     export_response_matrix_json,
     hardware_profile_from_config,
+    inverse_design_report,
     local_actuation_event,
     lock_event,
     lock_projection,
@@ -1021,6 +1023,15 @@ class RadSimTests(unittest.TestCase):
         self.assertGreaterEqual(solution.max_abs_height_residual, 0.0)
         self.assertGreaterEqual(solution.saturated_column_fraction, 0.0)
         self.assertLessEqual(solution.saturated_column_fraction, 1.0)
+        payload = solution.to_dict(include_response_matrix=False)
+        self.assertEqual(payload["schema"], "rad-sim.inverse-design-result.v1")
+        self.assertEqual(payload["metrics"]["activeActuatorCount"], solution.active_actuator_count)
+        self.assertEqual(payload["metrics"]["heightUnderactuatedCells"], solution.height_underactuated_cells)
+        self.assertEqual(payload["target"]["height"][2][2], target[2, 2])
+        report = inverse_design_report(solution, include_response_matrix=False)
+        self.assertEqual(report["schema"], "rad-sim.inverse-design-report.v1")
+        self.assertEqual(report["inverse"]["responseMatrix"]["schema"], "rad-sim.response-matrix.v1")
+        self.assertEqual(json.loads(export_inverse_design_report_json(solution, include_response_matrix=False))["schema"], report["schema"])
 
     def test_inverse_design_fits_alpha_contraction(self):
         config = LatticeConfig(rows=3, cols=3, backlash=0.0)
@@ -1097,6 +1108,14 @@ class RadSimTests(unittest.TestCase):
         self.assertTrue(np.isfinite(validation.physical_height_error_improvement))
         self.assertGreaterEqual(validation.model_agreement_score, 0.0)
         self.assertLessEqual(validation.model_agreement_score, 1.0)
+        payload = validation.to_dict()
+        self.assertEqual(payload["schema"], "rad-sim.inverse-physical-validation.v1")
+        self.assertAlmostEqual(
+            payload["fields"]["centerModelErrorNorm"][1][1],
+            np.linalg.norm(validation.center_model_error[1, 1]),
+        )
+        report = inverse_design_report(solution, validation, include_response_matrix=False)
+        self.assertEqual(report["physicalValidation"]["schema"], payload["schema"])
         self.assertTrue(np.isfinite(validation.center_rms_model_error))
         self.assertTrue(np.isfinite(validation.physical_energy))
 

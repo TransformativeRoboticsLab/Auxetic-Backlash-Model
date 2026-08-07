@@ -408,7 +408,10 @@ Linear Fit` commits the resulting clamped commands. These response columns are
 still computed from the current synthetic kinematic model rather than from a
 calibrated quasistatic mechanism. `Validate Physical` checks the current linear fit or analyzed plan
 against the browser spring-preview relaxation and reports physical target error
-plus kinematic/physical center-height disagreement. The next solver should
+plus kinematic/physical center-height disagreement. `Save Inverse Report`
+exports a `rad-sim.inverse-design-report.v1` JSON artifact with the current
+target, commands, plan, Jacobian/reachability diagnostics, linear fit, and any
+physical validation. The next solver should
 replace the greedy projection with a proper nonlinear least-squares objective
 with actuator placement constraints, travel limits, and continuation from
 previous equilibria.
@@ -550,6 +553,9 @@ without requiring Playwright or a browser binary.
 - `solve_inverse_design`: bounded damped least-squares inverse design using
   finite response columns for alpha/height target fields, with residual fields,
   reachable/underactuated masks, and command-saturation diagnostics.
+- `inverse_design_report` / `export_inverse_design_report_json`: Python inverse
+  design report artifact containing response-matrix diagnostics, residual fields,
+  reachability masks, commands, and optional physical validation.
 - `validate_inverse_design_physical`: spring-hinge validation of a solved inverse
   command set, reporting physical target error and kinematic/physical model
   disagreement before a command set is treated as mechanically credible.
@@ -605,6 +611,9 @@ without requiring Playwright or a browser binary.
   relaxation, including physical target residual and model-disagreement metrics.
 - `web/inverse.js` `buildResponseJacobian`: browser-side target reachability and
   underactuated-height diagnostics for finite response columns.
+- `web/inverse.js` `inverseDesignReport` / `exportInverseDesignReport`: browser
+  inverse-design report artifact for target, plan, Jacobian, linear fit, current
+  commands, reachability limits, and physical validation state.
 - `web/physics.js` `simulatePhysicalRelaxation`: browser spring-preview
   relaxation that now also exposes per-cell `modelErrorHeight` and
   `modelErrorCenter` fields against the kinematic state for model-disagreement

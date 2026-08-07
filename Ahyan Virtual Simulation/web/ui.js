@@ -440,6 +440,7 @@
         this.syncControls();
         this.onChange(this.state);
       });
+      document.getElementById("saveInverseReport").addEventListener("click", () => this.saveInverseReport());
       document.getElementById("applyInversePlan").addEventListener("click", () => {
         RAD.applyInverseDesignPlan(this.state);
         this.state.view.targetVisible = this.state.target.type !== "none";
@@ -1491,6 +1492,22 @@
       const link = document.createElement("a");
       link.href = url;
       link.download = `rad-sim-response-matrix-${scope}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveInverseReport() {
+      const payload =
+        typeof RAD.exportInverseDesignReport === "function"
+          ? RAD.exportInverseDesignReport(this.state)
+          : JSON.stringify({ schema: "rad-sim.inverse-design-report.v1" }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "rad-sim-inverse-design-report.json";
       document.body.appendChild(link);
       link.click();
       link.remove();

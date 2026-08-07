@@ -42,6 +42,8 @@ assert.strictEqual(typeof RAD.summarizeCalibrationComparison, "function", "analy
 assert.strictEqual(typeof RAD.calibrationComparisonReport, "function", "analysis module should expose calibration comparison reports");
 assert.strictEqual(typeof RAD.exportCalibrationComparisonReport, "function", "analysis module should export calibration comparison reports");
 assert.strictEqual(typeof RAD.validateInversePlanPhysical, "function", "inverse module should expose physical inverse validation");
+assert.strictEqual(typeof RAD.inverseDesignReport, "function", "inverse module should expose inverse design reports");
+assert.strictEqual(typeof RAD.exportInverseDesignReport, "function", "inverse module should export inverse design reports");
 const provenance = RAD.modelProvenance();
 assert.ok(
   provenance.some((item) => item.id === "backlash_dead_zone" && item.status === "paper-supported"),
@@ -68,6 +70,7 @@ assert.ok(html.includes('id="saveResponseMatrix"'), "response panel should expos
 assert.ok(html.includes('id="selectCalibrationHotspot"'), "response panel should expose a calibration-error selection button");
 assert.ok(html.includes('id="nextCalibrationHotspot"'), "response panel should expose ranked calibration-error navigation");
 assert.ok(html.includes('id="selectUnderactuatedTarget"'), "inverse panel should expose underactuated target selection");
+assert.ok(html.includes('id="saveInverseReport"'), "inverse panel should expose inverse report export");
 assert.ok(html.includes('id="underTargetCells"'), "metric strip should count underactuated targets");
 assert.ok(html.includes('id="inverseReachabilitySummary"'), "inverse plan readout should summarize underactuated targets");
 assert.ok(html.includes('id="saveExperimentProtocol"'), "response panel should expose a protocol export button");
@@ -454,6 +457,12 @@ assert.deepStrictEqual(
   JSON.parse(JSON.stringify(physicalValidation)),
   "physical inverse validation should be stored on state.inverse"
 );
+const inverseReport = RAD.inverseDesignReport(inverseValidationState);
+assert.strictEqual(inverseReport.schema, "rad-sim.inverse-design-report.v1");
+assert.strictEqual(inverseReport.inverse.linearSolution.strategy, "linearized-jacobian-greedy-fit");
+assert.strictEqual(inverseReport.inverse.physicalValidation.strategy, "spring-preview-inverse-validation");
+assert.ok(inverseReport.inverse.targetReachability.model, "inverse report should include target reachability diagnostics");
+assert.strictEqual(JSON.parse(RAD.exportInverseDesignReport(inverseValidationState)).schema, inverseReport.schema);
 const underactuatedTargetState = RAD.createState(3, 3);
 RAD.clearCommands(underactuatedTargetState);
 underactuatedTargetState.grid.zCouplingGain = 0;

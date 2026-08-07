@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -87,6 +88,68 @@ class InverseDesignResult:
             return 0.0
         return float(np.max(np.abs(self.height_residual)))
 
+    def to_dict(
+        self,
+        *,
+        tolerance: float = 1e-9,
+        include_response_matrix: bool = True,
+    ) -> dict[str, object]:
+        return {
+            "schema": "rad-sim.inverse-design-result.v1",
+            "strategy": "bounded-linearized-response-fit",
+            "grid": {"rows": self.matrix.cell_shape[0], "cols": self.matrix.cell_shape[1]},
+            "success": self.success,
+            "message": self.message,
+            "commands": [
+                {
+                    "row": command.cell[0],
+                    "col": command.cell[1],
+                    "alpha": command.alpha,
+                    "z": command.z,
+                }
+                for command in self.commands
+            ],
+            "coefficients": self.coefficients.tolist(),
+            "metrics": {
+                "activeActuatorCount": self.active_actuator_count,
+                "rmsErrorBefore": self.rms_error_before,
+                "rmsErrorAfter": self.rms_error_after,
+                "maxAbsErrorBefore": self.max_abs_error_before,
+                "maxAbsErrorAfter": self.max_abs_error_after,
+                "linearizedRmsError": self.linearized_rms_error,
+                "alphaRmsResidual": self.alpha_rms_residual,
+                "heightRmsResidual": self.height_rms_residual,
+                "maxAbsAlphaResidual": self.max_abs_alpha_residual,
+                "maxAbsHeightResidual": self.max_abs_height_residual,
+                "alphaUnderactuatedCells": self.alpha_underactuated_cells,
+                "heightUnderactuatedCells": self.height_underactuated_cells,
+                "saturatedColumnCount": self.saturated_column_count,
+                "nearSaturatedColumnCount": self.near_saturated_column_count,
+                "saturatedColumnFraction": self.saturated_column_fraction,
+                "nearSaturatedColumnFraction": self.near_saturated_column_fraction,
+                "maxCommandMultiplier": self.max_command_multiplier,
+            },
+            "target": {
+                "alpha": _array_or_none(self.target_alpha),
+                "height": _array_or_none(self.target_height),
+            },
+            "residual": {
+                "alpha": _array_or_none(self.alpha_residual),
+                "height": _array_or_none(self.height_residual),
+            },
+            "reachability": {
+                "alpha": _array_or_none(self.reachable_alpha_mask),
+                "height": _array_or_none(self.reachable_height_mask),
+                "underactuatedAlpha": _array_or_none(self.underactuated_alpha_mask),
+                "underactuatedHeight": _array_or_none(self.underactuated_height_mask),
+            },
+            "responseMatrix": (
+                self.matrix.to_dict(tolerance=tolerance)
+                if include_response_matrix
+                else {"schema": "rad-sim.response-matrix.v1", "diagnostics": self.matrix.to_dict(tolerance=tolerance)["diagnostics"]}
+            ),
+        }
+
 
 @dataclass(frozen=True)
 class InversePhysicalValidation:
@@ -117,6 +180,33 @@ class InversePhysicalValidation:
     def model_agreement_score(self) -> float:
         return 1.0 / (1.0 + self.center_rms_model_error)
 
+    def to_dict(self) -> dict[str, object]:
+        center_norm = np.linalg.norm(self.center_model_error, axis=2)
+        return {
+            "schema": "rad-sim.inverse-physical-validation.v1",
+            "physicalSuccess": self.physical_success,
+            "metrics": {
+                "physicalRmsHeightErrorBefore": self.physical_rms_height_error_before,
+                "physicalRmsHeightErrorAfter": self.physical_rms_height_error_after,
+                "physicalHeightErrorImprovement": self.physical_height_error_improvement,
+                "physicalMaxAbsHeightErrorBefore": self.physical_max_abs_height_error_before,
+                "physicalMaxAbsHeightErrorAfter": self.physical_max_abs_height_error_after,
+                "heightRmsModelError": self.height_rms_model_error,
+                "centerRmsModelError": self.center_rms_model_error,
+                "maxAbsHeightModelError": self.max_abs_height_model_error,
+                "maxAbsCenterModelError": self.max_abs_center_model_error,
+                "modelAgreementScore": self.model_agreement_score,
+                "physicalEnergy": self.physical_energy,
+            },
+            "fields": {
+                "heightResidualBefore": _array_or_none(self.height_residual_before),
+                "heightResidualAfter": _array_or_none(self.height_residual_after),
+                "alphaResidualAfter": _array_or_none(self.alpha_residual_after),
+                "heightModelError": _array_or_none(self.height_model_error),
+                "centerModelErrorNorm": center_norm.tolist(),
+            },
+        }
+
 
 def _target_array(
     value: np.ndarray | Iterable[Iterable[float]] | None,
@@ -129,6 +219,10 @@ def _target_array(
     if target.shape != shape:
         raise ValueError(f"{name} must have shape {shape}")
     return target
+
+
+def _array_or_none(value: np.ndarray | None) -> list | None:
+    return None if value is None else value.tolist()
 
 
 def _baseline_state(
@@ -470,4 +564,43 @@ def validate_inverse_design_physical(
             physical_baseline.metadata.get("success", False)
             and physical_result.metadata.get("success", False)
         ),
+    )
+
+
+def inverse_design_report(
+    inverse: InverseDesignResult,
+    validation: InversePhysicalValidation | None = None,
+    *,
+    tolerance: float = 1e-9,
+    include_response_matrix: bool = True,
+) -> dict[str, object]:
+    return {
+        "schema": "rad-sim.inverse-design-report.v1",
+        "inverse": inverse.to_dict(
+            tolerance=tolerance,
+            include_response_matrix=include_response_matrix,
+        ),
+        "physicalValidation": None if validation is None else validation.to_dict(),
+        "assumptions": {
+            "inverseModel": "linearized finite response columns around the unactuated baseline",
+            "physicalValidation": "spring-hinge pass validates the proposed commands but does not re-optimize them",
+        },
+    }
+
+
+def export_inverse_design_report_json(
+    inverse: InverseDesignResult,
+    validation: InversePhysicalValidation | None = None,
+    *,
+    tolerance: float = 1e-9,
+    include_response_matrix: bool = True,
+) -> str:
+    return json.dumps(
+        inverse_design_report(
+            inverse,
+            validation,
+            tolerance=tolerance,
+            include_response_matrix=include_response_matrix,
+        ),
+        indent=2,
     )

@@ -11,6 +11,10 @@
     return JSON.parse(JSON.stringify(state));
   }
 
+  function cloneData(value) {
+    return value === undefined ? null : JSON.parse(JSON.stringify(value));
+  }
+
   function planningStateFrom(state) {
     const next = cloneState(state);
     const locked = JSON.parse(JSON.stringify(next.cells.locked));
@@ -679,6 +683,76 @@
     return validation;
   }
 
+  function inverseDesignReport(state) {
+    const sim = RAD.simulateActive(state);
+    const inverse = state.inverse || {};
+    const jacobian = inverse.jacobian?.columns?.length ? inverse.jacobian : null;
+    const linearSolution = inverse.linearSolution?.commands?.length || inverse.linearSolution?.steps ? inverse.linearSolution : null;
+    const plan = inverse.plan?.commands?.length || inverse.plan?.candidates?.length ? inverse.plan : null;
+    const targetReachability =
+      jacobian?.targetReachability ||
+      linearSolution?.targetReachability ||
+      null;
+    let lockedCount = 0;
+    let allowedCount = 0;
+    let activeCommandCount = 0;
+    for (let r = 0; r < state.grid.rows; r += 1) {
+      for (let c = 0; c < state.grid.cols; c += 1) {
+        if (state.cells.locked?.[r]?.[c]) lockedCount += 1;
+        if (state.cells.actuatorAllowed?.[r]?.[c] !== false) allowedCount += 1;
+        if (Math.abs(state.cells.commandAlpha?.[r]?.[c] || 0) > 1e-9 || Math.abs(state.cells.commandZ?.[r]?.[c] || 0) > 1e-9) activeCommandCount += 1;
+      }
+    }
+    return {
+      schema: "rad-sim.inverse-design-report.v1",
+      grid: {
+        rows: state.grid.rows,
+        cols: state.grid.cols,
+        backlash: state.grid.backlash,
+        couplingGain: state.grid.couplingGain,
+        zCouplingGain: state.grid.zCouplingGain,
+        zTravelLimit: state.grid.zTravelLimit,
+        alphaContractLimit: state.grid.alphaContractLimit,
+        alphaExpandLimit: state.grid.alphaExpandLimit,
+      },
+      target: cloneData(state.target),
+      selection: cloneData(state.selection),
+      actuatorState: {
+        lockedCount,
+        allowedCount,
+        activeCommandCount,
+        commandAlpha: cloneData(state.cells.commandAlpha),
+        commandZ: cloneData(state.cells.commandZ),
+        locked: cloneData(state.cells.locked),
+        actuatorAllowed: cloneData(state.cells.actuatorAllowed),
+      },
+      currentMetrics: {
+        rmsTargetError: sim.metrics.rmsTargetError,
+        meanSignedTargetError: sim.metrics.meanSignedTargetError,
+        maxNegativeTargetError: sim.metrics.maxNegativeTargetError,
+        maxPositiveTargetError: sim.metrics.maxPositiveTargetError,
+        activeCells: sim.metrics.activeCells,
+        recommendedActuators: sim.metrics.recommendedActuators,
+        maxSaturation: sim.metrics.maxSaturation,
+      },
+      inverse: {
+        plan: cloneData(plan),
+        jacobian: cloneData(jacobian),
+        linearSolution: cloneData(linearSolution),
+        physicalValidation: cloneData(inverse.physicalValidation || null),
+        targetReachability: cloneData(targetReachability),
+      },
+      assumptions: {
+        inverseModel: "browser finite-difference columns and greedy linearized target fit",
+        physicalValidation: "spring-preview validation is a check of proposed commands, not a calibrated optimizer",
+      },
+    };
+  }
+
+  function exportInverseDesignReport(state) {
+    return JSON.stringify(inverseDesignReport(state), null, 2);
+  }
+
   function previewFromCommands(state, commands, meta = {}) {
     const previewState = planningStateFrom(state);
     const baseSim = RAD.simulate(previewState);
@@ -782,6 +856,8 @@
   RAD.solveLinearizedTargetFit = solveLinearizedTargetFit;
   RAD.applyLinearizedTargetFit = applyLinearizedTargetFit;
   RAD.validateInversePlanPhysical = validateInversePlanPhysical;
+  RAD.inverseDesignReport = inverseDesignReport;
+  RAD.exportInverseDesignReport = exportInverseDesignReport;
   RAD.setInversePreview = setInversePreview;
   RAD.setInversePlanStepPreview = setInversePlanStepPreview;
   RAD.applyInverseDesignPlan = applyInverseDesignPlan;

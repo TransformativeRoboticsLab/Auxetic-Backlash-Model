@@ -74,6 +74,8 @@ from .kinematic import simulate_kinematic
 from .inverse import (
     InverseDesignResult,
     InversePhysicalValidation,
+    export_inverse_design_report_json,
+    inverse_design_report,
     solve_inverse_design,
     validate_inverse_design_physical,
 )
@@ -192,6 +194,8 @@ __all__ = [
     "export_response_matrix_json",
     "run_calibration_experiment_protocol",
     "solve_inverse_design",
+    "inverse_design_report",
+    "export_inverse_design_report_json",
     "validate_inverse_design_physical",
     "alpha_to_theta",
     "theta_to_alpha",
