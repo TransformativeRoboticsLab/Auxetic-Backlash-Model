@@ -952,6 +952,7 @@
       this.state.experiment.characterizationScope = scope;
       const result = RAD.characterizeLocalResponse(this.state, { scope, ...this.state.selection });
       this.state.experiment.characterization = result;
+      this.state.view.overlayMode = "operatorInteraction";
       RAD.recordEvent(this.state, {
         type: "characterization",
         scope: result.scope,

@@ -32,6 +32,7 @@ for (const ref of localRefs) {
   assert.ok(fs.existsSync(path.join(web, ref.replace("./", ""))), `missing local browser asset: ${ref}`);
 }
 assert.ok(!/https?:\/\//.test(html), "browser entry should not require external scripts or styles");
+assert.ok(html.includes('value="operatorInteraction"'), "operator interaction overlay should be available in the browser UI");
 const scriptOrder = [
   "./vendor/three.min.js",
   "./state.js",
@@ -281,6 +282,11 @@ assert.strictEqual(pairCharacterization.pairwiseTotalPairs, 1, "selected pair sh
 assert.strictEqual(pairCharacterization.pairwiseEvaluatedPairs, 1, "selected pair should evaluate one source pair");
 assert.ok(Number.isFinite(pairCharacterization.pairwiseMaxInteractionError), "pair characterization should report finite pairwise max interaction");
 assert.ok(pairCharacterization.pairwiseInteractions.length <= 1, "pair characterization should store bounded pairwise rows");
+assert.ok(Array.isArray(pairCharacterization.pairwiseInteractionMap), "pair characterization should include a pairwise hotspot map");
+assert.strictEqual(pairCharacterization.pairwiseInteractionMap.length, characterizationState.grid.rows, "pairwise hotspot map should match lattice rows");
+assert.strictEqual(pairCharacterization.pairwiseInteractionMap[0].length, characterizationState.grid.cols, "pairwise hotspot map should match lattice columns");
+assert.ok(Number.isFinite(pairCharacterization.pairwiseInteractionMapMax), "pair characterization should report finite pairwise hotspot scale");
+assert.ok(pairCharacterization.pairwiseInteractionMapMax >= 0, "pairwise hotspot scale should be nonnegative");
 assert.deepStrictEqual(
   JSON.parse(JSON.stringify(pairCharacterization.pairwiseAlphaErrorMatrix)),
   JSON.parse(JSON.stringify(pairCharacterization.pairwiseAlphaErrorMatrix.map((row, r) => row.map((_, c) => pairCharacterization.pairwiseAlphaErrorMatrix[c][r])))),

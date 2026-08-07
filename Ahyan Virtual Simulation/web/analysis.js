@@ -260,6 +260,16 @@
     const totalPairCount = (activeSources.length * (activeSources.length - 1)) / 2;
     const alphaErrorMatrix = RAD.matrix(activeSources.length, activeSources.length, 0);
     const heightErrorMatrix = RAD.matrix(activeSources.length, activeSources.length, 0);
+    const hotspotMap = RAD.matrix(state.grid.rows, state.grid.cols, 0);
+    let hotspotMax = 0;
+    const markHotspot = (source, value) => {
+      const r = source?.r;
+      const c = source?.c;
+      if (!hotspotMap[r] || hotspotMap[r][c] === undefined) return;
+      const strength = Math.abs(Number(value) || 0);
+      hotspotMap[r][c] = Math.max(hotspotMap[r][c], strength);
+      hotspotMax = Math.max(hotspotMax, hotspotMap[r][c]);
+    };
     if (activeSources.length < 2) {
       return {
         pairwiseInteractionModel: "pairwise superposition residual",
@@ -273,6 +283,8 @@
         pairwiseInteractions: [],
         pairwiseAlphaErrorMatrix: alphaErrorMatrix,
         pairwiseHeightErrorMatrix: heightErrorMatrix,
+        pairwiseInteractionMap: hotspotMap,
+        pairwiseInteractionMapMax: hotspotMax,
       };
     }
 
@@ -308,6 +320,8 @@
             pairwiseInteractions: interactions.slice(0, 16),
             pairwiseAlphaErrorMatrix: alphaErrorMatrix,
             pairwiseHeightErrorMatrix: heightErrorMatrix,
+            pairwiseInteractionMap: hotspotMap,
+            pairwiseInteractionMapMax: hotspotMax,
           };
         }
         const combinedState = scopedState(state, [activeSources[i], activeSources[j]]);
@@ -327,6 +341,8 @@
         heightErrorMatrix[j][i] = heightError;
         maxAlpha = Math.max(maxAlpha, alphaError);
         maxHeight = Math.max(maxHeight, heightError);
+        markHotspot(activeSources[i], maxError);
+        markHotspot(activeSources[j], maxError);
         if (maxError > tolerance) nonadditive += 1;
         interactions.push({
           firstIndex: i,
@@ -356,6 +372,8 @@
       pairwiseInteractions: interactions.slice(0, 16),
       pairwiseAlphaErrorMatrix: alphaErrorMatrix,
       pairwiseHeightErrorMatrix: heightErrorMatrix,
+      pairwiseInteractionMap: hotspotMap,
+      pairwiseInteractionMapMax: hotspotMax,
     };
   }
 

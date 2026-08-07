@@ -533,10 +533,18 @@
         else if (mode === "inverse") t = this.inversePlanStrength(state, r, c);
         else if (mode === "sensitivity") t = this.sensitivityStrength(state, r, c);
         else if (mode === "reachability") t = this.reachabilityStrength(state, r, c);
+        else if (mode === "operatorInteraction") t = this.operatorInteractionStrength(state, r, c);
         else t = (sim.alpha[r][c] - state.grid.alphaMin) / (state.grid.alphaMax - state.grid.alphaMin);
         return this.overlayMaterial(mode, t);
       }
       return this.materials.plate;
+    }
+
+    operatorInteractionStrength(state, r, c) {
+      const characterization = state.experiment?.characterization;
+      const value = Math.abs(characterization?.pairwiseInteractionMap?.[r]?.[c] || 0);
+      const scale = Math.max(1e-9, characterization?.pairwiseInteractionMapMax || characterization?.pairwiseMaxInteractionError || 0);
+      return value / scale;
     }
 
     sensitivityStrength(state, r, c) {
