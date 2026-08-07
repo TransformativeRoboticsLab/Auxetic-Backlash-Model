@@ -16,6 +16,7 @@ from rad_sim import (
     evaluate_programmable_operators,
     lock_projection,
     simulate_kinematic,
+    solve_inverse_design,
     vertical_clearance_operator,
 )
 from rad_sim.coupling import alpha_to_theta, theta_to_alpha
@@ -235,6 +236,60 @@ class RadSimTests(unittest.TestCase):
                 include_alpha=False,
                 include_z=False,
             )
+
+    def test_inverse_design_reduces_height_target_error(self):
+        config = LatticeConfig(rows=5, cols=5, z_coupling_gain=0.25)
+        target = np.zeros((5, 5), dtype=float)
+        target[2, 2] = 0.36
+        target[1:4, 2] = [0.1, 0.36, 0.1]
+        target[2, 1:4] = [0.1, 0.36, 0.1]
+        solution = solve_inverse_design(
+            config,
+            target_height=target,
+            include_alpha=False,
+            include_z=True,
+        )
+        self.assertTrue(solution.success)
+        self.assertGreater(solution.active_actuator_count, 0)
+        self.assertLess(solution.rms_error_after, solution.rms_error_before)
+        self.assertGreater(solution.state.z_actuator_grid[2, 2], 0.0)
+
+    def test_inverse_design_fits_alpha_contraction(self):
+        config = LatticeConfig(rows=3, cols=3, backlash=0.0)
+        target_alpha = np.full((3, 3), config.initial_alpha)
+        target_alpha[1, 1] = 0.75
+        solution = solve_inverse_design(
+            config,
+            target_alpha=target_alpha,
+            actuator_cells=[(1, 1)],
+            include_alpha=True,
+            include_z=False,
+            alpha_weight=1.0,
+        )
+        self.assertTrue(solution.success)
+        self.assertLess(solution.rms_error_after, solution.rms_error_before)
+        self.assertLess(solution.state.actuator_grid[1, 1], 0.0)
+        self.assertLess(solution.result.alpha[1, 1], config.initial_alpha)
+
+    def test_inverse_design_excludes_locked_actuators(self):
+        config = LatticeConfig(rows=3, cols=3)
+        target = np.zeros((3, 3), dtype=float)
+        target[1, 1] = 0.3
+        solution = solve_inverse_design(
+            config,
+            target_height=target,
+            actuator_cells=[(1, 1), (0, 1)],
+            locked_cells=[(1, 1)],
+            include_alpha=False,
+            include_z=True,
+        )
+        self.assertTrue(solution.state.locked_mask[1, 1])
+        self.assertAlmostEqual(solution.state.z_actuator_grid[1, 1], 0.0)
+        self.assertTrue(all(command.cell != (1, 1) for command in solution.commands))
+
+    def test_inverse_design_requires_target(self):
+        with self.assertRaises(ValueError):
+            solve_inverse_design(LatticeConfig(rows=2, cols=2))
 
     def test_zero_vertical_coupling_recovers_local_z_motion(self):
         config = LatticeConfig(rows=5, cols=5, backlash=0.02, z_coupling_gain=0.0)

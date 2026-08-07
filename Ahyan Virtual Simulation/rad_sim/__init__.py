@@ -13,6 +13,7 @@ from .experiments import (
     characterize_single_cell,
 )
 from .kinematic import simulate_kinematic
+from .inverse import InverseDesignResult, solve_inverse_design
 from .models import LatticeConfig, LatticeState, LoadCase, SimulationResult
 from .operators import (
     DeadZonePropagationOperator,
@@ -36,7 +37,9 @@ __all__ = [
     "ResponseCharacterization",
     "PairCharacterization",
     "ResponseMatrix",
+    "InverseDesignResult",
     "build_response_matrix",
+    "solve_inverse_design",
     "alpha_to_theta",
     "theta_to_alpha",
     "backlash_activation",

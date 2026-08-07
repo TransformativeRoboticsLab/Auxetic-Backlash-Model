@@ -3,7 +3,7 @@
 This repository contains a first-pass 3D demonstration simulator for Reconfigurable
 Auxetic Devices (RADs) with backlash. The model is intentionally synthetic and
 dimensionless: it is meant to expose the backlash-coupled lattice mechanics before
-CAD calibration or target-surface inverse design.
+CAD calibration while target-surface inverse design is still experimental.
 
 ## Run
 
@@ -22,6 +22,11 @@ also exposes `characterize_single_cell`, `characterize_pair`, and
 die-off distances, and pairwise superposition error from the same simulator used
 by the browser. `build_response_matrix` stacks those responses into alpha and
 height matrices for controllability checks and inverse-design experiments.
+`solve_inverse_design` uses that response matrix in a bounded damped least-squares
+fit from target alpha/height fields to candidate actuator commands. This is the
+first Python-backed inverse layer for surface-shaping studies; it is linearized
+around the unactuated baseline and should be treated as a command proposal, not
+as a calibrated nonlinear optimizer.
 
 ## Browser UI
 
