@@ -27,6 +27,7 @@ class WebStaticTests(unittest.TestCase):
             "RAD.importExperimentSequence",
             "RAD.exportPaperRadMeshObj",
             "RAD.simulateActive",
+            "RAD.compareEventOrder",
             "localRefs",
             "validateLocalHttpEntry",
             "http.createServer",
@@ -58,6 +59,8 @@ class WebStaticTests(unittest.TestCase):
         self.assertTrue((WEB / "vendor" / "three.min.js").exists())
         self.assertNotIn("cdn.jsdelivr.net", html)
         self.assertLess(html.index("three.min.js"), html.index("./renderer.js"))
+        self.assertLess(html.index("./math.js"), html.index("./operators.js"))
+        self.assertLess(html.index("./operators.js"), html.index("./inverse.js"))
         self.assertLess(html.index("./math.js"), html.index("./analysis.js"))
         self.assertLess(html.index("./analysis.js"), html.index("./physics.js"))
         self.assertLess(html.index("./physics.js"), html.index("./mesh_export.js"))
@@ -66,6 +69,7 @@ class WebStaticTests(unittest.TestCase):
     def test_browser_modules_expose_expected_api(self):
         expected = {
             "state.js": ["RAD.createState", "RAD.serialize", "RAD.updateDerivedCells", "RAD.exportExperimentSequence", "RAD.importExperimentSequence", "RAD.deserialize"],
+            "operators.js": ["RAD.localActuationEvent", "RAD.lockEvent", "RAD.applyEventSequence", "RAD.compareEventOrder", "RAD.finiteDieOffRadius"],
             "analysis.js": ["RAD.analyzeExperimentSequence", "RAD.exportSequenceMetricsCsv", "RAD.sequenceFrames"],
             "physics.js": ["RAD.simulatePhysicalRelaxation", "RAD.simulateActive"],
             "mesh_export.js": ["RAD.buildPaperRadMesh", "RAD.exportPaperRadMeshObj"],
@@ -553,6 +557,7 @@ class WebStaticTests(unittest.TestCase):
         state_js = (WEB / "state.js").read_text(encoding="utf-8")
         self.assertIn('cellVisualMode: "abstract"', state_js)
         self.assertIn('simulationMode: "kinematic"', state_js)
+        self.assertIn("lockAlpha", state_js)
         for symbol in ["targetErrorVectorsVisible: true", "state.view.targetErrorVectorsVisible"]:
             self.assertIn(symbol, state_js)
         math_js = (WEB / "math.js").read_text(encoding="utf-8")
@@ -585,6 +590,48 @@ class WebStaticTests(unittest.TestCase):
         renderer_js = (WEB / "renderer.js").read_text(encoding="utf-8")
         for symbol in ["targetErrorVectorsVisible", "renderErrorRods", "mean signed"]:
             self.assertIn(symbol, renderer_js)
+
+    def test_browser_programmable_discontinuity_controls_are_present(self):
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        self.assertLess(html.index("./math.js"), html.index("./operators.js"))
+        self.assertLess(html.index("./operators.js"), html.index("./inverse.js"))
+        for control_id in [
+            "operatorCommitLock",
+            "operatorReleaseLock",
+            "operatorCheckOrder",
+            "operatorOrderState",
+            "operatorAlphaError",
+            "operatorHeightError",
+        ]:
+            self.assertIn(f'id="{control_id}"', html)
+
+        operators_js = (WEB / "operators.js").read_text(encoding="utf-8")
+        for symbol in [
+            "localActuationEvent",
+            "lockEvent",
+            "releaseEvent",
+            "clearActuationEvent",
+            "applyProgrammableEvent",
+            "applyEventSequence",
+            "compareEventOrder",
+            "finiteDieOffRadius",
+            "lockAlphaCommutes",
+            "finalHeightError",
+        ]:
+            self.assertIn(symbol, operators_js)
+
+        ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
+        for symbol in [
+            "commitSelectedLockEvent",
+            "releaseSelectedLockEvent",
+            "checkSelectedEventOrder",
+            "selectedEventBaseline",
+            "updateOperatorInspector",
+            "RAD.applyProgrammableEvent",
+            "RAD.compareEventOrder",
+            "operator-order-check",
+        ]:
+            self.assertIn(symbol, ui_js)
 
     def test_surface_interpolation_controls_are_present(self):
         html = (WEB / "index.html").read_text(encoding="utf-8")

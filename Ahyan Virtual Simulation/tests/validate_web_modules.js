@@ -14,7 +14,7 @@ context.window.window = context.window;
 context.window.console = console;
 vm.createContext(context);
 
-for (const filename of ["state.js", "math.js", "inverse.js", "analysis.js", "physics.js", "mesh_export.js"]) {
+for (const filename of ["state.js", "math.js", "operators.js", "inverse.js", "analysis.js", "physics.js", "mesh_export.js"]) {
   const source = fs.readFileSync(path.join(web, filename), "utf8");
   vm.runInContext(source, context, { filename });
 }
@@ -33,6 +33,7 @@ const scriptOrder = [
   "./vendor/three.min.js",
   "./state.js",
   "./math.js",
+  "./operators.js",
   "./inverse.js",
   "./analysis.js",
   "./physics.js",
@@ -97,6 +98,7 @@ state.view.paintRadius = 2;
 state.cells.commandAlpha[2][3] = -0.24;
 state.cells.commandZ[2][3] = 0.31;
 state.cells.locked[0][0] = true;
+state.cells.lockAlpha[0][0] = 0.82;
 state.cells.actuatorAllowed[4][5] = false;
 state.selection = { r: 2, c: 3 };
 state.experiment.presetName = "custom-roundtrip";
@@ -107,6 +109,7 @@ const parsedSerialized = JSON.parse(serialized);
 assert.ok(Array.isArray(parsedSerialized.cells.alpha), "serialized cells should include derived alpha");
 assert.ok(Array.isArray(parsedSerialized.cells.theta), "serialized cells should include derived theta");
 assert.ok(Array.isArray(parsedSerialized.cells.z), "serialized cells should include derived z");
+assert.ok(Array.isArray(parsedSerialized.cells.lockAlpha), "serialized cells should include committed lock alpha");
 const restored = RAD.deserialize(serialized);
 assert.deepStrictEqual(restored.grid.rows, 5);
 assert.deepStrictEqual(restored.grid.cols, 6);
@@ -126,6 +129,7 @@ assert.strictEqual(restored.view.paintRadius, 2);
 assert.strictEqual(restored.cells.commandAlpha[2][3], -0.24);
 assert.strictEqual(restored.cells.commandZ[2][3], 0.31);
 assert.strictEqual(restored.cells.locked[0][0], true);
+assert.strictEqual(restored.cells.lockAlpha[0][0], 0.82);
 assert.strictEqual(restored.cells.actuatorAllowed[4][5], false);
 assert.strictEqual(restored.experiment.presetName, "custom-roundtrip");
 assert.strictEqual(restored.experiment.notes, "roundtrip validation");
@@ -139,6 +143,7 @@ assert.strictEqual(Number(restored.cells.theta[2][3].toFixed(6)), Number(sim.the
 assert.strictEqual(Number(restored.cells.z[2][3].toFixed(6)), Number(sim.height[2][3].toFixed(6)));
 assert.ok(Number.isFinite(sim.metrics.meanAlpha));
 assert.ok(Number.isFinite(sim.metrics.rmsTargetError));
+assert.strictEqual(Number(sim.alpha[0][0].toFixed(6)), 0.82);
 const activeSim = RAD.simulateActive(restored);
 assert.strictEqual(activeSim.metrics.model, "spring-preview");
 assert.strictEqual(activeSim.metrics.physicalPreview, true);
@@ -153,6 +158,31 @@ assert.ok(browserObj.includes("o cell_2_3_outer_plate"), "browser OBJ should inc
 assert.ok(browserObj.includes("# kind connector"), "browser OBJ should include connector metadata");
 assert.strictEqual((browserObj.match(/^v /gm) || []).length, browserMesh.vertexCount);
 assert.strictEqual((browserObj.match(/^f /gm) || []).length, browserMesh.faceCount);
+
+const operatorState = RAD.createState(3, 3);
+RAD.clearCommands(operatorState);
+const lockedEventState = RAD.applyEventSequence(operatorState, [
+  RAD.localActuationEvent({ r: 1, c: 1 }, -0.3, 0.2),
+  RAD.lockEvent({ r: 1, c: 1 }),
+  RAD.clearActuationEvent(),
+]);
+assert.strictEqual(lockedEventState.cells.locked[1][1], true);
+assert.strictEqual(Number(lockedEventState.cells.lockAlpha[1][1].toFixed(6)), 0.7);
+assert.strictEqual(Number(lockedEventState.cells.commandAlpha[1][1].toFixed(6)), 0);
+assert.strictEqual(Number(RAD.simulate(lockedEventState).alpha[1][1].toFixed(6)), 0.7);
+assert.strictEqual(RAD.finiteDieOffRadius(RAD.simulate(lockedEventState).dieOff), 0);
+const orderState = RAD.createState(3, 3);
+RAD.clearCommands(orderState);
+const orderDiagnostic = RAD.compareEventOrder(
+  orderState,
+  RAD.localActuationEvent({ r: 1, c: 1 }, -0.3, 0.2),
+  RAD.lockEvent({ r: 1, c: 1 })
+);
+assert.strictEqual(orderDiagnostic.modeCommutes, true);
+assert.strictEqual(orderDiagnostic.commandCommutes, false);
+assert.strictEqual(orderDiagnostic.lockAlphaCommutes, false);
+assert.ok(orderDiagnostic.finalAlphaError > 0.1, "actuation and lock events should not commute in alpha");
+assert.ok(orderDiagnostic.finalHeightError > 0.1, "actuation and lock events should not commute in height");
 
 const zResidualState = RAD.createState(5, 5);
 zResidualState.grid.backlash = 0.02;

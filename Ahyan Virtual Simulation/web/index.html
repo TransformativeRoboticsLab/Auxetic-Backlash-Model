@@ -124,6 +124,18 @@
                 <button id="applyCommand" type="button">Apply</button>
                 <button id="clearCell" type="button">Clear Cell</button>
               </div>
+              <div class="operator-panel" aria-label="Programmable discontinuity event controls">
+                <div class="button-row operator-row">
+                  <button id="operatorCommitLock" type="button">Event Lock</button>
+                  <button id="operatorReleaseLock" type="button">Event Release</button>
+                  <button id="operatorCheckOrder" type="button">Check Order</button>
+                </div>
+                <dl class="operator-inspector">
+                  <div><dt>order</dt><dd id="operatorOrderState">not checked</dd></div>
+                  <div><dt>alpha error</dt><dd id="operatorAlphaError">0.000</dd></div>
+                  <div><dt>height error</dt><dd id="operatorHeightError">0.000</dd></div>
+                </dl>
+              </div>
               <div class="button-row actuator-mask-row">
                 <button id="allowAllActuators" type="button">Allow All</button>
                 <button id="blockRimActuators" type="button">Block Rim</button>
@@ -392,6 +404,7 @@
     <script src="./vendor/three.min.js"></script>
     <script src="./state.js"></script>
     <script src="./math.js"></script>
+    <script src="./operators.js"></script>
     <script src="./inverse.js"></script>
     <script src="./analysis.js"></script>
     <script src="./physics.js"></script>

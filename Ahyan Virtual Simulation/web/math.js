@@ -450,7 +450,8 @@
       for (let c = 0; c < cols; c += 1) {
         const locked = state.cells.locked[r][c];
         const rawAlpha = initialAlpha + influence[r][c];
-        alpha[r][c] = locked ? initialAlpha : Math.max(alphaMin, Math.min(alphaMax, rawAlpha));
+        const lockAlpha = Number(state.cells.lockAlpha?.[r]?.[c]) || initialAlpha;
+        alpha[r][c] = locked ? Math.max(alphaMin, Math.min(alphaMax, lockAlpha)) : Math.max(alphaMin, Math.min(alphaMax, rawAlpha));
         theta[r][c] = alphaToTheta(alpha[r][c]);
         height[r][c] = locked ? 0 : -0.65 * influence[r][c] + zResidual[r][c];
         targetError[r][c] = height[r][c] - target[r][c];

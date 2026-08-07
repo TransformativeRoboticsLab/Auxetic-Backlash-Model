@@ -40,6 +40,7 @@
     if (!state.cells.commandAlpha) state.cells.commandAlpha = matrix(rows, cols, 0);
     if (!state.cells.commandZ) state.cells.commandZ = matrix(rows, cols, 0);
     if (!state.cells.locked) state.cells.locked = matrix(rows, cols, false);
+    if (!state.cells.lockAlpha) state.cells.lockAlpha = matrix(rows, cols, initialAlpha);
     if (!state.cells.actuatorAllowed) state.cells.actuatorAllowed = matrix(rows, cols, true);
     return state;
   }
@@ -84,6 +85,7 @@
         commandAlpha: matrix(rows, cols, 0),
         commandZ: matrix(rows, cols, 0),
         locked: matrix(rows, cols, false),
+        lockAlpha: matrix(rows, cols, 1),
         actuatorAllowed: matrix(rows, cols, true),
       },
       view: {
@@ -186,6 +188,7 @@
         next.cells.commandAlpha[r][c] = old.commandAlpha[r][c];
         next.cells.commandZ[r][c] = old.commandZ[r][c];
         next.cells.locked[r][c] = old.locked[r][c];
+        next.cells.lockAlpha[r][c] = old.lockAlpha?.[r]?.[c] ?? next.grid.initialAlpha;
         next.cells.actuatorAllowed[r][c] = old.actuatorAllowed?.[r]?.[c] ?? true;
       }
     }
@@ -201,6 +204,7 @@
     state.cells.commandAlpha = matrix(rows, cols, 0);
     state.cells.commandZ = matrix(rows, cols, 0);
     state.cells.locked = matrix(rows, cols, false);
+    state.cells.lockAlpha = matrix(rows, cols, state.grid.initialAlpha);
     if (!state.cells.actuatorAllowed) state.cells.actuatorAllowed = matrix(rows, cols, true);
   }
 
@@ -273,6 +277,7 @@
       commandAlpha: interpolateMatrix(from.cells?.commandAlpha, to.cells?.commandAlpha, amount, []),
       commandZ: interpolateMatrix(from.cells?.commandZ, to.cells?.commandZ, amount, []),
       locked: interpolateMatrix(from.cells?.locked, to.cells?.locked, amount, []),
+      lockAlpha: interpolateMatrix(from.cells?.lockAlpha, to.cells?.lockAlpha, amount, []),
       actuatorAllowed: interpolateMatrix(from.cells?.actuatorAllowed, to.cells?.actuatorAllowed, amount, []),
     };
     out.target = { ...to.target };

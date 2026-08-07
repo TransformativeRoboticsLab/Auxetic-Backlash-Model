@@ -456,6 +456,47 @@ body.show-all-metrics .advanced-metric {
   color: #667080;
 }
 
+.operator-panel {
+  margin-top: 10px;
+  padding: 8px;
+  border: 1px solid rgba(180, 190, 205, 0.75);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.quick-actuation-dock .operator-row {
+  margin-top: 0;
+}
+
+.operator-row button {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.operator-inspector {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr 1fr;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+.operator-inspector div {
+  min-width: 0;
+}
+
+.operator-inspector dt {
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.operator-inspector dd {
+  margin: 1px 0 0;
+  color: #202936;
+  font-size: 0.74rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
 .quick-actuation-dock .button-row {
   gap: 6px;
   margin-top: 10px;

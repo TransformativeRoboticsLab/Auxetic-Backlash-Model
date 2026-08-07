@@ -75,6 +75,12 @@
         fileInput: document.getElementById("fileInput"),
         sequenceFileInput: document.getElementById("sequenceFileInput"),
         saveObj: document.getElementById("saveObj"),
+        operatorCommitLock: document.getElementById("operatorCommitLock"),
+        operatorReleaseLock: document.getElementById("operatorReleaseLock"),
+        operatorCheckOrder: document.getElementById("operatorCheckOrder"),
+        operatorOrderState: document.getElementById("operatorOrderState"),
+        operatorAlphaError: document.getElementById("operatorAlphaError"),
+        operatorHeightError: document.getElementById("operatorHeightError"),
       };
       this.playTimer = null;
       this.transitionFrame = null;
@@ -83,6 +89,7 @@
       this.lastSequenceAnalysisSignature = "";
       this.sequenceChartLayout = null;
       this.hoveredSequenceFrame = null;
+      this.lastOperatorDiagnostic = null;
       this.bind();
       this.syncControls();
     }
@@ -300,6 +307,9 @@
       });
       document.getElementById("applyCommand").addEventListener("click", () => this.applySelected());
       document.getElementById("clearCell").addEventListener("click", () => this.clearSelected());
+      this.els.operatorCommitLock.addEventListener("click", () => this.commitSelectedLockEvent());
+      this.els.operatorReleaseLock.addEventListener("click", () => this.releaseSelectedLockEvent());
+      this.els.operatorCheckOrder.addEventListener("click", () => this.checkSelectedEventOrder());
       document.getElementById("nudgeAlphaContract").addEventListener("click", () => this.nudgeSelectedCommand(-0.08, 0));
       document.getElementById("nudgeAlphaExpand").addEventListener("click", () => this.nudgeSelectedCommand(0.08, 0));
       document.getElementById("nudgeZDown").addEventListener("click", () => this.nudgeSelectedCommand(0, -0.08));
@@ -585,9 +595,84 @@
       this.state.cells.commandAlpha[r][c] = 0;
       this.state.cells.commandZ[r][c] = 0;
       this.state.cells.locked[r][c] = false;
+      if (this.state.cells.lockAlpha) this.state.cells.lockAlpha[r][c] = this.state.grid.initialAlpha;
       RAD.recordEvent(this.state, { type: "cell-clear", r, c });
       this.syncControls();
       this.onChange(this.state);
+    }
+
+    commitSelectedLockEvent() {
+      const { r, c } = this.state.selection;
+      if (!this.state.experiment.initialSnapshot) this.state.experiment.initialSnapshot = RAD.snapshotState(this.state);
+      this.state.cells.commandAlpha[r][c] = RAD.clampCommandAlpha(this.state, this.els.alphaCommand.value);
+      this.state.cells.commandZ[r][c] = RAD.clampCommandZ(this.state, this.els.zCommand.value);
+      this.state = RAD.applyProgrammableEvent(this.state, RAD.lockEvent({ r, c }));
+      RAD.recordEvent(this.state, {
+        type: "operator-lock",
+        r,
+        c,
+        lockAlpha: this.state.cells.lockAlpha?.[r]?.[c] ?? this.state.grid.initialAlpha,
+      });
+      this.syncControls();
+      this.onChange(this.state);
+    }
+
+    releaseSelectedLockEvent() {
+      const { r, c } = this.state.selection;
+      if (!this.state.experiment.initialSnapshot) this.state.experiment.initialSnapshot = RAD.snapshotState(this.state);
+      this.state = RAD.applyProgrammableEvent(this.state, RAD.releaseEvent({ r, c }));
+      RAD.recordEvent(this.state, { type: "operator-release", r, c });
+      this.syncControls();
+      this.onChange(this.state);
+    }
+
+    selectedEventBaseline(r, c) {
+      const base = JSON.parse(JSON.stringify(this.state));
+      if (!base.cells.lockAlpha) {
+        base.cells.lockAlpha = RAD.matrix(base.grid.rows, base.grid.cols, base.grid.initialAlpha);
+      }
+      base.cells.commandAlpha[r][c] = 0;
+      base.cells.commandZ[r][c] = 0;
+      base.cells.locked[r][c] = false;
+      base.cells.lockAlpha[r][c] = base.grid.initialAlpha;
+      return base;
+    }
+
+    checkSelectedEventOrder() {
+      const { r, c } = this.state.selection;
+      const alpha = RAD.clampCommandAlpha(this.state, this.els.alphaCommand.value);
+      const z = RAD.clampCommandZ(this.state, this.els.zCommand.value);
+      const diagnostic = RAD.compareEventOrder(
+        this.selectedEventBaseline(r, c),
+        RAD.localActuationEvent({ r, c }, alpha, z),
+        RAD.lockEvent({ r, c })
+      );
+      this.lastOperatorDiagnostic = diagnostic;
+      RAD.recordEvent(this.state, {
+        type: "operator-order-check",
+        r,
+        c,
+        alpha,
+        z,
+        finalAlphaError: diagnostic.finalAlphaError,
+        finalHeightError: diagnostic.finalHeightError,
+      });
+      this.updateOperatorInspector(diagnostic);
+      this.onChange(this.state);
+    }
+
+    updateOperatorInspector(diagnostic) {
+      if (!diagnostic) {
+        this.els.operatorOrderState.textContent = "not checked";
+        this.els.operatorAlphaError.textContent = "0.000";
+        this.els.operatorHeightError.textContent = "0.000";
+        return;
+      }
+      const commutes = diagnostic.modeCommutes && diagnostic.commandCommutes && diagnostic.lockAlphaCommutes && diagnostic.finalAlphaError < 1e-9 && diagnostic.finalHeightError < 1e-9;
+      this.els.operatorOrderState.textContent = commutes ? "commutes" : "path dependent";
+      this.els.operatorAlphaError.textContent = diagnostic.finalAlphaError.toFixed(3);
+      this.els.operatorHeightError.textContent = diagnostic.finalHeightError.toFixed(3);
+      this.els.operatorOrderState.title = `mode ${diagnostic.modeCommutes ? "same" : "diff"}, commands ${diagnostic.commandCommutes ? "same" : "diff"}, lock alpha ${diagnostic.lockAlphaCommutes ? "same" : "diff"}`;
     }
 
     applyCellVisualMode(mode) {
@@ -786,6 +871,7 @@
         document.getElementById("linearFitError").textContent = Number(s.inverse?.linearSolution?.projectedError || 0).toFixed(3);
       }
       this.renderInversePlan();
+      this.updateOperatorInspector(this.lastOperatorDiagnostic);
       this.renderEvents();
     }
 
@@ -1272,6 +1358,9 @@
       if (event.type === "jacobian-built") return `jacobian: ${event.columns || 0} columns, reach ${Number(event.meanCoverage || 0).toFixed(3)}`;
       if (event.type === "linear-fit-solved") return `linear solve: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}`;
       if (event.type === "linear-fit-applied") return `linear apply: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}`;
+      if (event.type === "operator-lock") return `event lock: r${event.r}, c${event.c} a ${Number(event.lockAlpha || 0).toFixed(3)}`;
+      if (event.type === "operator-release") return `event release: r${event.r}, c${event.c}`;
+      if (event.type === "operator-order-check") return `order check: r${event.r}, c${event.c} da ${Number(event.finalAlphaError || 0).toFixed(3)} dz ${Number(event.finalHeightError || 0).toFixed(3)}`;
       if (event.type === "inverse-preview-keyframe") return `preview keyframe: ${event.name || "plan preview"}, ${event.actuators || 0} cells`;
       if (event.type === "keyframe") return `keyframe: ${event.name || "pose"} (${event.index || 0})`;
       return event.name ? `${event.type}: ${event.name}` : event.type;

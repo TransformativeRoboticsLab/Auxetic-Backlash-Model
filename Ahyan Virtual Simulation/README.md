@@ -29,6 +29,10 @@ For history-dependent programmable mechanics experiments, `local_actuation_event
 and `compare_event_order` model discontinuities as state-to-state operators. A
 lock event commits the cell's current alpha state, so lock/actuation ordering can
 be tested as a measurable noncommutative effect.
+The browser mirrors this operator layer through `web/operators.js`. The selected
+cell dock includes event lock, event release, and order-check controls; committed
+locks store `cells.lockAlpha` so a locked cell can hold the dilation reached
+before locking instead of always snapping back to the default state.
 `build_response_matrix` stacks those responses into alpha and height matrices for
 controllability checks and inverse-design experiments.
 `solve_inverse_design` uses that response matrix in a bounded damped least-squares
@@ -406,6 +410,8 @@ without requiring Playwright or a browser binary.
   `compare_event_order`: executable programmable-discontinuity operators for
   sequence studies, lock invariance, locality checks, and event-order
   noncommutativity.
+- `web/operators.js`: browser-side version of the event operators with committed
+  `lockAlpha` state and selected-cell order diagnostics in the viewport dock.
 - `compare_physical_response` / `compare_physical_pair` /
   `compare_physical_cluster`: single, pair, and cluster diagnostics that quantify
   the deviation between kinematic backlash propagation and the 3D spring-hinge
