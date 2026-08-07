@@ -49,6 +49,8 @@
     if (state.grid.zCouplingGain === undefined) state.grid.zCouplingGain = 0.32;
     if (state.grid.pinRadius === undefined) state.grid.pinRadius = 0.18;
     if (state.grid.holeRadius === undefined) state.grid.holeRadius = 0.225;
+    if (state.grid.paperSideLengthMm === undefined) state.grid.paperSideLengthMm = 35;
+    if (state.grid.paperHoleToleranceMm === undefined) state.grid.paperHoleToleranceMm = 0.1;
     if (state.grid.holeRadius < state.grid.pinRadius) state.grid.holeRadius = state.grid.pinRadius;
     return state;
   }
@@ -73,6 +75,8 @@
         zCouplingGain: 0.32,
         pinRadius: 0.18,
         holeRadius: 0.225,
+        paperSideLengthMm: 35,
+        paperHoleToleranceMm: 0.1,
         initialAlpha: 1,
         alphaMin: 0.25,
         alphaMax: 1.75,
@@ -267,7 +271,7 @@
     if (!rowsMatch || !colsMatch) return amount < 1 ? cloneData(from) : cloneData(to);
     const out = cloneData(amount < 0.5 ? from : to);
     out.grid = { ...to.grid };
-    for (const key of ["cellSize", "backlash", "couplingGain", "zCouplingGain", "pinRadius", "holeRadius", "initialAlpha", "alphaMin", "alphaMax", "zTravelLimit", "alphaContractLimit", "alphaExpandLimit"]) {
+    for (const key of ["cellSize", "backlash", "couplingGain", "zCouplingGain", "pinRadius", "holeRadius", "paperSideLengthMm", "paperHoleToleranceMm", "initialAlpha", "alphaMin", "alphaMax", "zTravelLimit", "alphaContractLimit", "alphaExpandLimit"]) {
       if (typeof from.grid?.[key] === "number" && typeof to.grid?.[key] === "number") out.grid[key] = lerp(from.grid[key], to.grid[key], amount);
     }
     out.cells = {

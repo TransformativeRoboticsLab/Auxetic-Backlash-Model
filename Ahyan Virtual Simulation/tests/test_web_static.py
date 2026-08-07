@@ -28,6 +28,7 @@ class WebStaticTests(unittest.TestCase):
             "RAD.exportPaperRadMeshObj",
             "RAD.simulateActive",
             "RAD.compareEventOrder",
+            "RAD.paperRadCalibration",
             "localRefs",
             "validateLocalHttpEntry",
             "http.createServer",
@@ -45,6 +46,8 @@ class WebStaticTests(unittest.TestCase):
             "state.grid.backlash",
             "state.grid.couplingGain",
             "state.grid.zCouplingGain",
+            "state.grid.paperSideLengthMm",
+            "state.grid.paperHoleToleranceMm",
             "state.view.overlayMode",
             "state.view.simulationMode",
             "state.view.membraneVisible",
@@ -80,6 +83,9 @@ class WebStaticTests(unittest.TestCase):
                 "RAD.simulate",
                 "RAD.applyPreset",
                 "RAD.optimizeCommandsForTarget",
+                "RAD.paperRadCalibration",
+                "RAD.modelLengthToMm",
+                "RAD.mmToModelLength",
             ],
             "inverse.js": ["RAD.buildInverseDesignPlan", "RAD.applyInverseDesignPlan"],
             "renderer.js": ["RAD.RadRenderer"],
@@ -690,13 +696,26 @@ class WebStaticTests(unittest.TestCase):
         ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
         self.assertIn('id="zCoupling"', html)
         self.assertIn('id="zCouplingOut"', html)
-        for symbol in ['id="pinRadius"', 'id="holeRadius"', 'id="pinHoleClearanceOut"']:
+        for symbol in [
+            'id="pinRadius"',
+            'id="holeRadius"',
+            'id="pinHoleClearanceOut"',
+            'id="paperSideLengthMm"',
+            'id="paperHoleToleranceMm"',
+            'id="backlashMmOut"',
+            'id="pinHoleClearanceMmOut"',
+            'id="holeToleranceModelOut"',
+        ]:
             self.assertIn(symbol, html)
-        for symbol in ["zCouplingGain: 0.32", "pinRadius: 0.18", "holeRadius: 0.225", "ensureGridSchema", "state.grid.zCouplingGain === undefined", "zCouplingGain"]:
+        for symbol in ["zCouplingGain: 0.32", "pinRadius: 0.18", "holeRadius: 0.225", "paperSideLengthMm: 35", "paperHoleToleranceMm: 0.1", "ensureGridSchema", "state.grid.zCouplingGain === undefined", "state.grid.paperSideLengthMm === undefined", "state.grid.paperHoleToleranceMm === undefined", "zCouplingGain"]:
             self.assertIn(symbol, state_js)
         for symbol in [
             "computeVerticalResidual",
             "pinHoleClearance",
+            "paperRadReference",
+            "paperRadCalibration",
+            "modelLengthToMm",
+            "mmToModelLength",
             "verticalDeadZone",
             "zResidual",
             "zDieOff",
@@ -705,7 +724,7 @@ class WebStaticTests(unittest.TestCase):
             "height[r][c] = locked ? 0 : -0.65 * influence[r][c] + zResidual[r][c]",
         ]:
             self.assertIn(symbol, math_js)
-        for symbol in ["zCoupling: document.getElementById(\"zCoupling\")", "pinRadius: document.getElementById(\"pinRadius\")", "holeRadius: document.getElementById(\"holeRadius\")", "this.state.grid.zCouplingGain", "this.state.grid.pinRadius", "this.state.grid.holeRadius", "zCouplingOut", "pinHoleClearanceOut"]:
+        for symbol in ["zCoupling: document.getElementById(\"zCoupling\")", "pinRadius: document.getElementById(\"pinRadius\")", "holeRadius: document.getElementById(\"holeRadius\")", "paperSideLengthMm: document.getElementById(\"paperSideLengthMm\")", "paperHoleToleranceMm: document.getElementById(\"paperHoleToleranceMm\")", "this.state.grid.zCouplingGain", "this.state.grid.pinRadius", "this.state.grid.holeRadius", "this.state.grid.paperSideLengthMm", "this.state.grid.paperHoleToleranceMm", "zCouplingOut", "pinHoleClearanceOut", "paperSideLengthMmOut", "paperHoleToleranceMmOut", "backlashMmOut", "pinHoleClearanceMmOut", "holeToleranceModelOut", "RAD.paperRadCalibration"]:
             self.assertIn(symbol, ui_js)
 
     def test_selected_influence_footprint_is_visible_and_toggleable(self):

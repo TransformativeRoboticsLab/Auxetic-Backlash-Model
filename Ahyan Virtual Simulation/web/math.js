@@ -47,6 +47,47 @@
     return Math.max(0, holeRadius - pinRadius);
   }
 
+  function paperRadReference(state) {
+    const sideLengthMm = Math.max(1e-9, Number(state.grid.paperSideLengthMm ?? 35));
+    const normalizedBacklash = 0.1;
+    const fabricationHoleToleranceMm = Math.max(0, Number(state.grid.paperHoleToleranceMm ?? 0.1));
+    return {
+      sideLengthMm,
+      normalizedBacklash,
+      poissonRatio: -0.4,
+      fabricationHoleToleranceMm,
+      referenceBacklashMm: normalizedBacklash * sideLengthMm,
+      concentricParts: 2,
+      jointsPerPart: 4,
+    };
+  }
+
+  function modelLengthToMm(state, value) {
+    const reference = paperRadReference(state);
+    const cellSize = Math.max(1e-9, Number(state.grid.cellSize || 1));
+    return (Number(value) || 0) * reference.sideLengthMm / cellSize;
+  }
+
+  function mmToModelLength(state, valueMm) {
+    const reference = paperRadReference(state);
+    const cellSize = Math.max(1e-9, Number(state.grid.cellSize || 1));
+    return (Number(valueMm) || 0) * cellSize / reference.sideLengthMm;
+  }
+
+  function paperRadCalibration(state) {
+    const reference = paperRadReference(state);
+    const backlashGap = (Number(state.grid.backlash) || 0) * (Number(state.grid.cellSize) || 1);
+    return {
+      ...reference,
+      mmPerModelUnit: reference.sideLengthMm / Math.max(1e-9, Number(state.grid.cellSize || 1)),
+      configuredBacklashMm: modelLengthToMm(state, backlashGap),
+      pinRadiusMm: modelLengthToMm(state, Number(state.grid.pinRadius ?? 0.18)),
+      holeRadiusMm: modelLengthToMm(state, Number(state.grid.holeRadius ?? 0.225)),
+      pinHoleClearanceMm: modelLengthToMm(state, pinHoleClearance(state)),
+      fabricationHoleToleranceModel: mmToModelLength(state, reference.fabricationHoleToleranceMm),
+    };
+  }
+
   function verticalDeadZone(state) {
     return Math.min(commandLimits(state).z, pinHoleClearance(state));
   }
@@ -714,6 +755,10 @@
   RAD.clampCommandAlpha = clampCommandAlpha;
   RAD.commandSaturation = commandSaturation;
   RAD.pinHoleClearance = pinHoleClearance;
+  RAD.paperRadReference = paperRadReference;
+  RAD.modelLengthToMm = modelLengthToMm;
+  RAD.mmToModelLength = mmToModelLength;
+  RAD.paperRadCalibration = paperRadCalibration;
   RAD.verticalDeadZone = verticalDeadZone;
   RAD.clampAllCommands = clampAllCommands;
   RAD.computeLinkStrain = computeLinkStrain;

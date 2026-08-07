@@ -89,6 +89,11 @@ prototype millimeters. With the default reference, one model cell side maps to
 hole fabrication tolerance maps back into normalized model units. Current pin
 and hole radii are still configured estimates, but their clearance can now be
 reported in millimeters for comparison against measured parts.
+The browser Lattice panel exposes the same scale bridge through `Paper side mm`
+and `Hole tol mm` controls. Its live readouts report configured backlash,
+pin-hole free play, and tolerance in millimeters/model units so abstract
+simulator values can be compared against prototype measurements without
+changing the normalized solver.
 For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
 paper RAD lattice into extruded plate, pin, and connector mesh components, and
 `export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for
@@ -421,6 +426,8 @@ without requiring Playwright or a browser binary.
   noncommutativity.
 - `web/operators.js`: browser-side version of the event operators with committed
   `lockAlpha` state and selected-cell order diagnostics in the viewport dock.
+- `web/math.js` `paperRadCalibration`: browser-side paper scale conversion for
+  backlash, pin-hole clearance, and fabrication tolerance readouts.
 - `compare_physical_response` / `compare_physical_pair` /
   `compare_physical_cluster`: single, pair, and cluster diagnostics that quantify
   the deviation between kinematic backlash propagation and the 3D spring-hinge

@@ -15,6 +15,8 @@
         zCoupling: document.getElementById("zCoupling"),
         pinRadius: document.getElementById("pinRadius"),
         holeRadius: document.getElementById("holeRadius"),
+        paperSideLengthMm: document.getElementById("paperSideLengthMm"),
+        paperHoleToleranceMm: document.getElementById("paperHoleToleranceMm"),
         quickDock: document.querySelector(".quick-actuation-dock"),
         toggleQuickDock: document.getElementById("toggleQuickDock"),
         quickDockMini: document.getElementById("quickDockMini"),
@@ -122,6 +124,14 @@
       });
       this.els.holeRadius.addEventListener("input", () => {
         this.state.grid.holeRadius = Math.max(Number(this.els.holeRadius.value), Number(this.state.grid.pinRadius || 0));
+        this.onChange(this.state);
+      });
+      this.els.paperSideLengthMm.addEventListener("input", () => {
+        this.state.grid.paperSideLengthMm = Math.max(1e-9, Number(this.els.paperSideLengthMm.value));
+        this.onChange(this.state);
+      });
+      this.els.paperHoleToleranceMm.addEventListener("input", () => {
+        this.state.grid.paperHoleToleranceMm = Math.max(0, Number(this.els.paperHoleToleranceMm.value));
         this.onChange(this.state);
       });
       this.els.toggleQuickDock.addEventListener("click", () => {
@@ -726,6 +736,8 @@
       this.els.zCoupling.value = s.grid.zCouplingGain ?? 0.32;
       this.els.pinRadius.value = s.grid.pinRadius ?? 0.18;
       this.els.holeRadius.value = s.grid.holeRadius ?? 0.225;
+      this.els.paperSideLengthMm.value = s.grid.paperSideLengthMm ?? 35;
+      this.els.paperHoleToleranceMm.value = s.grid.paperHoleToleranceMm ?? 0.1;
       this.els.paintRadius.value = Math.max(0, Math.min(2, Number(s.view.paintRadius || 0)));
       this.els.cellVisualMode.value = s.view.cellVisualMode || "abstract";
       this.els.simulationMode.value = s.view.simulationMode || "kinematic";
@@ -808,7 +820,13 @@
       document.getElementById("zCouplingOut").textContent = Number(s.grid.zCouplingGain ?? 0.32).toFixed(2);
       document.getElementById("pinRadiusOut").textContent = Number(s.grid.pinRadius ?? 0.18).toFixed(3);
       document.getElementById("holeRadiusOut").textContent = Number(s.grid.holeRadius ?? 0.225).toFixed(3);
+      const calibration = RAD.paperRadCalibration(s);
       document.getElementById("pinHoleClearanceOut").textContent = RAD.pinHoleClearance(s).toFixed(3);
+      document.getElementById("paperSideLengthMmOut").textContent = calibration.sideLengthMm.toFixed(1);
+      document.getElementById("paperHoleToleranceMmOut").textContent = calibration.fabricationHoleToleranceMm.toFixed(3);
+      document.getElementById("backlashMmOut").textContent = calibration.configuredBacklashMm.toFixed(3);
+      document.getElementById("pinHoleClearanceMmOut").textContent = calibration.pinHoleClearanceMm.toFixed(3);
+      document.getElementById("holeToleranceModelOut").textContent = calibration.fabricationHoleToleranceModel.toFixed(4);
       document.getElementById("alphaCommandOut").textContent = Number(this.els.alphaCommand.value).toFixed(2);
       document.getElementById("zCommandOut").textContent = Number(this.els.zCommand.value).toFixed(2);
       document.getElementById("targetAmpOut").textContent = Number(s.target.amplitude).toFixed(2);

@@ -83,6 +83,8 @@ state.grid.couplingGain = 0.42;
 state.grid.zCouplingGain = 0.37;
 state.grid.pinRadius = 0.16;
 state.grid.holeRadius = 0.22;
+state.grid.paperSideLengthMm = 42;
+state.grid.paperHoleToleranceMm = 0.12;
 state.view.camera = {
   mode: "custom",
   projection: "orthographic",
@@ -119,7 +121,17 @@ assert.strictEqual(restored.grid.couplingGain, 0.42);
 assert.strictEqual(restored.grid.zCouplingGain, 0.37);
 assert.strictEqual(restored.grid.pinRadius, 0.16);
 assert.strictEqual(restored.grid.holeRadius, 0.22);
+assert.strictEqual(restored.grid.paperSideLengthMm, 42);
+assert.strictEqual(restored.grid.paperHoleToleranceMm, 0.12);
 assert.strictEqual(Number(RAD.pinHoleClearance(restored).toFixed(6)), 0.06);
+const calibration = RAD.paperRadCalibration(restored);
+assert.strictEqual(Number(calibration.mmPerModelUnit.toFixed(6)), Number((42 / 1.25).toFixed(6)));
+assert.strictEqual(Number(calibration.configuredBacklashMm.toFixed(6)), Number((0.18 * 42).toFixed(6)));
+assert.strictEqual(Number(calibration.referenceBacklashMm.toFixed(6)), 4.2);
+assert.strictEqual(Number(calibration.pinHoleClearanceMm.toFixed(6)), Number(((0.22 - 0.16) * 42 / 1.25).toFixed(6)));
+assert.strictEqual(Number(calibration.fabricationHoleToleranceModel.toFixed(6)), Number((0.12 * 1.25 / 42).toFixed(6)));
+assert.strictEqual(Number(RAD.modelLengthToMm(restored, 1.25).toFixed(6)), 42);
+assert.strictEqual(Number(RAD.mmToModelLength(restored, 42).toFixed(6)), 1.25);
 assert.deepStrictEqual(JSON.parse(JSON.stringify(restored.view.camera)), state.view.camera);
 assert.strictEqual(restored.view.overlayMode, "height");
 assert.strictEqual(restored.view.simulationMode, "springPreview");
