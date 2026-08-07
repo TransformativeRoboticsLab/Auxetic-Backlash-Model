@@ -1,0 +1,180 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Iterable
+
+import numpy as np
+
+from .experiments import (
+    ResponseCharacterization,
+    ResponseMatrix,
+    SourceCommand,
+    build_response_matrix,
+    characterize_cluster,
+    characterize_response,
+)
+from .models import LatticeConfig
+
+
+@dataclass(frozen=True)
+class ProgrammableDiscontinuityDiagnostic:
+    """Executable summary of locality, reachability, and operator composition.
+
+    The dead-zone law and alpha/theta kinematics are paper-supported. Treating
+    superposition residuals as evidence of non-additive operator interaction is
+    a modeling diagnostic introduced here for the programmable-discontinuity
+    framework.
+    """
+
+    commands: tuple[SourceCommand, ...]
+    locked_cells: tuple[tuple[int, int], ...]
+    combined: ResponseCharacterization
+    response_matrix: ResponseMatrix
+    alpha_superposition_error: float
+    height_superposition_error: float
+    tolerance: float
+
+    @property
+    def active_operator_count(self) -> int:
+        return sum(
+            1
+            for command in self.commands
+            if abs(command.alpha) > self.tolerance or abs(command.z) > self.tolerance
+        )
+
+    @property
+    def alpha_locality_radius(self) -> int:
+        return self.combined.effective_alpha_die_off
+
+    @property
+    def z_locality_radius(self) -> int:
+        return self.combined.effective_z_die_off
+
+    @property
+    def reachable_alpha_cells(self) -> int:
+        return self.response_matrix.reachable_alpha_cells(self.tolerance)
+
+    @property
+    def reachable_height_cells(self) -> int:
+        return self.response_matrix.reachable_height_cells(self.tolerance)
+
+    @property
+    def alpha_rank(self) -> int:
+        return self.response_matrix.alpha_rank
+
+    @property
+    def height_rank(self) -> int:
+        return self.response_matrix.height_rank
+
+    @property
+    def nonadditive(self) -> bool:
+        return (
+            self.alpha_superposition_error > self.tolerance
+            or self.height_superposition_error > self.tolerance
+        )
+
+    @property
+    def total_cells(self) -> int:
+        return self.combined.alpha_delta.size
+
+    @property
+    def alpha_underactuated_cells(self) -> int:
+        return max(0, self.total_cells - self.reachable_alpha_cells)
+
+    @property
+    def height_underactuated_cells(self) -> int:
+        return max(0, self.total_cells - self.reachable_height_cells)
+
+
+def _unique_command_cells(commands: tuple[SourceCommand, ...]) -> tuple[tuple[int, int], ...]:
+    cells: list[tuple[int, int]] = []
+    seen: set[tuple[int, int]] = set()
+    for command in commands:
+        cell = (int(command.cell[0]), int(command.cell[1]))
+        if cell in seen:
+            continue
+        seen.add(cell)
+        cells.append(cell)
+    return tuple(cells)
+
+
+def _superposition_errors(
+    config: LatticeConfig,
+    commands: tuple[SourceCommand, ...],
+    combined: ResponseCharacterization,
+    locked_cells: tuple[tuple[int, int], ...],
+    tolerance: float,
+) -> tuple[float, float]:
+    if len(commands) <= 1:
+        return 0.0, 0.0
+    alpha_expected = np.zeros_like(combined.alpha_delta)
+    height_expected = np.zeros_like(combined.height_delta)
+    for command in commands:
+        single = characterize_response(
+            config,
+            (command,),
+            locked_cells=locked_cells,
+            tolerance=tolerance,
+        )
+        alpha_expected += single.alpha_delta
+        height_expected += single.height_delta
+    return (
+        float(np.max(np.abs(combined.alpha_delta - alpha_expected))),
+        float(np.max(np.abs(combined.height_delta - height_expected))),
+    )
+
+
+def diagnose_programmable_discontinuity(
+    config: LatticeConfig,
+    commands: Iterable[SourceCommand],
+    *,
+    locked_cells: Iterable[tuple[int, int]] = (),
+    actuator_cells: Iterable[tuple[int, int]] | None = None,
+    alpha_step: float = 0.12,
+    z_step: float = 0.12,
+    include_alpha: bool = True,
+    include_z: bool = True,
+    tolerance: float = 1e-9,
+) -> ProgrammableDiscontinuityDiagnostic:
+    """Measure a command set as a programmable-discontinuity operator.
+
+    Locality is measured by dead-zone die-off, reachability by response-matrix
+    support/rank, and composition by comparing the combined response to the sum
+    of isolated command responses.
+    """
+
+    command_tuple = tuple(commands)
+    locked_tuple = tuple((int(r), int(c)) for r, c in locked_cells)
+    cells = tuple(actuator_cells) if actuator_cells is not None else _unique_command_cells(command_tuple)
+    combined = characterize_cluster(
+        config,
+        command_tuple,
+        locked_cells=locked_tuple,
+        tolerance=tolerance,
+    )
+    response_matrix = build_response_matrix(
+        config,
+        actuator_cells=cells,
+        alpha_step=alpha_step,
+        z_step=z_step,
+        include_alpha=include_alpha,
+        include_z=include_z,
+        locked_cells=locked_tuple,
+        tolerance=tolerance,
+    )
+    alpha_error, height_error = _superposition_errors(
+        config,
+        command_tuple,
+        combined,
+        locked_tuple,
+        tolerance,
+    )
+    return ProgrammableDiscontinuityDiagnostic(
+        commands=command_tuple,
+        locked_cells=locked_tuple,
+        combined=combined,
+        response_matrix=response_matrix,
+        alpha_superposition_error=alpha_error,
+        height_superposition_error=height_error,
+        tolerance=tolerance,
+    )

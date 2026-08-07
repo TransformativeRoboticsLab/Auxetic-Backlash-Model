@@ -35,6 +35,12 @@ locks store `cells.lockAlpha` so a locked cell can hold the dilation reached
 before locking instead of always snapping back to the default state.
 `build_response_matrix` stacks those responses into alpha and height matrices for
 controllability checks and inverse-design experiments.
+`diagnose_programmable_discontinuity` packages the same response fields into an
+operator diagnostic: locality radius, reachable cells, response rank,
+underactuated cells, and superposition residual. The dead-zone law and
+rotating-square kinematics are paper-supported; the superposition residual is a
+new diagnostic for detecting when composed actuation operators stop behaving
+additively because of backlash thresholds, locks, or saturation.
 `solve_inverse_design` uses that response matrix in a bounded damped least-squares
 fit from target alpha/height fields to candidate actuator commands. This is the
 first Python-backed inverse layer for surface-shaping studies; it is linearized
@@ -433,6 +439,9 @@ without requiring Playwright or a browser binary.
   `compare_event_order`: executable programmable-discontinuity operators for
   sequence studies, lock invariance, locality checks, and event-order
   noncommutativity.
+- `diagnose_programmable_discontinuity`: Python operator diagnostic for locality,
+  reachable sets, response rank, underactuated regions, and additive versus
+  non-additive operator composition.
 - `web/operators.js`: browser-side version of the event operators with committed
   `lockAlpha` state and selected-cell order diagnostics in the viewport dock.
 - `web/math.js` `paperRadCalibration`: browser-side paper scale conversion for

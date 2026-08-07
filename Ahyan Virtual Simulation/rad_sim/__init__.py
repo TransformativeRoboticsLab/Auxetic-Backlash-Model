@@ -30,6 +30,10 @@ from .experiments import (
     compare_physical_pair,
     compare_physical_response,
 )
+from .framework import (
+    ProgrammableDiscontinuityDiagnostic,
+    diagnose_programmable_discontinuity,
+)
 from .kinematic import simulate_kinematic
 from .inverse import InverseDesignResult, solve_inverse_design
 from .mesh_export import (
@@ -86,6 +90,7 @@ __all__ = [
     "PhysicalResponseComparison",
     "PhysicalPairComparison",
     "ResponseMatrix",
+    "ProgrammableDiscontinuityDiagnostic",
     "InverseDesignResult",
     "build_paper_rad_cell_geometry",
     "build_paper_rad_lattice_geometry",
@@ -105,6 +110,7 @@ __all__ = [
     "compare_physical_response",
     "compare_physical_pair",
     "compare_physical_cluster",
+    "diagnose_programmable_discontinuity",
     "alpha_backlash_operator",
     "vertical_clearance_operator",
     "finite_die_off_radius",

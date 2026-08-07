@@ -25,6 +25,7 @@ from rad_sim import (
     compare_physical_response,
     compare_event_order,
     clear_actuation_event,
+    diagnose_programmable_discontinuity,
     evaluate_programmable_operators,
     finite_die_off_radius,
     local_actuation_event,
@@ -500,6 +501,46 @@ class RadSimTests(unittest.TestCase):
                 include_alpha=False,
                 include_z=False,
             )
+
+    def test_programmable_discontinuity_diagnostic_reports_locality_and_rank(self):
+        config = LatticeConfig(rows=5, cols=5, backlash=0.02, z_coupling_gain=0.35)
+        diagnostic = diagnose_programmable_discontinuity(
+            config,
+            (SourceCommand((2, 2), alpha=-0.3, z=0.4),),
+        )
+        self.assertEqual(diagnostic.active_operator_count, 1)
+        self.assertGreaterEqual(diagnostic.alpha_locality_radius, 1)
+        self.assertGreaterEqual(diagnostic.z_locality_radius, 1)
+        self.assertGreater(diagnostic.reachable_alpha_cells, 1)
+        self.assertGreater(diagnostic.reachable_height_cells, 1)
+        self.assertGreater(diagnostic.alpha_rank, 0)
+        self.assertGreater(diagnostic.height_rank, 0)
+        self.assertFalse(diagnostic.nonadditive)
+
+    def test_programmable_discontinuity_diagnostic_counts_underactuated_regions(self):
+        config = LatticeConfig(rows=3, cols=3, backlash=0.2, z_coupling_gain=0.0)
+        diagnostic = diagnose_programmable_discontinuity(
+            config,
+            (SourceCommand((1, 1), alpha=-0.12),),
+            include_z=False,
+        )
+        self.assertLess(diagnostic.reachable_alpha_cells, diagnostic.total_cells)
+        self.assertGreater(diagnostic.alpha_underactuated_cells, 0)
+        self.assertLess(diagnostic.reachable_height_cells, diagnostic.total_cells)
+        self.assertGreater(diagnostic.height_underactuated_cells, 0)
+
+    def test_programmable_discontinuity_diagnostic_detects_dead_zone_nonadditivity(self):
+        config = LatticeConfig(rows=3, cols=3, backlash=0.1, coupling_gain=0.5)
+        diagnostic = diagnose_programmable_discontinuity(
+            config,
+            (
+                SourceCommand((1, 1), alpha=0.08),
+                SourceCommand((1, 1), alpha=0.08),
+            ),
+        )
+        self.assertTrue(diagnostic.nonadditive)
+        self.assertGreater(diagnostic.alpha_superposition_error, 0.0)
+        self.assertGreater(diagnostic.combined.alpha_reach, 1)
 
     def test_physical_response_comparison_reports_spring_hinge_deviation(self):
         config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.0)
