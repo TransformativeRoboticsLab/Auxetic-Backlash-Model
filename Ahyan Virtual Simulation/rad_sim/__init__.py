@@ -37,7 +37,12 @@ from .framework import (
     diagnose_programmable_discontinuity,
 )
 from .kinematic import simulate_kinematic
-from .inverse import InverseDesignResult, solve_inverse_design
+from .inverse import (
+    InverseDesignResult,
+    InversePhysicalValidation,
+    solve_inverse_design,
+    validate_inverse_design_physical,
+)
 from .mesh_export import (
     MeshComponent,
     PaperRADMesh,
@@ -102,6 +107,7 @@ __all__ = [
     "ResponseMatrix",
     "ProgrammableDiscontinuityDiagnostic",
     "InverseDesignResult",
+    "InversePhysicalValidation",
     "build_paper_rad_cell_geometry",
     "build_paper_rad_lattice_geometry",
     "calibrate_paper_rad_config",
@@ -110,6 +116,7 @@ __all__ = [
     "iter_obj_vertices",
     "build_response_matrix",
     "solve_inverse_design",
+    "validate_inverse_design_physical",
     "alpha_to_theta",
     "theta_to_alpha",
     "backlash_activation",

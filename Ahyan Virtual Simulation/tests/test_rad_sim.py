@@ -39,6 +39,7 @@ from rad_sim import (
     simulate_kinematic,
     solve_inverse_design,
     solve_spring_hinge_3d,
+    validate_inverse_design_physical,
     vertical_clearance_operator,
 )
 from rad_sim.coupling import alpha_to_theta, theta_to_alpha
@@ -722,6 +723,33 @@ class RadSimTests(unittest.TestCase):
         self.assertEqual(solution.height_underactuated_cells, 1)
         self.assertEqual(solution.alpha_underactuated_cells, 0)
         self.assertGreater(solution.height_rms_residual, 0.0)
+
+    def test_inverse_design_physical_validation_reports_spring_hinge_fit(self):
+        config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.0)
+        target = np.zeros((3, 3), dtype=float)
+        target[1, 1] = 0.24
+        solution = solve_inverse_design(
+            config,
+            target_height=target,
+            actuator_cells=[(1, 1)],
+            include_alpha=False,
+            include_z=True,
+        )
+        validation = validate_inverse_design_physical(
+            solution,
+            LoadCase(lock_stiffness=600.0, maxiter=350),
+        )
+        self.assertTrue(validation.physical_success)
+        self.assertEqual(validation.height_residual_after.shape, target.shape)
+        self.assertEqual(validation.height_model_error.shape, target.shape)
+        self.assertEqual(validation.center_model_error.shape, (3, 3, 3))
+        self.assertGreater(validation.physical_rms_height_error_before, 0.0)
+        self.assertGreaterEqual(validation.physical_rms_height_error_after, 0.0)
+        self.assertTrue(np.isfinite(validation.physical_height_error_improvement))
+        self.assertGreaterEqual(validation.model_agreement_score, 0.0)
+        self.assertLessEqual(validation.model_agreement_score, 1.0)
+        self.assertTrue(np.isfinite(validation.center_rms_model_error))
+        self.assertTrue(np.isfinite(validation.physical_energy))
 
     def test_inverse_design_requires_target(self):
         with self.assertRaises(ValueError):

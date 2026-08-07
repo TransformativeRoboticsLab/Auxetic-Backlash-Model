@@ -8,7 +8,8 @@ from scipy.optimize import lsq_linear
 
 from .experiments import ResponseMatrix, SourceCommand, build_response_matrix
 from .kinematic import simulate_kinematic
-from .models import LatticeConfig, LatticeState, SimulationResult
+from .models import LatticeConfig, LatticeState, LoadCase, SimulationResult
+from .spring_hinge import solve_spring_hinge_3d
 
 
 @dataclass(frozen=True)
@@ -85,6 +86,36 @@ class InverseDesignResult:
         if self.height_residual is None or self.height_residual.size == 0:
             return 0.0
         return float(np.max(np.abs(self.height_residual)))
+
+
+@dataclass(frozen=True)
+class InversePhysicalValidation:
+    inverse: InverseDesignResult
+    physical_baseline: SimulationResult
+    physical_result: SimulationResult
+    height_residual_before: np.ndarray | None
+    height_residual_after: np.ndarray | None
+    alpha_residual_after: np.ndarray | None
+    height_model_error: np.ndarray
+    center_model_error: np.ndarray
+    physical_rms_height_error_before: float
+    physical_rms_height_error_after: float
+    physical_max_abs_height_error_before: float
+    physical_max_abs_height_error_after: float
+    height_rms_model_error: float
+    center_rms_model_error: float
+    max_abs_height_model_error: float
+    max_abs_center_model_error: float
+    physical_energy: float
+    physical_success: bool
+
+    @property
+    def physical_height_error_improvement(self) -> float:
+        return self.physical_rms_height_error_before - self.physical_rms_height_error_after
+
+    @property
+    def model_agreement_score(self) -> float:
+        return 1.0 / (1.0 + self.center_rms_model_error)
 
 
 def _target_array(
@@ -168,6 +199,12 @@ def _rms(values: np.ndarray) -> float:
     if values.size == 0:
         return 0.0
     return float(np.sqrt(np.mean(values**2)))
+
+
+def _max_abs(values: np.ndarray | None) -> float:
+    if values is None or values.size == 0:
+        return 0.0
+    return float(np.max(np.abs(values)))
 
 
 def _aggregate_commands(
@@ -374,4 +411,63 @@ def solve_inverse_design(
         max_command_multiplier=max_command_multiplier,
         saturated_column_count=saturated_count,
         near_saturated_column_count=near_saturated_count,
+    )
+
+
+def validate_inverse_design_physical(
+    inverse: InverseDesignResult,
+    load_case: LoadCase | None = None,
+) -> InversePhysicalValidation:
+    """Check an inverse design with the 3D spring-hinge relaxation model.
+
+    This is an explicit validation pass for the kinematic inverse proposal. It
+    does not re-optimize commands; it measures how the same command state behaves
+    under the spring-hinge preview and reports target residuals plus disagreement
+    from the kinematic solution.
+    """
+
+    config = inverse.result.config
+    physical_baseline = solve_spring_hinge_3d(config, inverse.baseline.state, load_case)
+    physical_result = solve_spring_hinge_3d(config, inverse.state, load_case)
+    physical_height = physical_result.metadata["height"]
+    baseline_height = physical_baseline.metadata["height"]
+    kinematic_height = inverse.result.metadata["height"]
+    height_residual_before = (
+        None if inverse.target_height is None else inverse.target_height - baseline_height
+    )
+    height_residual_after = (
+        None if inverse.target_height is None else inverse.target_height - physical_height
+    )
+    alpha_residual_after = (
+        None if inverse.target_alpha is None else inverse.target_alpha - physical_result.alpha
+    )
+    height_model_error = physical_height - kinematic_height
+    center_model_error = physical_result.deformed_centers_3d - inverse.result.deformed_centers_3d
+    center_norm = np.linalg.norm(center_model_error, axis=2)
+    return InversePhysicalValidation(
+        inverse=inverse,
+        physical_baseline=physical_baseline,
+        physical_result=physical_result,
+        height_residual_before=height_residual_before,
+        height_residual_after=height_residual_after,
+        alpha_residual_after=alpha_residual_after,
+        height_model_error=height_model_error,
+        center_model_error=center_model_error,
+        physical_rms_height_error_before=(
+            0.0 if height_residual_before is None else _rms(height_residual_before.reshape(-1))
+        ),
+        physical_rms_height_error_after=(
+            0.0 if height_residual_after is None else _rms(height_residual_after.reshape(-1))
+        ),
+        physical_max_abs_height_error_before=_max_abs(height_residual_before),
+        physical_max_abs_height_error_after=_max_abs(height_residual_after),
+        height_rms_model_error=_rms(height_model_error.reshape(-1)),
+        center_rms_model_error=_rms(center_norm.reshape(-1)),
+        max_abs_height_model_error=_max_abs(height_model_error),
+        max_abs_center_model_error=_max_abs(center_norm),
+        physical_energy=float(physical_result.metadata.get("energy", np.nan)),
+        physical_success=bool(
+            physical_baseline.metadata.get("success", False)
+            and physical_result.metadata.get("success", False)
+        ),
     )

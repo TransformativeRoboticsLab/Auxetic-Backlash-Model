@@ -57,6 +57,10 @@ as a calibrated nonlinear optimizer. Its result also carries unweighted alpha an
 height residual fields, reachable/underactuated masks, and command-saturation
 counts so poor target fits can be separated from mechanically unreachable or
 travel-limited regions.
+`validate_inverse_design_physical` runs a solved inverse command state through
+the 3D spring-hinge model and reports physical target residuals plus kinematic
+versus physical center/height disagreement. This is a validation layer for
+candidate commands, not a physical inverse optimizer yet.
 
 ## Browser UI
 
@@ -467,6 +471,9 @@ without requiring Playwright or a browser binary.
 - `solve_inverse_design`: bounded damped least-squares inverse design using
   finite response columns for alpha/height target fields, with residual fields,
   reachable/underactuated masks, and command-saturation diagnostics.
+- `validate_inverse_design_physical`: spring-hinge validation of a solved inverse
+  command set, reporting physical target error and kinematic/physical model
+  disagreement before a command set is treated as mechanically credible.
 - `web/operators.js`: browser-side version of the event operators with committed
   `lockAlpha` state, selected-cell order diagnostics, and
   `compareSequenceOrder` adjacent-swap/reversal sensitivity checks in the
