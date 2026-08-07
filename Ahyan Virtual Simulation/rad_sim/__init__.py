@@ -69,6 +69,8 @@ from .experiments import (
 from .framework import (
     ProgrammableDiscontinuityDiagnostic,
     diagnose_programmable_discontinuity,
+    export_programmable_discontinuity_report_json,
+    programmable_discontinuity_report,
 )
 from .kinematic import simulate_kinematic
 from .inverse import (
@@ -210,6 +212,8 @@ __all__ = [
     "compare_physical_cluster",
     "response_decay_profile",
     "diagnose_programmable_discontinuity",
+    "programmable_discontinuity_report",
+    "export_programmable_discontinuity_report_json",
     "alpha_backlash_operator",
     "vertical_clearance_operator",
     "finite_die_off_radius",

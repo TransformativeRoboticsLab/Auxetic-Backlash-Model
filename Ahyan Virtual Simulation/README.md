@@ -65,7 +65,11 @@ dead-zone law and rotating-square kinematics are paper-supported; the
 superposition residual, fitted decay profile, pairwise interaction graph, and
 sequence-order error are new diagnostics for detecting when composed operators
 stop behaving additively or commutatively because of backlash thresholds, locks,
-or saturation.
+or saturation. `programmable_discontinuity_report` and
+`export_programmable_discontinuity_report_json` serialize that diagnostic as a
+`rad-sim.programmable-discontinuity-report.v1` artifact with explicit
+paper-supported assumptions, simulator-introduced diagnostics, locality,
+reachability, composition, response-matrix, pairwise, and sequence-order fields.
 `solve_inverse_design` uses that response matrix in a bounded damped least-squares
 fit from target alpha/height fields to candidate actuator commands. This is the
 first Python-backed inverse layer for surface-shaping studies; it is linearized
@@ -545,6 +549,12 @@ without requiring Playwright or a browser binary.
   pairwise interaction matrices/hotspot/degree maps, and additive versus
   non-additive operator composition. When given an `event_sequence`, it also
   reports reversal/adjacent-swap order sensitivity.
+- `programmable_discontinuity_report` /
+  `export_programmable_discontinuity_report_json`: versioned JSON-ready research
+  artifact for the programmable-discontinuity diagnostic, including the
+  paper-supported dead-zone and alpha-theta assumptions plus simulator
+  diagnostics for locality, reachability, nonadditivity, pairwise interactions,
+  and event-order sensitivity.
 - `characterize_pairwise_interactions`: Python pairwise command interaction graph
   for identifying which actuation operators create non-additive residuals and
   mapping each command cell's strongest pair residual and non-additive degree.

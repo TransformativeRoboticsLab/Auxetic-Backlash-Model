@@ -49,6 +49,7 @@ from rad_sim import (
     export_calibration_experiment_comparison_report_json,
     export_calibration_experiment_results_template_json,
     export_inverse_design_report_json,
+    export_programmable_discontinuity_report_json,
     export_response_matrix_json,
     hardware_profile_from_config,
     inverse_design_report,
@@ -58,6 +59,7 @@ from rad_sim import (
     model_provenance,
     provenance_by_status,
     provenance_summary,
+    programmable_discontinuity_report,
     export_paper_rad_mesh_obj,
     iter_obj_vertices,
     release_event,
@@ -953,6 +955,67 @@ class RadSimTests(unittest.TestCase):
         self.assertEqual(diagnostic.pairwise_interaction_degree_map.shape, (3, 3))
         self.assertEqual(diagnostic.max_pairwise_interaction_degree, 1)
         self.assertEqual(diagnostic.pairwise_interaction_density, 1.0)
+
+    def test_programmable_discontinuity_report_exports_research_artifact(self):
+        config = LatticeConfig(
+            rows=3,
+            cols=3,
+            backlash=0.1,
+            coupling_gain=0.5,
+            z_coupling_gain=0.25,
+        )
+        diagnostic = diagnose_programmable_discontinuity(
+            config,
+            (
+                SourceCommand((1, 1), alpha=0.08, z=0.05),
+                SourceCommand((1, 1), alpha=0.08, z=0.05),
+            ),
+            locked_cells=((0, 0),),
+            event_sequence=(
+                local_actuation_event((1, 1), alpha=0.08, z=0.05),
+                lock_event((1, 1)),
+                clear_actuation_event((1, 1)),
+            ),
+        )
+        payload = programmable_discontinuity_report(
+            diagnostic,
+            config=config,
+            include_response_matrix=False,
+            include_fields=False,
+        )
+
+        self.assertEqual(payload["schema"], "rad-sim.programmable-discontinuity-report.v1")
+        self.assertEqual(payload["config"]["pinHoleClearance"], config.pin_hole_clearance)
+        self.assertEqual(payload["operators"]["activeOperatorCount"], 2)
+        self.assertEqual(payload["operators"]["lockedCells"], [{"row": 0, "col": 0}])
+        self.assertEqual(
+            payload["paperSupportedAssumptions"][0]["formula"],
+            "f(x)=max(0,x-b)+min(x+b,0)",
+        )
+        self.assertEqual(
+            payload["simulatorDiagnostics"][1]["name"],
+            "superposition residual",
+        )
+        self.assertTrue(payload["composition"]["nonadditive"])
+        self.assertTrue(payload["composition"]["orderSensitive"])
+        self.assertIsNotNone(payload["sequenceOrder"])
+        self.assertNotIn("fields", payload["combinedResponse"])
+        self.assertNotIn("alpha", payload["responseMatrix"])
+        self.assertEqual(
+            payload["responseMatrix"]["diagnostics"]["reachableHeightCells"],
+            diagnostic.reachable_height_cells,
+        )
+
+        exported = json.loads(
+            export_programmable_discontinuity_report_json(
+                diagnostic,
+                config=config,
+                include_response_matrix=False,
+                include_fields=False,
+            )
+        )
+        self.assertEqual(exported["schema"], payload["schema"])
+        self.assertEqual(exported["composition"], payload["composition"])
 
     def test_physical_response_comparison_reports_spring_hinge_deviation(self):
         config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.0)
