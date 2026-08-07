@@ -337,6 +337,7 @@ assert.strictEqual(perturbedComparison.field.worstCell.row, perturbedLift.cells[
 assert.strictEqual(perturbedComparison.field.worstCell.col, perturbedLift.cells[0].col);
 const perturbedSummary = RAD.summarizeCalibrationComparison(perturbedComparison);
 assert.deepStrictEqual(perturbedSummary.worstCell, perturbedComparison.field.worstCell);
+assert.deepStrictEqual(perturbedSummary.fitResidualWorstCell, perturbedComparison.fitResidualField.worstCell);
 readyState.experiment.calibrationResults = perturbedResults;
 readyState.experiment.calibrationComparison = perturbedComparison;
 readyState.experiment.calibrationComparisonSummary = perturbedSummary;

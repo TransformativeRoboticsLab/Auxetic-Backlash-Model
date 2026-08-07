@@ -160,8 +160,10 @@ alpha RMSE, height RMSE, maximum combined per-cell error, and worst-step readout
 Loading completed results also switches the Display panel to the `Calibration
 error` overlay, which colors the 3D lattice by the averaged per-cell alpha/height
 measurement disagreement. `Select Cal Error` moves the 3D selection to the cell
-with the largest imported measurement disagreement so the mismatch can be
-inspected without placing labels over the lattice. `Save Comparison` exports a
+with the largest imported measurement disagreement; when the `Calibration
+residual` overlay is active, the same button selects the post-fit residual
+hotspot instead. This keeps mismatch inspection in the viewport without placing
+labels over the lattice. `Save Comparison` exports a
 JSON report containing the imported comparison, per-cell error field, worst-cell
 record, signed alpha/height bias, measured-versus-simulated gain/bias fit, and
 hardware/profile metadata for lab notes or GitHub review. The fit is diagnostic:

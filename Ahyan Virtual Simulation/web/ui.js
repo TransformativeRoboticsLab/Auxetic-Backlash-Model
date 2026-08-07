@@ -1237,12 +1237,18 @@
     }
 
     selectCalibrationHotspot() {
+      const summary = this.state.experiment.calibrationComparisonSummary;
+      const comparison = this.state.experiment.calibrationComparison;
+      const residualMode = this.state.view.overlayMode === "calibrationResidual";
       const cell =
-        this.state.experiment.calibrationComparisonSummary?.worstCell ||
-        this.state.experiment.calibrationComparison?.field?.worstCell;
+        (residualMode
+          ? summary?.fitResidualWorstCell || comparison?.fitResidualField?.worstCell
+          : summary?.worstCell || comparison?.field?.worstCell) ||
+        summary?.worstCell ||
+        comparison?.field?.worstCell;
       if (!cell) return;
       this.state.selection = { r: cell.row, c: cell.col };
-      this.state.view.overlayMode = "calibrationError";
+      this.state.view.overlayMode = residualMode ? "calibrationResidual" : "calibrationError";
       this.syncControls();
       this.onChange(this.state);
     }
