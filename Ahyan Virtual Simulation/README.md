@@ -579,7 +579,9 @@ without requiring Playwright or a browser binary.
   results JSON and summarize the comparison in the Response Experiments panel.
   `calibration_experiment_comparison_report` and the browser `Save Comparison`
   action add per-cell raw/residual fields plus measured-vs-simulated gain and
-  bias diagnostics without mutating solver parameters.
+  bias diagnostics without mutating solver parameters. The report includes
+  ranked raw-error and post-fit residual cell lists so repeated local mismatch
+  candidates can be inspected after a bench run.
 - `web/renderer.js` `calibratedRad` mode and `web/mesh_export.js`
   `calibratedMeshDimensions`: profile-aware visual/export layer that uses
   measured dimensions for CAD-like inspection while keeping solver assumptions

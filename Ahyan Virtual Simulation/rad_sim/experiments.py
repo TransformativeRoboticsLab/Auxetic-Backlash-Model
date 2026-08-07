@@ -1061,8 +1061,14 @@ def _calibration_error_field(
     combined = np.hypot(alpha_error, height_error)
     max_combined = float(np.max(combined)) if combined.size else 0.0
     worst_cell = None
+    top_cells: list[dict[str, object]] = []
     if np.any(sample_count > 0):
-        row, col = np.unravel_index(int(np.argmax(combined)), combined.shape)
+        measured_indices = np.argwhere(sample_count > 0)
+        measured_errors = np.asarray(
+            [combined[row, col] for row, col in measured_indices],
+            dtype=float,
+        )
+        row, col = measured_indices[int(np.argmax(measured_errors))]
         worst_cell = {
             "row": int(row),
             "col": int(col),
@@ -1073,6 +1079,26 @@ def _calibration_error_field(
             "alphaSampleCount": int(alpha_sample_count[row, col]),
             "heightSampleCount": int(height_sample_count[row, col]),
         }
+        for row, col in np.argwhere(sample_count > 0):
+            top_cells.append(
+                {
+                    "row": int(row),
+                    "col": int(col),
+                    "alphaError": float(alpha_error[row, col]),
+                    "heightError": float(height_error[row, col]),
+                    "combinedError": float(combined[row, col]),
+                    "sampleCount": int(sample_count[row, col]),
+                    "alphaSampleCount": int(alpha_sample_count[row, col]),
+                    "heightSampleCount": int(height_sample_count[row, col]),
+                }
+            )
+        top_cells.sort(
+            key=lambda cell: (
+                -float(cell["combinedError"]),
+                int(cell["row"]),
+                int(cell["col"]),
+            )
+        )
     return {
         "alphaError": alpha_error.tolist(),
         "heightError": height_error.tolist(),
@@ -1084,6 +1110,7 @@ def _calibration_error_field(
         "maxAbsHeightError": float(np.max(np.abs(height_error))) if height_error.size else 0.0,
         "maxCombinedError": max_combined,
         "worstCell": worst_cell,
+        "topCells": top_cells[:12],
     }
 
 
@@ -1130,6 +1157,8 @@ def _summarize_calibration_comparison(
         "fit": fit,
         "fitResidualMaxCombinedError": fit_residual_field.get("maxCombinedError"),
         "fitResidualWorstCell": fit_residual_field.get("worstCell"),
+        "topCells": field.get("topCells", []),
+        "fitResidualTopCells": fit_residual_field.get("topCells", []),
         "maxAbsHeightError": worst.max_abs_height_error if worst else None,
         "maxAbsAlphaError": field.get("maxAbsAlphaError"),
         "maxCombinedError": field.get("maxCombinedError"),

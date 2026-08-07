@@ -947,10 +947,12 @@
       maxAbsHeightError: 0,
       maxCombinedError: 0,
       worstCell: null,
+      topCells: [],
     };
   }
 
   function finalizeCalibrationErrorField(field) {
+    const topCells = [];
     for (let r = 0; r < field.sampleCount.length; r += 1) {
       for (let c = 0; c < field.sampleCount[r].length; c += 1) {
         const alphaCount = field.alphaSampleCount[r][c];
@@ -979,8 +981,23 @@
             heightSampleCount: heightCount,
           };
         }
+        if (field.sampleCount[r][c] > 0) {
+          topCells.push({
+            row: r,
+            col: c,
+            alphaError: alpha,
+            heightError: height,
+            combinedError: combined,
+            sampleCount: field.sampleCount[r][c],
+            alphaSampleCount: alphaCount,
+            heightSampleCount: heightCount,
+          });
+        }
       }
     }
+    field.topCells = topCells
+      .sort((a, b) => b.combinedError - a.combinedError || a.row - b.row || a.col - b.col)
+      .slice(0, 12);
     return field;
   }
 
@@ -1145,6 +1162,8 @@
       fit: comparison?.fit || null,
       fitResidualMaxCombinedError: Number.isFinite(fitResidualField.maxCombinedError) ? fitResidualField.maxCombinedError : null,
       fitResidualWorstCell: fitResidualField.worstCell || null,
+      topCells: Array.isArray(field.topCells) ? field.topCells : [],
+      fitResidualTopCells: Array.isArray(fitResidualField.topCells) ? fitResidualField.topCells : [],
       maxAbsHeightError: worst ? Number(worst.maxAbsHeightError) : null,
       maxAbsAlphaError: Number.isFinite(field.maxAbsAlphaError) ? field.maxAbsAlphaError : null,
       maxCombinedError: Number.isFinite(field.maxCombinedError) ? field.maxCombinedError : null,

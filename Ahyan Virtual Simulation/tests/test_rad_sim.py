@@ -752,6 +752,8 @@ class RadSimTests(unittest.TestCase):
         self.assertAlmostEqual(report["comparison"]["field"]["maxCombinedError"], 0.0)
         self.assertAlmostEqual(report["comparison"]["fitResidualField"]["maxCombinedError"], 0.0)
         self.assertIsNotNone(report["summary"]["worstCell"])
+        self.assertGreater(len(report["summary"]["topCells"]), 0)
+        self.assertEqual(report["summary"]["topCells"][0], report["summary"]["worstCell"])
         perturbed_json = json.loads(json.dumps(template_json))
         perturbed_step = next(
             step
@@ -763,6 +765,8 @@ class RadSimTests(unittest.TestCase):
         perturbed_report = calibration_experiment_comparison_report(config, protocol, perturbed)
         self.assertGreater(perturbed_report["comparison"]["field"]["maxCombinedError"], 0.0)
         self.assertGreater(perturbed_report["comparison"]["fit"]["height"]["rmsRawError"], 0.0)
+        self.assertGreater(len(perturbed_report["summary"]["topCells"]), 0)
+        self.assertGreater(len(perturbed_report["summary"]["fitResidualTopCells"]), 0)
         self.assertTrue(
             any(
                 any(value > 0 for value in row)
