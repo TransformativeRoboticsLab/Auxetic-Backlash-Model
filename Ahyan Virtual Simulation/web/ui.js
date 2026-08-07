@@ -25,6 +25,7 @@
         locked: document.getElementById("locked"),
         actuatorAllowed: document.getElementById("actuatorAllowed"),
         cellVisualMode: document.getElementById("cellVisualMode"),
+        simulationMode: document.getElementById("simulationMode"),
         overlayMode: document.getElementById("overlayMode"),
         showMembrane: document.getElementById("showMembrane"),
         showReference: document.getElementById("showReference"),
@@ -137,6 +138,10 @@
       this.els.actuatorAllowed.addEventListener("change", () => this.updateSelectedActuatorMask());
       this.els.cellVisualMode.addEventListener("change", () => {
         this.applyCellVisualMode(this.els.cellVisualMode.value);
+        this.onChange(this.state);
+      });
+      this.els.simulationMode.addEventListener("change", () => {
+        this.state.view.simulationMode = this.els.simulationMode.value === "springPreview" ? "springPreview" : "kinematic";
         this.onChange(this.state);
       });
       this.els.overlayMode.addEventListener("change", () => {
@@ -638,6 +643,7 @@
       this.els.holeRadius.value = s.grid.holeRadius ?? 0.225;
       this.els.paintRadius.value = Math.max(0, Math.min(2, Number(s.view.paintRadius || 0)));
       this.els.cellVisualMode.value = s.view.cellVisualMode || "abstract";
+      this.els.simulationMode.value = s.view.simulationMode || "kinematic";
       this.els.overlayMode.value = s.view.overlayMode;
       this.els.showMembrane.checked = s.view.membraneVisible;
       this.els.showReference.checked = s.view.referenceVisible !== false;
@@ -919,7 +925,7 @@
     }
 
     saveObj() {
-      const mesh = RAD.buildPaperRadMesh(this.state);
+      const mesh = RAD.buildPaperRadMesh(this.state, { sim: RAD.simulateActive(this.state) });
       const blob = new Blob([RAD.exportPaperRadMeshObj(mesh)], { type: "text/plain" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");

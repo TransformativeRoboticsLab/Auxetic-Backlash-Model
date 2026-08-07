@@ -40,7 +40,7 @@
     state: ["Cell State", "free/idle", "locked/active"],
   };
   let state = RAD.createState(7, 7);
-  let sim = RAD.simulate(state);
+  let sim = RAD.simulateActive(state);
   let renderer = null;
   let ui = null;
   let focusMode = false;
@@ -270,8 +270,9 @@
     const explodedText = state.view.explodedSelected ? " Exploded cell detail active." : "";
     const paintText = state.view.paintMode ? " Paint clicks apply current command." : "";
     const projectionText = renderer.projectionMode === "orthographic" ? "orthographic" : "perspective";
+    const modelText = sim.metrics.physicalPreview ? " Model: spring preview." : " Model: kinematic.";
     setStatus(
-      `Workspace: ${workspaceMode}. View: ${renderer.viewMode || "iso"} ${projectionText}.${hoverText}${isolateText}${explodedText}${paintText} Cell visual: ${state.view.cellVisualMode || "abstract"}. Overlay: ${state.view.overlayMode}. Theta ${sim.metrics.minTheta.toFixed(1)} to ${sim.metrics.maxTheta.toFixed(1)} deg. Target error ${sim.metrics.rmsTargetError.toFixed(3)}. Actuators ${sim.metrics.recommendedActuators}.`
+      `Workspace: ${workspaceMode}. View: ${renderer.viewMode || "iso"} ${projectionText}.${hoverText}${isolateText}${explodedText}${paintText}${modelText} Cell visual: ${state.view.cellVisualMode || "abstract"}. Overlay: ${state.view.overlayMode}. Theta ${sim.metrics.minTheta.toFixed(1)} to ${sim.metrics.maxTheta.toFixed(1)} deg. Target error ${sim.metrics.rmsTargetError.toFixed(3)}. Actuators ${sim.metrics.recommendedActuators}.`
     );
   }
 
@@ -307,7 +308,7 @@
   function renderAll(nextState) {
     state = nextState;
     const savedCamera = state.view.camera;
-    sim = RAD.simulate(state);
+    sim = RAD.simulateActive(state);
     RAD.updateDerivedCells(state, sim);
     ui.setState(state);
     ui.updateLabels(sim);

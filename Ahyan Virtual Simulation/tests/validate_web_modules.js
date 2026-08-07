@@ -14,7 +14,7 @@ context.window.window = context.window;
 context.window.console = console;
 vm.createContext(context);
 
-for (const filename of ["state.js", "math.js", "inverse.js", "analysis.js", "mesh_export.js"]) {
+for (const filename of ["state.js", "math.js", "inverse.js", "analysis.js", "physics.js", "mesh_export.js"]) {
   const source = fs.readFileSync(path.join(web, filename), "utf8");
   vm.runInContext(source, context, { filename });
 }
@@ -35,6 +35,7 @@ const scriptOrder = [
   "./math.js",
   "./inverse.js",
   "./analysis.js",
+  "./physics.js",
   "./mesh_export.js",
   "./renderer.js",
   "./ui.js",
@@ -90,6 +91,7 @@ state.view.camera = {
   target: { x: 0.2, y: -0.1, z: 0.05 },
 };
 state.view.overlayMode = "height";
+state.view.simulationMode = "springPreview";
 state.view.membraneVisible = false;
 state.view.paintRadius = 2;
 state.cells.commandAlpha[2][3] = -0.24;
@@ -117,6 +119,7 @@ assert.strictEqual(restored.grid.holeRadius, 0.22);
 assert.strictEqual(Number(RAD.pinHoleClearance(restored).toFixed(6)), 0.06);
 assert.deepStrictEqual(JSON.parse(JSON.stringify(restored.view.camera)), state.view.camera);
 assert.strictEqual(restored.view.overlayMode, "height");
+assert.strictEqual(restored.view.simulationMode, "springPreview");
 assert.strictEqual(restored.view.membraneVisible, false);
 assert.deepStrictEqual(JSON.parse(JSON.stringify(restored.selection)), state.selection);
 assert.strictEqual(restored.view.paintRadius, 2);
@@ -136,7 +139,12 @@ assert.strictEqual(Number(restored.cells.theta[2][3].toFixed(6)), Number(sim.the
 assert.strictEqual(Number(restored.cells.z[2][3].toFixed(6)), Number(sim.height[2][3].toFixed(6)));
 assert.ok(Number.isFinite(sim.metrics.meanAlpha));
 assert.ok(Number.isFinite(sim.metrics.rmsTargetError));
-const browserMesh = RAD.buildPaperRadMesh(restored, { sim, includePins: false });
+const activeSim = RAD.simulateActive(restored);
+assert.strictEqual(activeSim.metrics.model, "spring-preview");
+assert.strictEqual(activeSim.metrics.physicalPreview, true);
+assert.ok(Number.isFinite(activeSim.metrics.physicalRmsHeightDelta));
+assert.ok(activeSim.metrics.physicalIterations > 0);
+const browserMesh = RAD.buildPaperRadMesh(restored, { sim: activeSim, includePins: false });
 assert.ok(browserMesh.vertexCount > 0, "browser OBJ mesh should include vertices");
 assert.ok(browserMesh.faceCount > 0, "browser OBJ mesh should include faces");
 assert.ok(browserMesh.components.some((part) => part.kind === "connector"), "browser OBJ mesh should include connector components");

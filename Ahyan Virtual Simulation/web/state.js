@@ -88,6 +88,7 @@
       },
       view: {
         cellVisualMode: "abstract",
+        simulationMode: "kinematic",
         isolateSelected: false,
         explodedSelected: false,
         quickDockCollapsed: false,
@@ -420,6 +421,7 @@
     ensureCellSchema(state);
     state.view = { ...state.view, ...parsed.view };
     if (!state.view.cellVisualMode) state.view.cellVisualMode = "abstract";
+    if (!state.view.simulationMode) state.view.simulationMode = "kinematic";
     if (state.view.isolateSelected === undefined) state.view.isolateSelected = false;
     if (state.view.explodedSelected === undefined) state.view.explodedSelected = false;
     if (state.view.quickDockCollapsed === undefined) state.view.quickDockCollapsed = false;

@@ -26,6 +26,7 @@ class WebStaticTests(unittest.TestCase):
             "RAD.exportExperimentSequence",
             "RAD.importExperimentSequence",
             "RAD.exportPaperRadMeshObj",
+            "RAD.simulateActive",
             "localRefs",
             "validateLocalHttpEntry",
             "http.createServer",
@@ -44,6 +45,7 @@ class WebStaticTests(unittest.TestCase):
             "state.grid.couplingGain",
             "state.grid.zCouplingGain",
             "state.view.overlayMode",
+            "state.view.simulationMode",
             "state.view.membraneVisible",
             "state.experiment.presetName",
             "web module validation passed",
@@ -57,13 +59,15 @@ class WebStaticTests(unittest.TestCase):
         self.assertNotIn("cdn.jsdelivr.net", html)
         self.assertLess(html.index("three.min.js"), html.index("./renderer.js"))
         self.assertLess(html.index("./math.js"), html.index("./analysis.js"))
-        self.assertLess(html.index("./analysis.js"), html.index("./mesh_export.js"))
+        self.assertLess(html.index("./analysis.js"), html.index("./physics.js"))
+        self.assertLess(html.index("./physics.js"), html.index("./mesh_export.js"))
         self.assertLess(html.index("./mesh_export.js"), html.index("./renderer.js"))
 
     def test_browser_modules_expose_expected_api(self):
         expected = {
             "state.js": ["RAD.createState", "RAD.serialize", "RAD.updateDerivedCells", "RAD.exportExperimentSequence", "RAD.importExperimentSequence", "RAD.deserialize"],
             "analysis.js": ["RAD.analyzeExperimentSequence", "RAD.exportSequenceMetricsCsv", "RAD.sequenceFrames"],
+            "physics.js": ["RAD.simulatePhysicalRelaxation", "RAD.simulateActive"],
             "mesh_export.js": ["RAD.buildPaperRadMesh", "RAD.exportPaperRadMeshObj"],
             "math.js": [
                 "RAD.backlashActivation",
@@ -528,9 +532,11 @@ class WebStaticTests(unittest.TestCase):
     def test_error_and_travel_overlays_are_present(self):
         html = (WEB / "index.html").read_text(encoding="utf-8")
         self.assertIn('id="cellVisualMode"', html)
+        self.assertIn('id="simulationMode"', html)
         self.assertIn('value="abstract"', html)
         self.assertIn('value="paperRad"', html)
         self.assertIn('value="mechanism"', html)
+        self.assertIn('value="springPreview"', html)
         for option in ['value="zresidual"', 'value="error"', 'value="travel"', 'value="saturation"', 'value="strain"', 'value="displacement"', 'value="slope"', 'value="inverse"', 'value="sensitivity"', 'value="reachability"']:
             self.assertIn(option, html)
         for metric_id in ["recommendedActuators", "candidateActuators", "designScore", "projectedScore", "plannerSteps", "meanTravel", "maxSaturation", "saturatedActuators", "maxLinkStrain", "meanLinkStrain", "maxReferenceDisplacement", "maxSurfaceSlope", "meanSurfaceSlope", "signedTargetError", "targetErrorRange", "sensitivityCells", "meanSensitivity", "jacobianColumns", "meanReachability", "linearFitSteps", "linearFitError", "fps", "drawCalls", "triangles"]:
@@ -546,6 +552,7 @@ class WebStaticTests(unittest.TestCase):
             self.assertIn(f'id="{control_id}"', html)
         state_js = (WEB / "state.js").read_text(encoding="utf-8")
         self.assertIn('cellVisualMode: "abstract"', state_js)
+        self.assertIn('simulationMode: "kinematic"', state_js)
         for symbol in ["targetErrorVectorsVisible: true", "state.view.targetErrorVectorsVisible"]:
             self.assertIn(symbol, state_js)
         math_js = (WEB / "math.js").read_text(encoding="utf-8")
@@ -553,6 +560,7 @@ class WebStaticTests(unittest.TestCase):
             self.assertIn(symbol, math_js)
         ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
         self.assertIn("this.els.cellVisualMode.addEventListener", ui_js)
+        self.assertIn("this.els.simulationMode.addEventListener", ui_js)
         for symbol in [
             "applyCellVisualMode(mode)",
             '["abstract", "paperRad", "mechanism"].includes(mode)',
@@ -839,7 +847,8 @@ class WebStaticTests(unittest.TestCase):
     def test_browser_obj_export_controls_are_present(self):
         html = (WEB / "index.html").read_text(encoding="utf-8")
         self.assertIn('id="saveObj"', html)
-        self.assertLess(html.index("./analysis.js"), html.index("./mesh_export.js"))
+        self.assertLess(html.index("./analysis.js"), html.index("./physics.js"))
+        self.assertLess(html.index("./physics.js"), html.index("./mesh_export.js"))
         self.assertLess(html.index("./mesh_export.js"), html.index("./renderer.js"))
         mesh_js = (WEB / "mesh_export.js").read_text(encoding="utf-8")
         for symbol in [
@@ -854,8 +863,35 @@ class WebStaticTests(unittest.TestCase):
         ]:
             self.assertIn(symbol, mesh_js)
         ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
-        for symbol in ["saveObj", "rad-sim-paper-rad.obj", "RAD.buildPaperRadMesh", "RAD.exportPaperRadMeshObj"]:
+        for symbol in ["saveObj", "rad-sim-paper-rad.obj", "RAD.buildPaperRadMesh", "RAD.simulateActive", "RAD.exportPaperRadMeshObj"]:
             self.assertIn(symbol, ui_js)
+
+    def test_browser_physical_preview_mode_is_present(self):
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        self.assertIn('id="simulationMode"', html)
+        self.assertIn('value="springPreview"', html)
+        self.assertLess(html.index("./analysis.js"), html.index("./physics.js"))
+        self.assertLess(html.index("./physics.js"), html.index("./mesh_export.js"))
+
+        state_js = (WEB / "state.js").read_text(encoding="utf-8")
+        self.assertIn('simulationMode: "kinematic"', state_js)
+
+        physics_js = (WEB / "physics.js").read_text(encoding="utf-8")
+        for symbol in [
+            "simulatePhysicalRelaxation",
+            "simulateActive",
+            "spring-preview",
+            "physicalRmsHeightDelta",
+            "recomputeLinkStrain",
+            "recomputeSlope",
+            "RAD.simulatePhysicalRelaxation",
+            "RAD.simulateActive",
+        ]:
+            self.assertIn(symbol, physics_js)
+
+        app_js = (WEB / "app.js").read_text(encoding="utf-8")
+        for symbol in ["RAD.simulateActive", "Model: spring preview"]:
+            self.assertIn(symbol, app_js)
 
     def test_sequence_analysis_module_exports_csv_metrics(self):
         analysis_js = (WEB / "analysis.js").read_text(encoding="utf-8")

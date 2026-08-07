@@ -76,6 +76,11 @@ paper RAD lattice into extruded plate, pin, and connector mesh components, and
 CAD-style review and downstream tooling; it is not yet a fabrication export.
 The browser Persistence panel also has `Save OBJ`, which exports the current
 visible simulation state as a normalized paper-RAD OBJ mesh.
+The Display panel can switch the visible solver between `Kinematic` and
+`3D spring preview`. Kinematic mode shows the direct backlash propagation model;
+spring preview runs a lightweight browser relaxation over the cell-center graph,
+then recomputes height, slope, and link-strain diagnostics for a more physical
+inspection view without replacing the Python spring-hinge solver.
 Saved `rad-sim.browser.v1` JSON includes both command inputs and derived cell
 state. `cells.commandAlpha`, `cells.commandZ`, and `cells.locked` remain the
 authoritative controls; `cells.alpha`, `cells.theta`, and `cells.z` are refreshed
