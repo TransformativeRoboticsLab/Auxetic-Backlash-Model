@@ -41,14 +41,18 @@ controllability checks and inverse-design experiments.
 `response_decay_profile` fits the shellwise maximum response versus Manhattan
 distance from active source cells, matching the browser Response Experiments
 decay readout for notebook-side locality studies.
+`characterize_pairwise_interactions` evaluates command pairs and builds
+alpha/height residual matrices that identify which local operators are
+responsible for non-additive composition.
 `diagnose_programmable_discontinuity` packages the same response fields into an
 operator diagnostic: locality radius, reachable cells, response rank,
-underactuated cells, fitted decay ratio/length, superposition residual, and
-optional event-sequence order sensitivity. The dead-zone law and rotating-square
-kinematics are paper-supported; the superposition residual, fitted decay profile,
-and sequence-order error are new diagnostics for detecting when composed
-operators stop behaving additively or commutatively because of backlash
-thresholds, locks, or saturation.
+underactuated cells, fitted decay ratio/length, pairwise interaction graph,
+superposition residual, and optional event-sequence order sensitivity. The
+dead-zone law and rotating-square kinematics are paper-supported; the
+superposition residual, fitted decay profile, pairwise interaction graph, and
+sequence-order error are new diagnostics for detecting when composed operators
+stop behaving additively or commutatively because of backlash thresholds, locks,
+or saturation.
 `solve_inverse_design` uses that response matrix in a bounded damped least-squares
 fit from target alpha/height fields to candidate actuator commands. This is the
 first Python-backed inverse layer for surface-shaping studies; it is linearized
@@ -467,8 +471,11 @@ without requiring Playwright or a browser binary.
   checks, adjacent-swap sensitivity, and event-order noncommutativity.
 - `diagnose_programmable_discontinuity`: Python operator diagnostic for locality,
   reachable sets, response rank, underactuated regions, shellwise response decay,
-  and additive versus non-additive operator composition. When given an
-  `event_sequence`, it also reports reversal/adjacent-swap order sensitivity.
+  pairwise interaction matrices, and additive versus non-additive operator
+  composition. When given an `event_sequence`, it also reports
+  reversal/adjacent-swap order sensitivity.
+- `characterize_pairwise_interactions`: Python pairwise command interaction graph
+  for identifying which actuation operators create non-additive residuals.
 - `response_decay_profile`: Python log-linear shell-max locality diagnostic that
   mirrors the browser Response Experiments decay ratio/length readout.
 - `solve_inverse_design`: bounded damped least-squares inverse design using

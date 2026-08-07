@@ -19,6 +19,7 @@ from rad_sim import (
     calibrate_paper_rad_config,
     characterize_cluster,
     characterize_pair,
+    characterize_pairwise_interactions,
     characterize_single_cell,
     compare_physical_cluster,
     compare_physical_pair,
@@ -541,6 +542,24 @@ class RadSimTests(unittest.TestCase):
         self.assertGreaterEqual(decay.alpha_length, 0.0)
         self.assertGreaterEqual(decay.z_length, 0.0)
 
+    def test_pairwise_interaction_graph_detects_nonadditive_pair(self):
+        config = LatticeConfig(rows=3, cols=3, backlash=0.1, coupling_gain=0.5)
+        graph = characterize_pairwise_interactions(
+            config,
+            (
+                SourceCommand((1, 1), alpha=0.08),
+                SourceCommand((1, 1), alpha=0.08),
+            ),
+        )
+        self.assertEqual(graph.total_pair_count, 1)
+        self.assertEqual(graph.evaluated_pair_count, 1)
+        self.assertFalse(graph.truncated)
+        self.assertEqual(graph.nonadditive_pair_count, 1)
+        self.assertGreater(graph.max_alpha_error, 0.0)
+        self.assertEqual(graph.interactions[0].manhattan_distance, 0)
+        self.assertTrue(graph.interactions[0].nonadditive)
+        np.testing.assert_allclose(graph.alpha_error_matrix, graph.alpha_error_matrix.T)
+
     def test_programmable_discontinuity_diagnostic_reports_locality_and_rank(self):
         config = LatticeConfig(rows=5, cols=5, backlash=0.02, z_coupling_gain=0.35)
         diagnostic = diagnose_programmable_discontinuity(
@@ -602,6 +621,9 @@ class RadSimTests(unittest.TestCase):
         self.assertTrue(diagnostic.nonadditive)
         self.assertGreater(diagnostic.alpha_superposition_error, 0.0)
         self.assertGreater(diagnostic.combined.alpha_reach, 1)
+        self.assertIsNotNone(diagnostic.pairwise_interactions)
+        self.assertEqual(diagnostic.nonadditive_pair_count, 1)
+        self.assertGreater(diagnostic.max_pairwise_interaction_error, 0.0)
 
     def test_physical_response_comparison_reports_spring_hinge_deviation(self):
         config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.0)

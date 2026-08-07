@@ -6,12 +6,14 @@ from typing import Iterable
 import numpy as np
 
 from .experiments import (
+    OperatorInteractionGraph,
     ResponseCharacterization,
     ResponseDecayProfile,
     ResponseMatrix,
     SourceCommand,
     build_response_matrix,
     characterize_cluster,
+    characterize_pairwise_interactions,
     characterize_response,
     response_decay_profile,
 )
@@ -43,6 +45,7 @@ class ProgrammableDiscontinuityDiagnostic:
     event_sequence: tuple[ProgrammableDiscontinuityEvent, ...] = ()
     sequence_order: SequenceOrderDiagnostic | None = None
     decay_profile: ResponseDecayProfile | None = None
+    pairwise_interactions: OperatorInteractionGraph | None = None
 
     @property
     def active_operator_count(self) -> int:
@@ -112,6 +115,22 @@ class ProgrammableDiscontinuityDiagnostic:
         return 0.0 if self.sequence_order is None else self.sequence_order.max_order_error
 
     @property
+    def nonadditive_pair_count(self) -> int:
+        if self.pairwise_interactions is None:
+            return 0
+        return self.pairwise_interactions.nonadditive_pair_count
+
+    @property
+    def max_pairwise_interaction_error(self) -> float:
+        if self.pairwise_interactions is None:
+            return 0.0
+        return self.pairwise_interactions.max_interaction_error
+
+    @property
+    def pairwise_interactions_truncated(self) -> bool:
+        return bool(self.pairwise_interactions and self.pairwise_interactions.truncated)
+
+    @property
     def total_cells(self) -> int:
         return self.combined.alpha_delta.size
 
@@ -173,13 +192,15 @@ def diagnose_programmable_discontinuity(
     include_alpha: bool = True,
     include_z: bool = True,
     event_sequence: Iterable[ProgrammableDiscontinuityEvent] | None = None,
+    pairwise_max_pairs: int | None = 64,
     tolerance: float = 1e-9,
 ) -> ProgrammableDiscontinuityDiagnostic:
     """Measure a command set as a programmable-discontinuity operator.
 
     Locality is measured by dead-zone die-off, reachability by response-matrix
     support/rank, and composition by comparing the combined response to the sum
-    of isolated command responses.
+    of isolated command responses. Pairwise interactions are bounded by
+    ``pairwise_max_pairs`` so large command sets remain usable.
     """
 
     command_tuple = tuple(commands)
@@ -218,6 +239,13 @@ def diagnose_programmable_discontinuity(
         else None
     )
     decay_profile = response_decay_profile(combined, tolerance=tolerance)
+    pairwise_interactions = characterize_pairwise_interactions(
+        config,
+        command_tuple,
+        locked_cells=locked_tuple,
+        tolerance=tolerance,
+        max_pairs=pairwise_max_pairs,
+    )
     return ProgrammableDiscontinuityDiagnostic(
         commands=command_tuple,
         locked_cells=locked_tuple,
@@ -229,4 +257,5 @@ def diagnose_programmable_discontinuity(
         event_sequence=event_tuple,
         sequence_order=sequence_order,
         decay_profile=decay_profile,
+        pairwise_interactions=pairwise_interactions,
     )

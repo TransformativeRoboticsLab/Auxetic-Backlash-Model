@@ -61,6 +61,61 @@ class PairCharacterization:
 
 
 @dataclass(frozen=True)
+class OperatorPairInteraction:
+    first_index: int
+    second_index: int
+    first: SourceCommand
+    second: SourceCommand
+    manhattan_distance: int
+    alpha_superposition_error: float
+    height_superposition_error: float
+    tolerance: float
+
+    @property
+    def max_error(self) -> float:
+        return max(self.alpha_superposition_error, self.height_superposition_error)
+
+    @property
+    def nonadditive(self) -> bool:
+        return self.max_error > self.tolerance
+
+
+@dataclass(frozen=True)
+class OperatorInteractionGraph:
+    commands: tuple[SourceCommand, ...]
+    interactions: tuple[OperatorPairInteraction, ...]
+    alpha_error_matrix: np.ndarray
+    height_error_matrix: np.ndarray
+    total_pair_count: int
+    truncated: bool
+    tolerance: float
+
+    @property
+    def evaluated_pair_count(self) -> int:
+        return len(self.interactions)
+
+    @property
+    def nonadditive_pair_count(self) -> int:
+        return sum(1 for interaction in self.interactions if interaction.nonadditive)
+
+    @property
+    def max_alpha_error(self) -> float:
+        if self.alpha_error_matrix.size == 0:
+            return 0.0
+        return float(np.max(self.alpha_error_matrix))
+
+    @property
+    def max_height_error(self) -> float:
+        if self.height_error_matrix.size == 0:
+            return 0.0
+        return float(np.max(self.height_error_matrix))
+
+    @property
+    def max_interaction_error(self) -> float:
+        return max(self.max_alpha_error, self.max_height_error)
+
+
+@dataclass(frozen=True)
 class PhysicalResponseComparison:
     commands: tuple[SourceCommand, ...]
     locked_cells: tuple[tuple[int, int], ...]
@@ -330,6 +385,94 @@ def characterize_pair(
         second=second_response,
         alpha_superposition_error=float(np.max(np.abs(combined.alpha_delta - alpha_expected))),
         height_superposition_error=float(np.max(np.abs(combined.height_delta - height_expected))),
+    )
+
+
+def characterize_pairwise_interactions(
+    config: LatticeConfig,
+    commands: Iterable[SourceCommand],
+    locked_cells: Iterable[tuple[int, int]] = (),
+    tolerance: float = 1e-9,
+    max_pairs: int | None = None,
+) -> OperatorInteractionGraph:
+    command_tuple = tuple(commands)
+    command_count = len(command_tuple)
+    total_pair_count = command_count * (command_count - 1) // 2
+    alpha_error_matrix = np.zeros((command_count, command_count), dtype=float)
+    height_error_matrix = np.zeros((command_count, command_count), dtype=float)
+    if command_count < 2:
+        return OperatorInteractionGraph(
+            commands=command_tuple,
+            interactions=(),
+            alpha_error_matrix=alpha_error_matrix,
+            height_error_matrix=height_error_matrix,
+            total_pair_count=total_pair_count,
+            truncated=False,
+            tolerance=tolerance,
+        )
+
+    max_pairs = total_pair_count if max_pairs is None else max(0, int(max_pairs))
+    singles = [
+        characterize_response(config, (command,), locked_cells, tolerance)
+        for command in command_tuple
+    ]
+    interactions: list[OperatorPairInteraction] = []
+    evaluated = 0
+    for first_index in range(command_count):
+        for second_index in range(first_index + 1, command_count):
+            if evaluated >= max_pairs:
+                return OperatorInteractionGraph(
+                    commands=command_tuple,
+                    interactions=tuple(interactions),
+                    alpha_error_matrix=alpha_error_matrix,
+                    height_error_matrix=height_error_matrix,
+                    total_pair_count=total_pair_count,
+                    truncated=True,
+                    tolerance=tolerance,
+                )
+            first = command_tuple[first_index]
+            second = command_tuple[second_index]
+            combined = characterize_response(
+                config,
+                (first, second),
+                locked_cells,
+                tolerance,
+            )
+            expected_alpha = (
+                singles[first_index].alpha_delta + singles[second_index].alpha_delta
+            )
+            expected_height = (
+                singles[first_index].height_delta + singles[second_index].height_delta
+            )
+            alpha_error = float(np.max(np.abs(combined.alpha_delta - expected_alpha)))
+            height_error = float(np.max(np.abs(combined.height_delta - expected_height)))
+            alpha_error_matrix[first_index, second_index] = alpha_error
+            alpha_error_matrix[second_index, first_index] = alpha_error
+            height_error_matrix[first_index, second_index] = height_error
+            height_error_matrix[second_index, first_index] = height_error
+            distance = abs(first.cell[0] - second.cell[0]) + abs(first.cell[1] - second.cell[1])
+            interactions.append(
+                OperatorPairInteraction(
+                    first_index=first_index,
+                    second_index=second_index,
+                    first=first,
+                    second=second,
+                    manhattan_distance=int(distance),
+                    alpha_superposition_error=alpha_error,
+                    height_superposition_error=height_error,
+                    tolerance=tolerance,
+                )
+            )
+            evaluated += 1
+
+    return OperatorInteractionGraph(
+        commands=command_tuple,
+        interactions=tuple(interactions),
+        alpha_error_matrix=alpha_error_matrix,
+        height_error_matrix=height_error_matrix,
+        total_pair_count=total_pair_count,
+        truncated=False,
+        tolerance=tolerance,
     )
 
 

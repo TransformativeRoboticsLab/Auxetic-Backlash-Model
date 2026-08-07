@@ -15,6 +15,8 @@ from .cell_geometry import (
 )
 from .coupling import alpha_to_theta, backlash_activation, theta_to_alpha
 from .experiments import (
+    OperatorInteractionGraph,
+    OperatorPairInteraction,
     PairCharacterization,
     PhysicalPairComparison,
     PhysicalResponseComparison,
@@ -25,6 +27,7 @@ from .experiments import (
     build_response_matrix,
     characterize_cluster,
     characterize_pair,
+    characterize_pairwise_interactions,
     characterize_response,
     characterize_single_cell,
     compare_physical_cluster,
@@ -99,6 +102,8 @@ __all__ = [
     "AdjacentSwapDiagnostic",
     "SequenceOrderDiagnostic",
     "SourceCommand",
+    "OperatorPairInteraction",
+    "OperatorInteractionGraph",
     "ResponseCharacterization",
     "ResponseDecayProfile",
     "PairCharacterization",
@@ -123,6 +128,7 @@ __all__ = [
     "characterize_response",
     "characterize_single_cell",
     "characterize_pair",
+    "characterize_pairwise_interactions",
     "characterize_cluster",
     "compare_physical_response",
     "compare_physical_pair",
