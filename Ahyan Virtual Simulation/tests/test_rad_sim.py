@@ -9,6 +9,7 @@ from rad_sim import (
     LatticeConfig,
     LatticeState,
     LoadCase,
+    CALIBRATION_SOLVER_GAPS,
     PAPER_RAD_REFERENCE,
     RADHardwareProfile,
     SourceCommand,
@@ -19,6 +20,7 @@ from rad_sim import (
     build_paper_rad_lattice_geometry,
     build_paper_rad_lattice_mesh,
     calibrate_paper_rad_config,
+    calibration_readiness,
     characterize_cluster,
     characterize_pair,
     characterize_pairwise_interactions,
@@ -205,6 +207,37 @@ class RadSimTests(unittest.TestCase):
         reference = profile.to_reference()
         self.assertAlmostEqual(reference.side_length_mm, 35.0)
         self.assertAlmostEqual(reference.fabrication_hole_tolerance_mm, 0.1)
+
+    def test_calibration_readiness_reports_partial_and_solver_gaps(self):
+        profile = RADHardwareProfile(
+            pin_radius_mm=6.3,
+            hole_radius_mm=7.875,
+            plate_thickness_mm=2.1,
+        )
+        readiness = calibration_readiness(profile)
+        self.assertEqual(readiness.level, "partial-measured")
+        self.assertFalse(readiness.visual_ready)
+        self.assertFalse(readiness.mesh_ready)
+        self.assertFalse(readiness.solver_ready)
+        self.assertIn("joint_stack_height_mm", readiness.visual_missing_fields)
+        self.assertEqual(readiness.solver_gaps, CALIBRATION_SOLVER_GAPS)
+        self.assertIn("solver still", readiness.summary)
+
+    def test_calibration_readiness_reports_mesh_calibrated_geometry(self):
+        profile = RADHardwareProfile(
+            pin_radius_mm=6.3,
+            hole_radius_mm=7.875,
+            plate_thickness_mm=2.1,
+            joint_stack_height_mm=4.0,
+            boss_radius_mm=2.2,
+        )
+        readiness = calibration_readiness(profile)
+        self.assertEqual(readiness.level, "mesh-calibrated")
+        self.assertTrue(readiness.visual_ready)
+        self.assertTrue(readiness.mesh_ready)
+        self.assertFalse(readiness.solver_ready)
+        self.assertEqual(readiness.mesh_missing_fields, ())
+        self.assertIn("solver still", readiness.summary)
 
     def test_hardware_profile_updates_config_from_measured_radii(self):
         config = LatticeConfig(cell_size=1.0, pin_radius=0.1, hole_radius=0.12, backlash=0.05)

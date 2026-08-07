@@ -64,6 +64,25 @@ HARDWARE_PROFILE_DIMENSIONS: tuple[str, ...] = (
     "joint_stack_height_mm",
     "boss_radius_mm",
 )
+CALIBRATION_VISUAL_FIELDS: tuple[str, ...] = (
+    "pin_radius_mm",
+    "hole_radius_mm",
+    "plate_thickness_mm",
+    "joint_stack_height_mm",
+)
+CALIBRATION_MESH_FIELDS: tuple[str, ...] = HARDWARE_PROFILE_DIMENSIONS
+CALIBRATION_SOLVER_GAPS: tuple[str, ...] = (
+    "measured axial and hinge stiffness",
+    "actuator force/stroke calibration",
+    "friction and contact characterization",
+    "measured single, pair, and cluster response data",
+)
+CalibrationReadinessLevel = Literal[
+    "paper-scale",
+    "partial-measured",
+    "visual-calibrated",
+    "mesh-calibrated",
+]
 
 
 @dataclass(frozen=True)
@@ -143,6 +162,64 @@ class RADHardwareProfile:
 
     def mm_to_model_length(self, config: LatticeConfig, value_mm: float) -> float:
         return float(value_mm) * config.cell_size / self.side_length_mm
+
+
+@dataclass(frozen=True)
+class RADCalibrationReadiness:
+    profile_name: str
+    level: CalibrationReadinessLevel
+    measured_fields: tuple[str, ...]
+    missing_fields: tuple[str, ...]
+    visual_missing_fields: tuple[str, ...]
+    mesh_missing_fields: tuple[str, ...]
+    solver_gaps: tuple[str, ...]
+    coverage_ratio: float
+    visual_ready: bool
+    mesh_ready: bool
+    solver_ready: bool
+
+    @property
+    def summary(self) -> str:
+        if self.mesh_ready:
+            return "mesh-calibrated geometry; solver still needs physical response calibration"
+        if self.visual_ready:
+            return "visual-calibrated geometry; mesh export still has missing dimensions"
+        if self.measured_fields:
+            return "partial measured geometry; solver still needs geometry and response calibration"
+        return "paper-scale defaults only; solver still lacks measured hardware geometry"
+
+
+def calibration_readiness(profile: RADHardwareProfile) -> RADCalibrationReadiness:
+    measured = profile.measured_fields
+    visual_missing = tuple(
+        field for field in CALIBRATION_VISUAL_FIELDS if getattr(profile, field) is None
+    )
+    mesh_missing = tuple(
+        field for field in CALIBRATION_MESH_FIELDS if getattr(profile, field) is None
+    )
+    visual_ready = len(visual_missing) == 0
+    mesh_ready = len(mesh_missing) == 0
+    if mesh_ready:
+        level: CalibrationReadinessLevel = "mesh-calibrated"
+    elif visual_ready:
+        level = "visual-calibrated"
+    elif measured:
+        level = "partial-measured"
+    else:
+        level = "paper-scale"
+    return RADCalibrationReadiness(
+        profile_name=profile.name,
+        level=level,
+        measured_fields=measured,
+        missing_fields=profile.missing_fields,
+        visual_missing_fields=visual_missing,
+        mesh_missing_fields=mesh_missing,
+        solver_gaps=CALIBRATION_SOLVER_GAPS,
+        coverage_ratio=profile.coverage_ratio,
+        visual_ready=visual_ready,
+        mesh_ready=mesh_ready,
+        solver_ready=False,
+    )
 
 
 def config_with_hardware_profile(

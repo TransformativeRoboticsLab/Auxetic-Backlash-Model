@@ -54,6 +54,19 @@
     "jointStackHeightMm",
     "bossRadiusMm",
   ]);
+  const CALIBRATION_VISUAL_FIELDS = Object.freeze([
+    "pinRadiusMm",
+    "holeRadiusMm",
+    "plateThicknessMm",
+    "jointStackHeightMm",
+  ]);
+  const CALIBRATION_MESH_FIELDS = HARDWARE_PROFILE_DIMENSIONS;
+  const CALIBRATION_SOLVER_GAPS = Object.freeze([
+    "measured axial and hinge stiffness",
+    "actuator force/stroke calibration",
+    "friction and contact characterization",
+    "measured single, pair, and cluster response data",
+  ]);
 
   function nonNegativeNumberOrNull(value) {
     if (value === null || value === undefined || value === "") return null;
@@ -111,6 +124,40 @@
       pinRadiusModel: profile.pinRadiusMm === null ? null : profile.pinRadiusMm * modelScale,
       holeRadiusModel: profile.holeRadiusMm === null ? null : profile.holeRadiusMm * modelScale,
       backlashModel: profile.backlashMm === null ? null : profile.backlashMm / profile.sideLengthMm,
+    };
+  }
+
+  function calibrationReadiness(state) {
+    const summary = calibrationProfileSummary(state);
+    const hasValue = (field) => summary.profile[field] !== null && summary.profile[field] !== undefined;
+    const visualMissingFields = CALIBRATION_VISUAL_FIELDS.filter((field) => !hasValue(field));
+    const meshMissingFields = CALIBRATION_MESH_FIELDS.filter((field) => !hasValue(field));
+    const visualReady = visualMissingFields.length === 0;
+    const meshReady = meshMissingFields.length === 0;
+    let level = "paper-scale";
+    if (meshReady) level = "mesh-calibrated";
+    else if (visualReady) level = "visual-calibrated";
+    else if (summary.measuredCount > 0) level = "partial-measured";
+    const summaryText = meshReady
+      ? "mesh-calibrated geometry; solver still needs physical response calibration"
+      : visualReady
+        ? "visual-calibrated geometry; mesh export still has missing dimensions"
+        : summary.measuredCount > 0
+          ? "partial measured geometry; solver still needs geometry and response calibration"
+          : "paper-scale defaults only; solver still lacks measured hardware geometry";
+    return {
+      profileName: summary.profile.name,
+      level,
+      measuredFields: summary.measuredFields,
+      missingFields: summary.missingFields,
+      visualMissingFields,
+      meshMissingFields,
+      solverGaps: [...CALIBRATION_SOLVER_GAPS],
+      coverageRatio: summary.coverageRatio,
+      visualReady,
+      meshReady,
+      solverReady: false,
+      summary: summaryText,
     };
   }
 
@@ -836,10 +883,14 @@
   RAD.commandSaturation = commandSaturation;
   RAD.pinHoleClearance = pinHoleClearance;
   RAD.HARDWARE_PROFILE_DIMENSIONS = HARDWARE_PROFILE_DIMENSIONS;
+  RAD.CALIBRATION_VISUAL_FIELDS = CALIBRATION_VISUAL_FIELDS;
+  RAD.CALIBRATION_MESH_FIELDS = CALIBRATION_MESH_FIELDS;
+  RAD.CALIBRATION_SOLVER_GAPS = CALIBRATION_SOLVER_GAPS;
   RAD.hardwareProfile = hardwareProfile;
   RAD.hardwareMeasuredFields = hardwareMeasuredFields;
   RAD.hardwareMissingFields = hardwareMissingFields;
   RAD.calibrationProfileSummary = calibrationProfileSummary;
+  RAD.calibrationReadiness = calibrationReadiness;
   RAD.applyHardwareProfileToGrid = applyHardwareProfileToGrid;
   RAD.paperRadReference = paperRadReference;
   RAD.modelLengthToMm = modelLengthToMm;

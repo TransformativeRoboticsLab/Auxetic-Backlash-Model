@@ -140,6 +140,11 @@ the normalized backlash/free-play controls; unfilled fields remain calibration
 gaps instead of silently changing the solver. The Display panel's `Calibrated
 RAD cell` mode uses the profile directly for visible plate thickness, pin/hole
 radii, and stack offset without requiring those values to alter the solver.
+`calibration_readiness` in Python and `RAD.calibrationReadiness()` in the browser
+classify the current profile as paper-scale, partial-measured,
+visual-calibrated, or mesh-calibrated, while separately listing the physical
+solver gaps that still require stiffness, actuator, friction/contact, and
+response measurements.
 For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
 paper RAD lattice into extruded plate, pin, and connector mesh components, and
 `export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for
@@ -530,6 +535,9 @@ without requiring Playwright or a browser binary.
   dimensions before they are allowed to replace normalized model assumptions.
   The browser editor saves those values in `grid.hardwareProfile` and only
   applies measured backlash/radii to normalized controls on explicit command.
+- `calibration_readiness` / `web/math.js` `calibrationReadiness`: conservative
+  readiness gate for calibrated geometry versus still-uncalibrated physical
+  solver behavior.
 - `web/renderer.js` `calibratedRad` mode and `web/mesh_export.js`
   `calibratedMeshDimensions`: profile-aware visual/export layer that uses
   measured dimensions for CAD-like inspection while keeping solver assumptions

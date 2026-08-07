@@ -1030,6 +1030,12 @@
         };
         document.getElementById("hardwareMissingOut").textContent =
           profileSummary.missingFields.map((field) => labels[field] || field).join(", ") || "none";
+        if (typeof RAD.calibrationReadiness === "function") {
+          const readiness = RAD.calibrationReadiness(s);
+          document.getElementById("hardwareReadinessOut").textContent = readiness.level;
+          document.getElementById("hardwareSolverGapOut").textContent =
+            readiness.solverGaps.map((gap) => gap.split(" ")[0]).join(", ");
+        }
       }
       document.getElementById("alphaCommandOut").textContent = Number(this.els.alphaCommand.value).toFixed(2);
       document.getElementById("zCommandOut").textContent = Number(this.els.zCommand.value).toFixed(2);

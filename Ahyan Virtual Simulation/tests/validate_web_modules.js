@@ -24,6 +24,7 @@ assert.ok(RAD, "RAD namespace should load");
 assert.strictEqual(typeof RAD.modelProvenance, "function", "provenance module should expose model provenance");
 assert.strictEqual(typeof RAD.provenanceSummary, "function", "provenance module should expose provenance counts");
 assert.strictEqual(typeof RAD.calibrationProfileSummary, "function", "math module should expose calibration profile summary");
+assert.strictEqual(typeof RAD.calibrationReadiness, "function", "math module should expose calibration readiness");
 assert.strictEqual(typeof RAD.applyHardwareProfileToGrid, "function", "math module should apply hardware profiles");
 assert.strictEqual(typeof RAD.calibratedMeshDimensions, "function", "mesh exporter should expose calibrated mesh dimensions");
 assert.strictEqual(typeof RAD.physicalPreviewComparison, "function", "analysis module should expose physical preview comparison");
@@ -54,6 +55,8 @@ assert.ok(html.includes('id="modelProvenanceList"'), "browser UI should expose m
 assert.ok(html.includes('id="provenancePaper"'), "browser UI should expose paper-supported provenance count");
 assert.ok(html.includes('id="hardwareCoverageOut"'), "browser UI should expose hardware profile coverage");
 assert.ok(html.includes('id="hardwareMissingOut"'), "browser UI should expose missing calibration fields");
+assert.ok(html.includes('id="hardwareReadinessOut"'), "browser UI should expose calibration readiness");
+assert.ok(html.includes('id="hardwareSolverGapOut"'), "browser UI should expose solver calibration gaps");
 assert.ok(html.includes('id="hardwareProfileName"'), "browser UI should expose measured profile name input");
 assert.ok(html.includes('id="hardwarePinRadiusMm"'), "browser UI should expose measured pin-radius input");
 assert.ok(html.includes('id="hardwareHoleRadiusMm"'), "browser UI should expose measured hole-radius input");
@@ -188,6 +191,23 @@ assert.strictEqual(profileSummary.totalCount, 5);
 assert.strictEqual(Number(profileSummary.pinHoleClearanceMm.toFixed(6)), 1.89);
 assert.strictEqual(Number(profileSummary.pinRadiusModel.toFixed(6)), Number((7.56 * 1.25 / 42).toFixed(6)));
 assert.ok(profileSummary.missingFields.includes("jointStackHeightMm"), "profile summary should list missing stack measurement");
+const partialReadiness = RAD.calibrationReadiness(restored);
+assert.strictEqual(partialReadiness.level, "partial-measured");
+assert.strictEqual(partialReadiness.visualReady, false);
+assert.strictEqual(partialReadiness.meshReady, false);
+assert.strictEqual(partialReadiness.solverReady, false);
+assert.ok(partialReadiness.solverGaps.includes("friction and contact characterization"), "readiness should preserve solver calibration gaps");
+const readyState = RAD.createState(2, 2);
+readyState.grid.hardwareProfile = {
+  ...state.grid.hardwareProfile,
+  jointStackHeightMm: 3.8,
+  bossRadiusMm: 1.6,
+};
+const readyReadiness = RAD.calibrationReadiness(readyState);
+assert.strictEqual(readyReadiness.level, "mesh-calibrated");
+assert.strictEqual(readyReadiness.visualReady, true);
+assert.strictEqual(readyReadiness.meshReady, true);
+assert.strictEqual(readyReadiness.solverReady, false);
 const appliedProfileState = RAD.createState(2, 2);
 appliedProfileState.grid.cellSize = 1.25;
 appliedProfileState.grid.hardwareProfile = JSON.parse(JSON.stringify(state.grid.hardwareProfile));
