@@ -59,6 +59,7 @@ for (const ref of localRefs) {
 assert.ok(!/https?:\/\//.test(html), "browser entry should not require external scripts or styles");
 assert.ok(html.includes('value="operatorInteraction"'), "operator interaction overlay should be available in the browser UI");
 assert.ok(html.includes('value="calibrationError"'), "calibration error overlay should be available in the browser UI");
+assert.ok(html.includes('value="calibrationResidual"'), "calibration residual overlay should be available in the browser UI");
 assert.ok(html.includes('id="selectInteractionHotspot"'), "response panel should expose a hotspot selection button");
 assert.ok(html.includes('id="selectCalibrationHotspot"'), "response panel should expose a calibration-error selection button");
 assert.ok(html.includes('id="saveExperimentProtocol"'), "response panel should expose a protocol export button");
@@ -305,6 +306,8 @@ assert.ok(Array.isArray(comparison.field.combinedError), "calibration comparison
 assert.ok(comparison.field.sampleCount.some((row) => row.some((value) => value > 0)), "calibration field should count measured cells");
 assert.strictEqual(Number(comparison.field.maxCombinedError.toFixed(8)), 0);
 assert.ok(comparison.field.worstCell, "calibration comparison should track the strongest measured cell");
+assert.ok(Array.isArray(comparison.fitResidualField.combinedError), "calibration comparison should include fitted residual field");
+assert.strictEqual(Number(comparison.fitResidualField.maxCombinedError.toFixed(8)), 0);
 assert.strictEqual(comparison.fit.height.sampleCount, liftResult.cells.length);
 assert.ok(comparison.fit.height.gainIdentifiable, "calibration fit should identify height gain when predicted samples vary");
 assert.strictEqual(Number(comparison.fit.height.suggestedGain.toFixed(8)), 1);
@@ -317,6 +320,7 @@ assert.strictEqual(Number(comparisonSummary.heightRmseMean.toFixed(8)), 0);
 assert.strictEqual(Number(comparisonSummary.maxCombinedError.toFixed(8)), 0);
 assert.strictEqual(Number(comparisonSummary.meanSignedHeightError.toFixed(8)), 0);
 assert.strictEqual(Number(comparisonSummary.fit.height.rmsResidual.toFixed(8)), 0);
+assert.strictEqual(Number(comparisonSummary.fitResidualMaxCombinedError.toFixed(8)), 0);
 const perturbedResults = JSON.parse(JSON.stringify(resultsTemplate));
 const perturbedLift = perturbedResults.steps.find((step) => step.stepId === "single_z_lift" && step.repeatIndex === 1);
 perturbedLift.cells[0].heightDelta += 0.05;
@@ -325,6 +329,10 @@ assert.ok(perturbedComparison.field.maxAbsHeightError > 0, "perturbed height mea
 assert.ok(perturbedComparison.field.maxCombinedError > 0, "perturbed height measurement should produce a visible calibration-error overlay scale");
 assert.ok(perturbedComparison.fit.height.rmsRawError > 0, "perturbed height measurement should produce raw fit error");
 assert.ok(perturbedComparison.fit.height.sampleCount > 0, "perturbed height fit should keep sample count");
+assert.ok(
+  perturbedComparison.fitResidualField.sampleCount.some((row) => row.some((value) => value > 0)),
+  "perturbed height measurement should populate a fitted residual field"
+);
 assert.strictEqual(perturbedComparison.field.worstCell.row, perturbedLift.cells[0].row);
 assert.strictEqual(perturbedComparison.field.worstCell.col, perturbedLift.cells[0].col);
 const perturbedSummary = RAD.summarizeCalibrationComparison(perturbedComparison);
@@ -336,6 +344,7 @@ const report = RAD.calibrationComparisonReport(readyState);
 assert.strictEqual(report.schema, "rad-sim.calibration-comparison-report.v1");
 assert.strictEqual(report.summary.worstCell.row, perturbedLift.cells[0].row);
 assert.strictEqual(report.comparison.fit.height.sampleCount, perturbedComparison.fit.height.sampleCount);
+assert.ok(Array.isArray(report.comparison.fitResidualField.combinedError), "comparison report should include fit residual field");
 assert.strictEqual(JSON.parse(RAD.exportCalibrationComparisonReport(readyState)).schema, report.schema);
 const appliedProfileState = RAD.createState(2, 2);
 appliedProfileState.grid.cellSize = 1.25;

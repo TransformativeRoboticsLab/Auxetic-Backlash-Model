@@ -34,6 +34,7 @@
     strain: ["Linkage Strain", "compressed", "stretched"],
     modelError: ["Model Disagreement", "matches kinematic", "relaxed shift"],
     calibrationError: ["Calibration Error", "matched cell", "large measured error"],
+    calibrationResidual: ["Calibration Residual", "fit absorbed", "local residual"],
     displacement: ["Reference Displacement", "small shift", "large shift"],
     slope: ["Surface Slope", "flat", "steep"],
     inverse: ["Inverse Plan", "low contribution", "high contribution"],

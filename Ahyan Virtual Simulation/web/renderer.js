@@ -535,6 +535,7 @@
         else if (mode === "reachability") t = this.reachabilityStrength(state, r, c);
         else if (mode === "operatorInteraction") t = this.operatorInteractionStrength(state, r, c);
         else if (mode === "calibrationError") t = this.calibrationErrorStrength(state, r, c);
+        else if (mode === "calibrationResidual") t = this.calibrationErrorStrength(state, r, c, "fitResidualField");
         else t = (sim.alpha[r][c] - state.grid.alphaMin) / (state.grid.alphaMax - state.grid.alphaMin);
         return this.overlayMaterial(mode, t);
       }
@@ -548,8 +549,8 @@
       return value / scale;
     }
 
-    calibrationErrorStrength(state, r, c) {
-      const field = state.experiment?.calibrationComparison?.field;
+    calibrationErrorStrength(state, r, c, fieldName = "field") {
+      const field = state.experiment?.calibrationComparison?.[fieldName];
       const value = Number(field?.combinedError?.[r]?.[c]) || 0;
       const scale = Math.max(1e-9, Number(field?.maxCombinedError) || 0);
       return Math.abs(value) / scale;

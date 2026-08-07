@@ -166,7 +166,10 @@ JSON report containing the imported comparison, per-cell error field, worst-cell
 record, signed alpha/height bias, measured-versus-simulated gain/bias fit, and
 hardware/profile metadata for lab notes or GitHub review. The fit is diagnostic:
 it estimates whether measured alpha or height response needs a scale or offset
-correction, but it does not automatically mutate the solver.
+correction, but it does not automatically mutate the solver. The Display panel's
+`Calibration residual` overlay colors the remaining per-cell error after that
+global gain/bias fit, making local mechanism mismatch easier to distinguish from
+uniform scale or offset error.
 For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
 paper RAD lattice into extruded plate, pin, and connector mesh components, and
 `export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for

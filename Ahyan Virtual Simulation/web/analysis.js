@@ -984,6 +984,29 @@
     return field;
   }
 
+  function calibrationFitResidualField(state, alphaPairs, heightPairs, fit) {
+    const field = createCalibrationErrorField(state);
+    const touched = new Map();
+    const alphaGain = Number.isFinite(fit?.alpha?.suggestedGain) ? fit.alpha.suggestedGain : 1;
+    const alphaBias = Number.isFinite(fit?.alpha?.suggestedBias) ? fit.alpha.suggestedBias : 0;
+    const heightGain = Number.isFinite(fit?.height?.suggestedGain) ? fit.height.suggestedGain : 1;
+    const heightBias = Number.isFinite(fit?.height?.suggestedBias) ? fit.height.suggestedBias : 0;
+    for (const pair of alphaPairs) {
+      const error = pair.measured - (alphaGain * pair.predicted + alphaBias);
+      field.alphaError[pair.row][pair.col] += error;
+      field.alphaSampleCount[pair.row][pair.col] += 1;
+      touched.set(`${pair.row},${pair.col}`, [pair.row, pair.col]);
+    }
+    for (const pair of heightPairs) {
+      const error = pair.measured - (heightGain * pair.predicted + heightBias);
+      field.heightError[pair.row][pair.col] += error;
+      field.heightSampleCount[pair.row][pair.col] += 1;
+      touched.set(`${pair.row},${pair.col}`, [pair.row, pair.col]);
+    }
+    for (const [row, col] of touched.values()) field.sampleCount[row][col] += 1;
+    return finalizeCalibrationErrorField(field);
+  }
+
   function compareCalibrationExperimentResults(state, results, options = {}) {
     const parsed = typeof results === "string" ? JSON.parse(results) : results;
     if (parsed?.schema !== "rad-sim.calibration-experiment-results.v1") {
@@ -1020,7 +1043,7 @@
           const predictedAlpha = (sim.alpha?.[row]?.[col] || 0) - (baseline.alpha?.[row]?.[col] || 0);
           const alphaError = alpha - predictedAlpha;
           alphaErrors.push(alphaError);
-          alphaPairs.push({ predicted: predictedAlpha, measured: alpha });
+          alphaPairs.push({ row, col, predicted: predictedAlpha, measured: alpha });
           field.alphaError[row][col] += alphaError;
           field.alphaSampleCount[row][col] += 1;
           measuredField = true;
@@ -1029,7 +1052,7 @@
           const predictedHeight = (sim.height?.[row]?.[col] || 0) - (baseline.height?.[row]?.[col] || 0);
           const heightError = height - predictedHeight;
           heightErrors.push(heightError);
-          heightPairs.push({ predicted: predictedHeight, measured: height });
+          heightPairs.push({ row, col, predicted: predictedHeight, measured: height });
           field.heightError[row][col] += heightError;
           field.heightSampleCount[row][col] += 1;
           measuredField = true;
@@ -1069,14 +1092,16 @@
         meanPinHoleSlipMm: meanOrNull(slipValues),
       });
     }
+    const fit = {
+      alpha: calibrationLinearFit(alphaPairs),
+      height: calibrationLinearFit(heightPairs),
+    };
     return {
       schema: "rad-sim.calibration-experiment-comparison.v1",
       comparisons,
       field: finalizeCalibrationErrorField(field),
-      fit: {
-        alpha: calibrationLinearFit(alphaPairs),
-        height: calibrationLinearFit(heightPairs),
-      },
+      fit,
+      fitResidualField: calibrationFitResidualField(state, alphaPairs, heightPairs, fit),
     };
   }
 
@@ -1098,6 +1123,7 @@
     const forceValues = comparisons.map((item) => item.meanActuatorForceN).filter(Number.isFinite);
     const slipValues = comparisons.map((item) => item.meanPinHoleSlipMm).filter(Number.isFinite);
     const field = comparison?.field || {};
+    const fitResidualField = comparison?.fitResidualField || {};
     let worst = null;
     for (const item of comparisons) {
       const value = Number(item.maxAbsHeightError);
@@ -1117,6 +1143,8 @@
       meanAbsAlphaError: finiteAverage(absAlphaErrors),
       meanAbsHeightError: finiteAverage(absHeightErrors),
       fit: comparison?.fit || null,
+      fitResidualMaxCombinedError: Number.isFinite(fitResidualField.maxCombinedError) ? fitResidualField.maxCombinedError : null,
+      fitResidualWorstCell: fitResidualField.worstCell || null,
       maxAbsHeightError: worst ? Number(worst.maxAbsHeightError) : null,
       maxAbsAlphaError: Number.isFinite(field.maxAbsAlphaError) ? field.maxAbsAlphaError : null,
       maxCombinedError: Number.isFinite(field.maxCombinedError) ? field.maxCombinedError : null,
