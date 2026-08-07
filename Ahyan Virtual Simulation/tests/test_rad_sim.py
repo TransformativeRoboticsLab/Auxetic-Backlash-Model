@@ -10,6 +10,7 @@ from rad_sim import (
     LoadCase,
     PAPER_RAD_REFERENCE,
     SourceCommand,
+    apply_event_sequence,
     backlash_activation,
     build_response_matrix,
     build_paper_rad_cell_geometry,
@@ -21,10 +22,16 @@ from rad_sim import (
     compare_physical_cluster,
     compare_physical_pair,
     compare_physical_response,
+    compare_event_order,
+    clear_actuation_event,
     evaluate_programmable_operators,
+    finite_die_off_radius,
+    local_actuation_event,
+    lock_event,
     lock_projection,
     export_paper_rad_mesh_obj,
     iter_obj_vertices,
+    release_event,
     simulate_kinematic,
     solve_inverse_design,
     solve_spring_hinge_3d,
@@ -292,6 +299,85 @@ class RadSimTests(unittest.TestCase):
         config = LatticeConfig(pin_radius=0.12, hole_radius=0.19)
         op = vertical_clearance_operator(config)
         self.assertAlmostEqual(op.dead_zone, 0.07)
+
+    def test_finite_die_off_radius_respects_max_coupling_steps(self):
+        config = LatticeConfig(rows=5, cols=5, backlash=0.0, max_coupling_steps=1)
+        op = DeadZonePropagationOperator(
+            "test",
+            dead_zone=config.backlash,
+            gain=config.coupling_gain,
+            max_steps=config.max_coupling_steps,
+        )
+        result = op.propagate(config.rows, config.cols, [(2, 2, 0.3)])
+        self.assertEqual(finite_die_off_radius(result.die_off), 1)
+        self.assertTrue(np.isinf(result.die_off[0, 0]))
+
+    def test_lock_event_commits_current_alpha_state(self):
+        config = LatticeConfig(rows=3, cols=3, backlash=0.0)
+        state = LatticeState.uniform(config)
+        final = apply_event_sequence(
+            config,
+            state,
+            (
+                local_actuation_event((1, 1), alpha=-0.3),
+                lock_event((1, 1)),
+                clear_actuation_event(),
+            ),
+        )
+        self.assertTrue(final.locked_mask[1, 1])
+        self.assertAlmostEqual(final.alpha_grid[1, 1], 0.7)
+        fields = evaluate_programmable_operators(config, final)
+        self.assertAlmostEqual(fields["alpha"][1, 1], 0.7)
+        self.assertAlmostEqual(fields["height"][1, 1], 0.0)
+
+    def test_lock_and_actuation_event_order_is_noncommutative(self):
+        config = LatticeConfig(rows=3, cols=3, backlash=0.0)
+        state = LatticeState.uniform(config)
+        diagnostic = compare_event_order(
+            config,
+            state,
+            local_actuation_event((1, 1), alpha=-0.3),
+            lock_event((1, 1)),
+        )
+        self.assertTrue(diagnostic.mode_commutes)
+        self.assertFalse(diagnostic.command_commutes)
+        self.assertFalse(diagnostic.alpha_grid_commutes)
+        self.assertGreater(diagnostic.final_alpha_error, 0.1)
+        self.assertGreater(diagnostic.final_height_error, 0.1)
+
+    def test_release_event_allows_later_actuation(self):
+        config = LatticeConfig(rows=3, cols=3, backlash=0.0)
+        state = LatticeState.uniform(config)
+        final = apply_event_sequence(
+            config,
+            state,
+            (
+                lock_event((1, 1)),
+                release_event((1, 1)),
+                local_actuation_event((1, 1), alpha=-0.25),
+            ),
+        )
+        self.assertFalse(final.locked_mask[1, 1])
+        fields = evaluate_programmable_operators(config, final)
+        self.assertLess(fields["alpha"][1, 1], config.initial_alpha)
+
+    def test_clear_actuation_event_can_clear_one_cell_or_all_cells(self):
+        config = LatticeConfig(rows=2, cols=2)
+        state = apply_event_sequence(
+            config,
+            LatticeState.uniform(config),
+            (
+                local_actuation_event((0, 0), alpha=0.2, z=0.1),
+                local_actuation_event((1, 1), alpha=-0.3, z=-0.2),
+                clear_actuation_event((0, 0)),
+            ),
+        )
+        self.assertAlmostEqual(state.actuator_grid[0, 0], 0.0)
+        self.assertAlmostEqual(state.z_actuator_grid[0, 0], 0.0)
+        self.assertNotAlmostEqual(state.actuator_grid[1, 1], 0.0)
+        final = apply_event_sequence(config, state, (clear_actuation_event(),))
+        np.testing.assert_allclose(final.actuator_grid, 0.0)
+        np.testing.assert_allclose(final.z_actuator_grid, 0.0)
 
     def test_single_cell_characterization_reports_reach_and_dieoff(self):
         config = LatticeConfig(rows=5, cols=5, backlash=0.02, z_coupling_gain=0.35)

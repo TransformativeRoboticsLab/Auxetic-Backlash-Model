@@ -24,6 +24,11 @@ by the browser. `compare_physical_response`, `compare_physical_pair`, and
 `compare_physical_cluster` run the same commands through the 3D spring-hinge
 relaxation and report where physical center/height deltas deviate from the
 kinematic backlash prediction.
+For history-dependent programmable mechanics experiments, `local_actuation_event`,
+`lock_event`, `release_event`, `clear_actuation_event`, `apply_event_sequence`,
+and `compare_event_order` model discontinuities as state-to-state operators. A
+lock event commits the cell's current alpha state, so lock/actuation ordering can
+be tested as a measurable noncommutative effect.
 `build_response_matrix` stacks those responses into alpha and height matrices for
 controllability checks and inverse-design experiments.
 `solve_inverse_design` uses that response matrix in a bounded damped least-squares
@@ -397,6 +402,10 @@ without requiring Playwright or a browser binary.
 - `solve_spring_hinge_3d`: out-of-plane spring-hinge relaxation over 3D center
   nodes, so vertical actuation and pin-clearance residual height can participate
   in the same axial/hinge/penalty energy model.
+- `local_actuation_event` / `lock_event` / `release_event` /
+  `compare_event_order`: executable programmable-discontinuity operators for
+  sequence studies, lock invariance, locality checks, and event-order
+  noncommutativity.
 - `compare_physical_response` / `compare_physical_pair` /
   `compare_physical_cluster`: single, pair, and cluster diagnostics that quantify
   the deviation between kinematic backlash propagation and the 3D spring-hinge
