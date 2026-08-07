@@ -162,8 +162,9 @@ error` overlay, which colors the 3D lattice by the averaged per-cell alpha/heigh
 measurement disagreement. `Select Cal Error` moves the 3D selection to the cell
 with the largest imported measurement disagreement; when the `Calibration
 residual` overlay is active, the same button selects the post-fit residual
-hotspot instead. This keeps mismatch inspection in the viewport without placing
-labels over the lattice. `Save Comparison` exports a
+hotspot instead. `Next Cal Error` cycles through the ranked raw or residual
+mismatch list, depending on the active overlay. This keeps mismatch inspection
+in the viewport without placing labels over the lattice. `Save Comparison` exports a
 JSON report containing the imported comparison, per-cell error field, worst-cell
 record, signed alpha/height bias, measured-versus-simulated gain/bias fit, and
 hardware/profile metadata for lab notes or GitHub review. The fit is diagnostic:

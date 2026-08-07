@@ -497,6 +497,7 @@
       document.getElementById("runCharacterization").addEventListener("click", () => this.runCharacterization());
       document.getElementById("selectInteractionHotspot").addEventListener("click", () => this.selectInteractionHotspot());
       document.getElementById("selectCalibrationHotspot").addEventListener("click", () => this.selectCalibrationHotspot());
+      document.getElementById("nextCalibrationHotspot").addEventListener("click", () => this.selectCalibrationHotspot(1));
       document.getElementById("saveExperimentProtocol").addEventListener("click", () => this.saveExperimentProtocol());
       document.getElementById("saveResultsTemplate").addEventListener("click", () => this.saveResultsTemplate());
       document.getElementById("loadResultsJson").addEventListener("click", () => this.els.calibrationResultsFileInput.click());
@@ -1236,16 +1237,32 @@
       this.onChange(this.state);
     }
 
-    selectCalibrationHotspot() {
+    calibrationHotspotRanking(residualMode) {
       const summary = this.state.experiment.calibrationComparisonSummary;
       const comparison = this.state.experiment.calibrationComparison;
-      const residualMode = this.state.view.overlayMode === "calibrationResidual";
-      const cell =
+      const ranked = residualMode
+        ? summary?.fitResidualTopCells || comparison?.fitResidualField?.topCells
+        : summary?.topCells || comparison?.field?.topCells;
+      if (Array.isArray(ranked) && ranked.length) return ranked;
+      const fallback =
         (residualMode
           ? summary?.fitResidualWorstCell || comparison?.fitResidualField?.worstCell
           : summary?.worstCell || comparison?.field?.worstCell) ||
         summary?.worstCell ||
         comparison?.field?.worstCell;
+      return fallback ? [fallback] : [];
+    }
+
+    selectCalibrationHotspot(step = 0) {
+      const residualMode = this.state.view.overlayMode === "calibrationResidual";
+      const ranking = this.calibrationHotspotRanking(residualMode);
+      if (!ranking.length) return;
+      let index = 0;
+      if (step !== 0 && this.state.selection) {
+        const currentIndex = ranking.findIndex((cell) => cell.row === this.state.selection.r && cell.col === this.state.selection.c);
+        index = currentIndex >= 0 ? (currentIndex + step + ranking.length) % ranking.length : 0;
+      }
+      const cell = ranking[index] || ranking[0];
       if (!cell) return;
       this.state.selection = { r: cell.row, c: cell.col };
       this.state.view.overlayMode = residualMode ? "calibrationResidual" : "calibrationError";

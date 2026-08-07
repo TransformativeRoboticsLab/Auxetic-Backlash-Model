@@ -62,6 +62,7 @@ assert.ok(html.includes('value="calibrationError"'), "calibration error overlay 
 assert.ok(html.includes('value="calibrationResidual"'), "calibration residual overlay should be available in the browser UI");
 assert.ok(html.includes('id="selectInteractionHotspot"'), "response panel should expose a hotspot selection button");
 assert.ok(html.includes('id="selectCalibrationHotspot"'), "response panel should expose a calibration-error selection button");
+assert.ok(html.includes('id="nextCalibrationHotspot"'), "response panel should expose ranked calibration-error navigation");
 assert.ok(html.includes('id="saveExperimentProtocol"'), "response panel should expose a protocol export button");
 assert.ok(html.includes('id="saveResultsTemplate"'), "response panel should expose a results-template export button");
 assert.ok(html.includes('id="loadResultsJson"'), "response panel should expose a results import button");
@@ -104,6 +105,10 @@ for (let i = 1; i < scriptOrder.length; i += 1) {
 for (const filename of ["renderer.js", "ui.js", "app.js"]) {
   const source = fs.readFileSync(path.join(web, filename), "utf8");
   assert.doesNotThrow(() => new Function(source), `${filename} should compile`);
+  if (filename === "ui.js") {
+    assert.ok(source.includes("selectCalibrationHotspot(1)"), "UI should cycle through ranked calibration hotspots");
+    assert.ok(source.includes("fitResidualTopCells"), "UI should support ranked residual calibration hotspots");
+  }
 }
 
 const threeContext = { console: { ...console, warn: () => {} }, window: {} };
