@@ -111,6 +111,183 @@
     return { row, col, value, abs };
   }
 
+  function clampIndex(value, max) {
+    return Math.max(0, Math.min(max - 1, Number(value) || 0));
+  }
+
+  function cellKey(cell) {
+    return `${cell.r},${cell.c}`;
+  }
+
+  function characterizationCells(state, r, c, scope) {
+    const rows = state.grid.rows;
+    const cols = state.grid.cols;
+    const selected = { r: clampIndex(r, rows), c: clampIndex(c, cols) };
+    if (scope === "lattice") {
+      const active = [];
+      for (let rr = 0; rr < rows; rr += 1) {
+        for (let cc = 0; cc < cols; cc += 1) {
+          if (Math.abs(state.cells.commandAlpha?.[rr]?.[cc] || 0) > 1e-9 || Math.abs(state.cells.commandZ?.[rr]?.[cc] || 0) > 1e-9) {
+            active.push({ r: rr, c: cc });
+          }
+        }
+      }
+      return active.length ? active : [selected];
+    }
+    if (scope === "cluster") return RAD.brushCells(state, selected.r, selected.c, 1);
+    if (scope === "pair") {
+      const candidates = [
+        { r: selected.r, c: selected.c + 1 },
+        { r: selected.r, c: selected.c - 1 },
+        { r: selected.r + 1, c: selected.c },
+        { r: selected.r - 1, c: selected.c },
+      ].filter((cell) => cell.r >= 0 && cell.r < rows && cell.c >= 0 && cell.c < cols);
+      return [selected, candidates[0] || selected].filter((cell, index, cells) => cells.findIndex((other) => cellKey(other) === cellKey(cell)) === index);
+    }
+    return [selected];
+  }
+
+  function cloneForCharacterization(state) {
+    const temp = RAD.createState(state.grid.rows, state.grid.cols);
+    RAD.restoreSnapshot(temp, RAD.snapshotState(state));
+    return temp;
+  }
+
+  function scopedState(state, cells) {
+    const temp = cloneForCharacterization(state);
+    const keep = new Set(cells.map(cellKey));
+    for (let r = 0; r < temp.grid.rows; r += 1) {
+      for (let c = 0; c < temp.grid.cols; c += 1) {
+        if (!keep.has(`${r},${c}`)) {
+          temp.cells.commandAlpha[r][c] = 0;
+          temp.cells.commandZ[r][c] = 0;
+        }
+      }
+    }
+    return temp;
+  }
+
+  function finiteMax(field) {
+    let value = 0;
+    for (const row of field || []) {
+      for (const entry of row || []) {
+        if (Number.isFinite(entry)) value = Math.max(value, entry);
+      }
+    }
+    return value;
+  }
+
+  function localResponseStats(state, sim, baselineSim, sourceCells) {
+    const sourceSet = new Set(sourceCells.map(cellKey));
+    let responseCells = 0;
+    let alphaReachCells = 0;
+    let zReachCells = 0;
+    let maxAlphaDelta = 0;
+    let maxHeightDelta = 0;
+    let meanAbsAlphaDelta = 0;
+    let meanAbsHeightDelta = 0;
+    let activeSources = 0;
+    const totalCells = Math.max(1, state.grid.rows * state.grid.cols);
+    for (const cell of sourceCells) {
+      if (Math.abs(state.cells.commandAlpha?.[cell.r]?.[cell.c] || 0) > 1e-9 || Math.abs(state.cells.commandZ?.[cell.r]?.[cell.c] || 0) > 1e-9) {
+        activeSources += 1;
+      }
+    }
+    for (let r = 0; r < state.grid.rows; r += 1) {
+      for (let c = 0; c < state.grid.cols; c += 1) {
+        const alphaDelta = (sim.alpha?.[r]?.[c] || 0) - (baselineSim.alpha?.[r]?.[c] || 0);
+        const heightDelta = (sim.height?.[r]?.[c] || 0) - (baselineSim.height?.[r]?.[c] || 0);
+        const alphaAbs = Math.abs(alphaDelta);
+        const heightAbs = Math.abs(heightDelta);
+        const isSource = sourceSet.has(`${r},${c}`);
+        if (alphaAbs > 1e-8 || heightAbs > 1e-8) responseCells += 1;
+        if (!isSource && Math.abs(sim.influence?.[r]?.[c] || 0) > 1e-8) alphaReachCells += 1;
+        if (!isSource && Math.abs(sim.zResidual?.[r]?.[c] || 0) > 1e-8) zReachCells += 1;
+        maxAlphaDelta = Math.max(maxAlphaDelta, alphaAbs);
+        maxHeightDelta = Math.max(maxHeightDelta, heightAbs);
+        meanAbsAlphaDelta += alphaAbs;
+        meanAbsHeightDelta += heightAbs;
+      }
+    }
+    return {
+      activeSources,
+      responseCells,
+      alphaReachCells,
+      zReachCells,
+      maxAlphaDelta,
+      maxHeightDelta,
+      meanAbsAlphaDelta: meanAbsAlphaDelta / totalCells,
+      meanAbsHeightDelta: meanAbsHeightDelta / totalCells,
+      alphaDieOff: finiteMax(sim.dieOff),
+      zDieOff: finiteMax(sim.zDieOff),
+    };
+  }
+
+  function superpositionError(state, sourceCells, combinedSim, baselineSim) {
+    if (sourceCells.length <= 1) return { rms: 0, max: 0, skipped: false, sourceCount: sourceCells.length };
+    const activeSources = sourceCells.filter((cell) => Math.abs(state.cells.commandAlpha?.[cell.r]?.[cell.c] || 0) > 1e-9 || Math.abs(state.cells.commandZ?.[cell.r]?.[cell.c] || 0) > 1e-9);
+    if (activeSources.length <= 1) return { rms: 0, max: 0, skipped: false, sourceCount: activeSources.length };
+    if (activeSources.length > 16) return { rms: null, max: null, skipped: true, sourceCount: activeSources.length };
+    const rows = state.grid.rows;
+    const cols = state.grid.cols;
+    const alphaSum = RAD.matrix(rows, cols, 0);
+    const heightSum = RAD.matrix(rows, cols, 0);
+    for (const source of activeSources) {
+      const singleState = scopedState(state, [source]);
+      const singleSim = RAD.simulate(singleState);
+      for (let r = 0; r < rows; r += 1) {
+        for (let c = 0; c < cols; c += 1) {
+          alphaSum[r][c] += (singleSim.alpha[r][c] || 0) - (baselineSim.alpha[r][c] || 0);
+          heightSum[r][c] += (singleSim.height[r][c] || 0) - (baselineSim.height[r][c] || 0);
+        }
+      }
+    }
+    let squared = 0;
+    let max = 0;
+    for (let r = 0; r < rows; r += 1) {
+      for (let c = 0; c < cols; c += 1) {
+        const alphaResidual = (combinedSim.alpha[r][c] || 0) - (baselineSim.alpha[r][c] || 0) - alphaSum[r][c];
+        const heightResidual = (combinedSim.height[r][c] || 0) - (baselineSim.height[r][c] || 0) - heightSum[r][c];
+        squared += alphaResidual * alphaResidual + heightResidual * heightResidual;
+        max = Math.max(max, Math.abs(alphaResidual), Math.abs(heightResidual));
+      }
+    }
+    return { rms: Math.sqrt(squared / Math.max(1, rows * cols * 2)), max, skipped: false, sourceCount: activeSources.length };
+  }
+
+  function characterizeLocalResponse(state, options = {}) {
+    const scope = options.scope || state.experiment?.characterizationScope || "single";
+    const selected = {
+      r: clampIndex(options.r ?? state.selection?.r ?? 0, state.grid.rows),
+      c: clampIndex(options.c ?? state.selection?.c ?? 0, state.grid.cols),
+    };
+    const sourceCells = characterizationCells(state, selected.r, selected.c, scope);
+    const combinedState = scopedState(state, sourceCells);
+    const baselineState = scopedState(state, []);
+    const sim = RAD.simulate(combinedState);
+    const baselineSim = RAD.simulate(baselineState);
+    const stats = localResponseStats(combinedState, sim, baselineSim, sourceCells);
+    const interaction = superpositionError(combinedState, sourceCells, sim, baselineSim);
+    const calibration = RAD.paperRadCalibration(combinedState);
+    return {
+      scope,
+      selected,
+      cells: sourceCells,
+      regionCellCount: sourceCells.length,
+      ...stats,
+      superpositionError: interaction.rms,
+      maxSuperpositionError: interaction.max,
+      superpositionSkipped: interaction.skipped,
+      superpositionSources: interaction.sourceCount,
+      backlash: Number(combinedState.grid.backlash) || 0,
+      zDeadZone: RAD.verticalDeadZone(combinedState),
+      pinHoleClearance: RAD.pinHoleClearance(combinedState),
+      backlashMm: calibration.configuredBacklashMm,
+      pinHoleClearanceMm: calibration.pinHoleClearanceMm,
+      model: combinedState.view.simulationMode || "kinematic",
+    };
+  }
+
   function analyzeExperimentSequence(state) {
     const frames = sequenceFrames(state);
     const frameMetrics = frames.map((frame, frameIndex) => {
@@ -239,4 +416,5 @@
   RAD.sequenceFrames = sequenceFrames;
   RAD.analyzeExperimentSequence = analyzeExperimentSequence;
   RAD.exportSequenceMetricsCsv = exportSequenceMetricsCsv;
+  RAD.characterizeLocalResponse = characterizeLocalResponse;
 })();

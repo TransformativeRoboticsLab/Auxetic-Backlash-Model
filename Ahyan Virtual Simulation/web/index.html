@@ -331,6 +331,29 @@
         </section>
 
         <section>
+          <h2>Response Experiments</h2>
+          <label>Scope
+            <select id="characterizationScope">
+              <option value="single">Selected cell</option>
+              <option value="pair">Selected pair</option>
+              <option value="cluster">Local cluster</option>
+              <option value="lattice">Active lattice</option>
+            </select>
+          </label>
+          <div class="button-row">
+            <button id="runCharacterization" type="button">Characterize</button>
+          </div>
+          <div class="selected-readout">
+            <span id="characterizationSummary">No response run</span>
+            <span id="characterizationDetail">reach a0 z0</span>
+          </div>
+          <div class="selected-readout">
+            <span id="characterizationSuperposition">superposition 0.000</span>
+            <span id="characterizationScale">clearance 0.000 mm</span>
+          </div>
+        </section>
+
+        <section>
           <h2>Timeline</h2>
           <div class="selected-readout sequence-readout">
             <span id="sequenceSummary">No sequence frames</span>

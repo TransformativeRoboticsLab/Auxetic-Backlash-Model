@@ -29,6 +29,7 @@ class WebStaticTests(unittest.TestCase):
             "RAD.simulateActive",
             "RAD.compareEventOrder",
             "RAD.paperRadCalibration",
+            "RAD.characterizeLocalResponse",
             "localRefs",
             "validateLocalHttpEntry",
             "http.createServer",
@@ -73,7 +74,7 @@ class WebStaticTests(unittest.TestCase):
         expected = {
             "state.js": ["RAD.createState", "RAD.serialize", "RAD.updateDerivedCells", "RAD.exportExperimentSequence", "RAD.importExperimentSequence", "RAD.deserialize"],
             "operators.js": ["RAD.localActuationEvent", "RAD.lockEvent", "RAD.applyEventSequence", "RAD.compareEventOrder", "RAD.finiteDieOffRadius"],
-            "analysis.js": ["RAD.analyzeExperimentSequence", "RAD.exportSequenceMetricsCsv", "RAD.sequenceFrames"],
+            "analysis.js": ["RAD.analyzeExperimentSequence", "RAD.exportSequenceMetricsCsv", "RAD.sequenceFrames", "RAD.characterizeLocalResponse"],
             "physics.js": ["RAD.simulatePhysicalRelaxation", "RAD.simulateActive"],
             "mesh_export.js": ["RAD.buildPaperRadMesh", "RAD.exportPaperRadMeshObj"],
             "math.js": [
@@ -909,6 +910,59 @@ class WebStaticTests(unittest.TestCase):
         styles = (WEB / "styles.css").read_text(encoding="utf-8")
         for symbol in [".sequence-chart", "cursor: crosshair", ".sequence-legend", ".legend-rms", ".legend-saturation", ".legend-delta"]:
             self.assertIn(symbol, styles)
+
+    def test_browser_local_response_characterization_is_present(self):
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        for control_id in [
+            "characterizationScope",
+            "runCharacterization",
+            "characterizationSummary",
+            "characterizationDetail",
+            "characterizationSuperposition",
+            "characterizationScale",
+        ]:
+            self.assertIn(f'id="{control_id}"', html)
+        for option in ['value="single"', 'value="pair"', 'value="cluster"', 'value="lattice"']:
+            self.assertIn(option, html)
+        state_js = (WEB / "state.js").read_text(encoding="utf-8")
+        for symbol in ['characterizationScope: "single"', "characterization: null"]:
+            self.assertIn(symbol, state_js)
+        analysis_js = (WEB / "analysis.js").read_text(encoding="utf-8")
+        for symbol in [
+            "function characterizeLocalResponse",
+            "characterizationCells",
+            "scopedState",
+            "superpositionError",
+            "activeSources",
+            "responseCells",
+            "alphaReachCells",
+            "zReachCells",
+            "pinHoleClearanceMm",
+            "RAD.characterizeLocalResponse",
+        ]:
+            self.assertIn(symbol, analysis_js)
+        ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
+        for symbol in [
+            "characterizationScope: document.getElementById(\"characterizationScope\")",
+            "runCharacterization",
+            "renderCharacterization",
+            "this.state.experiment.characterizationScope",
+            "this.state.experiment.characterization = result",
+            'type: "characterization"',
+            "characterizationSummary",
+            "characterizationSuperposition",
+            "characterize:",
+        ]:
+            self.assertIn(symbol, ui_js)
+        script = (ROOT / "tests" / "validate_web_modules.js").read_text(encoding="utf-8")
+        for symbol in [
+            "singleCharacterization",
+            "pairCharacterization",
+            "pair characterization should include at least the single-cell response footprint",
+            "pair characterization should report finite superposition residual",
+            "characterization should carry paper-scale clearance",
+        ]:
+            self.assertIn(symbol, script)
 
     def test_browser_obj_export_controls_are_present(self):
         html = (WEB / "index.html").read_text(encoding="utf-8")

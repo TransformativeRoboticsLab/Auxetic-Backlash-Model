@@ -164,6 +164,8 @@
         presetName: "center",
         eventList: [],
         initialSnapshot: null,
+        characterizationScope: "single",
+        characterization: null,
         notes: "",
       },
     };

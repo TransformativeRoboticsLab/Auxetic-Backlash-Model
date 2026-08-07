@@ -72,6 +72,7 @@
         inversePlanHistory: document.getElementById("inversePlanHistory"),
         inverseCandidateList: document.getElementById("inverseCandidateList"),
         inverseStepPreview: document.getElementById("inverseStepPreview"),
+        characterizationScope: document.getElementById("characterizationScope"),
         cellGrid: document.getElementById("cellGrid"),
         sequenceChart: document.getElementById("sequenceChart"),
         fileInput: document.getElementById("fileInput"),
@@ -432,6 +433,11 @@
         this.syncControls();
         this.onChange(this.state);
       });
+      this.els.characterizationScope.addEventListener("change", () => {
+        this.state.experiment.characterizationScope = this.els.characterizationScope.value;
+        this.updateLabels(null);
+      });
+      document.getElementById("runCharacterization").addEventListener("click", () => this.runCharacterization());
       document.getElementById("playTimeline").addEventListener("click", () => this.toggleTimeline());
       document.getElementById("stepTimeline").addEventListener("click", () => this.stepTimeline());
       document.getElementById("captureKeyframe").addEventListener("click", () => this.captureKeyframe());
@@ -781,6 +787,7 @@
       this.els.transitionMs.value = s.timeline.transitionMs || 900;
       this.els.smoothTimeline.checked = s.timeline.smooth !== false;
       this.els.keyframeName.value = s.timeline.keyframeName || "pose";
+      this.els.characterizationScope.value = s.experiment.characterizationScope || "single";
       const { r, c } = s.selection;
       const limits = RAD.commandLimits(s);
       this.els.alphaCommand.min = -limits.alphaContract;
@@ -849,6 +856,7 @@
       document.getElementById("sequenceSummary").textContent = this.sequenceSummaryText();
       document.getElementById("sequenceAnalysisSummary").textContent = this.sequenceAnalysisText();
       document.getElementById("sequenceFrameDetail").textContent = this.sequenceFrameDetailText();
+      this.renderCharacterization();
       this.renderSequenceChart();
       document.getElementById("selectedCell").textContent = `row ${r}, col ${c}`;
       this.els.quickDockMini.textContent = `r${r} c${c} / a ${Number(this.els.alphaCommand.value).toFixed(2)} / z ${Number(this.els.zCommand.value).toFixed(2)}`;
@@ -891,6 +899,41 @@
       this.renderInversePlan();
       this.updateOperatorInspector(this.lastOperatorDiagnostic);
       this.renderEvents();
+    }
+
+    runCharacterization() {
+      const scope = this.els.characterizationScope.value || "single";
+      this.state.experiment.characterizationScope = scope;
+      const result = RAD.characterizeLocalResponse(this.state, { scope, ...this.state.selection });
+      this.state.experiment.characterization = result;
+      RAD.recordEvent(this.state, {
+        type: "characterization",
+        scope: result.scope,
+        cells: result.regionCellCount,
+        activeSources: result.activeSources,
+        responseCells: result.responseCells,
+        superpositionError: result.superpositionError,
+      });
+      this.syncControls();
+      this.onChange(this.state);
+    }
+
+    renderCharacterization() {
+      const result = this.state.experiment.characterization;
+      if (!result) {
+        document.getElementById("characterizationSummary").textContent = "No response run";
+        document.getElementById("characterizationDetail").textContent = "reach a0 z0";
+        document.getElementById("characterizationSuperposition").textContent = "superposition 0.000";
+        document.getElementById("characterizationScale").textContent = "clearance 0.000 mm";
+        return;
+      }
+      const superposition = result.superpositionSkipped
+        ? `superposition skipped (${result.superpositionSources} sources)`
+        : `superposition ${Number(result.superpositionError || 0).toFixed(3)}`;
+      document.getElementById("characterizationSummary").textContent = `${result.scope}: ${result.activeSources}/${result.regionCellCount} active, ${result.responseCells} cells`;
+      document.getElementById("characterizationDetail").textContent = `reach a${result.alphaReachCells} z${result.zReachCells}, die ${result.alphaDieOff}/${result.zDieOff}`;
+      document.getElementById("characterizationSuperposition").textContent = superposition;
+      document.getElementById("characterizationScale").textContent = `clearance ${Number(result.pinHoleClearanceMm || 0).toFixed(3)} mm`;
     }
 
     updateCouplingInspector(r, c) {
@@ -1376,6 +1419,7 @@
       if (event.type === "jacobian-built") return `jacobian: ${event.columns || 0} columns, reach ${Number(event.meanCoverage || 0).toFixed(3)}`;
       if (event.type === "linear-fit-solved") return `linear solve: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}`;
       if (event.type === "linear-fit-applied") return `linear apply: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}`;
+      if (event.type === "characterization") return `characterize: ${event.scope}, ${event.responseCells || 0} cells, sup ${Number(event.superpositionError || 0).toFixed(3)}`;
       if (event.type === "operator-lock") return `event lock: r${event.r}, c${event.c} a ${Number(event.lockAlpha || 0).toFixed(3)}`;
       if (event.type === "operator-release") return `event release: r${event.r}, c${event.c}`;
       if (event.type === "operator-order-check") return `order check: r${event.r}, c${event.c} da ${Number(event.finalAlphaError || 0).toFixed(3)} dz ${Number(event.finalHeightError || 0).toFixed(3)}`;

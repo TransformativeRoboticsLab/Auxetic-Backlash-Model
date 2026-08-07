@@ -222,6 +222,15 @@ influence under the current backlash and coupling settings. Live badges below
 the inspector say whether alpha and z are still in the free backlash gap or have
 crossed into coupled neighbor transmission.
 
+The Response Experiments panel characterizes the current selected cell, selected
+pair, local cluster, or active lattice command set. It reports active command
+sources, total responding cells, alpha and z reach, alpha/z die-off, paper-scale
+pin-hole clearance, and a superposition residual that compares the combined
+response against the sum of isolated source responses. This is an early numerical
+probe for programmable-discontinuity behavior: nonzero residual indicates that
+backlash, locks, or saturation are making the local operators interact
+non-additively.
+
 Actuator display can be filtered to the selected cell and accepted inverse-plan
 cells, inverse-plan cells only, or all active cells. This keeps dense patterns
 inspectable while preserving a full hardware view when needed.
@@ -428,6 +437,9 @@ without requiring Playwright or a browser binary.
   `lockAlpha` state and selected-cell order diagnostics in the viewport dock.
 - `web/math.js` `paperRadCalibration`: browser-side paper scale conversion for
   backlash, pin-hole clearance, and fabrication tolerance readouts.
+- `web/analysis.js` `characterizeLocalResponse`: browser-side single, pair,
+  cluster, and active-lattice response experiment metrics with superposition
+  residuals for programmable-discontinuity studies.
 - `compare_physical_response` / `compare_physical_pair` /
   `compare_physical_cluster`: single, pair, and cluster diagnostics that quantify
   the deviation between kinematic backlash propagation and the 3D spring-hinge
