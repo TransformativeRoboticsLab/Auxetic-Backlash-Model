@@ -4,7 +4,9 @@ from .coupling import alpha_to_theta, backlash_activation, theta_to_alpha
 from .experiments import (
     PairCharacterization,
     ResponseCharacterization,
+    ResponseMatrix,
     SourceCommand,
+    build_response_matrix,
     characterize_cluster,
     characterize_pair,
     characterize_response,
@@ -33,6 +35,8 @@ __all__ = [
     "SourceCommand",
     "ResponseCharacterization",
     "PairCharacterization",
+    "ResponseMatrix",
+    "build_response_matrix",
     "alpha_to_theta",
     "theta_to_alpha",
     "backlash_activation",

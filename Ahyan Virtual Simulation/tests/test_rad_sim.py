@@ -9,6 +9,7 @@ from rad_sim import (
     LatticeState,
     SourceCommand,
     backlash_activation,
+    build_response_matrix,
     characterize_cluster,
     characterize_pair,
     characterize_single_cell,
@@ -190,6 +191,50 @@ class RadSimTests(unittest.TestCase):
         )
         self.assertAlmostEqual(response.alpha_delta[1, 1], 0.0)
         self.assertAlmostEqual(response.height_delta[1, 1], 0.0)
+
+    def test_response_matrix_builds_alpha_and_height_columns(self):
+        config = LatticeConfig(rows=3, cols=3, backlash=0.02, z_coupling_gain=0.35)
+        matrix = build_response_matrix(config, actuator_cells=[(1, 1), (1, 2)])
+        self.assertEqual(matrix.alpha.shape, (9, 4))
+        self.assertEqual(matrix.height.shape, (9, 4))
+        self.assertEqual(len(matrix.commands), 4)
+        self.assertGreater(matrix.alpha_rank, 0)
+        self.assertGreater(matrix.height_rank, 0)
+        self.assertGreater(matrix.reachable_alpha_cells(), 1)
+        self.assertGreater(matrix.reachable_height_cells(), 1)
+
+    def test_response_matrix_can_select_command_family(self):
+        config = LatticeConfig(rows=3, cols=3)
+        matrix = build_response_matrix(
+            config,
+            actuator_cells=[(1, 1)],
+            include_alpha=False,
+            include_z=True,
+        )
+        self.assertEqual(matrix.alpha.shape, (9, 1))
+        self.assertEqual(matrix.commands[0].alpha, 0.0)
+        self.assertGreater(matrix.commands[0].z, 0.0)
+        self.assertAlmostEqual(matrix.alpha[4, 0], 0.0)
+        self.assertGreater(matrix.height[4, 0], 0.0)
+
+    def test_response_matrix_respects_locked_cells(self):
+        config = LatticeConfig(rows=3, cols=3, backlash=0.0)
+        matrix = build_response_matrix(
+            config,
+            actuator_cells=[(1, 1)],
+            locked_cells=((1, 1),),
+        )
+        center_row = 1 * config.cols + 1
+        np.testing.assert_allclose(matrix.alpha[center_row, :], 0.0)
+        np.testing.assert_allclose(matrix.height[center_row, :], 0.0)
+
+    def test_response_matrix_requires_at_least_one_command_family(self):
+        with self.assertRaises(ValueError):
+            build_response_matrix(
+                LatticeConfig(rows=2, cols=2),
+                include_alpha=False,
+                include_z=False,
+            )
 
     def test_zero_vertical_coupling_recovers_local_z_motion(self):
         config = LatticeConfig(rows=5, cols=5, backlash=0.02, z_coupling_gain=0.0)

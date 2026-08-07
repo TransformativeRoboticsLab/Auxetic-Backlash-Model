@@ -42,6 +42,28 @@ class PairCharacterization:
     height_superposition_error: float
 
 
+@dataclass(frozen=True)
+class ResponseMatrix:
+    commands: tuple[SourceCommand, ...]
+    alpha: np.ndarray
+    height: np.ndarray
+    cell_shape: tuple[int, int]
+
+    @property
+    def alpha_rank(self) -> int:
+        return int(np.linalg.matrix_rank(self.alpha))
+
+    @property
+    def height_rank(self) -> int:
+        return int(np.linalg.matrix_rank(self.height))
+
+    def reachable_alpha_cells(self, tolerance: float = 1e-9) -> int:
+        return int(np.count_nonzero(np.any(np.abs(self.alpha) > tolerance, axis=1)))
+
+    def reachable_height_cells(self, tolerance: float = 1e-9) -> int:
+        return int(np.count_nonzero(np.any(np.abs(self.height) > tolerance, axis=1)))
+
+
 def _state_with_commands(
     config: LatticeConfig,
     commands: Iterable[SourceCommand],
@@ -146,3 +168,49 @@ def characterize_cluster(
     tolerance: float = 1e-9,
 ) -> ResponseCharacterization:
     return characterize_response(config, tuple(commands), locked_cells, tolerance)
+
+
+def build_response_matrix(
+    config: LatticeConfig,
+    actuator_cells: Iterable[tuple[int, int]] | None = None,
+    *,
+    alpha_step: float = 0.12,
+    z_step: float = 0.12,
+    include_alpha: bool = True,
+    include_z: bool = True,
+    locked_cells: Iterable[tuple[int, int]] = (),
+    tolerance: float = 1e-9,
+) -> ResponseMatrix:
+    if not include_alpha and not include_z:
+        raise ValueError("at least one command family must be included")
+    cells = tuple(
+        actuator_cells
+        if actuator_cells is not None
+        else ((r, c) for r in range(config.rows) for c in range(config.cols))
+    )
+    commands: list[SourceCommand] = []
+    for cell in cells:
+        if include_alpha:
+            commands.append(SourceCommand(cell=cell, alpha=alpha_step))
+        if include_z:
+            commands.append(SourceCommand(cell=cell, z=z_step))
+
+    alpha_columns = []
+    height_columns = []
+    for command in commands:
+        response = characterize_response(config, (command,), locked_cells, tolerance)
+        alpha_columns.append(response.alpha_delta.reshape(-1))
+        height_columns.append(response.height_delta.reshape(-1))
+
+    if commands:
+        alpha_matrix = np.column_stack(alpha_columns)
+        height_matrix = np.column_stack(height_columns)
+    else:
+        alpha_matrix = np.zeros((config.rows * config.cols, 0), dtype=float)
+        height_matrix = np.zeros((config.rows * config.cols, 0), dtype=float)
+    return ResponseMatrix(
+        commands=tuple(commands),
+        alpha=alpha_matrix,
+        height=height_matrix,
+        cell_shape=(config.rows, config.cols),
+    )

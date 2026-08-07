@@ -20,7 +20,8 @@ For numerical characterization of programmable discontinuities, the Python API
 also exposes `characterize_single_cell`, `characterize_pair`, and
 `characterize_cluster`. These helpers return response fields, vertical residuals,
 die-off distances, and pairwise superposition error from the same simulator used
-by the browser.
+by the browser. `build_response_matrix` stacks those responses into alpha and
+height matrices for controllability checks and inverse-design experiments.
 
 ## Browser UI
 
