@@ -86,7 +86,7 @@ class WebStaticTests(unittest.TestCase):
     def test_browser_modules_expose_expected_api(self):
         expected = {
             "state.js": ["RAD.createState", "RAD.serialize", "RAD.updateDerivedCells", "RAD.exportExperimentSequence", "RAD.importExperimentSequence", "RAD.deserialize"],
-            "operators.js": ["RAD.localActuationEvent", "RAD.lockEvent", "RAD.applyEventSequence", "RAD.compareEventOrder", "RAD.finiteDieOffRadius"],
+            "operators.js": ["RAD.localActuationEvent", "RAD.lockEvent", "RAD.applyEventSequence", "RAD.compareEventOrder", "RAD.compareSequenceOrder", "RAD.finiteDieOffRadius"],
             "analysis.js": ["RAD.analyzeExperimentSequence", "RAD.exportSequenceMetricsCsv", "RAD.sequenceFrames", "RAD.characterizeLocalResponse", "RAD.physicalPreviewComparison", "RAD.responseDecayProfile"],
             "physics.js": ["RAD.simulatePhysicalRelaxation", "RAD.simulateActive"],
             "mesh_export.js": ["RAD.buildPaperRadMesh", "RAD.exportPaperRadMeshObj"],

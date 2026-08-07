@@ -37,6 +37,42 @@ class EventCommutativityDiagnostic:
 
 
 @dataclass(frozen=True)
+class StateDistanceDiagnostic:
+    mode_changes: int
+    command_alpha_error: float
+    command_z_error: float
+    command_error: float
+    alpha_grid_error: float
+    final_alpha_error: float
+    final_height_error: float
+    final_error: float
+
+
+@dataclass(frozen=True)
+class AdjacentSwapDiagnostic:
+    index: int
+    first_kind: str
+    second_kind: str
+    sensitive: bool
+    distance: StateDistanceDiagnostic
+
+
+@dataclass(frozen=True)
+class SequenceOrderDiagnostic:
+    event_count: int
+    adjacent_pair_count: int
+    noncommuting_adjacent_pairs: int
+    order_sensitive: bool
+    reverse: StateDistanceDiagnostic
+    max_adjacent_alpha_error: float
+    max_adjacent_height_error: float
+    max_adjacent_command_error: float
+    max_adjacent_alpha_grid_error: float
+    max_order_error: float
+    adjacent: tuple[AdjacentSwapDiagnostic, ...]
+
+
+@dataclass(frozen=True)
 class DeadZonePropagationOperator:
     name: str
     dead_zone: float
@@ -242,6 +278,134 @@ def compare_event_order(
         ),
         final_alpha_error=final_alpha_error,
         final_height_error=final_height_error,
+    )
+
+
+def _mode_change_count(first: np.ndarray, second: np.ndarray) -> int:
+    return int(
+        np.count_nonzero(np.asarray(first, dtype=bool) != np.asarray(second, dtype=bool))
+    )
+
+
+def _state_distance(
+    config: LatticeConfig,
+    first: LatticeState,
+    second: LatticeState,
+    first_fields: dict[str, np.ndarray] | None = None,
+    second_fields: dict[str, np.ndarray] | None = None,
+) -> StateDistanceDiagnostic:
+    first_state = first.normalized(config)
+    second_state = second.normalized(config)
+    if first_fields is None:
+        first_fields = evaluate_programmable_operators(config, first_state)
+    if second_fields is None:
+        second_fields = evaluate_programmable_operators(config, second_state)
+    command_alpha_error = float(
+        np.max(np.abs(first_state.actuator_grid - second_state.actuator_grid))
+    )
+    command_z_error = float(
+        np.max(np.abs(first_state.z_actuator_grid - second_state.z_actuator_grid))
+    )
+    alpha_grid_error = float(
+        np.max(np.abs(first_state.alpha_grid - second_state.alpha_grid))
+    )
+    final_alpha_error = float(np.max(np.abs(first_fields["alpha"] - second_fields["alpha"])))
+    final_height_error = float(
+        np.max(np.abs(first_fields["height"] - second_fields["height"]))
+    )
+    command_error = max(command_alpha_error, command_z_error)
+    return StateDistanceDiagnostic(
+        mode_changes=_mode_change_count(first_state.locked_mask, second_state.locked_mask),
+        command_alpha_error=command_alpha_error,
+        command_z_error=command_z_error,
+        command_error=command_error,
+        alpha_grid_error=alpha_grid_error,
+        final_alpha_error=final_alpha_error,
+        final_height_error=final_height_error,
+        final_error=max(final_alpha_error, final_height_error),
+    )
+
+
+def compare_sequence_order(
+    config: LatticeConfig,
+    state: LatticeState,
+    events: Iterable[ProgrammableDiscontinuityEvent],
+    tolerance: float = 1e-9,
+) -> SequenceOrderDiagnostic:
+    """Measure path dependence by reversing a sequence and swapping neighbors.
+
+    This is a simulator diagnostic for programmable-discontinuity operator
+    composition. It is not a paper-derived constitutive law.
+    """
+
+    sequence = tuple(events)
+    base_final = apply_event_sequence(config, state, sequence)
+    base_fields = evaluate_programmable_operators(config, base_final)
+    reverse_final = apply_event_sequence(config, state, reversed(sequence))
+    reverse = _state_distance(config, base_final, reverse_final, base_fields)
+
+    adjacent: list[AdjacentSwapDiagnostic] = []
+    max_adjacent_alpha_error = 0.0
+    max_adjacent_height_error = 0.0
+    max_adjacent_command_error = 0.0
+    max_adjacent_alpha_grid_error = 0.0
+    noncommuting_adjacent_pairs = 0
+    for index in range(max(0, len(sequence) - 1)):
+        swapped = list(sequence)
+        swapped[index], swapped[index + 1] = swapped[index + 1], swapped[index]
+        swapped_final = apply_event_sequence(config, state, swapped)
+        distance = _state_distance(config, base_final, swapped_final, base_fields)
+        sensitive = bool(
+            distance.mode_changes > 0
+            or distance.command_error > tolerance
+            or distance.alpha_grid_error > tolerance
+            or distance.final_alpha_error > tolerance
+            or distance.final_height_error > tolerance
+        )
+        if sensitive:
+            noncommuting_adjacent_pairs += 1
+        max_adjacent_alpha_error = max(max_adjacent_alpha_error, distance.final_alpha_error)
+        max_adjacent_height_error = max(max_adjacent_height_error, distance.final_height_error)
+        max_adjacent_command_error = max(max_adjacent_command_error, distance.command_error)
+        max_adjacent_alpha_grid_error = max(
+            max_adjacent_alpha_grid_error, distance.alpha_grid_error
+        )
+        adjacent.append(
+            AdjacentSwapDiagnostic(
+                index=index,
+                first_kind=sequence[index].kind,
+                second_kind=sequence[index + 1].kind,
+                sensitive=sensitive,
+                distance=distance,
+            )
+        )
+
+    max_order_error = max(
+        reverse.final_error,
+        reverse.command_error,
+        reverse.alpha_grid_error,
+        max_adjacent_alpha_error,
+        max_adjacent_height_error,
+        max_adjacent_command_error,
+        max_adjacent_alpha_grid_error,
+    )
+    order_sensitive = bool(
+        reverse.mode_changes > 0
+        or max_order_error > tolerance
+        or noncommuting_adjacent_pairs > 0
+    )
+    return SequenceOrderDiagnostic(
+        event_count=len(sequence),
+        adjacent_pair_count=max(0, len(sequence) - 1),
+        noncommuting_adjacent_pairs=noncommuting_adjacent_pairs,
+        order_sensitive=order_sensitive,
+        reverse=reverse,
+        max_adjacent_alpha_error=max_adjacent_alpha_error,
+        max_adjacent_height_error=max_adjacent_height_error,
+        max_adjacent_command_error=max_adjacent_command_error,
+        max_adjacent_alpha_grid_error=max_adjacent_alpha_grid_error,
+        max_order_error=max_order_error,
+        adjacent=tuple(adjacent),
     )
 
 

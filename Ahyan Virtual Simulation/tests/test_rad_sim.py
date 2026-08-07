@@ -24,6 +24,7 @@ from rad_sim import (
     compare_physical_pair,
     compare_physical_response,
     compare_event_order,
+    compare_sequence_order,
     clear_actuation_event,
     diagnose_programmable_discontinuity,
     evaluate_programmable_operators,
@@ -376,6 +377,28 @@ class RadSimTests(unittest.TestCase):
         self.assertFalse(diagnostic.alpha_grid_commutes)
         self.assertGreater(diagnostic.final_alpha_error, 0.1)
         self.assertGreater(diagnostic.final_height_error, 0.1)
+
+    def test_sequence_order_diagnostic_reports_adjacent_swap_sensitivity(self):
+        config = LatticeConfig(rows=3, cols=3, backlash=0.0)
+        state = LatticeState.uniform(config)
+        diagnostic = compare_sequence_order(
+            config,
+            state,
+            (
+                local_actuation_event((1, 1), alpha=-0.3, z=0.2),
+                lock_event((1, 1)),
+                clear_actuation_event((1, 1)),
+            ),
+        )
+        self.assertEqual(diagnostic.event_count, 3)
+        self.assertEqual(diagnostic.adjacent_pair_count, 2)
+        self.assertGreater(diagnostic.noncommuting_adjacent_pairs, 0)
+        self.assertTrue(diagnostic.order_sensitive)
+        self.assertGreater(diagnostic.max_order_error, 0.1)
+        self.assertGreater(diagnostic.reverse.final_alpha_error, 0.1)
+        self.assertGreater(diagnostic.reverse.final_height_error, 0.1)
+        self.assertEqual(len(diagnostic.adjacent), 2)
+        self.assertTrue(any(item.sensitive for item in diagnostic.adjacent))
 
     def test_release_event_allows_later_actuation(self):
         config = LatticeConfig(rows=3, cols=3, backlash=0.0)

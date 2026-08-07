@@ -26,9 +26,9 @@ relaxation and report where physical center/height deltas deviate from the
 kinematic backlash prediction.
 For history-dependent programmable mechanics experiments, `local_actuation_event`,
 `lock_event`, `release_event`, `clear_actuation_event`, `apply_event_sequence`,
-and `compare_event_order` model discontinuities as state-to-state operators. A
-lock event commits the cell's current alpha state, so lock/actuation ordering can
-be tested as a measurable noncommutative effect.
+`compare_event_order`, and `compare_sequence_order` model discontinuities as
+state-to-state operators. A lock event commits the cell's current alpha state,
+so lock/actuation ordering can be tested as a measurable noncommutative effect.
 The browser mirrors this operator layer through `web/operators.js`. The selected
 cell dock includes event lock, event release, and order-check controls; committed
 locks store `cells.lockAlpha` so a locked cell can hold the dilation reached
@@ -447,9 +447,9 @@ without requiring Playwright or a browser binary.
   nodes, so vertical actuation and pin-clearance residual height can participate
   in the same axial/hinge/penalty energy model.
 - `local_actuation_event` / `lock_event` / `release_event` /
-  `compare_event_order`: executable programmable-discontinuity operators for
-  sequence studies, lock invariance, locality checks, and event-order
-  noncommutativity.
+  `compare_event_order` / `compare_sequence_order`: executable programmable-
+  discontinuity operators for sequence studies, lock invariance, locality
+  checks, adjacent-swap sensitivity, and event-order noncommutativity.
 - `diagnose_programmable_discontinuity`: Python operator diagnostic for locality,
   reachable sets, response rank, underactuated regions, and additive versus
   non-additive operator composition.
