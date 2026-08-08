@@ -210,6 +210,7 @@
         characterization: null,
         responseAtlasSweep: null,
         frameworkLawCandidates: null,
+        frameworkFormalizationTargets: null,
         calibrationResults: null,
         calibrationComparison: null,
         calibrationComparisonSummary: null,

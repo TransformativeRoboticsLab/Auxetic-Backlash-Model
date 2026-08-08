@@ -971,6 +971,8 @@ class WebStaticTests(unittest.TestCase):
             "characterizationUnderactuated",
             "frameworkLawSummary",
             "frameworkLawDetail",
+            "formalizationSummary",
+            "formalizationDetail",
             "saveProgrammableReport",
             "saveResponseAtlas",
             "runResponseAtlasSweep",
@@ -987,6 +989,7 @@ class WebStaticTests(unittest.TestCase):
             "characterization: null",
             "responseAtlasSweep: null",
             "frameworkLawCandidates: null",
+            "frameworkFormalizationTargets: null",
         ]:
             self.assertIn(symbol, state_js)
         analysis_js = (WEB / "analysis.js").read_text(encoding="utf-8")
@@ -1047,6 +1050,7 @@ class WebStaticTests(unittest.TestCase):
             "this.state.experiment.characterizationScope",
             "this.state.experiment.characterization = result",
             "this.state.experiment.frameworkLawCandidates",
+            "this.state.experiment.frameworkFormalizationTargets",
             'type: "characterization"',
             "characterizationSummary",
             "characterizationSuperposition",
@@ -1059,7 +1063,8 @@ class WebStaticTests(unittest.TestCase):
             "this.state.experiment.responseAtlasSweep = sweep",
             "renderResponseAtlasSweep",
             "renderFrameworkLawCandidates",
-            "currentFrameworkLawCandidates",
+            "renderFormalizationTargets",
+            "currentFrameworkReportMetadata",
             "sweepSummary",
             "sweepTrend",
             "sensitivity?.dominant",

@@ -350,7 +350,9 @@ response versus Manhattan distance from the active sources; this is a locality
 diagnostic, not a paper-derived material law. The panel also shows how many
 framework law candidates are currently supported by the diagnostic predicates
 and names the primary supported locality, reachability, composition, or
-event-order candidate. This is an early numerical probe for
+event-order candidate. A companion formalization readout counts Lean-sized proof
+targets and shows whether the primary target is ready, blocked by missing Lean
+tooling, or waiting for calibrated premises. This is an early numerical probe for
 programmable-discontinuity behavior: nonzero residual indicates that backlash,
 locks, or saturation are making the local operators interact non-additively.
 

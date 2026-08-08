@@ -1134,7 +1134,9 @@
       this.state.experiment.characterizationScope = scope;
       const result = RAD.characterizeLocalResponse(this.state, { scope, ...this.state.selection });
       this.state.experiment.characterization = result;
-      this.state.experiment.frameworkLawCandidates = this.currentFrameworkLawCandidates(scope);
+      const framework = this.currentFrameworkReportMetadata(scope);
+      this.state.experiment.frameworkLawCandidates = framework.operatorLawCandidates;
+      this.state.experiment.frameworkFormalizationTargets = framework.formalizationTargets;
       this.state.view.overlayMode = "operatorInteraction";
       RAD.recordEvent(this.state, {
         type: "characterization",
@@ -1170,6 +1172,7 @@
         document.getElementById("characterizationDecay").textContent = "decay a0.00 z0.00";
         document.getElementById("characterizationDecayLength").textContent = "len a0.0 z0.0";
         this.renderFrameworkLawCandidates();
+        this.renderFormalizationTargets();
         this.renderCalibrationResults();
         this.renderResponseAtlasSweep();
         return;
@@ -1198,12 +1201,14 @@
       document.getElementById("characterizationDecay").textContent = `decay a${Number(result.alphaDecayRatio || 0).toFixed(2)} z${Number(result.zDecayRatio || 0).toFixed(2)}`;
       document.getElementById("characterizationDecayLength").textContent = `len a${Number(result.alphaDecayLength || 0).toFixed(1)} z${Number(result.zDecayLength || 0).toFixed(1)}`;
       this.renderFrameworkLawCandidates();
+      this.renderFormalizationTargets();
       this.renderCalibrationResults();
       this.renderResponseAtlasSweep();
     }
 
-    currentFrameworkLawCandidates(scope) {
-      if (typeof RAD.programmableDiscontinuityReport !== "function") return null;
+    currentFrameworkReportMetadata(scope) {
+      const empty = { operatorLawCandidates: null, formalizationTargets: null };
+      if (typeof RAD.programmableDiscontinuityReport !== "function") return empty;
       try {
         const report = RAD.programmableDiscontinuityReport(this.state, {
           scope,
@@ -1211,9 +1216,12 @@
           includeResponseMatrix: false,
           includeFields: false,
         });
-        return report.operatorLawCandidates || null;
+        return {
+          operatorLawCandidates: report.operatorLawCandidates || null,
+          formalizationTargets: report.formalizationTargets || null,
+        };
       } catch {
-        return null;
+        return empty;
       }
     }
 
@@ -1258,6 +1266,33 @@
       const label = primary ? primary.id.replace(/_/g, " ") : "none";
       document.getElementById("frameworkLawSummary").textContent = `laws ${supported.length}/${laws.length} supported`;
       document.getElementById("frameworkLawDetail").textContent = `candidate ${label} ${status}${this.formatFrameworkLawEvidence(primary)}`;
+    }
+
+    renderFormalizationTargets() {
+      const manifest = this.state.experiment.frameworkFormalizationTargets;
+      if (!manifest || !Array.isArray(manifest.targets)) {
+        document.getElementById("formalizationSummary").textContent = "formal targets not run";
+        document.getElementById("formalizationDetail").textContent = "proof --";
+        return;
+      }
+      const targets = manifest.targets;
+      const ready = targets.filter((target) => target.readyForLean);
+      const tooling = manifest.tooling || {};
+      const status = tooling.status || "unknown";
+      const preferred = [
+        "dead_zone_zero_inside_backlash",
+        "dead_zone_piecewise_linear_outside_gap",
+        "lock_projection_idempotent",
+        "noncommutativity_witness_from_order_error",
+        "bounded_locality_witness",
+      ];
+      const primary =
+        preferred.map((id) => targets.find((target) => target.id === id)).find(Boolean) ||
+        targets[0];
+      const label = primary ? primary.id.replace(/_/g, " ") : "none";
+      const targetStatus = primary?.status || "unknown";
+      document.getElementById("formalizationSummary").textContent = `formal ${ready.length}/${targets.length} ready, Lean ${status}`;
+      document.getElementById("formalizationDetail").textContent = `proof ${label} ${targetStatus}`;
     }
 
     renderCalibrationResults() {
