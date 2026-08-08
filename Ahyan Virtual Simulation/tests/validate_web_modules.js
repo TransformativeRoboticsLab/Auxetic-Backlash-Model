@@ -317,6 +317,17 @@ assert.ok(
   "response atlas sweep should report negative clearance sensitivity for neighbor residual"
 );
 assert.ok(browserSweep.sensitivity.dominant, "response atlas sweep should identify a dominant sensitivity");
+assert.strictEqual(
+  browserSweep.operatorLawCandidates.method,
+  "adjacent monotonicity over sampled parameter trend plus endpoint sensitivity"
+);
+const clearanceResidualLaw = browserSweep.operatorLawCandidates.laws.find(
+  (law) => law.parameter === "pinHoleClearance" && law.metric === "maxObservedNeighborZResidual"
+);
+assert.ok(clearanceResidualLaw, "response atlas sweep should propose a clearance residual law");
+assert.strictEqual(clearanceResidualLaw.monotonicity, "decreasing");
+assert.strictEqual(clearanceResidualLaw.supportedBySweep, true);
+assert.strictEqual(clearanceResidualLaw.status, "simulator-diagnostic");
 assert.strictEqual(JSON.parse(RAD.exportResponseAtlasSweep(readyState, { backlashValues: [0.02], clearanceValues: [0.02] })).schema, browserSweep.schema);
 const resultsTemplate = RAD.calibrationExperimentResultsTemplate(readyState, { protocol: experimentProtocol });
 assert.strictEqual(resultsTemplate.schema, "rad-sim.calibration-experiment-results.v1");

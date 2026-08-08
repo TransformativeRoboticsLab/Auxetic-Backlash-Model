@@ -1258,8 +1258,12 @@
       const dominantLabel = dominant
         ? `, sens ${dominant.parameter}/${dominant.metric} ${Number(dominant.slope || 0).toFixed(2)}`
         : "";
+      const residualLaw = (sweep.operatorLawCandidates?.laws || []).find(
+        (law) => law.parameter === "pinHoleClearance" && law.metric === "maxObservedNeighborZResidual"
+      );
+      const lawLabel = residualLaw ? `, law ${residualLaw.parameter}/${residualLaw.monotonicity}` : "";
       document.getElementById("sweepSummary").textContent = `sweep ${summary.sampleCount || 0} samples, reach a${summary.maxAlphaReach || 0} z${summary.maxZReach || 0}`;
-      document.getElementById("sweepTrend").textContent = `neighbor z ${Number(summary.maxObservedNeighborZResidual || 0).toFixed(3)}, clear drop ${drop.toFixed(0)}%, super ${Number(summary.maxSuperpositionError || 0).toFixed(3)}${dominantLabel}`;
+      document.getElementById("sweepTrend").textContent = `neighbor z ${Number(summary.maxObservedNeighborZResidual || 0).toFixed(3)}, clear drop ${drop.toFixed(0)}%, super ${Number(summary.maxSuperpositionError || 0).toFixed(3)}${dominantLabel}${lawLabel}`;
     }
 
     strongestInteractionHotspot(result) {

@@ -588,6 +588,7 @@ class ResponseAtlasSweep:
             "byBacklash": by_backlash,
             "byPinHoleClearance": by_clearance,
         }
+        sensitivity = _sweep_sensitivity_from_trends(trends)
         return {
             "schema": self.schema,
             "grid": {"rows": self.config_shape[0], "cols": self.config_shape[1]},
@@ -619,7 +620,8 @@ class ResponseAtlasSweep:
                 ),
             },
             "trends": trends,
-            "sensitivity": _sweep_sensitivity_from_trends(trends),
+            "sensitivity": sensitivity,
+            "operatorLawCandidates": _sweep_operator_law_candidates(trends, sensitivity),
             "assumptions": {
                 "source": "Each sample rebuilds the response atlas from the same protocol commands.",
                 "interpretation": (
@@ -844,6 +846,96 @@ def _sweep_sensitivity_from_trends(
         "method": "endpoint finite difference over each parameter trend",
         "metrics": metrics,
         "dominant": dominant,
+    }
+
+
+def _trend_monotonicity(
+    trend: list[dict[str, object]],
+    metric: str,
+    tolerance: float = 1e-12,
+) -> str:
+    if len(trend) < 2:
+        return "insufficient"
+    increases = 0
+    decreases = 0
+    flats = 0
+    for previous, current in zip(trend, trend[1:]):
+        delta = float(current[metric]) - float(previous[metric])
+        if abs(delta) <= tolerance:
+            flats += 1
+        elif delta > 0:
+            increases += 1
+        else:
+            decreases += 1
+    if increases and not decreases:
+        return "increasing"
+    if decreases and not increases:
+        return "decreasing"
+    if flats and not increases and not decreases:
+        return "flat"
+    return "mixed"
+
+
+def _operator_law_statement(parameter: str, metric: str, monotonicity: str) -> str:
+    parameter_labels = {
+        "backlash": "backlash dead-zone width",
+        "pinHoleClearance": "pin-hole clearance",
+    }
+    metric_labels = {
+        "meanAlphaReach": "mean dilation reach",
+        "meanZReach": "mean vertical reach",
+        "maxObservedNeighborZResidual": "neighbor vertical residual motion",
+        "maxSuperpositionError": "non-additive superposition residual",
+    }
+    parameter_label = parameter_labels.get(parameter, parameter)
+    metric_label = metric_labels.get(metric, metric)
+    if monotonicity == "increasing":
+        return f"Increasing {parameter_label} increases {metric_label} over the sampled simulator sweep."
+    if monotonicity == "decreasing":
+        return f"Increasing {parameter_label} decreases {metric_label} over the sampled simulator sweep."
+    if monotonicity == "flat":
+        return f"Changing {parameter_label} leaves {metric_label} approximately flat over the sampled simulator sweep."
+    if monotonicity == "mixed":
+        return f"{parameter_label} has a mixed sampled relationship with {metric_label}; no monotone candidate is supported."
+    return f"{parameter_label} has insufficient sampled data to propose a {metric_label} law candidate."
+
+
+def _sweep_operator_law_candidates(
+    trends: dict[str, list[dict[str, object]]],
+    sensitivity: dict[str, object],
+) -> dict[str, object]:
+    trend_map = {
+        "backlash": trends.get("byBacklash", []),
+        "pinHoleClearance": trends.get("byPinHoleClearance", []),
+    }
+    sensitivity_metrics = sensitivity.get("metrics", {})
+    laws: list[dict[str, object]] = []
+    for parameter, trend in trend_map.items():
+        parameter_sensitivity = {}
+        if isinstance(sensitivity_metrics, dict):
+            parameter_sensitivity = sensitivity_metrics.get(parameter, {}) or {}
+        for metric in SWEEP_SENSITIVITY_METRICS:
+            monotonicity = _trend_monotonicity(trend, metric)
+            slope = (
+                parameter_sensitivity.get(metric)
+                if isinstance(parameter_sensitivity, dict)
+                else None
+            )
+            laws.append(
+                {
+                    "parameter": parameter,
+                    "metric": metric,
+                    "monotonicity": monotonicity,
+                    "slope": slope,
+                    "supportedBySweep": monotonicity in {"increasing", "decreasing", "flat"},
+                    "status": "simulator-diagnostic",
+                    "statement": _operator_law_statement(parameter, metric, monotonicity),
+                }
+            )
+    return {
+        "schema": "rad-sim.operator-law-candidates.v1",
+        "method": "adjacent monotonicity over sampled parameter trend plus endpoint sensitivity",
+        "laws": laws,
     }
 
 

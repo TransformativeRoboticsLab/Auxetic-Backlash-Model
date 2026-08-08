@@ -788,6 +788,21 @@ class RadSimTests(unittest.TestCase):
             0.0,
         )
         self.assertIsNotNone(sensitivity["dominant"])
+        laws = payload["operatorLawCandidates"]
+        self.assertEqual(
+            laws["method"],
+            "adjacent monotonicity over sampled parameter trend plus endpoint sensitivity",
+        )
+        clearance_law = next(
+            law
+            for law in laws["laws"]
+            if law["parameter"] == "pinHoleClearance"
+            and law["metric"] == "maxObservedNeighborZResidual"
+        )
+        self.assertEqual(clearance_law["monotonicity"], "decreasing")
+        self.assertLess(clearance_law["slope"], 0.0)
+        self.assertTrue(clearance_law["supportedBySweep"])
+        self.assertEqual(clearance_law["status"], "simulator-diagnostic")
         first_sample = payload["samples"][0]
         self.assertEqual(first_sample["atlas"]["schema"], "rad-sim.response-atlas.v1")
         self.assertAlmostEqual(first_sample["settings"]["holeRadius"], 0.20)
@@ -795,6 +810,7 @@ class RadSimTests(unittest.TestCase):
         exported = json.loads(export_response_atlas_sweep_json(sweep))
         self.assertEqual(exported["summary"], payload["summary"])
         self.assertEqual(exported["sensitivity"], payload["sensitivity"])
+        self.assertEqual(exported["operatorLawCandidates"], payload["operatorLawCandidates"])
 
     def test_calibration_results_template_roundtrips_and_compares_to_simulation(self):
         config = LatticeConfig(rows=3, cols=3, backlash=0.02, z_coupling_gain=0.35)

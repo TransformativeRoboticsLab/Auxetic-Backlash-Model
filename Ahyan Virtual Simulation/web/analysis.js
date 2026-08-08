@@ -1374,6 +1374,78 @@
     };
   }
 
+  function trendMonotonicity(trend, metric, tolerance = 1e-12) {
+    if (!Array.isArray(trend) || trend.length < 2) return "insufficient";
+    let increases = 0;
+    let decreases = 0;
+    let flats = 0;
+    for (let i = 1; i < trend.length; i += 1) {
+      const delta = (Number(trend[i][metric]) || 0) - (Number(trend[i - 1][metric]) || 0);
+      if (Math.abs(delta) <= tolerance) flats += 1;
+      else if (delta > 0) increases += 1;
+      else decreases += 1;
+    }
+    if (increases && !decreases) return "increasing";
+    if (decreases && !increases) return "decreasing";
+    if (flats && !increases && !decreases) return "flat";
+    return "mixed";
+  }
+
+  function operatorLawStatement(parameter, metric, monotonicity) {
+    const parameterLabels = {
+      backlash: "backlash dead-zone width",
+      pinHoleClearance: "pin-hole clearance",
+    };
+    const metricLabels = {
+      meanAlphaReach: "mean dilation reach",
+      meanZReach: "mean vertical reach",
+      maxObservedNeighborZResidual: "neighbor vertical residual motion",
+      maxSuperpositionError: "non-additive superposition residual",
+    };
+    const parameterLabel = parameterLabels[parameter] || parameter;
+    const metricLabel = metricLabels[metric] || metric;
+    if (monotonicity === "increasing") {
+      return `Increasing ${parameterLabel} increases ${metricLabel} over the sampled simulator sweep.`;
+    }
+    if (monotonicity === "decreasing") {
+      return `Increasing ${parameterLabel} decreases ${metricLabel} over the sampled simulator sweep.`;
+    }
+    if (monotonicity === "flat") {
+      return `Changing ${parameterLabel} leaves ${metricLabel} approximately flat over the sampled simulator sweep.`;
+    }
+    if (monotonicity === "mixed") {
+      return `${parameterLabel} has a mixed sampled relationship with ${metricLabel}; no monotone candidate is supported.`;
+    }
+    return `${parameterLabel} has insufficient sampled data to propose a ${metricLabel} law candidate.`;
+  }
+
+  function sweepOperatorLawCandidates(trends, sensitivity) {
+    const trendMap = {
+      backlash: trends.byBacklash || [],
+      pinHoleClearance: trends.byPinHoleClearance || [],
+    };
+    const laws = [];
+    for (const [parameter, trend] of Object.entries(trendMap)) {
+      for (const metric of SWEEP_SENSITIVITY_METRICS) {
+        const monotonicity = trendMonotonicity(trend, metric);
+        laws.push({
+          parameter,
+          metric,
+          monotonicity,
+          slope: sensitivity?.metrics?.[parameter]?.[metric] ?? null,
+          supportedBySweep: ["increasing", "decreasing", "flat"].includes(monotonicity),
+          status: "simulator-diagnostic",
+          statement: operatorLawStatement(parameter, metric, monotonicity),
+        });
+      }
+    }
+    return {
+      schema: "rad-sim.operator-law-candidates.v1",
+      method: "adjacent monotonicity over sampled parameter trend plus endpoint sensitivity",
+      laws,
+    };
+  }
+
   function atlasStepEntry(state, step, tolerance = 1e-9) {
     const commandState = protocolStepState(state, step, true);
     const baselineState = protocolStepState(state, step, false);
@@ -1493,6 +1565,7 @@
       byBacklash: sweepTrend(samples, "backlash"),
       byPinHoleClearance: sweepTrend(samples, "pinHoleClearance"),
     };
+    const sensitivity = sweepSensitivityFromTrends(trends);
     return {
       schema: "rad-sim.response-atlas-sweep.v1",
       savedAt: new Date().toISOString(),
@@ -1516,7 +1589,8 @@
         maxSuperpositionError: samples.reduce((max, sample) => Math.max(max, sample.summary.maxSuperpositionError || 0), 0),
       },
       trends,
-      sensitivity: sweepSensitivityFromTrends(trends),
+      sensitivity,
+      operatorLawCandidates: sweepOperatorLawCandidates(trends, sensitivity),
       assumptions: {
         source: "Each browser sample rebuilds the response atlas from the current calibration protocol commands.",
         interpretation: "Backlash and clearance are treated as programmable-discontinuity dead-zone parameters; trend summaries are simulator diagnostics.",
