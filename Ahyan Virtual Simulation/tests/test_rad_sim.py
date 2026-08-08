@@ -1388,6 +1388,38 @@ class RadSimTests(unittest.TestCase):
         self.assertEqual(payload["metrics"]["positiveHeightUnderactuatedCells"], 0)
         self.assertEqual(payload["metrics"]["negativeHeightUnderactuatedCells"], 1)
 
+    def test_inverse_design_signed_height_reachability_uses_directional_probes(self):
+        config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.3)
+        target = np.zeros((3, 3), dtype=float)
+        target[1, 1] = 0.2
+        solution = solve_inverse_design(
+            config,
+            target_height=target,
+            actuator_cells=[(1, 1)],
+            include_alpha=False,
+            include_z=True,
+            z_step=0.12,
+            tolerance=1e-8,
+        )
+        upward = characterize_response(
+            config,
+            (SourceCommand((1, 1), z=0.12),),
+            tolerance=1e-8,
+        )
+        downward = characterize_response(
+            config,
+            (SourceCommand((1, 1), z=-0.12),),
+            tolerance=1e-8,
+        )
+        np.testing.assert_array_equal(
+            solution.positive_height_reachable_mask,
+            upward.height_delta > 1e-8,
+        )
+        np.testing.assert_array_equal(
+            solution.negative_height_reachable_mask,
+            downward.height_delta < -1e-8,
+        )
+
     def test_inverse_design_physical_validation_reports_spring_hinge_fit(self):
         config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.0)
         target = np.zeros((3, 3), dtype=float)

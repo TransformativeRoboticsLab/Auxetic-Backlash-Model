@@ -7,7 +7,12 @@ from typing import Iterable
 import numpy as np
 from scipy.optimize import lsq_linear
 
-from .experiments import ResponseMatrix, SourceCommand, build_response_matrix
+from .experiments import (
+    ResponseMatrix,
+    SourceCommand,
+    build_response_matrix,
+    characterize_response,
+)
 from .kinematic import simulate_kinematic
 from .models import LatticeConfig, LatticeState, LoadCase, SimulationResult
 from .spring_hinge import solve_spring_hinge_3d
@@ -381,14 +386,42 @@ def _reachable_mask(matrix: ResponseMatrix, family: str, tolerance: float) -> np
 
 
 def _signed_height_reachable_masks(
-    matrix: ResponseMatrix,
+    config: LatticeConfig,
+    actuator_cells: tuple[tuple[int, int], ...],
+    locked_cells: tuple[tuple[int, int], ...],
+    *,
+    alpha_step: float,
+    z_step: float,
+    include_alpha: bool,
+    include_z: bool,
     tolerance: float,
 ) -> tuple[np.ndarray, np.ndarray]:
-    if matrix.height.shape[1] == 0:
-        flat = np.zeros(matrix.height.shape[0], dtype=bool)
-        return flat.reshape(matrix.cell_shape), flat.reshape(matrix.cell_shape)
-    reversible = np.any(np.abs(matrix.height) > tolerance, axis=1)
-    return reversible.reshape(matrix.cell_shape), reversible.reshape(matrix.cell_shape)
+    positive = np.zeros(config.rows * config.cols, dtype=bool)
+    negative = np.zeros(config.rows * config.cols, dtype=bool)
+    alpha_probe = abs(float(alpha_step))
+    z_probe = abs(float(z_step))
+    for cell in actuator_cells:
+        commands: list[SourceCommand] = []
+        if include_alpha and alpha_probe > tolerance:
+            commands.extend(
+                (
+                    SourceCommand(cell=cell, alpha=alpha_probe),
+                    SourceCommand(cell=cell, alpha=-alpha_probe),
+                )
+            )
+        if include_z and z_probe > tolerance:
+            commands.extend(
+                (
+                    SourceCommand(cell=cell, z=z_probe),
+                    SourceCommand(cell=cell, z=-z_probe),
+                )
+            )
+        for command in commands:
+            response = characterize_response(config, (command,), locked_cells, tolerance)
+            delta = response.height_delta.reshape(-1)
+            positive |= delta > tolerance
+            negative |= delta < -tolerance
+    return positive.reshape(config.rows, config.cols), negative.reshape(config.rows, config.cols)
 
 
 def _underactuated_mask(
@@ -528,8 +561,14 @@ def solve_inverse_design(
     reachable_alpha = _reachable_mask(matrix, "alpha", tolerance)
     reachable_height = _reachable_mask(matrix, "height", tolerance)
     positive_height_reachable, negative_height_reachable = _signed_height_reachable_masks(
-        matrix,
-        tolerance,
+        config,
+        candidates,
+        locked,
+        alpha_step=alpha_step,
+        z_step=z_step,
+        include_alpha=include_alpha,
+        include_z=include_z,
+        tolerance=tolerance,
     )
     (
         positive_height_underactuated,

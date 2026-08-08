@@ -436,11 +436,13 @@ against finite response columns, counts target cells with requested height motio
 outside the reachable set, and exposes an `Underactuated target` overlay plus
 `Select Under Target` for the worst unreachable target cell. The reachability
 diagnostic keeps separate upward and downward target counts so vertical
-push/pull requests are not hidden inside a single absolute-height score. `Solve
-Linear Fit` uses those columns in a first greedy linearized residual projection
-and `Apply Linear Fit` commits the resulting clamped commands. These response
-columns are still computed from the current synthetic kinematic model rather than from a
-calibrated quasistatic mechanism. `Validate Physical` checks the current linear fit or analyzed plan
+push/pull requests are not hidden inside a single absolute-height score. The
+Python inverse report computes those signed masks from explicit positive and
+negative finite probes. `Solve Linear Fit` uses those columns in a first greedy
+linearized residual projection and `Apply Linear Fit` commits the resulting
+clamped commands. These response columns are still computed from the current
+synthetic kinematic model rather than from a calibrated quasistatic mechanism.
+`Validate Physical` checks the current linear fit or analyzed plan
 against the browser spring-preview relaxation and reports physical target error
 plus kinematic/physical center-height disagreement. `Save Inverse Report`
 exports a `rad-sim.inverse-design-report.v1` JSON artifact with the current
