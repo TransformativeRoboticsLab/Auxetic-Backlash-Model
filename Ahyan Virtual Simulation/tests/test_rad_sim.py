@@ -51,6 +51,7 @@ from rad_sim import (
     export_calibration_experiment_results_template_json,
     export_inverse_design_report_json,
     export_programmable_discontinuity_report_json,
+    export_formalization_target_manifest_json,
     export_response_atlas_json,
     export_response_atlas_sweep_json,
     export_response_matrix_json,
@@ -63,6 +64,7 @@ from rad_sim import (
     provenance_by_status,
     provenance_summary,
     programmable_discontinuity_report,
+    formalization_target_manifest,
     export_paper_rad_mesh_obj,
     iter_obj_vertices,
     release_event,
@@ -1137,6 +1139,8 @@ class RadSimTests(unittest.TestCase):
                 "orderSensitive"
             ]
         )
+        standalone_formalization = formalization_target_manifest(diagnostic)
+        self.assertEqual(standalone_formalization, formalization)
         self.assertTrue(payload["composition"]["nonadditive"])
         self.assertTrue(payload["composition"]["orderSensitive"])
         self.assertIsNotNone(payload["sequenceOrder"])
@@ -1159,6 +1163,10 @@ class RadSimTests(unittest.TestCase):
         self.assertEqual(exported["composition"], payload["composition"])
         self.assertEqual(exported["operatorLawCandidates"], payload["operatorLawCandidates"])
         self.assertEqual(exported["formalizationTargets"], payload["formalizationTargets"])
+        exported_formalization = json.loads(
+            export_formalization_target_manifest_json(diagnostic)
+        )
+        self.assertEqual(exported_formalization, payload["formalizationTargets"])
 
     def test_programmable_discontinuity_report_can_include_physical_validation(self):
         config = LatticeConfig(rows=2, cols=2, z_coupling_gain=0.0)

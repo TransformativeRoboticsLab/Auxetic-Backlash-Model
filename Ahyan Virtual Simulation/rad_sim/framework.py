@@ -937,6 +937,20 @@ def programmable_discontinuity_report(
     }
 
 
+def formalization_target_manifest(
+    diagnostic: ProgrammableDiscontinuityDiagnostic,
+) -> dict[str, object]:
+    """Return the standalone theorem-target manifest for proof work."""
+
+    return _framework_formalization_targets(diagnostic)
+
+
+def export_formalization_target_manifest_json(
+    diagnostic: ProgrammableDiscontinuityDiagnostic,
+) -> str:
+    return json.dumps(formalization_target_manifest(diagnostic), indent=2)
+
+
 def export_programmable_discontinuity_report_json(
     diagnostic: ProgrammableDiscontinuityDiagnostic,
     config: LatticeConfig | None = None,

@@ -41,6 +41,8 @@ assert.strictEqual(typeof RAD.buildResponseMatrix, "function", "analysis module 
 assert.strictEqual(typeof RAD.exportResponseMatrix, "function", "analysis module should serialize response matrices");
 assert.strictEqual(typeof RAD.programmableDiscontinuityReport, "function", "analysis module should expose programmable-discontinuity reports");
 assert.strictEqual(typeof RAD.exportProgrammableDiscontinuityReport, "function", "analysis module should export programmable-discontinuity reports");
+assert.strictEqual(typeof RAD.formalizationTargetManifest, "function", "analysis module should expose formalization target manifests");
+assert.strictEqual(typeof RAD.exportFormalizationTargetManifest, "function", "analysis module should export formalization target manifests");
 assert.strictEqual(typeof RAD.calibrationExperimentResultsTemplate, "function", "analysis module should expose calibration results template");
 assert.strictEqual(typeof RAD.exportCalibrationExperimentResultsTemplate, "function", "analysis module should export calibration results template");
 assert.strictEqual(typeof RAD.compareCalibrationExperimentResults, "function", "analysis module should compare calibration results");
@@ -74,6 +76,7 @@ assert.ok(html.includes('value="underactuated"'), "underactuated target overlay 
 assert.ok(html.includes('id="selectInteractionHotspot"'), "response panel should expose a hotspot selection button");
 assert.ok(html.includes('id="saveResponseMatrix"'), "response panel should expose a response-matrix export button");
 assert.ok(html.includes('id="saveProgrammableReport"'), "response panel should expose a programmable-discontinuity report export button");
+assert.ok(html.includes('id="saveFormalizationTargets"'), "response panel should expose a formalization-target export button");
 assert.ok(html.includes('id="selectCalibrationHotspot"'), "response panel should expose a calibration-error selection button");
 assert.ok(html.includes('id="nextCalibrationHotspot"'), "response panel should expose ranked calibration-error navigation");
 assert.ok(html.includes('id="selectUnderactuatedTarget"'), "inverse panel should expose underactuated target selection");
@@ -673,6 +676,8 @@ assert.strictEqual(frameworkLaws.get("event_order_noncommutativity").status, "si
 assert.strictEqual(frameworkReport.formalizationTargets.schema, "rad-sim.formalization-targets.v1");
 assert.strictEqual(frameworkReport.formalizationTargets.tooling.engine, "Lean");
 assert.strictEqual(frameworkReport.formalizationTargets.tooling.status, "browser-cannot-inspect-path");
+assert.deepStrictEqual(RAD.formalizationTargetManifest(characterizationState, { r: 2, c: 2, scope: "pair" }), frameworkReport.formalizationTargets);
+assert.strictEqual(JSON.parse(RAD.exportFormalizationTargetManifest(characterizationState, { r: 2, c: 2, scope: "pair" })).schema, "rad-sim.formalization-targets.v1");
 const formalTargets = new Map(frameworkReport.formalizationTargets.targets.map((target) => [target.id, target]));
 assert.strictEqual(formalTargets.get("dead_zone_zero_inside_backlash").source, "paper-supported");
 assert.ok(

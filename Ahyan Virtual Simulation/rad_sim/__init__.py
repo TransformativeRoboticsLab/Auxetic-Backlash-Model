@@ -78,7 +78,9 @@ from .experiments import (
 from .framework import (
     ProgrammableDiscontinuityDiagnostic,
     diagnose_programmable_discontinuity,
+    export_formalization_target_manifest_json,
     export_programmable_discontinuity_report_json,
+    formalization_target_manifest,
     programmable_discontinuity_report,
 )
 from .kinematic import simulate_kinematic
@@ -231,6 +233,8 @@ __all__ = [
     "response_decay_profile",
     "diagnose_programmable_discontinuity",
     "programmable_discontinuity_report",
+    "formalization_target_manifest",
+    "export_formalization_target_manifest_json",
     "export_programmable_discontinuity_report_json",
     "alpha_backlash_operator",
     "vertical_clearance_operator",

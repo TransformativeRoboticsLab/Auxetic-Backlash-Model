@@ -82,6 +82,9 @@ physical-validation, sequence-order fields, and a
 claims such as backlash dead-zone lemmas, lock idempotence, response-rank
 bounds, and noncommutativity witnesses. These are proof targets, not completed
 Lean proofs unless Lean/Lake are available and the premises are formalized.
+`formalization_target_manifest` and
+`export_formalization_target_manifest_json` export that proof-target manifest
+without the heavier response fields.
 `solve_inverse_design` uses that response matrix in a bounded damped least-squares
 fit from target alpha/height fields to candidate actuator commands. This is the
 first Python-backed inverse layer for surface-shaping studies; it is linearized
@@ -582,6 +585,10 @@ without requiring Playwright or a browser binary.
   locality, rank-limited reachability, non-additive composition, and event-order
   noncommutativity, plus formalization targets that separate paper-supported
   dead-zone lemmas from simulator-diagnostic witnesses.
+- `formalization_target_manifest` /
+  `export_formalization_target_manifest_json`: standalone Python export for the
+  `rad-sim.formalization-targets.v1` proof-target manifest embedded in the
+  framework report.
 - `characterize_pairwise_interactions`: Python pairwise command interaction graph
   for identifying which actuation operators create non-additive residuals and
   mapping each command cell's strongest pair residual and non-additive degree.
@@ -668,7 +675,8 @@ without requiring Playwright or a browser binary.
   Report`, carrying the same paper-supported assumptions and simulator
   diagnostics used by the Python framework report, plus diagnostic law
   candidates, formalization-target metadata, and the browser spring-preview
-  physical-validation summary.
+  physical-validation summary. `Save Formal Targets` exports only the
+  `rad-sim.formalization-targets.v1` manifest for proof planning.
 - `web/inverse.js` `validateInversePlanPhysical`: browser-side physical
   validation of analyzed inverse plans and linear fits against spring-preview
   relaxation, including physical target residual and model-disagreement metrics.

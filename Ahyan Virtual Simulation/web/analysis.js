@@ -1074,6 +1074,18 @@
     return JSON.stringify(programmableDiscontinuityReport(state, options), null, 2);
   }
 
+  function formalizationTargetManifest(state, options = {}) {
+    return programmableDiscontinuityReport(state, {
+      ...options,
+      includeResponseMatrix: false,
+      includeFields: false,
+    }).formalizationTargets;
+  }
+
+  function exportFormalizationTargetManifest(state, options = {}) {
+    return JSON.stringify(formalizationTargetManifest(state, options), null, 2);
+  }
+
   function nearestSourceDistance(r, c, sourceCells) {
     let best = Infinity;
     for (const source of sourceCells) best = Math.min(best, Math.abs(r - source.r) + Math.abs(c - source.c));
@@ -2309,6 +2321,8 @@
   RAD.exportResponseMatrix = exportResponseMatrix;
   RAD.programmableDiscontinuityReport = programmableDiscontinuityReport;
   RAD.exportProgrammableDiscontinuityReport = exportProgrammableDiscontinuityReport;
+  RAD.formalizationTargetManifest = formalizationTargetManifest;
+  RAD.exportFormalizationTargetManifest = exportFormalizationTargetManifest;
   RAD.calibrationExperimentProtocol = calibrationExperimentProtocol;
   RAD.exportCalibrationExperimentProtocol = exportCalibrationExperimentProtocol;
   RAD.responseAtlas = responseAtlas;
