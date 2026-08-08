@@ -18,6 +18,7 @@ from rad_sim import (
     apply_event_sequence,
     backlash_activation,
     build_calibration_experiment_protocol,
+    build_response_atlas,
     build_response_matrix,
     build_paper_rad_cell_geometry,
     build_paper_rad_lattice_geometry,
@@ -50,6 +51,7 @@ from rad_sim import (
     export_calibration_experiment_results_template_json,
     export_inverse_design_report_json,
     export_programmable_discontinuity_report_json,
+    export_response_atlas_json,
     export_response_matrix_json,
     hardware_profile_from_config,
     inverse_design_report,
@@ -704,6 +706,47 @@ class RadSimTests(unittest.TestCase):
         row, col = locked_step.locked_cells[0]
         self.assertEqual(locked_response.alpha_delta[row, col], 0.0)
         self.assertEqual(locked_response.height_delta[row, col], 0.0)
+
+    def test_response_atlas_exports_single_pair_cluster_and_lock_metrics(self):
+        config = LatticeConfig(rows=3, cols=3, backlash=0.02, z_coupling_gain=0.35)
+        atlas = build_response_atlas(config, center_cell=(1, 1))
+        payload = atlas.to_dict()
+
+        self.assertEqual(payload["schema"], "rad-sim.response-atlas.v1")
+        self.assertEqual(payload["summary"]["entryCount"], 7)
+        self.assertEqual(payload["summary"]["scopeCounts"]["single"], 3)
+        self.assertEqual(payload["summary"]["scopeCounts"]["pair"], 2)
+        self.assertEqual(payload["summary"]["scopeCounts"]["cluster"], 1)
+        self.assertEqual(payload["summary"]["scopeCounts"]["lock"], 1)
+        single_z = next(entry for entry in payload["entries"] if entry["stepId"] == "single_z_lift")
+        self.assertEqual(len(single_z["observationCells"]), 2)
+        self.assertGreater(abs(single_z["observationCells"][1]["heightDelta"]), 0.0)
+        pair = next(entry for entry in payload["entries"] if entry["stepId"] == "pair_superposition")
+        self.assertEqual(len(pair["commands"]), 2)
+        self.assertGreaterEqual(pair["heightSuperpositionError"], 0.0)
+        locked = next(entry for entry in payload["entries"] if entry["stepId"] == "locked_cell_control")
+        self.assertAlmostEqual(locked["observationCells"][0]["alphaDelta"], 0.0)
+        self.assertAlmostEqual(locked["observationCells"][0]["heightDelta"], 0.0)
+        exported = json.loads(export_response_atlas_json(atlas))
+        self.assertEqual(exported["summary"], payload["summary"])
+
+    def test_response_atlas_can_attach_physical_metrics(self):
+        config = LatticeConfig(rows=2, cols=2, z_coupling_gain=0.0)
+        atlas = build_response_atlas(
+            config,
+            center_cell=(0, 0),
+            physical=True,
+            load_case=LoadCase(lock_stiffness=350.0, maxiter=250),
+        )
+        payload = atlas.to_dict()
+
+        self.assertTrue(payload["physical"])
+        self.assertEqual(payload["summary"]["physicalEntryCount"], len(payload["entries"]))
+        self.assertGreater(payload["summary"]["physicalSuccessCount"], 0)
+        physical_entry = next(entry for entry in payload["entries"] if entry["physicalSuccess"])
+        self.assertIsNotNone(physical_entry["physicalHeightRmsError"])
+        self.assertIsNotNone(physical_entry["physicalCenterRmsError"])
+        self.assertGreaterEqual(physical_entry["physicalEnergy"], 0.0)
 
     def test_calibration_results_template_roundtrips_and_compares_to_simulation(self):
         config = LatticeConfig(rows=3, cols=3, backlash=0.02, z_coupling_gain=0.35)

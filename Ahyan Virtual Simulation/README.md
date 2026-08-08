@@ -160,6 +160,10 @@ measurements against the same simulator coordinates. The companion results
 template and comparison helpers accept optional measured alpha, height, center
 displacement, slip, and actuator-force values, then report error against the
 current simulator without treating the measurement set as a calibrated solver.
+`build_response_atlas` and `export_response_atlas_json` run the same protocol
+through the simulator as a compact `rad-sim.response-atlas.v1` artifact, with
+optional spring-hinge physical-preview metrics, so backlash and clearance
+settings can be compared before bench data exists.
 The browser Response Experiments panel can export a fillable results template,
 load the completed JSON, and display compact measured-cell, missing-observation,
 alpha RMSE, height RMSE, maximum combined per-cell error, and worst-step readouts.
@@ -595,6 +599,11 @@ without requiring Playwright or a browser binary.
   `calibrationExperimentProtocol`: repeatable single, pair, cluster, and lock
   response protocol exports for matching simulator response fields against
   physical bench measurements.
+- `build_response_atlas` / `export_response_atlas_json`: Python
+  `rad-sim.response-atlas.v1` artifact that summarizes simulator responses for
+  the calibration protocol's single, pair, cluster, and lock cases, including
+  observation-cell deltas, die-off, superposition residuals, and optional
+  spring-hinge model-disagreement metrics.
 - `calibration_experiment_results_template` /
   `compare_calibration_experiment_measurements` and the browser matching
   helpers: fillable bench-results schema plus simulator-vs-measurement error

@@ -324,6 +324,137 @@ class CalibrationExperimentSimulation:
 
 
 @dataclass(frozen=True)
+class ResponseAtlasCell:
+    cell: tuple[int, int]
+    alpha_delta: float
+    height_delta: float
+    z_residual: float
+    alpha_die_off: float | None
+    z_die_off: float | None
+
+    def to_dict(self) -> dict[str, object]:
+        row, col = self.cell
+        return {
+            "row": row,
+            "col": col,
+            "alphaDelta": self.alpha_delta,
+            "heightDelta": self.height_delta,
+            "zResidual": self.z_residual,
+            "alphaDieOff": self.alpha_die_off,
+            "zDieOff": self.z_die_off,
+        }
+
+
+@dataclass(frozen=True)
+class ResponseAtlasEntry:
+    step_id: str
+    scope: str
+    purpose: str
+    expected_response: str
+    commands: tuple[SourceCommand, ...]
+    locked_cells: tuple[tuple[int, int], ...]
+    observation_cells: tuple[ResponseAtlasCell, ...]
+    alpha_reach: int
+    z_reach: int
+    effective_alpha_die_off: int
+    effective_z_die_off: int
+    max_abs_alpha_delta: float
+    max_abs_height_delta: float
+    mean_abs_alpha_delta: float
+    mean_abs_height_delta: float
+    alpha_superposition_error: float
+    height_superposition_error: float
+    physical_height_rms_error: float | None = None
+    physical_center_rms_error: float | None = None
+    physical_success: bool | None = None
+    physical_energy: float | None = None
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "stepId": self.step_id,
+            "scope": self.scope,
+            "purpose": self.purpose,
+            "expectedResponse": self.expected_response,
+            "commands": [_source_command_dict(command) for command in self.commands],
+            "lockedCells": [_cell_dict(cell) for cell in self.locked_cells],
+            "observationCells": [cell.to_dict() for cell in self.observation_cells],
+            "alphaReach": self.alpha_reach,
+            "zReach": self.z_reach,
+            "effectiveAlphaDieOff": self.effective_alpha_die_off,
+            "effectiveZDieOff": self.effective_z_die_off,
+            "maxAbsAlphaDelta": self.max_abs_alpha_delta,
+            "maxAbsHeightDelta": self.max_abs_height_delta,
+            "meanAbsAlphaDelta": self.mean_abs_alpha_delta,
+            "meanAbsHeightDelta": self.mean_abs_height_delta,
+            "alphaSuperpositionError": self.alpha_superposition_error,
+            "heightSuperpositionError": self.height_superposition_error,
+            "physicalHeightRmsError": self.physical_height_rms_error,
+            "physicalCenterRmsError": self.physical_center_rms_error,
+            "physicalSuccess": self.physical_success,
+            "physicalEnergy": self.physical_energy,
+        }
+
+
+@dataclass(frozen=True)
+class ResponseAtlas:
+    config_shape: tuple[int, int]
+    center_cell: tuple[int, int]
+    entries: tuple[ResponseAtlasEntry, ...]
+    physical: bool = False
+    schema: str = "rad-sim.response-atlas.v1"
+    notes: str = (
+        "Simulator-generated single, pair, cluster, and lock response atlas for "
+        "comparing backlash, clearance, and physical-preview settings."
+    )
+
+    @property
+    def scope_counts(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for entry in self.entries:
+            counts[entry.scope] = counts.get(entry.scope, 0) + 1
+        return counts
+
+    def to_dict(self) -> dict[str, object]:
+        max_alpha_reach = max((entry.alpha_reach for entry in self.entries), default=0)
+        max_z_reach = max((entry.z_reach for entry in self.entries), default=0)
+        max_superposition_error = max(
+            (
+                max(entry.alpha_superposition_error, entry.height_superposition_error)
+                for entry in self.entries
+            ),
+            default=0.0,
+        )
+        physical_entries = [
+            entry for entry in self.entries if entry.physical_success is not None
+        ]
+        return {
+            "schema": self.schema,
+            "grid": {"rows": self.config_shape[0], "cols": self.config_shape[1]},
+            "centerCell": _cell_dict(self.center_cell),
+            "physical": self.physical,
+            "notes": self.notes,
+            "summary": {
+                "entryCount": len(self.entries),
+                "scopeCounts": self.scope_counts,
+                "maxAlphaReach": max_alpha_reach,
+                "maxZReach": max_z_reach,
+                "maxSuperpositionError": max_superposition_error,
+                "physicalEntryCount": len(physical_entries),
+                "physicalSuccessCount": sum(
+                    1 for entry in physical_entries if entry.physical_success
+                ),
+            },
+            "assumptions": {
+                "source": "Calibration protocol commands run through the current simulator.",
+                "physical": (
+                    "Optional spring-hinge pass is a model-disagreement diagnostic, not calibrated hardware truth."
+                ),
+            },
+            "entries": [entry.to_dict() for entry in self.entries],
+        }
+
+
+@dataclass(frozen=True)
 class CalibrationCellMeasurement:
     cell: tuple[int, int]
     alpha_delta: float | None = None
@@ -428,6 +559,68 @@ def _state_with_commands(
         state.actuator_grid[r, c] += command.alpha
         state.z_actuator_grid[r, c] += command.z
     return state
+
+
+def _cell_dict(cell: tuple[int, int]) -> dict[str, int]:
+    return {"row": int(cell[0]), "col": int(cell[1])}
+
+
+def _source_command_dict(command: SourceCommand) -> dict[str, object]:
+    return {
+        "row": int(command.cell[0]),
+        "col": int(command.cell[1]),
+        "alpha": float(command.alpha),
+        "z": float(command.z),
+    }
+
+
+def _finite_or_none(value: float) -> float | None:
+    return float(value) if np.isfinite(value) else None
+
+
+def _atlas_observation_cells(
+    response: ResponseCharacterization,
+    cells: Iterable[tuple[int, int]],
+) -> tuple[ResponseAtlasCell, ...]:
+    observed: list[ResponseAtlasCell] = []
+    for row, col in cells:
+        observed.append(
+            ResponseAtlasCell(
+                cell=(int(row), int(col)),
+                alpha_delta=float(response.alpha_delta[row, col]),
+                height_delta=float(response.height_delta[row, col]),
+                z_residual=float(response.z_residual[row, col]),
+                alpha_die_off=_finite_or_none(float(response.alpha_die_off[row, col])),
+                z_die_off=_finite_or_none(float(response.z_die_off[row, col])),
+            )
+        )
+    return tuple(observed)
+
+
+def _atlas_superposition_errors(
+    config: LatticeConfig,
+    commands: tuple[SourceCommand, ...],
+    combined: ResponseCharacterization,
+    locked_cells: tuple[tuple[int, int], ...],
+    tolerance: float,
+) -> tuple[float, float]:
+    if len(commands) <= 1:
+        return 0.0, 0.0
+    alpha_expected = np.zeros_like(combined.alpha_delta)
+    height_expected = np.zeros_like(combined.height_delta)
+    for command in commands:
+        single = characterize_response(
+            config,
+            (command,),
+            locked_cells=locked_cells,
+            tolerance=tolerance,
+        )
+        alpha_expected += single.alpha_delta
+        height_expected += single.height_delta
+    return (
+        float(np.max(np.abs(combined.alpha_delta - alpha_expected))),
+        float(np.max(np.abs(combined.height_delta - height_expected))),
+    )
 
 
 def _effective_die_off(delta: np.ndarray, die_off: np.ndarray, tolerance: float) -> int:
@@ -1515,6 +1708,104 @@ def run_calibration_experiment_protocol(
             )
         )
     return tuple(simulations)
+
+
+def build_response_atlas(
+    config: LatticeConfig,
+    protocol: CalibrationExperimentProtocol | None = None,
+    *,
+    center_cell: tuple[int, int] | None = None,
+    alpha_step: float = -0.25,
+    z_step: float = 0.30,
+    physical: bool = False,
+    load_case: LoadCase | None = None,
+    tolerance: float = 1e-9,
+) -> ResponseAtlas:
+    """Build a compact single/pair/cluster response atlas.
+
+    The atlas is a simulator-side research artifact. It reuses the calibration
+    protocol steps, records kinematic response fields at observation cells, and
+    optionally attaches spring-hinge model-disagreement metrics for each step.
+    """
+
+    if protocol is None:
+        protocol = build_calibration_experiment_protocol(
+            config,
+            center_cell=center_cell,
+            alpha_step=alpha_step,
+            z_step=z_step,
+        )
+    entries: list[ResponseAtlasEntry] = []
+    for step in protocol.steps:
+        locked_cells = tuple(step.locked_cells)
+        commands = tuple(step.commands)
+        response = characterize_response(
+            config,
+            commands,
+            locked_cells=locked_cells,
+            tolerance=tolerance,
+        )
+        alpha_error, height_error = _atlas_superposition_errors(
+            config,
+            commands,
+            response,
+            locked_cells,
+            tolerance,
+        )
+        physical_height_rms_error: float | None = None
+        physical_center_rms_error: float | None = None
+        physical_success: bool | None = None
+        physical_energy: float | None = None
+        if physical:
+            comparison = compare_physical_response(
+                config,
+                commands,
+                locked_cells=locked_cells,
+                load_case=load_case,
+                tolerance=tolerance,
+            )
+            physical_height_rms_error = comparison.height_rms_error
+            physical_center_rms_error = comparison.center_rms_error
+            physical_success = comparison.physical_success
+            physical_energy = comparison.physical_energy
+        entries.append(
+            ResponseAtlasEntry(
+                step_id=step.id,
+                scope=step.scope,
+                purpose=step.purpose,
+                expected_response=step.expected_response,
+                commands=commands,
+                locked_cells=locked_cells,
+                observation_cells=_atlas_observation_cells(
+                    response,
+                    step.observation_cells,
+                ),
+                alpha_reach=response.alpha_reach,
+                z_reach=response.z_reach,
+                effective_alpha_die_off=response.effective_alpha_die_off,
+                effective_z_die_off=response.effective_z_die_off,
+                max_abs_alpha_delta=response.max_abs_alpha_delta,
+                max_abs_height_delta=response.max_abs_height_delta,
+                mean_abs_alpha_delta=float(np.mean(np.abs(response.alpha_delta))),
+                mean_abs_height_delta=float(np.mean(np.abs(response.height_delta))),
+                alpha_superposition_error=alpha_error,
+                height_superposition_error=height_error,
+                physical_height_rms_error=physical_height_rms_error,
+                physical_center_rms_error=physical_center_rms_error,
+                physical_success=physical_success,
+                physical_energy=physical_energy,
+            )
+        )
+    return ResponseAtlas(
+        config_shape=(config.rows, config.cols),
+        center_cell=protocol.center_cell,
+        entries=tuple(entries),
+        physical=physical,
+    )
+
+
+def export_response_atlas_json(atlas: ResponseAtlas) -> str:
+    return json.dumps(atlas.to_dict(), indent=2)
 
 
 def compare_physical_response(
