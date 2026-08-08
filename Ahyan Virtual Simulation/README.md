@@ -163,7 +163,9 @@ current simulator without treating the measurement set as a calibrated solver.
 `build_response_atlas` and `export_response_atlas_json` run the same protocol
 through the simulator as a compact `rad-sim.response-atlas.v1` artifact, with
 optional spring-hinge physical-preview metrics, so backlash and clearance
-settings can be compared before bench data exists.
+settings can be compared before bench data exists. The browser `Save Atlas`
+action exports the same type of response atlas from the current 3D simulator
+state.
 The browser Response Experiments panel can export a fillable results template,
 load the completed JSON, and display compact measured-cell, missing-observation,
 alpha RMSE, height RMSE, maximum combined per-cell error, and worst-step readouts.
@@ -604,6 +606,9 @@ without requiring Playwright or a browser binary.
   the calibration protocol's single, pair, cluster, and lock cases, including
   observation-cell deltas, die-off, superposition residuals, and optional
   spring-hinge model-disagreement metrics.
+- `web/analysis.js` `responseAtlas` / `exportResponseAtlas`: browser-side
+  `rad-sim.response-atlas.v1` export behind `Save Atlas`, using the current
+  protocol, kinematic response fields, and browser spring-preview validation.
 - `calibration_experiment_results_template` /
   `compare_calibration_experiment_measurements` and the browser matching
   helpers: fillable bench-results schema plus simulator-vs-measurement error

@@ -1216,6 +1216,119 @@
     return temp;
   }
 
+  function finiteOrNull(value) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  }
+
+  function atlasObservationCells(sim, baseline, step) {
+    return (step.observationCells || []).map((cell) => {
+      const row = Number(cell.row) || 0;
+      const col = Number(cell.col) || 0;
+      return {
+        row,
+        col,
+        alphaDelta: (Number(sim.alpha?.[row]?.[col]) || 0) - (Number(baseline.alpha?.[row]?.[col]) || 0),
+        heightDelta: (Number(sim.height?.[row]?.[col]) || 0) - (Number(baseline.height?.[row]?.[col]) || 0),
+        zResidual: Number(sim.zResidual?.[row]?.[col]) || 0,
+        alphaDieOff: finiteOrNull(sim.dieOff?.[row]?.[col]),
+        zDieOff: finiteOrNull(sim.zDieOff?.[row]?.[col]),
+      };
+    });
+  }
+
+  function atlasScopeCounts(entries) {
+    return entries.reduce((counts, entry) => {
+      counts[entry.scope] = (counts[entry.scope] || 0) + 1;
+      return counts;
+    }, {});
+  }
+
+  function atlasStepEntry(state, step, tolerance = 1e-9) {
+    const commandState = protocolStepState(state, step, true);
+    const baselineState = protocolStepState(state, step, false);
+    const sim = RAD.simulate(commandState);
+    const baseline = RAD.simulate(baselineState);
+    const sourceCells = uniqueProtocolCells(
+      (step.commands || []).map((command) => normalizeMatrixCell(state, { row: command.row, col: command.col }))
+    );
+    const stats = localResponseStats(commandState, sim, baseline, sourceCells);
+    const interaction = superpositionError(commandState, sourceCells, sim, baseline);
+    const physical = physicalPreviewComparison(commandState, baselineState, sim, baseline);
+    return {
+      stepId: step.id,
+      scope: step.scope,
+      purpose: step.purpose,
+      expectedResponse: step.expectedResponse,
+      commands: step.commands || [],
+      lockedCells: step.lockedCells || [],
+      observationCells: atlasObservationCells(sim, baseline, step),
+      alphaReach: stats.alphaReachCells,
+      zReach: stats.zReachCells,
+      effectiveAlphaDieOff: stats.alphaDieOff,
+      effectiveZDieOff: stats.zDieOff,
+      maxAbsAlphaDelta: stats.maxAlphaDelta,
+      maxAbsHeightDelta: stats.maxHeightDelta,
+      meanAbsAlphaDelta: stats.meanAbsAlphaDelta,
+      meanAbsHeightDelta: stats.meanAbsHeightDelta,
+      alphaSuperpositionError: interaction.alphaMax,
+      heightSuperpositionError: interaction.heightMax,
+      superpositionRmsError: interaction.rms,
+      physicalValidation: {
+        schema: "rad-sim.browser-physical-preview.v1",
+        model: "browser-spring-preview",
+        physicalPreviewAvailable: Boolean(physical.physicalPreviewAvailable),
+        physicalSuccess: Boolean(physical.physicalPreviewSuccess),
+        heightRmsModelError: Number(physical.physicalHeightRmsError) || 0,
+        centerRmsModelError: Number(physical.physicalCenterRmsError) || 0,
+        heightMaxModelError: Number(physical.physicalHeightMaxError) || 0,
+        centerMaxModelError: Number(physical.physicalCenterMaxError) || 0,
+        iterations: Number(physical.physicalPreviewIterations) || 0,
+        error: physical.physicalPreviewError || null,
+      },
+      tolerance,
+    };
+  }
+
+  function responseAtlas(state, options = {}) {
+    const tolerance = Number(options.tolerance ?? 1e-9);
+    const protocol = options.protocol || calibrationExperimentProtocol(state, options);
+    const entries = (protocol.steps || []).map((step) => atlasStepEntry(state, step, tolerance));
+    const maxSuperpositionError = entries.reduce(
+      (max, entry) => Math.max(max, entry.alphaSuperpositionError || 0, entry.heightSuperpositionError || 0),
+      0
+    );
+    const physicalEntries = entries.filter((entry) => entry.physicalValidation?.physicalPreviewAvailable);
+    return {
+      schema: "rad-sim.response-atlas.v1",
+      savedAt: new Date().toISOString(),
+      hardwareProfile: protocol.hardwareProfile,
+      grid: protocol.grid,
+      centerCell: protocol.centerCell,
+      notes: "Browser-generated single, pair, cluster, and lock response atlas for comparing simulator settings before bench data exists.",
+      summary: {
+        entryCount: entries.length,
+        scopeCounts: atlasScopeCounts(entries),
+        maxAlphaReach: entries.reduce((max, entry) => Math.max(max, entry.alphaReach || 0), 0),
+        maxZReach: entries.reduce((max, entry) => Math.max(max, entry.zReach || 0), 0),
+        maxSuperpositionError,
+        physicalEntryCount: physicalEntries.length,
+        physicalSuccessCount: physicalEntries.filter((entry) => entry.physicalValidation?.physicalSuccess).length,
+      },
+      assumptions: {
+        source: "Calibration protocol commands run through the browser simulator.",
+        physical: "Browser spring-preview validation is interactive model-disagreement evidence, not calibrated hardware truth.",
+      },
+      protocol,
+      entries,
+      tolerance,
+    };
+  }
+
+  function exportResponseAtlas(state, options = {}) {
+    return JSON.stringify(responseAtlas(state, options), null, 2);
+  }
+
   function calibrationExperimentResultsTemplate(state, options = {}) {
     const protocol = options.protocol || calibrationExperimentProtocol(state, options);
     const steps = [];
@@ -1723,6 +1836,8 @@
   RAD.exportProgrammableDiscontinuityReport = exportProgrammableDiscontinuityReport;
   RAD.calibrationExperimentProtocol = calibrationExperimentProtocol;
   RAD.exportCalibrationExperimentProtocol = exportCalibrationExperimentProtocol;
+  RAD.responseAtlas = responseAtlas;
+  RAD.exportResponseAtlas = exportResponseAtlas;
   RAD.calibrationExperimentResultsTemplate = calibrationExperimentResultsTemplate;
   RAD.exportCalibrationExperimentResultsTemplate = exportCalibrationExperimentResultsTemplate;
   RAD.compareCalibrationExperimentResults = compareCalibrationExperimentResults;
