@@ -998,8 +998,10 @@ class WebStaticTests(unittest.TestCase):
             "programmableDiscontinuityReport",
             "exportProgrammableDiscontinuityReport",
             "rad-sim.programmable-discontinuity-report.v1",
+            "rad-sim.browser-physical-preview.v1",
             "paperSupportedAssumptions",
             "simulatorDiagnostics",
+            "reportPhysicalPreview",
             "RAD.characterizeLocalResponse",
         ]:
             self.assertIn(symbol, analysis_js)
@@ -1032,6 +1034,7 @@ class WebStaticTests(unittest.TestCase):
             "pair characterization should report alpha underactuation",
             "frameworkReport",
             "framework report should count active command operators",
+            "framework report should include browser physical preview validation",
             "RAD.exportProgrammableDiscontinuityReport",
         ]:
             self.assertIn(symbol, script)

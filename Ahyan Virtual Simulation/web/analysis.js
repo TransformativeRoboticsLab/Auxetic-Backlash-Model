@@ -634,6 +634,22 @@
     };
   }
 
+  function reportPhysicalPreview(characterization) {
+    return {
+      schema: "rad-sim.browser-physical-preview.v1",
+      model: "browser-spring-preview",
+      physicalPreviewAvailable: Boolean(characterization.physicalPreviewAvailable),
+      physicalSuccess: Boolean(characterization.physicalPreviewSuccess),
+      heightRmsModelError: Number(characterization.physicalHeightRmsError) || 0,
+      heightMaxModelError: Number(characterization.physicalHeightMaxError) || 0,
+      centerRmsModelError: Number(characterization.physicalCenterRmsError) || 0,
+      centerMaxModelError: Number(characterization.physicalCenterMaxError) || 0,
+      iterations: Number(characterization.physicalPreviewIterations) || 0,
+      error: characterization.physicalPreviewError || null,
+      note: "Browser spring-preview validation is an interactive approximation; use Python spring_hinge_3d reports for the reference research artifact.",
+    };
+  }
+
   function reportSequenceOrder(state, commands, tolerance = 1e-9) {
     if (typeof RAD.compareSequenceOrder !== "function" || typeof RAD.localActuationEvent !== "function") {
       return { eventSequence: [], sequenceOrder: null };
@@ -833,6 +849,7 @@
         truncated: characterization.pairwiseTruncated,
         interactions: characterization.pairwiseInteractions,
       },
+      physicalValidation: reportPhysicalPreview(characterization),
       sequenceOrder: order.sequenceOrder,
       tolerance,
     };

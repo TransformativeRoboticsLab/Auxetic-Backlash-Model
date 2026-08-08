@@ -1017,6 +1017,46 @@ class RadSimTests(unittest.TestCase):
         self.assertEqual(exported["schema"], payload["schema"])
         self.assertEqual(exported["composition"], payload["composition"])
 
+    def test_programmable_discontinuity_report_can_include_physical_validation(self):
+        config = LatticeConfig(rows=2, cols=2, z_coupling_gain=0.0)
+        diagnostic = diagnose_programmable_discontinuity(
+            config,
+            (
+                SourceCommand((0, 1), z=0.18),
+                SourceCommand((1, 0), alpha=-0.12),
+            ),
+            include_physical=True,
+            load_case=LoadCase(lock_stiffness=350.0, maxiter=250),
+        )
+        self.assertIsNotNone(diagnostic.physical_validation)
+        self.assertTrue(diagnostic.physical_validation.physical_success)
+
+        payload = programmable_discontinuity_report(
+            diagnostic,
+            config=config,
+            include_response_matrix=False,
+            include_fields=False,
+        )
+        physical = payload["physicalValidation"]
+        self.assertEqual(physical["schema"], "rad-sim.physical-response-comparison.v1")
+        self.assertEqual(physical["model"], "spring_hinge_3d")
+        self.assertEqual(len(physical["commands"]), 2)
+        self.assertTrue(physical["physicalSuccess"])
+        self.assertGreaterEqual(physical["heightRmsModelError"], 0.0)
+        self.assertGreaterEqual(physical["centerRmsModelError"], 0.0)
+        self.assertGreater(physical["iterations"], 0)
+        self.assertNotIn("fields", physical)
+
+        exported = json.loads(
+            export_programmable_discontinuity_report_json(
+                diagnostic,
+                config=config,
+                include_response_matrix=False,
+                include_fields=False,
+            )
+        )
+        self.assertEqual(exported["physicalValidation"]["schema"], physical["schema"])
+
     def test_physical_response_comparison_reports_spring_hinge_deviation(self):
         config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.0)
         comparison = compare_physical_response(

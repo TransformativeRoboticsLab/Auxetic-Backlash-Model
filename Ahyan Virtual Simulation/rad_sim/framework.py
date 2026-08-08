@@ -8,6 +8,7 @@ import numpy as np
 
 from .experiments import (
     OperatorInteractionGraph,
+    PhysicalResponseComparison,
     ResponseCharacterization,
     ResponseDecayProfile,
     ResponseMatrix,
@@ -16,9 +17,10 @@ from .experiments import (
     characterize_cluster,
     characterize_pairwise_interactions,
     characterize_response,
+    compare_physical_cluster,
     response_decay_profile,
 )
-from .models import LatticeConfig, LatticeState
+from .models import LatticeConfig, LatticeState, LoadCase
 from .operators import (
     ProgrammableDiscontinuityEvent,
     SequenceOrderDiagnostic,
@@ -47,6 +49,7 @@ class ProgrammableDiscontinuityDiagnostic:
     sequence_order: SequenceOrderDiagnostic | None = None
     decay_profile: ResponseDecayProfile | None = None
     pairwise_interactions: OperatorInteractionGraph | None = None
+    physical_validation: PhysicalResponseComparison | None = None
 
     @property
     def active_operator_count(self) -> int:
@@ -427,6 +430,48 @@ def _response_matrix_dict(
     }
 
 
+def _physical_validation_dict(
+    comparison: PhysicalResponseComparison | None,
+    *,
+    include_fields: bool,
+) -> dict[str, object] | None:
+    if comparison is None:
+        return None
+    payload: dict[str, object] = {
+        "schema": "rad-sim.physical-response-comparison.v1",
+        "model": comparison.physical_result.metadata.get("model", "spring_hinge_3d"),
+        "commands": [
+            _command_dict(command, index) for index, command in enumerate(comparison.commands)
+        ],
+        "lockedCells": [_cell_dict(cell) for cell in comparison.locked_cells],
+        "physicalSuccess": comparison.physical_success,
+        "physicalEnergy": comparison.physical_energy,
+        "iterations": int(comparison.physical_result.metadata.get("iterations", 0)),
+        "springEdges": int(comparison.physical_result.metadata.get("spring_edges", 0)),
+        "hingeTriples": int(comparison.physical_result.metadata.get("hinge_triples", 0)),
+        "alphaRmsModelError": comparison.alpha_rms_error,
+        "heightRmsModelError": comparison.height_rms_error,
+        "centerRmsModelError": comparison.center_rms_error,
+        "maxAbsHeightModelError": comparison.max_abs_height_error,
+        "maxAbsCenterModelError": comparison.max_abs_center_error,
+        "maxAbsPhysicalHeightDelta": float(np.max(np.abs(comparison.physical_height_delta))),
+        "maxAbsPhysicalAlphaDelta": float(np.max(np.abs(comparison.physical_alpha_delta))),
+    }
+    if include_fields:
+        height_model_error = comparison.physical_height_delta - comparison.kinematic.height_delta
+        alpha_model_error = comparison.physical_alpha_delta - comparison.kinematic.alpha_delta
+        center_norm = np.linalg.norm(comparison.physical_center_delta, axis=2)
+        payload["fields"] = {
+            "physicalAlphaDelta": comparison.physical_alpha_delta.tolist(),
+            "physicalHeightDelta": comparison.physical_height_delta.tolist(),
+            "physicalCenterDelta": comparison.physical_center_delta.tolist(),
+            "physicalCenterDeltaNorm": center_norm.tolist(),
+            "alphaModelError": alpha_model_error.tolist(),
+            "heightModelError": height_model_error.tolist(),
+        }
+    return payload
+
+
 def diagnose_programmable_discontinuity(
     config: LatticeConfig,
     commands: Iterable[SourceCommand],
@@ -439,6 +484,8 @@ def diagnose_programmable_discontinuity(
     include_z: bool = True,
     event_sequence: Iterable[ProgrammableDiscontinuityEvent] | None = None,
     pairwise_max_pairs: int | None = 64,
+    include_physical: bool = False,
+    load_case: LoadCase | None = None,
     tolerance: float = 1e-9,
 ) -> ProgrammableDiscontinuityDiagnostic:
     """Measure a command set as a programmable-discontinuity operator.
@@ -492,6 +539,17 @@ def diagnose_programmable_discontinuity(
         tolerance=tolerance,
         max_pairs=pairwise_max_pairs,
     )
+    physical_validation = (
+        compare_physical_cluster(
+            config,
+            command_tuple,
+            locked_cells=locked_tuple,
+            load_case=load_case,
+            tolerance=tolerance,
+        )
+        if include_physical
+        else None
+    )
     return ProgrammableDiscontinuityDiagnostic(
         commands=command_tuple,
         locked_cells=locked_tuple,
@@ -504,6 +562,7 @@ def diagnose_programmable_discontinuity(
         sequence_order=sequence_order,
         decay_profile=decay_profile,
         pairwise_interactions=pairwise_interactions,
+        physical_validation=physical_validation,
     )
 
 
@@ -619,6 +678,10 @@ def programmable_discontinuity_report(
         ),
         "pairwiseInteractions": _pairwise_interactions_dict(
             diagnostic.pairwise_interactions,
+            include_fields=include_fields,
+        ),
+        "physicalValidation": _physical_validation_dict(
+            diagnostic.physical_validation,
             include_fields=include_fields,
         ),
         "sequenceOrder": _sequence_order_dict(diagnostic.sequence_order),

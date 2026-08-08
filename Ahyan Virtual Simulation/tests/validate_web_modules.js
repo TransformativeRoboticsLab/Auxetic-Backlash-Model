@@ -608,6 +608,9 @@ assert.strictEqual(frameworkReport.simulatorDiagnostics[1].name, "superposition 
 assert.ok(Number.isFinite(frameworkReport.locality.alphaDecayRatio), "framework report should include locality decay");
 assert.ok(frameworkReport.reachability.reachableHeightCells > 0, "framework report should include reachable height cells");
 assert.ok(Number.isFinite(frameworkReport.composition.maxPairwiseInteractionError), "framework report should include pairwise composition metrics");
+assert.strictEqual(frameworkReport.physicalValidation.schema, "rad-sim.browser-physical-preview.v1", "framework report should include browser physical preview validation");
+assert.strictEqual(frameworkReport.physicalValidation.physicalSuccess, true, "framework report physical preview should complete");
+assert.ok(Number.isFinite(frameworkReport.physicalValidation.heightRmsModelError), "framework report should include physical height model error");
 assert.ok(!("fields" in frameworkReport.combinedResponse), "framework report should support compact exports without response fields");
 assert.ok(!("alpha" in frameworkReport.responseMatrix), "framework report should support compact response-matrix diagnostics");
 assert.strictEqual(JSON.parse(RAD.exportProgrammableDiscontinuityReport(characterizationState, { r: 2, c: 2, scope: "pair", includeResponseMatrix: false, includeFields: false })).schema, frameworkReport.schema);

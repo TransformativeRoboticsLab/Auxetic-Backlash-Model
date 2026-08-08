@@ -69,7 +69,8 @@ or saturation. `programmable_discontinuity_report` and
 `export_programmable_discontinuity_report_json` serialize that diagnostic as a
 `rad-sim.programmable-discontinuity-report.v1` artifact with explicit
 paper-supported assumptions, simulator-introduced diagnostics, locality,
-reachability, composition, response-matrix, pairwise, and sequence-order fields.
+reachability, composition, response-matrix, pairwise, optional spring-hinge
+physical-validation, and sequence-order fields.
 `solve_inverse_design` uses that response matrix in a bounded damped least-squares
 fit from target alpha/height fields to candidate actuator commands. This is the
 first Python-backed inverse layer for surface-shaping studies; it is linearized
@@ -554,7 +555,8 @@ without requiring Playwright or a browser binary.
   artifact for the programmable-discontinuity diagnostic, including the
   paper-supported dead-zone and alpha-theta assumptions plus simulator
   diagnostics for locality, reachability, nonadditivity, pairwise interactions,
-  and event-order sensitivity.
+  event-order sensitivity, and optional `include_physical=True` spring-hinge
+  model-disagreement evidence.
 - `characterize_pairwise_interactions`: Python pairwise command interaction graph
   for identifying which actuation operators create non-additive residuals and
   mapping each command cell's strongest pair residual and non-additive degree.
@@ -620,7 +622,8 @@ without requiring Playwright or a browser binary.
   `exportProgrammableDiscontinuityReport`: browser-side
   `rad-sim.programmable-discontinuity-report.v1` export behind `Save Framework
   Report`, carrying the same paper-supported assumptions and simulator
-  diagnostics used by the Python framework report.
+  diagnostics used by the Python framework report, plus the browser spring-preview
+  physical-validation summary.
 - `web/inverse.js` `validateInversePlanPhysical`: browser-side physical
   validation of analyzed inverse plans and linear fits against spring-preview
   relaxation, including physical target residual and model-disagreement metrics.
