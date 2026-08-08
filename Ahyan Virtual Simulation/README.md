@@ -68,10 +68,11 @@ operator diagnostic: locality radius, reachable cells, response rank,
 underactuated cells, fitted decay ratio/length, pairwise interaction graph,
 superposition residual, and optional event-sequence order sensitivity. The
 dead-zone law and rotating-square kinematics are paper-supported; the
-superposition residual, fitted decay profile, pairwise interaction graph, and
-sequence-order error are new diagnostics for detecting when composed operators
-stop behaving additively or commutatively because of backlash thresholds, locks,
-or saturation. `programmable_discontinuity_report` and
+superposition residual, fitted decay profile, pairwise interaction graph,
+sequence-order error, and framework law candidates are new diagnostics for
+detecting when composed operators stop behaving additively or commutatively
+because of backlash thresholds, locks, or saturation.
+`programmable_discontinuity_report` and
 `export_programmable_discontinuity_report_json` serialize that diagnostic as a
 `rad-sim.programmable-discontinuity-report.v1` artifact with explicit
 paper-supported assumptions, simulator-introduced diagnostics, locality,
@@ -568,7 +569,9 @@ without requiring Playwright or a browser binary.
   paper-supported dead-zone and alpha-theta assumptions plus simulator
   diagnostics for locality, reachability, nonadditivity, pairwise interactions,
   event-order sensitivity, and optional `include_physical=True` spring-hinge
-  model-disagreement evidence.
+  model-disagreement evidence. Reports include diagnostic law candidates for
+  locality, rank-limited reachability, non-additive composition, and event-order
+  noncommutativity.
 - `characterize_pairwise_interactions`: Python pairwise command interaction graph
   for identifying which actuation operators create non-additive residuals and
   mapping each command cell's strongest pair residual and non-additive degree.
@@ -653,8 +656,8 @@ without requiring Playwright or a browser binary.
   `exportProgrammableDiscontinuityReport`: browser-side
   `rad-sim.programmable-discontinuity-report.v1` export behind `Save Framework
   Report`, carrying the same paper-supported assumptions and simulator
-  diagnostics used by the Python framework report, plus the browser spring-preview
-  physical-validation summary.
+  diagnostics used by the Python framework report, plus diagnostic law
+  candidates and the browser spring-preview physical-validation summary.
 - `web/inverse.js` `validateInversePlanPhysical`: browser-side physical
   validation of analyzed inverse plans and linear fits against spring-preview
   relaxation, including physical target residual and model-disagreement metrics.

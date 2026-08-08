@@ -685,6 +685,95 @@
     };
   }
 
+  function reportLawCandidate(id, operatorClass, property, statement, supported, evidence) {
+    return {
+      id,
+      operatorClass,
+      property,
+      statement,
+      supportedByDiagnostic: Boolean(supported),
+      status: "simulator-diagnostic",
+      evidence,
+    };
+  }
+
+  function frameworkOperatorLawCandidates(characterization, sequenceOrder, eventCount, totalCells, tolerance) {
+    const maxSuperpositionError = Math.max(
+      Number(characterization.alphaSuperpositionError) || 0,
+      Number(characterization.heightSuperpositionError) || 0,
+      Number(characterization.superpositionError) || 0
+    );
+    const localitySupported =
+      (Number(characterization.alphaDieOff) || 0) < totalCells &&
+      (Number(characterization.zDieOff) || 0) < totalCells;
+    const rankLimited =
+      (Number(characterization.alphaUnderactuatedCells) || 0) > 0 ||
+      (Number(characterization.heightUnderactuatedCells) || 0) > 0;
+    const laws = [
+      reportLawCandidate(
+        "bounded_locality",
+        "actuation and clearance operators",
+        "locality",
+        "The measured response is bounded by finite alpha and height die-off radii at the report tolerance.",
+        localitySupported,
+        {
+          alphaLocalityRadius: Number(characterization.alphaDieOff) || 0,
+          zLocalityRadius: Number(characterization.zDieOff) || 0,
+          alphaDecayRatio: Number(characterization.alphaDecayRatio) || 0,
+          zDecayRatio: Number(characterization.zDecayRatio) || 0,
+          tolerance,
+        }
+      ),
+      reportLawCandidate(
+        "rank_limited_reachability",
+        "finite actuator set",
+        "reachable set",
+        "The selected actuator operators span a finite response subspace; unreached cells mark underactuated regions for the current command basis.",
+        rankLimited,
+        {
+          alphaRank: Number(characterization.responseRankAlpha) || 0,
+          heightRank: Number(characterization.responseRankHeight) || 0,
+          reachableAlphaCells: Number(characterization.reachableAlphaCells) || 0,
+          reachableHeightCells: Number(characterization.reachableHeightCells) || 0,
+          alphaUnderactuatedCells: Number(characterization.alphaUnderactuatedCells) || 0,
+          heightUnderactuatedCells: Number(characterization.heightUnderactuatedCells) || 0,
+          totalCells,
+        }
+      ),
+      reportLawCandidate(
+        "composition_nonadditivity",
+        "actuation composition",
+        "nonadditivity",
+        "Operator composition is non-additive when the combined response exceeds the sum of individual responses by more than tolerance.",
+        maxSuperpositionError > tolerance,
+        {
+          alphaSuperpositionError: Number(characterization.alphaSuperpositionError) || 0,
+          heightSuperpositionError: Number(characterization.heightSuperpositionError) || 0,
+          maxSuperpositionError,
+          tolerance,
+        }
+      ),
+      reportLawCandidate(
+        "event_order_noncommutativity",
+        "lock and actuation sequence",
+        "noncommutativity",
+        "Lock, release, and actuation events are noncommutative when reversal or adjacent swaps change the final state by more than tolerance.",
+        Boolean(sequenceOrder?.orderSensitive),
+        {
+          eventCount,
+          noncommutingAdjacentPairs: Number(sequenceOrder?.noncommutingAdjacentPairs) || 0,
+          maxOrderError: Number(sequenceOrder?.maxOrderError) || 0,
+          tolerance,
+        }
+      ),
+    ];
+    return {
+      schema: "rad-sim.framework-law-candidates.v1",
+      method: "thresholded diagnostic predicates over locality, reachability, composition, and event-order metrics",
+      laws,
+    };
+  }
+
   function programmableDiscontinuityReport(state, options = {}) {
     const tolerance = Number(options.tolerance ?? 1e-9);
     const includeFields = options.includeFields !== false;
@@ -782,6 +871,13 @@
           interpretation: "reversal and adjacent-swap differences test noncommutativity of lock and actuation operators",
         },
       ],
+      operatorLawCandidates: frameworkOperatorLawCandidates(
+        characterization,
+        order.sequenceOrder,
+        order.eventSequence.length,
+        state.grid.rows * state.grid.cols,
+        tolerance
+      ),
       locality: {
         alphaLocalityRadius: characterization.alphaDieOff,
         zLocalityRadius: characterization.zDieOff,

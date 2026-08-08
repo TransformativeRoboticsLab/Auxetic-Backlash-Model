@@ -369,6 +369,118 @@ def _sequence_order_dict(
     }
 
 
+def _law_candidate(
+    identifier: str,
+    operator_class: str,
+    property_name: str,
+    statement: str,
+    supported: bool,
+    evidence: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "id": identifier,
+        "operatorClass": operator_class,
+        "property": property_name,
+        "statement": statement,
+        "supportedByDiagnostic": bool(supported),
+        "status": "simulator-diagnostic",
+        "evidence": evidence,
+    }
+
+
+def _framework_operator_law_candidates(
+    diagnostic: ProgrammableDiscontinuityDiagnostic,
+) -> dict[str, object]:
+    max_superposition_error = max(
+        diagnostic.alpha_superposition_error,
+        diagnostic.height_superposition_error,
+    )
+    total_cells = diagnostic.total_cells
+    locality_supported = (
+        diagnostic.alpha_locality_radius < total_cells
+        and diagnostic.z_locality_radius < total_cells
+    )
+    rank_limited = (
+        diagnostic.alpha_underactuated_cells > 0
+        or diagnostic.height_underactuated_cells > 0
+    )
+    laws = [
+        _law_candidate(
+            "bounded_locality",
+            "actuation and clearance operators",
+            "locality",
+            (
+                "The measured response is bounded by finite alpha and height "
+                "die-off radii at the report tolerance."
+            ),
+            locality_supported,
+            {
+                "alphaLocalityRadius": diagnostic.alpha_locality_radius,
+                "zLocalityRadius": diagnostic.z_locality_radius,
+                "alphaDecayRatio": diagnostic.alpha_decay_ratio,
+                "zDecayRatio": diagnostic.z_decay_ratio,
+                "tolerance": diagnostic.tolerance,
+            },
+        ),
+        _law_candidate(
+            "rank_limited_reachability",
+            "finite actuator set",
+            "reachable set",
+            (
+                "The selected actuator operators span a finite response subspace; "
+                "unreached cells mark underactuated regions for the current command basis."
+            ),
+            rank_limited,
+            {
+                "alphaRank": diagnostic.alpha_rank,
+                "heightRank": diagnostic.height_rank,
+                "reachableAlphaCells": diagnostic.reachable_alpha_cells,
+                "reachableHeightCells": diagnostic.reachable_height_cells,
+                "alphaUnderactuatedCells": diagnostic.alpha_underactuated_cells,
+                "heightUnderactuatedCells": diagnostic.height_underactuated_cells,
+                "totalCells": total_cells,
+            },
+        ),
+        _law_candidate(
+            "composition_nonadditivity",
+            "actuation composition",
+            "nonadditivity",
+            (
+                "Operator composition is non-additive when the combined response "
+                "exceeds the sum of individual responses by more than tolerance."
+            ),
+            diagnostic.nonadditive,
+            {
+                "alphaSuperpositionError": diagnostic.alpha_superposition_error,
+                "heightSuperpositionError": diagnostic.height_superposition_error,
+                "maxSuperpositionError": max_superposition_error,
+                "tolerance": diagnostic.tolerance,
+            },
+        ),
+        _law_candidate(
+            "event_order_noncommutativity",
+            "lock and actuation sequence",
+            "noncommutativity",
+            (
+                "Lock, release, and actuation events are noncommutative when "
+                "reversal or adjacent swaps change the final state by more than tolerance."
+            ),
+            diagnostic.order_sensitive,
+            {
+                "eventCount": len(diagnostic.event_sequence),
+                "noncommutingAdjacentPairs": diagnostic.noncommuting_adjacent_pairs,
+                "maxOrderError": diagnostic.max_order_error,
+                "tolerance": diagnostic.tolerance,
+            },
+        ),
+    ]
+    return {
+        "schema": "rad-sim.framework-law-candidates.v1",
+        "method": "thresholded diagnostic predicates over locality, reachability, composition, and event-order metrics",
+        "laws": laws,
+    }
+
+
 def _pairwise_interactions_dict(
     pairwise: OperatorInteractionGraph | None,
     *,
@@ -636,6 +748,7 @@ def programmable_discontinuity_report(
                 "interpretation": "reversal and adjacent-swap differences test noncommutativity of lock and actuation operators",
             },
         ],
+        "operatorLawCandidates": _framework_operator_law_candidates(diagnostic),
         "locality": {
             "alphaLocalityRadius": diagnostic.alpha_locality_radius,
             "zLocalityRadius": diagnostic.z_locality_radius,

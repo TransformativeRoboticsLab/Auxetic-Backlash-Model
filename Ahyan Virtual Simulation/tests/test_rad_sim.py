@@ -1103,6 +1103,22 @@ class RadSimTests(unittest.TestCase):
             payload["simulatorDiagnostics"][1]["name"],
             "superposition residual",
         )
+        laws = payload["operatorLawCandidates"]
+        self.assertEqual(laws["schema"], "rad-sim.framework-law-candidates.v1")
+        self.assertEqual(
+            laws["method"],
+            "thresholded diagnostic predicates over locality, reachability, composition, and event-order metrics",
+        )
+        law_by_id = {law["id"]: law for law in laws["laws"]}
+        self.assertTrue(law_by_id["composition_nonadditivity"]["supportedByDiagnostic"])
+        self.assertTrue(law_by_id["event_order_noncommutativity"]["supportedByDiagnostic"])
+        self.assertEqual(
+            law_by_id["composition_nonadditivity"]["evidence"]["maxSuperpositionError"],
+            max(
+                diagnostic.alpha_superposition_error,
+                diagnostic.height_superposition_error,
+            ),
+        )
         self.assertTrue(payload["composition"]["nonadditive"])
         self.assertTrue(payload["composition"]["orderSensitive"])
         self.assertIsNotNone(payload["sequenceOrder"])
@@ -1123,6 +1139,7 @@ class RadSimTests(unittest.TestCase):
         )
         self.assertEqual(exported["schema"], payload["schema"])
         self.assertEqual(exported["composition"], payload["composition"])
+        self.assertEqual(exported["operatorLawCandidates"], payload["operatorLawCandidates"])
 
     def test_programmable_discontinuity_report_can_include_physical_validation(self):
         config = LatticeConfig(rows=2, cols=2, z_coupling_gain=0.0)

@@ -657,6 +657,15 @@ assert.strictEqual(frameworkReport.schema, "rad-sim.programmable-discontinuity-r
 assert.strictEqual(frameworkReport.operators.activeOperatorCount, 2, "framework report should count active command operators");
 assert.strictEqual(frameworkReport.paperSupportedAssumptions[0].formula, "f(x)=max(0,x-b)+min(x+b,0)");
 assert.strictEqual(frameworkReport.simulatorDiagnostics[1].name, "superposition residual");
+assert.strictEqual(frameworkReport.operatorLawCandidates.schema, "rad-sim.framework-law-candidates.v1");
+assert.strictEqual(
+  frameworkReport.operatorLawCandidates.method,
+  "thresholded diagnostic predicates over locality, reachability, composition, and event-order metrics"
+);
+const frameworkLaws = new Map(frameworkReport.operatorLawCandidates.laws.map((law) => [law.id, law]));
+assert.ok(frameworkLaws.has("composition_nonadditivity"), "framework report should include a composition law candidate");
+assert.ok(frameworkLaws.has("event_order_noncommutativity"), "framework report should include an order law candidate");
+assert.strictEqual(frameworkLaws.get("event_order_noncommutativity").status, "simulator-diagnostic");
 assert.ok(Number.isFinite(frameworkReport.locality.alphaDecayRatio), "framework report should include locality decay");
 assert.ok(frameworkReport.reachability.reachableHeightCells > 0, "framework report should include reachable height cells");
 assert.ok(Number.isFinite(frameworkReport.composition.maxPairwiseInteractionError), "framework report should include pairwise composition metrics");
