@@ -343,7 +343,10 @@ response against the browser 3D spring preview and reports height/center
 disagreement from the kinematic backlash prediction. The reported decay ratio
 and decay length come from a simulator-side log-linear fit to shellwise maximum
 response versus Manhattan distance from the active sources; this is a locality
-diagnostic, not a paper-derived material law. This is an early numerical probe for
+diagnostic, not a paper-derived material law. The panel also shows how many
+framework law candidates are currently supported by the diagnostic predicates
+and names the primary supported locality, reachability, composition, or
+event-order candidate. This is an early numerical probe for
 programmable-discontinuity behavior: nonzero residual indicates that backlash,
 locks, or saturation are making the local operators interact non-additively.
 

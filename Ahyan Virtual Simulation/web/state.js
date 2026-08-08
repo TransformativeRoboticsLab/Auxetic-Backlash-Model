@@ -209,6 +209,7 @@
         characterizationScope: "single",
         characterization: null,
         responseAtlasSweep: null,
+        frameworkLawCandidates: null,
         calibrationResults: null,
         calibrationComparison: null,
         calibrationComparisonSummary: null,

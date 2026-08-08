@@ -1134,6 +1134,7 @@
       this.state.experiment.characterizationScope = scope;
       const result = RAD.characterizeLocalResponse(this.state, { scope, ...this.state.selection });
       this.state.experiment.characterization = result;
+      this.state.experiment.frameworkLawCandidates = this.currentFrameworkLawCandidates(scope);
       this.state.view.overlayMode = "operatorInteraction";
       RAD.recordEvent(this.state, {
         type: "characterization",
@@ -1168,6 +1169,7 @@
         document.getElementById("characterizationPhysicalMax").textContent = "phys max 0.000";
         document.getElementById("characterizationDecay").textContent = "decay a0.00 z0.00";
         document.getElementById("characterizationDecayLength").textContent = "len a0.0 z0.0";
+        this.renderFrameworkLawCandidates();
         this.renderCalibrationResults();
         this.renderResponseAtlasSweep();
         return;
@@ -1195,8 +1197,67 @@
       document.getElementById("characterizationPhysicalMax").textContent = physicalMaxLabel;
       document.getElementById("characterizationDecay").textContent = `decay a${Number(result.alphaDecayRatio || 0).toFixed(2)} z${Number(result.zDecayRatio || 0).toFixed(2)}`;
       document.getElementById("characterizationDecayLength").textContent = `len a${Number(result.alphaDecayLength || 0).toFixed(1)} z${Number(result.zDecayLength || 0).toFixed(1)}`;
+      this.renderFrameworkLawCandidates();
       this.renderCalibrationResults();
       this.renderResponseAtlasSweep();
+    }
+
+    currentFrameworkLawCandidates(scope) {
+      if (typeof RAD.programmableDiscontinuityReport !== "function") return null;
+      try {
+        const report = RAD.programmableDiscontinuityReport(this.state, {
+          scope,
+          ...this.state.selection,
+          includeResponseMatrix: false,
+          includeFields: false,
+        });
+        return report.operatorLawCandidates || null;
+      } catch {
+        return null;
+      }
+    }
+
+    formatFrameworkLawEvidence(law) {
+      if (!law) return "";
+      const evidence = law.evidence || {};
+      if (law.id === "composition_nonadditivity") {
+        return ` err ${Number(evidence.maxSuperpositionError || 0).toFixed(3)}`;
+      }
+      if (law.id === "event_order_noncommutativity") {
+        return ` err ${Number(evidence.maxOrderError || 0).toFixed(3)}`;
+      }
+      if (law.id === "rank_limited_reachability") {
+        return ` rank a${evidence.alphaRank || 0} z${evidence.heightRank || 0}`;
+      }
+      if (law.id === "bounded_locality") {
+        return ` die a${evidence.alphaLocalityRadius || 0} z${evidence.zLocalityRadius || 0}`;
+      }
+      return "";
+    }
+
+    renderFrameworkLawCandidates() {
+      const candidates = this.state.experiment.frameworkLawCandidates;
+      if (!candidates || !Array.isArray(candidates.laws)) {
+        document.getElementById("frameworkLawSummary").textContent = "laws not run";
+        document.getElementById("frameworkLawDetail").textContent = "candidate --";
+        return;
+      }
+      const laws = candidates.laws;
+      const supported = laws.filter((law) => law.supportedByDiagnostic);
+      const preferred = [
+        "composition_nonadditivity",
+        "event_order_noncommutativity",
+        "rank_limited_reachability",
+        "bounded_locality",
+      ];
+      const primary =
+        preferred.map((id) => supported.find((law) => law.id === id)).find(Boolean) ||
+        supported[0] ||
+        laws[0];
+      const status = primary?.supportedByDiagnostic ? "supported" : "not supported";
+      const label = primary ? primary.id.replace(/_/g, " ") : "none";
+      document.getElementById("frameworkLawSummary").textContent = `laws ${supported.length}/${laws.length} supported`;
+      document.getElementById("frameworkLawDetail").textContent = `candidate ${label} ${status}${this.formatFrameworkLawEvidence(primary)}`;
     }
 
     renderCalibrationResults() {
