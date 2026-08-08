@@ -35,6 +35,8 @@ assert.strictEqual(typeof RAD.calibrationExperimentProtocol, "function", "analys
 assert.strictEqual(typeof RAD.exportCalibrationExperimentProtocol, "function", "analysis module should export calibration experiment protocol");
 assert.strictEqual(typeof RAD.buildResponseMatrix, "function", "analysis module should expose response matrix export");
 assert.strictEqual(typeof RAD.exportResponseMatrix, "function", "analysis module should serialize response matrices");
+assert.strictEqual(typeof RAD.programmableDiscontinuityReport, "function", "analysis module should expose programmable-discontinuity reports");
+assert.strictEqual(typeof RAD.exportProgrammableDiscontinuityReport, "function", "analysis module should export programmable-discontinuity reports");
 assert.strictEqual(typeof RAD.calibrationExperimentResultsTemplate, "function", "analysis module should expose calibration results template");
 assert.strictEqual(typeof RAD.exportCalibrationExperimentResultsTemplate, "function", "analysis module should export calibration results template");
 assert.strictEqual(typeof RAD.compareCalibrationExperimentResults, "function", "analysis module should compare calibration results");
@@ -67,6 +69,7 @@ assert.ok(html.includes('value="calibrationResidual"'), "calibration residual ov
 assert.ok(html.includes('value="underactuated"'), "underactuated target overlay should be available in the browser UI");
 assert.ok(html.includes('id="selectInteractionHotspot"'), "response panel should expose a hotspot selection button");
 assert.ok(html.includes('id="saveResponseMatrix"'), "response panel should expose a response-matrix export button");
+assert.ok(html.includes('id="saveProgrammableReport"'), "response panel should expose a programmable-discontinuity report export button");
 assert.ok(html.includes('id="selectCalibrationHotspot"'), "response panel should expose a calibration-error selection button");
 assert.ok(html.includes('id="nextCalibrationHotspot"'), "response panel should expose ranked calibration-error navigation");
 assert.ok(html.includes('id="selectUnderactuatedTarget"'), "inverse panel should expose underactuated target selection");
@@ -597,6 +600,17 @@ assert.strictEqual(responseMatrix.alpha[0].length, responseMatrix.commands.lengt
 assert.ok(responseMatrix.diagnostics.alphaRank > 0, "response matrix should report alpha rank");
 assert.ok(responseMatrix.diagnostics.reachableHeightCells > 0, "response matrix should report height reachability");
 assert.strictEqual(JSON.parse(RAD.exportResponseMatrix(characterizationState, { r: 2, c: 2, scope: "pair" })).schema, responseMatrix.schema);
+const frameworkReport = RAD.programmableDiscontinuityReport(characterizationState, { r: 2, c: 2, scope: "pair", includeResponseMatrix: false, includeFields: false });
+assert.strictEqual(frameworkReport.schema, "rad-sim.programmable-discontinuity-report.v1");
+assert.strictEqual(frameworkReport.operators.activeOperatorCount, 2, "framework report should count active command operators");
+assert.strictEqual(frameworkReport.paperSupportedAssumptions[0].formula, "f(x)=max(0,x-b)+min(x+b,0)");
+assert.strictEqual(frameworkReport.simulatorDiagnostics[1].name, "superposition residual");
+assert.ok(Number.isFinite(frameworkReport.locality.alphaDecayRatio), "framework report should include locality decay");
+assert.ok(frameworkReport.reachability.reachableHeightCells > 0, "framework report should include reachable height cells");
+assert.ok(Number.isFinite(frameworkReport.composition.maxPairwiseInteractionError), "framework report should include pairwise composition metrics");
+assert.ok(!("fields" in frameworkReport.combinedResponse), "framework report should support compact exports without response fields");
+assert.ok(!("alpha" in frameworkReport.responseMatrix), "framework report should support compact response-matrix diagnostics");
+assert.strictEqual(JSON.parse(RAD.exportProgrammableDiscontinuityReport(characterizationState, { r: 2, c: 2, scope: "pair", includeResponseMatrix: false, includeFields: false })).schema, frameworkReport.schema);
 assert.strictEqual(pairCharacterization.decayModel, "log-linear shell max", "characterization should report the decay fitting model");
 assert.ok(Number.isFinite(pairCharacterization.alphaDecayRatio), "pair characterization should report finite alpha decay ratio");
 assert.ok(Number.isFinite(pairCharacterization.zDecayRatio), "pair characterization should report finite z decay ratio");

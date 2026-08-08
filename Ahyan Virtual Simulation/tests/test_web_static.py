@@ -969,6 +969,7 @@ class WebStaticTests(unittest.TestCase):
             "characterizationScale",
             "characterizationRank",
             "characterizationUnderactuated",
+            "saveProgrammableReport",
         ]:
             self.assertIn(f'id="{control_id}"', html)
         for option in ['value="single"', 'value="pair"', 'value="cluster"', 'value="lattice"']:
@@ -994,6 +995,11 @@ class WebStaticTests(unittest.TestCase):
             "alphaUnderactuatedCells",
             "heightUnderactuatedCells",
             "pinHoleClearanceMm",
+            "programmableDiscontinuityReport",
+            "exportProgrammableDiscontinuityReport",
+            "rad-sim.programmable-discontinuity-report.v1",
+            "paperSupportedAssumptions",
+            "simulatorDiagnostics",
             "RAD.characterizeLocalResponse",
         ]:
             self.assertIn(symbol, analysis_js)
@@ -1009,6 +1015,8 @@ class WebStaticTests(unittest.TestCase):
             "characterizationSuperposition",
             "characterizationRank",
             "characterizationUnderactuated",
+            "saveProgrammableReport",
+            "rad-sim-programmable-discontinuity-report",
             "characterize:",
         ]:
             self.assertIn(symbol, ui_js)
@@ -1022,6 +1030,9 @@ class WebStaticTests(unittest.TestCase):
             "pair characterization should report alpha response rank",
             "pair characterization should report height response rank",
             "pair characterization should report alpha underactuation",
+            "frameworkReport",
+            "framework report should count active command operators",
+            "RAD.exportProgrammableDiscontinuityReport",
         ]:
             self.assertIn(symbol, script)
 

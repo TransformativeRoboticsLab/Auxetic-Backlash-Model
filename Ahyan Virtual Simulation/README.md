@@ -616,6 +616,11 @@ without requiring Playwright or a browser binary.
 - `web/analysis.js` `buildResponseMatrix` / `exportResponseMatrix`: browser-side
   alpha and height response-matrix artifact for the selected single, pair,
   cluster, or active-lattice actuator set.
+- `web/analysis.js` `programmableDiscontinuityReport` /
+  `exportProgrammableDiscontinuityReport`: browser-side
+  `rad-sim.programmable-discontinuity-report.v1` export behind `Save Framework
+  Report`, carrying the same paper-supported assumptions and simulator
+  diagnostics used by the Python framework report.
 - `web/inverse.js` `validateInversePlanPhysical`: browser-side physical
   validation of analyzed inverse plans and linear fits against spring-preview
   relaxation, including physical target residual and model-disagreement metrics.

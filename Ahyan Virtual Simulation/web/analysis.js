@@ -224,10 +224,10 @@
   }
 
   function superpositionError(state, sourceCells, combinedSim, baselineSim) {
-    if (sourceCells.length <= 1) return { rms: 0, max: 0, skipped: false, sourceCount: sourceCells.length };
+    if (sourceCells.length <= 1) return { rms: 0, max: 0, alphaMax: 0, heightMax: 0, skipped: false, sourceCount: sourceCells.length };
     const activeSources = sourceCells.filter((cell) => Math.abs(state.cells.commandAlpha?.[cell.r]?.[cell.c] || 0) > 1e-9 || Math.abs(state.cells.commandZ?.[cell.r]?.[cell.c] || 0) > 1e-9);
-    if (activeSources.length <= 1) return { rms: 0, max: 0, skipped: false, sourceCount: activeSources.length };
-    if (activeSources.length > 16) return { rms: null, max: null, skipped: true, sourceCount: activeSources.length };
+    if (activeSources.length <= 1) return { rms: 0, max: 0, alphaMax: 0, heightMax: 0, skipped: false, sourceCount: activeSources.length };
+    if (activeSources.length > 16) return { rms: null, max: null, alphaMax: null, heightMax: null, skipped: true, sourceCount: activeSources.length };
     const rows = state.grid.rows;
     const cols = state.grid.cols;
     const alphaSum = RAD.matrix(rows, cols, 0);
@@ -244,15 +244,19 @@
     }
     let squared = 0;
     let max = 0;
+    let alphaMax = 0;
+    let heightMax = 0;
     for (let r = 0; r < rows; r += 1) {
       for (let c = 0; c < cols; c += 1) {
         const alphaResidual = (combinedSim.alpha[r][c] || 0) - (baselineSim.alpha[r][c] || 0) - alphaSum[r][c];
         const heightResidual = (combinedSim.height[r][c] || 0) - (baselineSim.height[r][c] || 0) - heightSum[r][c];
         squared += alphaResidual * alphaResidual + heightResidual * heightResidual;
-        max = Math.max(max, Math.abs(alphaResidual), Math.abs(heightResidual));
+        alphaMax = Math.max(alphaMax, Math.abs(alphaResidual));
+        heightMax = Math.max(heightMax, Math.abs(heightResidual));
+        max = Math.max(max, alphaMax, heightMax);
       }
     }
-    return { rms: Math.sqrt(squared / Math.max(1, rows * cols * 2)), max, skipped: false, sourceCount: activeSources.length };
+    return { rms: Math.sqrt(squared / Math.max(1, rows * cols * 2)), max, alphaMax, heightMax, skipped: false, sourceCount: activeSources.length };
   }
 
   function pairwiseInteractionGraph(state, sourceCells, baselineSim, tolerance = 1e-9, maxPairs = 64) {
@@ -579,6 +583,275 @@
     return JSON.stringify(buildResponseMatrix(state, options), null, 2);
   }
 
+  function reportCell(cell) {
+    return { row: Number(cell.r ?? cell.row) || 0, col: Number(cell.c ?? cell.col) || 0 };
+  }
+
+  function activeReportCommands(state, sourceCells, tolerance = 1e-9) {
+    return sourceCells.map((cell, index) => ({
+      index,
+      row: cell.r,
+      col: cell.c,
+      alpha: Number(state.cells.commandAlpha?.[cell.r]?.[cell.c]) || 0,
+      z: Number(state.cells.commandZ?.[cell.r]?.[cell.c]) || 0,
+      locked: Boolean(state.cells.locked?.[cell.r]?.[cell.c]),
+      active:
+        Math.abs(Number(state.cells.commandAlpha?.[cell.r]?.[cell.c]) || 0) > tolerance ||
+        Math.abs(Number(state.cells.commandZ?.[cell.r]?.[cell.c]) || 0) > tolerance,
+    }));
+  }
+
+  function lockedReportCells(state) {
+    const cells = [];
+    for (let r = 0; r < state.grid.rows; r += 1) {
+      for (let c = 0; c < state.grid.cols; c += 1) {
+        if (state.cells.locked?.[r]?.[c]) cells.push({ row: r, col: c });
+      }
+    }
+    return cells;
+  }
+
+  function finiteMatrix(field) {
+    return (field || []).map((row) =>
+      (row || []).map((value) => (Number.isFinite(Number(value)) ? Number(value) : null))
+    );
+  }
+
+  function deltaMatrix(next, base, field) {
+    return (next?.[field] || []).map((row, r) =>
+      (row || []).map((value, c) => (Number(value) || 0) - (Number(base?.[field]?.[r]?.[c]) || 0))
+    );
+  }
+
+  function reportResponseFields(sim, baselineSim) {
+    return {
+      alphaDelta: deltaMatrix(sim, baselineSim, "alpha"),
+      heightDelta: deltaMatrix(sim, baselineSim, "height"),
+      actuatorInfluence: finiteMatrix(sim.influence),
+      zResidual: finiteMatrix(sim.zResidual),
+      alphaDieOff: finiteMatrix(sim.dieOff),
+      zDieOff: finiteMatrix(sim.zDieOff),
+    };
+  }
+
+  function reportSequenceOrder(state, commands, tolerance = 1e-9) {
+    if (typeof RAD.compareSequenceOrder !== "function" || typeof RAD.localActuationEvent !== "function") {
+      return { eventSequence: [], sequenceOrder: null };
+    }
+    const primary = commands.find((command) => command.active);
+    if (!primary) {
+      return { eventSequence: [], sequenceOrder: null };
+    }
+    const cell = { r: primary.row, c: primary.col };
+    const alpha = primary.alpha;
+    const z = primary.z;
+    const eventSequence = [
+      RAD.localActuationEvent(cell, alpha, z),
+      RAD.lockEvent(cell),
+      RAD.clearActuationEvent(cell),
+    ];
+    const sequenceOrder = RAD.compareSequenceOrder(scopedState(state, []), eventSequence, tolerance);
+    return {
+      eventSequence: eventSequence.map((event, index) => ({
+        index,
+        kind: event.kind,
+        cell: event.cell ? reportCell(event.cell) : null,
+        alpha: Number(event.alpha) || 0,
+        z: Number(event.z) || 0,
+      })),
+      sequenceOrder,
+    };
+  }
+
+  function programmableDiscontinuityReport(state, options = {}) {
+    const tolerance = Number(options.tolerance ?? 1e-9);
+    const includeFields = options.includeFields !== false;
+    const includeResponseMatrix = options.includeResponseMatrix !== false;
+    const scope = options.scope || state.experiment?.characterizationScope || "single";
+    const selected = {
+      r: clampIndex(options.r ?? state.selection?.r ?? 0, state.grid.rows),
+      c: clampIndex(options.c ?? state.selection?.c ?? 0, state.grid.cols),
+    };
+    const sourceCells = uniqueProtocolCells(
+      characterizationCells(state, selected.r, selected.c, scope).map((cell) => normalizeMatrixCell(state, cell))
+    );
+    const combinedState = scopedState(state, sourceCells);
+    const baselineState = scopedState(state, []);
+    const sim = RAD.simulate(combinedState);
+    const baselineSim = RAD.simulate(baselineState);
+    const characterization = characterizeLocalResponse(state, { scope, r: selected.r, c: selected.c });
+    const matrix = buildResponseMatrix(state, { scope, r: selected.r, c: selected.c, tolerance });
+    const commands = activeReportCommands(combinedState, sourceCells, tolerance);
+    const activeOperatorCount = commands.filter((command) => command.active).length;
+    const order = reportSequenceOrder(combinedState, commands, tolerance);
+    const calibration = RAD.paperRadCalibration(combinedState);
+    const responseMatrix = includeResponseMatrix
+      ? matrix
+      : {
+          schema: matrix.schema,
+          grid: matrix.grid,
+          source: matrix.source,
+          commands: matrix.commands,
+          diagnostics: matrix.diagnostics,
+        };
+    const report = {
+      schema: "rad-sim.programmable-discontinuity-report.v1",
+      savedAt: new Date().toISOString(),
+      grid: {
+        rows: state.grid.rows,
+        cols: state.grid.cols,
+        totalCells: state.grid.rows * state.grid.cols,
+      },
+      config: {
+        cellSize: state.grid.cellSize,
+        initialAlpha: state.grid.initialAlpha,
+        backlash: state.grid.backlash,
+        couplingGain: state.grid.couplingGain,
+        zCouplingGain: state.grid.zCouplingGain,
+        pinRadius: state.grid.pinRadius,
+        holeRadius: state.grid.holeRadius,
+        pinHoleClearance: RAD.pinHoleClearance(state),
+        backlashMm: calibration.configuredBacklashMm,
+        pinHoleClearanceMm: calibration.pinHoleClearanceMm,
+        alphaContractLimit: state.grid.alphaContractLimit,
+        alphaExpandLimit: state.grid.alphaExpandLimit,
+        zTravelLimit: state.grid.zTravelLimit,
+      },
+      operators: {
+        scope,
+        selected: reportCell(selected),
+        commands,
+        lockedCells: lockedReportCells(combinedState),
+        eventSequence: order.eventSequence,
+        activeOperatorCount,
+      },
+      paperSupportedAssumptions: [
+        {
+          name: "backlash dead-zone activation",
+          formula: "f(x)=max(0,x-b)+min(x+b,0)",
+          implementation: "RAD.backlashActivation",
+        },
+        {
+          name: "normalized backlash",
+          formula: "b_norm=b/L",
+          implementation: "state.grid.backlash is dimensionless in v1",
+        },
+        {
+          name: "rotating-square angle/dilation relation",
+          formula: "theta_degrees=70*alpha-60",
+          implementation: "RAD.alphaToTheta",
+        },
+      ],
+      simulatorDiagnostics: [
+        {
+          name: "response matrix reachability",
+          interpretation: "finite command columns approximate local reachable alpha/height directions",
+        },
+        {
+          name: "superposition residual",
+          interpretation: "nonzero residual marks non-additive operator composition caused by thresholds, locks, saturation, or coupling",
+        },
+        {
+          name: "shellwise locality fit",
+          interpretation: "log-linear shell maxima estimate die-off but are not a constitutive law",
+        },
+        {
+          name: "event-order sensitivity",
+          interpretation: "reversal and adjacent-swap differences test noncommutativity of lock and actuation operators",
+        },
+      ],
+      locality: {
+        alphaLocalityRadius: characterization.alphaDieOff,
+        zLocalityRadius: characterization.zDieOff,
+        alphaDecayRatio: characterization.alphaDecayRatio,
+        zDecayRatio: characterization.zDecayRatio,
+        alphaDecayLength: characterization.alphaDecayLength,
+        zDecayLength: characterization.zDecayLength,
+        decayProfile: {
+          model: characterization.decayModel,
+          alphaShells: characterization.alphaDecayShells,
+          zShells: characterization.zDecayShells,
+          alphaReach: characterization.alphaDecayReach,
+          zReach: characterization.zDecayReach,
+          alphaFirst: characterization.alphaDecayFirst,
+          zFirst: characterization.zDecayFirst,
+          alphaLast: characterization.alphaDecayLast,
+          zLast: characterization.zDecayLast,
+        },
+      },
+      reachability: {
+        reachableAlphaCells: characterization.reachableAlphaCells,
+        reachableHeightCells: characterization.reachableHeightCells,
+        alphaUnderactuatedCells: characterization.alphaUnderactuatedCells,
+        heightUnderactuatedCells: characterization.heightUnderactuatedCells,
+        alphaRank: characterization.responseRankAlpha,
+        heightRank: characterization.responseRankHeight,
+      },
+      composition: {
+        nonadditive: characterization.nonadditive,
+        alphaSuperpositionError: characterization.alphaSuperpositionError,
+        heightSuperpositionError: characterization.heightSuperpositionError,
+        superpositionRmsError: characterization.superpositionError,
+        orderSensitive: Boolean(order.sequenceOrder?.orderSensitive),
+        noncommutingAdjacentPairs: Number(order.sequenceOrder?.noncommutingAdjacentPairs) || 0,
+        maxOrderError: Number(order.sequenceOrder?.maxOrderError) || 0,
+        nonadditivePairCount: characterization.pairwiseNonadditivePairs,
+        maxPairwiseInteractionError: characterization.pairwiseMaxInteractionError,
+        maxPairwiseHotspotError: characterization.pairwiseInteractionMapMax,
+        maxPairwiseInteractionDegree: characterization.pairwiseInteractionDegreeMax,
+        pairwiseInteractionDensity: characterization.pairwiseInteractionDensity,
+        pairwiseInteractionsTruncated: characterization.pairwiseTruncated,
+      },
+      combinedResponse: {
+        scope,
+        selected: reportCell(selected),
+        cells: sourceCells.map(reportCell),
+        activeSources: characterization.activeSources,
+        responseCells: characterization.responseCells,
+        alphaReach: characterization.alphaReachCells,
+        zReach: characterization.zReachCells,
+        effectiveAlphaDieOff: characterization.alphaDieOff,
+        effectiveZDieOff: characterization.zDieOff,
+        maxAbsAlphaDelta: characterization.maxAlphaDelta,
+        maxAbsHeightDelta: characterization.maxHeightDelta,
+        meanAbsAlphaDelta: characterization.meanAbsAlphaDelta,
+        meanAbsHeightDelta: characterization.meanAbsHeightDelta,
+      },
+      responseMatrix,
+      pairwiseInteractions: {
+        model: characterization.pairwiseInteractionModel,
+        commandCount: activeOperatorCount,
+        totalPairCount: characterization.pairwiseTotalPairs,
+        evaluatedPairCount: characterization.pairwiseEvaluatedPairs,
+        nonadditivePairCount: characterization.pairwiseNonadditivePairs,
+        maxAlphaError: characterization.pairwiseMaxAlphaError,
+        maxHeightError: characterization.pairwiseMaxHeightError,
+        maxInteractionError: characterization.pairwiseMaxInteractionError,
+        maxHotspotError: characterization.pairwiseInteractionMapMax,
+        maxInteractionDegree: characterization.pairwiseInteractionDegreeMax,
+        interactionDensity: characterization.pairwiseInteractionDensity,
+        truncated: characterization.pairwiseTruncated,
+        interactions: characterization.pairwiseInteractions,
+      },
+      sequenceOrder: order.sequenceOrder,
+      tolerance,
+    };
+    if (includeFields) {
+      report.combinedResponse.fields = reportResponseFields(sim, baselineSim);
+      report.pairwiseInteractions.fields = {
+        alphaErrorMatrix: characterization.pairwiseAlphaErrorMatrix,
+        heightErrorMatrix: characterization.pairwiseHeightErrorMatrix,
+        interactionHotspotMap: characterization.pairwiseInteractionMap,
+        interactionDegreeMap: characterization.pairwiseInteractionDegreeMap,
+      };
+    }
+    return report;
+  }
+
+  function exportProgrammableDiscontinuityReport(state, options = {}) {
+    return JSON.stringify(programmableDiscontinuityReport(state, options), null, 2);
+  }
+
   function nearestSourceDistance(r, c, sourceCells) {
     let best = Infinity;
     for (const source of sourceCells) best = Math.min(best, Math.abs(r - source.r) + Math.abs(c - source.c));
@@ -744,6 +1017,8 @@
       ...physicalComparison,
       superpositionError: interaction.rms,
       maxSuperpositionError: interaction.max,
+      alphaSuperpositionError: interaction.alphaMax,
+      heightSuperpositionError: interaction.heightMax,
       superpositionSkipped: interaction.skipped,
       superpositionSources: interaction.sourceCount,
       nonadditive: !interaction.skipped && (interaction.rms || 0) > 1e-9,
@@ -1427,6 +1702,8 @@
   RAD.characterizeLocalResponse = characterizeLocalResponse;
   RAD.buildResponseMatrix = buildResponseMatrix;
   RAD.exportResponseMatrix = exportResponseMatrix;
+  RAD.programmableDiscontinuityReport = programmableDiscontinuityReport;
+  RAD.exportProgrammableDiscontinuityReport = exportProgrammableDiscontinuityReport;
   RAD.calibrationExperimentProtocol = calibrationExperimentProtocol;
   RAD.exportCalibrationExperimentProtocol = exportCalibrationExperimentProtocol;
   RAD.calibrationExperimentResultsTemplate = calibrationExperimentResultsTemplate;

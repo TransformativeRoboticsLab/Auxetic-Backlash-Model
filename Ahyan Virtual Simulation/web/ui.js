@@ -500,6 +500,7 @@
       });
       document.getElementById("runCharacterization").addEventListener("click", () => this.runCharacterization());
       document.getElementById("saveResponseMatrix").addEventListener("click", () => this.saveResponseMatrix());
+      document.getElementById("saveProgrammableReport").addEventListener("click", () => this.saveProgrammableReport());
       document.getElementById("selectInteractionHotspot").addEventListener("click", () => this.selectInteractionHotspot());
       document.getElementById("selectCalibrationHotspot").addEventListener("click", () => this.selectCalibrationHotspot());
       document.getElementById("nextCalibrationHotspot").addEventListener("click", () => this.selectCalibrationHotspot(1));
@@ -1492,6 +1493,23 @@
       const link = document.createElement("a");
       link.href = url;
       link.download = `rad-sim-response-matrix-${scope}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveProgrammableReport() {
+      const scope = this.els.characterizationScope.value || "single";
+      const payload =
+        typeof RAD.exportProgrammableDiscontinuityReport === "function"
+          ? RAD.exportProgrammableDiscontinuityReport(this.state, { scope, ...this.state.selection })
+          : JSON.stringify({ schema: "rad-sim.programmable-discontinuity-report.v1" }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `rad-sim-programmable-discontinuity-report-${scope}.json`;
       document.body.appendChild(link);
       link.click();
       link.remove();
