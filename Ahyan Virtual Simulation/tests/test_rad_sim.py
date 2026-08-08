@@ -1119,6 +1119,24 @@ class RadSimTests(unittest.TestCase):
                 diagnostic.height_superposition_error,
             ),
         )
+        formalization = payload["formalizationTargets"]
+        self.assertEqual(formalization["schema"], "rad-sim.formalization-targets.v1")
+        self.assertEqual(formalization["tooling"]["engine"], "Lean")
+        self.assertIn("available", formalization["tooling"])
+        target_by_id = {target["id"]: target for target in formalization["targets"]}
+        self.assertEqual(
+            target_by_id["dead_zone_zero_inside_backlash"]["source"],
+            "paper-supported",
+        )
+        self.assertIn(
+            "real max/min lemmas",
+            target_by_id["dead_zone_zero_inside_backlash"]["dependencies"],
+        )
+        self.assertTrue(
+            target_by_id["noncommutativity_witness_from_order_error"]["evidence"][
+                "orderSensitive"
+            ]
+        )
         self.assertTrue(payload["composition"]["nonadditive"])
         self.assertTrue(payload["composition"]["orderSensitive"])
         self.assertIsNotNone(payload["sequenceOrder"])
@@ -1140,6 +1158,7 @@ class RadSimTests(unittest.TestCase):
         self.assertEqual(exported["schema"], payload["schema"])
         self.assertEqual(exported["composition"], payload["composition"])
         self.assertEqual(exported["operatorLawCandidates"], payload["operatorLawCandidates"])
+        self.assertEqual(exported["formalizationTargets"], payload["formalizationTargets"])
 
     def test_programmable_discontinuity_report_can_include_physical_validation(self):
         config = LatticeConfig(rows=2, cols=2, z_coupling_gain=0.0)

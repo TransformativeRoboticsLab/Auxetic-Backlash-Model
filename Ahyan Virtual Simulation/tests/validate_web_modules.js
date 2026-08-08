@@ -668,6 +668,15 @@ const frameworkLaws = new Map(frameworkReport.operatorLawCandidates.laws.map((la
 assert.ok(frameworkLaws.has("composition_nonadditivity"), "framework report should include a composition law candidate");
 assert.ok(frameworkLaws.has("event_order_noncommutativity"), "framework report should include an order law candidate");
 assert.strictEqual(frameworkLaws.get("event_order_noncommutativity").status, "simulator-diagnostic");
+assert.strictEqual(frameworkReport.formalizationTargets.schema, "rad-sim.formalization-targets.v1");
+assert.strictEqual(frameworkReport.formalizationTargets.tooling.engine, "Lean");
+assert.strictEqual(frameworkReport.formalizationTargets.tooling.status, "browser-cannot-inspect-path");
+const formalTargets = new Map(frameworkReport.formalizationTargets.targets.map((target) => [target.id, target]));
+assert.strictEqual(formalTargets.get("dead_zone_zero_inside_backlash").source, "paper-supported");
+assert.ok(
+  formalTargets.get("noncommutativity_witness_from_order_error").evidence.orderSensitive,
+  "framework report should expose a noncommutativity formalization witness"
+);
 assert.ok(Number.isFinite(frameworkReport.locality.alphaDecayRatio), "framework report should include locality decay");
 assert.ok(frameworkReport.reachability.reachableHeightCells > 0, "framework report should include reachable height cells");
 assert.ok(Number.isFinite(frameworkReport.composition.maxPairwiseInteractionError), "framework report should include pairwise composition metrics");

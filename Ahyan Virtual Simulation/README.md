@@ -77,7 +77,11 @@ because of backlash thresholds, locks, or saturation.
 `rad-sim.programmable-discontinuity-report.v1` artifact with explicit
 paper-supported assumptions, simulator-introduced diagnostics, locality,
 reachability, composition, response-matrix, pairwise, optional spring-hinge
-physical-validation, and sequence-order fields.
+physical-validation, sequence-order fields, and a
+`rad-sim.formalization-targets.v1` theorem-target manifest for Lean-sized
+claims such as backlash dead-zone lemmas, lock idempotence, response-rank
+bounds, and noncommutativity witnesses. These are proof targets, not completed
+Lean proofs unless Lean/Lake are available and the premises are formalized.
 `solve_inverse_design` uses that response matrix in a bounded damped least-squares
 fit from target alpha/height fields to candidate actuator commands. This is the
 first Python-backed inverse layer for surface-shaping studies; it is linearized
@@ -574,7 +578,8 @@ without requiring Playwright or a browser binary.
   event-order sensitivity, and optional `include_physical=True` spring-hinge
   model-disagreement evidence. Reports include diagnostic law candidates for
   locality, rank-limited reachability, non-additive composition, and event-order
-  noncommutativity.
+  noncommutativity, plus formalization targets that separate paper-supported
+  dead-zone lemmas from simulator-diagnostic witnesses.
 - `characterize_pairwise_interactions`: Python pairwise command interaction graph
   for identifying which actuation operators create non-additive residuals and
   mapping each command cell's strongest pair residual and non-additive degree.
@@ -660,7 +665,8 @@ without requiring Playwright or a browser binary.
   `rad-sim.programmable-discontinuity-report.v1` export behind `Save Framework
   Report`, carrying the same paper-supported assumptions and simulator
   diagnostics used by the Python framework report, plus diagnostic law
-  candidates and the browser spring-preview physical-validation summary.
+  candidates, formalization-target metadata, and the browser spring-preview
+  physical-validation summary.
 - `web/inverse.js` `validateInversePlanPhysical`: browser-side physical
   validation of analyzed inverse plans and linear fits against spring-preview
   relaxation, including physical target residual and model-disagreement metrics.

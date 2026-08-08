@@ -774,6 +774,102 @@
     };
   }
 
+  function formalizationTarget(id, statement, source, status, readyForLean, dependencies, evidence) {
+    return {
+      id,
+      statement,
+      source,
+      status,
+      readyForLean: Boolean(readyForLean),
+      dependencies,
+      evidence,
+    };
+  }
+
+  function frameworkFormalizationTargets(characterization, sequenceOrder, lockedCount, commandCount, tolerance) {
+    const orderSensitive = Boolean(sequenceOrder?.orderSensitive);
+    const targets = [
+      formalizationTarget(
+        "dead_zone_zero_inside_backlash",
+        "For b >= 0, f_b(x)=max(0,x-b)+min(x+b,0) equals 0 whenever -b <= x <= b.",
+        "paper-supported",
+        "pending-lean-tooling",
+        false,
+        ["real max/min lemmas", "nonnegative backlash premise"],
+        { formula: "f(x)=max(0,x-b)+min(x+b,0)" }
+      ),
+      formalizationTarget(
+        "dead_zone_piecewise_linear_outside_gap",
+        "For b >= 0, f_b(x)=x-b when x >= b and f_b(x)=x+b when x <= -b.",
+        "paper-supported",
+        "pending-lean-tooling",
+        false,
+        ["real max/min lemmas", "case split on backlash thresholds"],
+        { formula: "f(x)=max(0,x-b)+min(x+b,0)" }
+      ),
+      formalizationTarget(
+        "lock_projection_idempotent",
+        "Applying the same lock projection twice is equivalent to applying it once.",
+        "simulator-operator",
+        "pending-lean-tooling",
+        false,
+        ["finite grid state model", "lock projection definition"],
+        { lockedCellCount: lockedCount }
+      ),
+      formalizationTarget(
+        "finite_response_rank_bound",
+        "The rank of a finite response matrix is bounded by its command-column count.",
+        "linear-algebra-diagnostic",
+        "pending-lean-tooling",
+        false,
+        ["finite matrix rank theorem", "response matrix column count"],
+        {
+          alphaRank: Number(characterization.responseRankAlpha) || 0,
+          heightRank: Number(characterization.responseRankHeight) || 0,
+          commandCount,
+        }
+      ),
+      formalizationTarget(
+        "noncommutativity_witness_from_order_error",
+        "If sequence-order distance is greater than tolerance, the corresponding event compositions are not equal.",
+        "simulator-diagnostic",
+        orderSensitive ? "pending-lean-tooling" : "pending-numeric-witness",
+        false,
+        ["state distance definition", "event composition semantics"],
+        {
+          orderSensitive,
+          maxOrderError: Number(sequenceOrder?.maxOrderError) || 0,
+          tolerance,
+        }
+      ),
+      formalizationTarget(
+        "bounded_locality_witness",
+        "If all response magnitudes outside a reported die-off radius are below tolerance, the diagnostic has a finite locality witness.",
+        "simulator-diagnostic",
+        "requires-calibrated-premise",
+        false,
+        ["normed response field", "thresholded locality definition"],
+        {
+          alphaLocalityRadius: Number(characterization.alphaDieOff) || 0,
+          zLocalityRadius: Number(characterization.zDieOff) || 0,
+          tolerance,
+        }
+      ),
+    ];
+    return {
+      schema: "rad-sim.formalization-targets.v1",
+      method: "candidate theorem manifest; no Lean proof is emitted until Lean/Lake are available and the premises are first-principles enough to formalize",
+      tooling: {
+        engine: "Lean",
+        leanPath: null,
+        lakePath: null,
+        available: false,
+        status: "browser-cannot-inspect-path",
+      },
+      targets,
+    };
+  }
+
   function programmableDiscontinuityReport(state, options = {}) {
     const tolerance = Number(options.tolerance ?? 1e-9);
     const includeFields = options.includeFields !== false;
@@ -876,6 +972,13 @@
         order.sequenceOrder,
         order.eventSequence.length,
         state.grid.rows * state.grid.cols,
+        tolerance
+      ),
+      formalizationTargets: frameworkFormalizationTargets(
+        characterization,
+        order.sequenceOrder,
+        lockedReportCells(combinedState).length,
+        matrix.commands.length,
         tolerance
       ),
       locality: {

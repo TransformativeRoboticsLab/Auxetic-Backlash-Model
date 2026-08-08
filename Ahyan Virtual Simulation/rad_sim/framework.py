@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -481,6 +482,139 @@ def _framework_operator_law_candidates(
     }
 
 
+def _formalization_target(
+    identifier: str,
+    statement: str,
+    source: str,
+    status: str,
+    ready_for_lean: bool,
+    dependencies: tuple[str, ...],
+    evidence: dict[str, object],
+) -> dict[str, object]:
+    return {
+        "id": identifier,
+        "statement": statement,
+        "source": source,
+        "status": status,
+        "readyForLean": bool(ready_for_lean),
+        "dependencies": list(dependencies),
+        "evidence": evidence,
+    }
+
+
+def _lean_tooling_status() -> dict[str, object]:
+    lean_path = shutil.which("lean")
+    lake_path = shutil.which("lake")
+    available = bool(lean_path and lake_path)
+    return {
+        "engine": "Lean",
+        "leanPath": lean_path,
+        "lakePath": lake_path,
+        "available": available,
+        "status": "available" if available else "not-found-on-path",
+    }
+
+
+def _framework_formalization_targets(
+    diagnostic: ProgrammableDiscontinuityDiagnostic,
+) -> dict[str, object]:
+    tooling = _lean_tooling_status()
+    lean_ready = bool(tooling["available"])
+    basic_status = "ready-for-lean" if lean_ready else "pending-lean-tooling"
+    witness_status = (
+        basic_status if diagnostic.order_sensitive else "pending-numeric-witness"
+    )
+    targets = [
+        _formalization_target(
+            "dead_zone_zero_inside_backlash",
+            (
+                "For b >= 0, f_b(x)=max(0,x-b)+min(x+b,0) equals 0 "
+                "whenever -b <= x <= b."
+            ),
+            "paper-supported",
+            basic_status,
+            lean_ready,
+            ("real max/min lemmas", "nonnegative backlash premise"),
+            {"formula": "f(x)=max(0,x-b)+min(x+b,0)"},
+        ),
+        _formalization_target(
+            "dead_zone_piecewise_linear_outside_gap",
+            (
+                "For b >= 0, f_b(x)=x-b when x >= b and f_b(x)=x+b "
+                "when x <= -b."
+            ),
+            "paper-supported",
+            basic_status,
+            lean_ready,
+            ("real max/min lemmas", "case split on backlash thresholds"),
+            {"formula": "f(x)=max(0,x-b)+min(x+b,0)"},
+        ),
+        _formalization_target(
+            "lock_projection_idempotent",
+            "Applying the same lock projection twice is equivalent to applying it once.",
+            "simulator-operator",
+            basic_status,
+            lean_ready,
+            ("finite grid state model", "lock projection definition"),
+            {"lockedCellCount": len(diagnostic.locked_cells)},
+        ),
+        _formalization_target(
+            "finite_response_rank_bound",
+            "The rank of a finite response matrix is bounded by its command-column count.",
+            "linear-algebra-diagnostic",
+            basic_status,
+            lean_ready,
+            ("finite matrix rank theorem", "response matrix column count"),
+            {
+                "alphaRank": diagnostic.alpha_rank,
+                "heightRank": diagnostic.height_rank,
+                "commandCount": len(diagnostic.response_matrix.commands),
+            },
+        ),
+        _formalization_target(
+            "noncommutativity_witness_from_order_error",
+            (
+                "If sequence-order distance is greater than tolerance, the "
+                "corresponding event compositions are not equal."
+            ),
+            "simulator-diagnostic",
+            witness_status,
+            lean_ready and diagnostic.order_sensitive,
+            ("state distance definition", "event composition semantics"),
+            {
+                "orderSensitive": diagnostic.order_sensitive,
+                "maxOrderError": diagnostic.max_order_error,
+                "tolerance": diagnostic.tolerance,
+            },
+        ),
+        _formalization_target(
+            "bounded_locality_witness",
+            (
+                "If all response magnitudes outside a reported die-off radius "
+                "are below tolerance, the diagnostic has a finite locality witness."
+            ),
+            "simulator-diagnostic",
+            "requires-calibrated-premise",
+            False,
+            ("normed response field", "thresholded locality definition"),
+            {
+                "alphaLocalityRadius": diagnostic.alpha_locality_radius,
+                "zLocalityRadius": diagnostic.z_locality_radius,
+                "tolerance": diagnostic.tolerance,
+            },
+        ),
+    ]
+    return {
+        "schema": "rad-sim.formalization-targets.v1",
+        "method": (
+            "candidate theorem manifest; no Lean proof is emitted until Lean/Lake "
+            "are available and the premises are first-principles enough to formalize"
+        ),
+        "tooling": tooling,
+        "targets": targets,
+    }
+
+
 def _pairwise_interactions_dict(
     pairwise: OperatorInteractionGraph | None,
     *,
@@ -749,6 +883,7 @@ def programmable_discontinuity_report(
             },
         ],
         "operatorLawCandidates": _framework_operator_law_candidates(diagnostic),
+        "formalizationTargets": _framework_formalization_targets(diagnostic),
         "locality": {
             "alphaLocalityRadius": diagnostic.alpha_locality_radius,
             "zLocalityRadius": diagnostic.z_locality_radius,
