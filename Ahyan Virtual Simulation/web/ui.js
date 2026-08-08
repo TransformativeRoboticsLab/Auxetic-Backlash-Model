@@ -868,7 +868,7 @@
     }
 
     applyCellVisualMode(mode) {
-      const visualMode = ["abstract", "paperRad", "mechanism"].includes(mode) ? mode : "abstract";
+      const visualMode = ["abstract", "paperRad", "calibratedRad", "mechanism"].includes(mode) ? mode : "abstract";
       this.state.view.cellVisualMode = visualMode;
       if (visualMode === "mechanism") {
         Object.assign(this.state.view, {
@@ -880,6 +880,18 @@
           actuatorsVisible: true,
           measurementsVisible: true,
           measurementMode: "all",
+        });
+      } else if (visualMode === "calibratedRad") {
+        this.state.view.explodedSelected = false;
+        Object.assign(this.state.view, {
+          gapsVisible: true,
+          stopsVisible: true,
+          pivotsVisible: true,
+          linkagesVisible: true,
+          fastenersVisible: false,
+          actuatorsVisible: true,
+          measurementsVisible: true,
+          measurementMode: "hardware",
         });
       } else if (visualMode === "paperRad") {
         this.state.view.explodedSelected = false;

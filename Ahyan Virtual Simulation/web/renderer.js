@@ -1839,7 +1839,7 @@
       ring.userData.disposeGeometry = true;
       this.measurementRoot.add(ring);
       if (measurementMode === "theta" || measurementMode === "all") this.renderThetaGuide(state, sim, r, c, center);
-      if (measurementMode === "backlash" || measurementMode === "all") this.renderBacklashGuide(state, sim, r, c, center);
+      if (measurementMode === "backlash" || measurementMode === "hardware" || measurementMode === "all") this.renderBacklashGuide(state, sim, r, c, center);
       if (measurementMode === "height" || measurementMode === "alpha" || measurementMode === "all") this.renderActuatorTravelGuide(state, sim, r, c, center);
       const xAxis = new T.Line(
         new T.BufferGeometry().setFromPoints([
@@ -1961,12 +1961,28 @@
       if (mode === "backlash") {
         return `backlash b ${backlash.toFixed(3)}\ninfluence ${influence.toFixed(3)}\ndie-off ${Number.isFinite(sim.dieOff[r][c]) ? sim.dieOff[r][c] : "locked"}\ndead-zone +/-${backlash.toFixed(2)}`;
       }
+      if (mode === "hardware") {
+        const summary = typeof RAD.calibrationProfileSummary === "function" ? RAD.calibrationProfileSummary(state) : null;
+        const profile = summary?.profile || {};
+        const clearanceMm = summary?.pinHoleClearanceMm;
+        const pinMm = profile.pinRadiusMm ?? null;
+        const holeMm = profile.holeRadiusMm ?? null;
+        const thicknessMm = profile.plateThicknessMm ?? null;
+        const stackMm = profile.jointStackHeightMm ?? null;
+        const fmtMm = (value) => (value === null || value === undefined ? "--" : `${Number(value).toFixed(2)} mm`);
+        return `profile ${profile.name || "paper-reference"}\npin ${fmtMm(pinMm)}  hole ${fmtMm(holeMm)}\nclearance ${fmtMm(clearanceMm)}\nplate ${fmtMm(thicknessMm)}  stack ${fmtMm(stackMm)}\ncoverage ${summary?.measuredCount || 0}/${summary?.totalCount || 5}`;
+      }
       return `alpha ${alpha.toFixed(3)}  theta ${theta.toFixed(1)}\nz ${height.toFixed(3)}  z residual ${zResidual.toFixed(3)}\nnormal tilt ${normalTilt.toFixed(1)}  residual ${residual.toFixed(3)}\ninfluence ${influence.toFixed(3)}  link strain ${linkStrain.toFixed(3)}\ncmd a ${state.cells.commandAlpha[r][c].toFixed(2)}  cmd z ${state.cells.commandZ[r][c].toFixed(2)}\nb ${backlash.toFixed(2)}  ref disp ${referenceDisplacement.toFixed(3)}`;
     }
 
     measurementRingRadius(state, sim, r, c, mode) {
       if (mode === "alpha") return 0.32 + Math.sqrt(Math.max(0.01, sim.alpha[r][c])) * 0.18;
       if (mode === "backlash") return 0.45 + state.grid.backlash * 0.55;
+      if (mode === "hardware") {
+        const summary = typeof RAD.calibrationProfileSummary === "function" ? RAD.calibrationProfileSummary(state) : null;
+        const hole = summary?.holeRadiusModel ?? Number(state.grid.holeRadius ?? 0.225) * Number(state.grid.cellSize || 1) * 0.32;
+        return 0.45 + Math.max(0.02, hole) * 1.6;
+      }
       return 0.48;
     }
 

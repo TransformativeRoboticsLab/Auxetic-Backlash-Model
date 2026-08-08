@@ -581,6 +581,7 @@ class WebStaticTests(unittest.TestCase):
         self.assertIn('id="simulationMode"', html)
         self.assertIn('value="abstract"', html)
         self.assertIn('value="paperRad"', html)
+        self.assertIn('value="calibratedRad"', html)
         self.assertIn('value="mechanism"', html)
         self.assertIn('value="springPreview"', html)
         for option in ['value="zresidual"', 'value="error"', 'value="travel"', 'value="saturation"', 'value="strain"', 'value="modelError"', 'value="displacement"', 'value="slope"', 'value="inverse"', 'value="sensitivity"', 'value="reachability"']:
@@ -610,7 +611,7 @@ class WebStaticTests(unittest.TestCase):
         self.assertIn("this.els.simulationMode.addEventListener", ui_js)
         for symbol in [
             "applyCellVisualMode(mode)",
-            '["abstract", "paperRad", "mechanism"].includes(mode)',
+            '["abstract", "paperRad", "calibratedRad", "mechanism"].includes(mode)',
             "this.state.view.explodedSelected = false",
             "stopsVisible: true",
             "pivotsVisible: true",
@@ -618,6 +619,7 @@ class WebStaticTests(unittest.TestCase):
             "fastenersVisible: true",
             "actuatorsVisible: true",
             "measurementMode: \"all\"",
+            "measurementMode: \"hardware\"",
             "measurementMode: \"backlash\"",
             "stopsVisible: false",
             "pivotsVisible: false",
@@ -1285,7 +1287,7 @@ class WebStaticTests(unittest.TestCase):
         html = (WEB / "index.html").read_text(encoding="utf-8")
         self.assertIn('id="measurementMode"', html)
         self.assertIn('id="showMeasurementLabels"', html)
-        for option in ['value="all"', 'value="alpha"', 'value="theta"', 'value="height"', 'value="backlash"']:
+        for option in ['value="all"', 'value="alpha"', 'value="theta"', 'value="height"', 'value="backlash"', 'value="hardware"']:
             self.assertIn(option, html)
         state_js = (WEB / "state.js").read_text(encoding="utf-8")
         self.assertIn('measurementMode: "alpha"', state_js)
@@ -1294,7 +1296,7 @@ class WebStaticTests(unittest.TestCase):
         self.assertIn("this.els.measurementMode.addEventListener", ui_js)
         self.assertIn("showMeasurementLabels", ui_js)
         renderer_js = (WEB / "renderer.js").read_text(encoding="utf-8")
-        for symbol in ["measurementLabel", "measurementRingRadius", "renderThetaGuide", "renderBacklashGuide", "gapLine"]:
+        for symbol in ["measurementLabel", "measurementRingRadius", "renderThetaGuide", "renderBacklashGuide", "gapLine", 'mode === "hardware"', "calibrationProfileSummary", "pinHoleClearanceMm"]:
             self.assertIn(symbol, renderer_js)
 
     def test_renderer_uses_persistent_surface_meshes(self):

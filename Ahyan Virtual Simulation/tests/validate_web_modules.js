@@ -114,6 +114,7 @@ assert.ok(html.includes('id="hardwareHoleRadiusMm"'), "browser UI should expose 
 assert.ok(html.includes('id="applyHardwareProfile"'), "browser UI should expose hardware profile apply action");
 assert.ok(html.includes('id="saveCalibrationPlan"'), "browser UI should expose calibration plan export action");
 assert.ok(html.includes('value="calibratedRad"'), "browser UI should expose calibrated RAD visual mode");
+assert.ok(html.includes('value="hardware"'), "browser UI should expose hardware profile measurement mode");
 const scriptOrder = [
   "./vendor/three.min.js",
   "./state.js",

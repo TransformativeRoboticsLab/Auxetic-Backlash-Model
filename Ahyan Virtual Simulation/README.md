@@ -159,7 +159,10 @@ Dims` deliberately maps measured backlash, pin radius, and hole radius back into
 the normalized backlash/free-play controls; unfilled fields remain calibration
 gaps instead of silently changing the solver. The Display panel's `Calibrated
 RAD cell` mode uses the profile directly for visible plate thickness, pin/hole
-radii, and stack offset without requiring those values to alter the solver.
+radii, and stack offset without requiring those values to alter the solver. It
+also switches the measurement readout to `Hardware profile`, which labels the
+selected cell with measured pin, hole, clearance, plate, and stack dimensions
+when available.
 `calibration_readiness` in Python and `RAD.calibrationReadiness()` in the browser
 classify the current profile as paper-scale, partial-measured,
 visual-calibrated, or mesh-calibrated, while separately listing the physical
