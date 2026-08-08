@@ -1254,8 +1254,12 @@
       const lowResidual = low ? Number(low.maxObservedNeighborZResidual || 0) : 0;
       const highResidual = high ? Number(high.maxObservedNeighborZResidual || 0) : 0;
       const drop = lowResidual > 1e-12 ? 100 * (1 - highResidual / lowResidual) : 0;
+      const dominant = sweep.sensitivity?.dominant;
+      const dominantLabel = dominant
+        ? `, sens ${dominant.parameter}/${dominant.metric} ${Number(dominant.slope || 0).toFixed(2)}`
+        : "";
       document.getElementById("sweepSummary").textContent = `sweep ${summary.sampleCount || 0} samples, reach a${summary.maxAlphaReach || 0} z${summary.maxZReach || 0}`;
-      document.getElementById("sweepTrend").textContent = `neighbor z ${Number(summary.maxObservedNeighborZResidual || 0).toFixed(3)}, clear drop ${drop.toFixed(0)}%, super ${Number(summary.maxSuperpositionError || 0).toFixed(3)}`;
+      document.getElementById("sweepTrend").textContent = `neighbor z ${Number(summary.maxObservedNeighborZResidual || 0).toFixed(3)}, clear drop ${drop.toFixed(0)}%, super ${Number(summary.maxSuperpositionError || 0).toFixed(3)}${dominantLabel}`;
     }
 
     strongestInteractionHotspot(result) {

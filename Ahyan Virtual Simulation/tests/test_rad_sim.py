@@ -778,12 +778,23 @@ class RadSimTests(unittest.TestCase):
             by_clearance[0]["maxObservedNeighborZResidual"],
             by_clearance[1]["maxObservedNeighborZResidual"],
         )
+        sensitivity = payload["sensitivity"]
+        self.assertEqual(
+            sensitivity["method"],
+            "endpoint finite difference over each parameter trend",
+        )
+        self.assertLess(
+            sensitivity["metrics"]["pinHoleClearance"]["maxObservedNeighborZResidual"],
+            0.0,
+        )
+        self.assertIsNotNone(sensitivity["dominant"])
         first_sample = payload["samples"][0]
         self.assertEqual(first_sample["atlas"]["schema"], "rad-sim.response-atlas.v1")
         self.assertAlmostEqual(first_sample["settings"]["holeRadius"], 0.20)
 
         exported = json.loads(export_response_atlas_sweep_json(sweep))
         self.assertEqual(exported["summary"], payload["summary"])
+        self.assertEqual(exported["sensitivity"], payload["sensitivity"])
 
     def test_calibration_results_template_roundtrips_and_compares_to_simulation(self):
         config = LatticeConfig(rows=3, cols=3, backlash=0.02, z_coupling_gain=0.35)

@@ -2,6 +2,12 @@
   "use strict";
 
   const RAD = (window.RAD = window.RAD || {});
+  const SWEEP_SENSITIVITY_METRICS = Object.freeze([
+    "meanAlphaReach",
+    "meanZReach",
+    "maxObservedNeighborZResidual",
+    "maxSuperpositionError",
+  ]);
 
   function sequenceFrames(state) {
     const initial = state.experiment.initialSnapshot || RAD.snapshotState(state);
@@ -1335,6 +1341,39 @@
       }));
   }
 
+  function endpointSlope(trend, metric) {
+    if (!Array.isArray(trend) || trend.length < 2) return null;
+    const first = trend[0];
+    const last = trend[trend.length - 1];
+    const dx = (Number(last.value) || 0) - (Number(first.value) || 0);
+    if (Math.abs(dx) <= 1e-12) return null;
+    return ((Number(last[metric]) || 0) - (Number(first[metric]) || 0)) / dx;
+  }
+
+  function sweepSensitivityFromTrends(trends) {
+    const trendMap = {
+      backlash: trends.byBacklash || [],
+      pinHoleClearance: trends.byPinHoleClearance || [],
+    };
+    const metrics = {};
+    let dominant = null;
+    for (const [parameter, trend] of Object.entries(trendMap)) {
+      metrics[parameter] = {};
+      for (const metric of SWEEP_SENSITIVITY_METRICS) {
+        const slope = endpointSlope(trend, metric);
+        metrics[parameter][metric] = slope;
+        if (slope === null) continue;
+        const candidate = { parameter, metric, slope, absSlope: Math.abs(slope) };
+        if (!dominant || candidate.absSlope > dominant.absSlope) dominant = candidate;
+      }
+    }
+    return {
+      method: "endpoint finite difference over each parameter trend",
+      metrics,
+      dominant,
+    };
+  }
+
   function atlasStepEntry(state, step, tolerance = 1e-9) {
     const commandState = protocolStepState(state, step, true);
     const baselineState = protocolStepState(state, step, false);
@@ -1450,6 +1489,10 @@
         });
       }
     }
+    const trends = {
+      byBacklash: sweepTrend(samples, "backlash"),
+      byPinHoleClearance: sweepTrend(samples, "pinHoleClearance"),
+    };
     return {
       schema: "rad-sim.response-atlas-sweep.v1",
       savedAt: new Date().toISOString(),
@@ -1472,10 +1515,8 @@
         maxObservedNeighborZResidual: samples.reduce((max, sample) => Math.max(max, sample.summary.maxObservedNeighborZResidual || 0), 0),
         maxSuperpositionError: samples.reduce((max, sample) => Math.max(max, sample.summary.maxSuperpositionError || 0), 0),
       },
-      trends: {
-        byBacklash: sweepTrend(samples, "backlash"),
-        byPinHoleClearance: sweepTrend(samples, "pinHoleClearance"),
-      },
+      trends,
+      sensitivity: sweepSensitivityFromTrends(trends),
       assumptions: {
         source: "Each browser sample rebuilds the response atlas from the current calibration protocol commands.",
         interpretation: "Backlash and clearance are treated as programmable-discontinuity dead-zone parameters; trend summaries are simulator diagnostics.",

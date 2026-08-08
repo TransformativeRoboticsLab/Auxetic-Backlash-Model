@@ -47,7 +47,8 @@ serialized as `rad-sim.response-matrix.v1` JSON for lab comparisons.
 `sweep_response_atlas_parameters` reruns the calibration atlas across selected
 backlash and pin-hole-clearance values, producing a
 `rad-sim.response-atlas-sweep.v1` artifact for comparing locality, residual
-vertical motion, and operator interaction before bench calibration.
+vertical motion, operator interaction, and finite-difference parameter
+sensitivity before bench calibration.
 `model_provenance` and `provenance_summary` return the current evidence ledger
 for solver features, separating paper-supported equations from assumptions,
 diagnostics, and missing calibration data.
@@ -613,14 +614,16 @@ without requiring Playwright or a browser binary.
 - `sweep_response_atlas_parameters` / `export_response_atlas_sweep_json`:
   Python `rad-sim.response-atlas-sweep.v1` artifact that compares atlas
   summaries over backlash and pin-hole-clearance settings for locality,
-  residual vertical motion, and non-additive operator interaction studies.
+  residual vertical motion, non-additive operator interaction, and endpoint
+  finite-difference sensitivity studies.
 - `web/analysis.js` `responseAtlas` / `exportResponseAtlas`: browser-side
   `rad-sim.response-atlas.v1` export behind `Save Atlas`, using the current
   protocol, kinematic response fields, and browser spring-preview validation.
 - `web/analysis.js` `responseAtlasSweep` / `exportResponseAtlasSweep`:
   browser-side `rad-sim.response-atlas-sweep.v1` export behind `Save Sweep`.
   `Run Sweep` computes the same artifact into the Response Experiments readout
-  so backlash/clearance trends can be inspected without leaving the 3D UI.
+  so backlash/clearance trends and dominant sensitivity can be inspected without
+  leaving the 3D UI.
 - `calibration_experiment_results_template` /
   `compare_calibration_experiment_measurements` and the browser matching
   helpers: fillable bench-results schema plus simulator-vs-measurement error

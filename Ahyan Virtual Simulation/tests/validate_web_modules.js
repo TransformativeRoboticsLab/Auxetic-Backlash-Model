@@ -311,6 +311,12 @@ assert.ok(
     browserSweep.trends.byPinHoleClearance[1].maxObservedNeighborZResidual,
   "response atlas sweep should show clearance-gated neighbor residual trend"
 );
+assert.strictEqual(browserSweep.sensitivity.method, "endpoint finite difference over each parameter trend");
+assert.ok(
+  browserSweep.sensitivity.metrics.pinHoleClearance.maxObservedNeighborZResidual < 0,
+  "response atlas sweep should report negative clearance sensitivity for neighbor residual"
+);
+assert.ok(browserSweep.sensitivity.dominant, "response atlas sweep should identify a dominant sensitivity");
 assert.strictEqual(JSON.parse(RAD.exportResponseAtlasSweep(readyState, { backlashValues: [0.02], clearanceValues: [0.02] })).schema, browserSweep.schema);
 const resultsTemplate = RAD.calibrationExperimentResultsTemplate(readyState, { protocol: experimentProtocol });
 assert.strictEqual(resultsTemplate.schema, "rad-sim.calibration-experiment-results.v1");

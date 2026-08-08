@@ -250,6 +250,13 @@ PROTOCOL_MEASUREMENT_FIELDS: tuple[str, ...] = (
     "actuator_force_n",
 )
 
+SWEEP_SENSITIVITY_METRICS: tuple[str, ...] = (
+    "meanAlphaReach",
+    "meanZReach",
+    "maxObservedNeighborZResidual",
+    "maxSuperpositionError",
+)
+
 
 @dataclass(frozen=True)
 class CalibrationExperimentStep:
@@ -575,6 +582,12 @@ class ResponseAtlasSweep:
     )
 
     def to_dict(self) -> dict[str, object]:
+        by_backlash = _sweep_trend(self.samples, "backlash")
+        by_clearance = _sweep_trend(self.samples, "pin_hole_clearance")
+        trends = {
+            "byBacklash": by_backlash,
+            "byPinHoleClearance": by_clearance,
+        }
         return {
             "schema": self.schema,
             "grid": {"rows": self.config_shape[0], "cols": self.config_shape[1]},
@@ -605,10 +618,8 @@ class ResponseAtlasSweep:
                     default=0.0,
                 ),
             },
-            "trends": {
-                "byBacklash": _sweep_trend(self.samples, "backlash"),
-                "byPinHoleClearance": _sweep_trend(self.samples, "pin_hole_clearance"),
-            },
+            "trends": trends,
+            "sensitivity": _sweep_sensitivity_from_trends(trends),
             "assumptions": {
                 "source": "Each sample rebuilds the response atlas from the same protocol commands.",
                 "interpretation": (
@@ -790,6 +801,50 @@ def _sweep_trend(
             }
         )
     return trend
+
+
+def _trend_endpoint_slope(trend: list[dict[str, object]], metric: str) -> float | None:
+    if len(trend) < 2:
+        return None
+    first = trend[0]
+    last = trend[-1]
+    dx = float(last["value"]) - float(first["value"])
+    if abs(dx) <= 1e-12:
+        return None
+    return (float(last[metric]) - float(first[metric])) / dx
+
+
+def _sweep_sensitivity_from_trends(
+    trends: dict[str, list[dict[str, object]]],
+) -> dict[str, object]:
+    metrics: dict[str, dict[str, float | None]] = {}
+    dominant: dict[str, object] | None = None
+    parameter_labels = {
+        "byBacklash": "backlash",
+        "byPinHoleClearance": "pinHoleClearance",
+    }
+    for trend_key, parameter in parameter_labels.items():
+        trend = trends.get(trend_key, [])
+        parameter_metrics: dict[str, float | None] = {}
+        for metric in SWEEP_SENSITIVITY_METRICS:
+            slope = _trend_endpoint_slope(trend, metric)
+            parameter_metrics[metric] = slope
+            if slope is None:
+                continue
+            candidate = {
+                "parameter": parameter,
+                "metric": metric,
+                "slope": slope,
+                "absSlope": abs(slope),
+            }
+            if dominant is None or float(candidate["absSlope"]) > float(dominant["absSlope"]):
+                dominant = candidate
+        metrics[parameter] = parameter_metrics
+    return {
+        "method": "endpoint finite difference over each parameter trend",
+        "metrics": metrics,
+        "dominant": dominant,
+    }
 
 
 def _atlas_observation_cells(

@@ -1010,6 +1010,8 @@ class WebStaticTests(unittest.TestCase):
             "exportResponseAtlas",
             "responseAtlasSweep",
             "exportResponseAtlasSweep",
+            "sweepSensitivityFromTrends",
+            "endpoint finite difference over each parameter trend",
             "rad-sim.response-atlas.v1",
             "rad-sim.response-atlas-sweep.v1",
             "rad-sim.programmable-discontinuity-report.v1",
@@ -1040,6 +1042,7 @@ class WebStaticTests(unittest.TestCase):
             "renderResponseAtlasSweep",
             "sweepSummary",
             "sweepTrend",
+            "sensitivity?.dominant",
             "rad-sim-response-atlas",
             "rad-sim-response-atlas-sweep",
             "rad-sim-programmable-discontinuity-report",
@@ -1063,6 +1066,7 @@ class WebStaticTests(unittest.TestCase):
             "response atlas should include residual z observation cells",
             "browserSweep",
             "response atlas sweep should show clearance-gated neighbor residual trend",
+            "response atlas sweep should report negative clearance sensitivity",
             "RAD.exportProgrammableDiscontinuityReport",
         ]:
             self.assertIn(symbol, script)
