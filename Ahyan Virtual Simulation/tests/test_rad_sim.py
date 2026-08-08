@@ -52,6 +52,7 @@ from rad_sim import (
     export_inverse_design_report_json,
     export_programmable_discontinuity_report_json,
     export_response_atlas_json,
+    export_response_atlas_sweep_json,
     export_response_matrix_json,
     hardware_profile_from_config,
     inverse_design_report,
@@ -70,6 +71,7 @@ from rad_sim import (
     simulate_kinematic,
     solve_inverse_design,
     solve_spring_hinge_3d,
+    sweep_response_atlas_parameters,
     validate_inverse_design_physical,
     vertical_clearance_operator,
 )
@@ -747,6 +749,41 @@ class RadSimTests(unittest.TestCase):
         self.assertIsNotNone(physical_entry["physicalHeightRmsError"])
         self.assertIsNotNone(physical_entry["physicalCenterRmsError"])
         self.assertGreaterEqual(physical_entry["physicalEnergy"], 0.0)
+
+    def test_response_atlas_sweep_exports_backlash_and_clearance_trends(self):
+        config = LatticeConfig(
+            rows=3,
+            cols=3,
+            backlash=0.02,
+            z_coupling_gain=0.35,
+            pin_radius=0.18,
+            hole_radius=0.20,
+        )
+        sweep = sweep_response_atlas_parameters(
+            config,
+            backlash_values=(0.02, 0.14),
+            clearance_values=(0.02, 0.12),
+            center_cell=(1, 1),
+        )
+        payload = sweep.to_dict()
+
+        self.assertEqual(payload["schema"], "rad-sim.response-atlas-sweep.v1")
+        self.assertEqual(payload["summary"]["sampleCount"], 4)
+        self.assertEqual(payload["parameters"]["backlashValues"], [0.02, 0.14])
+        self.assertEqual(payload["parameters"]["pinHoleClearanceValues"], [0.02, 0.12])
+        self.assertEqual(len(payload["samples"]), 4)
+        self.assertGreater(payload["summary"]["maxObservedNeighborZResidual"], 0.0)
+        by_clearance = payload["trends"]["byPinHoleClearance"]
+        self.assertGreater(
+            by_clearance[0]["maxObservedNeighborZResidual"],
+            by_clearance[1]["maxObservedNeighborZResidual"],
+        )
+        first_sample = payload["samples"][0]
+        self.assertEqual(first_sample["atlas"]["schema"], "rad-sim.response-atlas.v1")
+        self.assertAlmostEqual(first_sample["settings"]["holeRadius"], 0.20)
+
+        exported = json.loads(export_response_atlas_sweep_json(sweep))
+        self.assertEqual(exported["summary"], payload["summary"])
 
     def test_calibration_results_template_roundtrips_and_compares_to_simulation(self):
         config = LatticeConfig(rows=3, cols=3, backlash=0.02, z_coupling_gain=0.35)

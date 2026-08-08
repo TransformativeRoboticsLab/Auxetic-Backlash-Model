@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Iterable, Literal
 
 import numpy as np
@@ -455,6 +455,176 @@ class ResponseAtlas:
 
 
 @dataclass(frozen=True)
+class ResponseAtlasSweepSample:
+    backlash: float
+    pin_hole_clearance: float
+    pin_radius: float
+    hole_radius: float
+    atlas: ResponseAtlas
+
+    @property
+    def mean_alpha_reach(self) -> float:
+        return _mean(entry.alpha_reach for entry in self.atlas.entries)
+
+    @property
+    def mean_z_reach(self) -> float:
+        return _mean(entry.z_reach for entry in self.atlas.entries)
+
+    @property
+    def max_alpha_reach(self) -> int:
+        return max((entry.alpha_reach for entry in self.atlas.entries), default=0)
+
+    @property
+    def max_z_reach(self) -> int:
+        return max((entry.z_reach for entry in self.atlas.entries), default=0)
+
+    @property
+    def max_superposition_error(self) -> float:
+        return max(
+            (
+                max(entry.alpha_superposition_error, entry.height_superposition_error)
+                for entry in self.atlas.entries
+            ),
+            default=0.0,
+        )
+
+    @property
+    def max_observed_z_residual(self) -> float:
+        return max(
+            (
+                abs(cell.z_residual)
+                for entry in self.atlas.entries
+                for cell in entry.observation_cells
+            ),
+            default=0.0,
+        )
+
+    @property
+    def max_observed_neighbor_z_residual(self) -> float:
+        residuals: list[float] = []
+        for entry in self.atlas.entries:
+            command_cells = {command.cell for command in entry.commands}
+            residuals.extend(
+                abs(cell.z_residual)
+                for cell in entry.observation_cells
+                if cell.cell not in command_cells
+            )
+        return max(residuals, default=0.0)
+
+    @property
+    def mean_abs_alpha_delta(self) -> float:
+        return _mean(entry.mean_abs_alpha_delta for entry in self.atlas.entries)
+
+    @property
+    def mean_abs_height_delta(self) -> float:
+        return _mean(entry.mean_abs_height_delta for entry in self.atlas.entries)
+
+    @property
+    def physical_success_rate(self) -> float | None:
+        physical_entries = [
+            entry for entry in self.atlas.entries if entry.physical_success is not None
+        ]
+        if not physical_entries:
+            return None
+        return sum(1 for entry in physical_entries if entry.physical_success) / len(physical_entries)
+
+    @property
+    def mean_physical_height_rms_error(self) -> float | None:
+        return _optional_mean(
+            entry.physical_height_rms_error for entry in self.atlas.entries
+        )
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "settings": {
+                "backlash": self.backlash,
+                "pinHoleClearance": self.pin_hole_clearance,
+                "pinRadius": self.pin_radius,
+                "holeRadius": self.hole_radius,
+            },
+            "summary": {
+                "meanAlphaReach": self.mean_alpha_reach,
+                "meanZReach": self.mean_z_reach,
+                "maxAlphaReach": self.max_alpha_reach,
+                "maxZReach": self.max_z_reach,
+                "maxSuperpositionError": self.max_superposition_error,
+                "maxObservedZResidual": self.max_observed_z_residual,
+                "maxObservedNeighborZResidual": self.max_observed_neighbor_z_residual,
+                "meanAbsAlphaDelta": self.mean_abs_alpha_delta,
+                "meanAbsHeightDelta": self.mean_abs_height_delta,
+                "physicalSuccessRate": self.physical_success_rate,
+                "meanPhysicalHeightRmsError": self.mean_physical_height_rms_error,
+            },
+            "atlas": self.atlas.to_dict(),
+        }
+
+
+@dataclass(frozen=True)
+class ResponseAtlasSweep:
+    config_shape: tuple[int, int]
+    center_cell: tuple[int, int]
+    backlash_values: tuple[float, ...]
+    clearance_values: tuple[float, ...]
+    samples: tuple[ResponseAtlasSweepSample, ...]
+    physical: bool = False
+    schema: str = "rad-sim.response-atlas-sweep.v1"
+    notes: str = (
+        "Simulator-generated sweep for comparing how backlash and pin-hole "
+        "clearance change locality, residual vertical motion, and operator "
+        "interaction before calibrated bench data exists."
+    )
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "schema": self.schema,
+            "grid": {"rows": self.config_shape[0], "cols": self.config_shape[1]},
+            "centerCell": _cell_dict(self.center_cell),
+            "physical": self.physical,
+            "parameters": {
+                "backlashValues": list(self.backlash_values),
+                "pinHoleClearanceValues": list(self.clearance_values),
+            },
+            "notes": self.notes,
+            "summary": {
+                "sampleCount": len(self.samples),
+                "maxAlphaReach": max(
+                    (sample.max_alpha_reach for sample in self.samples),
+                    default=0,
+                ),
+                "maxZReach": max((sample.max_z_reach for sample in self.samples), default=0),
+                "maxObservedZResidual": max(
+                    (sample.max_observed_z_residual for sample in self.samples),
+                    default=0.0,
+                ),
+                "maxObservedNeighborZResidual": max(
+                    (sample.max_observed_neighbor_z_residual for sample in self.samples),
+                    default=0.0,
+                ),
+                "maxSuperpositionError": max(
+                    (sample.max_superposition_error for sample in self.samples),
+                    default=0.0,
+                ),
+            },
+            "trends": {
+                "byBacklash": _sweep_trend(self.samples, "backlash"),
+                "byPinHoleClearance": _sweep_trend(self.samples, "pin_hole_clearance"),
+            },
+            "assumptions": {
+                "source": "Each sample rebuilds the response atlas from the same protocol commands.",
+                "interpretation": (
+                    "Backlash and clearance are treated as programmable-discontinuity "
+                    "dead-zone parameters; trend summaries are simulator diagnostics."
+                ),
+                "physical": (
+                    "Optional spring-hinge metrics are model-disagreement diagnostics, "
+                    "not calibrated hardware validation."
+                ),
+            },
+            "samples": [sample.to_dict() for sample in self.samples],
+        }
+
+
+@dataclass(frozen=True)
 class CalibrationCellMeasurement:
     cell: tuple[int, int]
     alpha_delta: float | None = None
@@ -576,6 +746,50 @@ def _source_command_dict(command: SourceCommand) -> dict[str, object]:
 
 def _finite_or_none(value: float) -> float | None:
     return float(value) if np.isfinite(value) else None
+
+
+def _mean(values: Iterable[float | int]) -> float:
+    numeric = [float(value) for value in values]
+    return float(np.mean(numeric)) if numeric else 0.0
+
+
+def _optional_mean(values: Iterable[float | None]) -> float | None:
+    numeric = [float(value) for value in values if value is not None]
+    return float(np.mean(numeric)) if numeric else None
+
+
+def _sweep_trend(
+    samples: Iterable[ResponseAtlasSweepSample],
+    parameter: Literal["backlash", "pin_hole_clearance"],
+) -> list[dict[str, object]]:
+    buckets: dict[float, list[ResponseAtlasSweepSample]] = {}
+    for sample in samples:
+        value = float(getattr(sample, parameter))
+        buckets.setdefault(value, []).append(sample)
+
+    trend: list[dict[str, object]] = []
+    for value, bucket in sorted(buckets.items()):
+        trend.append(
+            {
+                "value": value,
+                "sampleCount": len(bucket),
+                "meanAlphaReach": _mean(sample.mean_alpha_reach for sample in bucket),
+                "meanZReach": _mean(sample.mean_z_reach for sample in bucket),
+                "maxObservedZResidual": max(
+                    (sample.max_observed_z_residual for sample in bucket),
+                    default=0.0,
+                ),
+                "maxObservedNeighborZResidual": max(
+                    (sample.max_observed_neighbor_z_residual for sample in bucket),
+                    default=0.0,
+                ),
+                "maxSuperpositionError": max(
+                    (sample.max_superposition_error for sample in bucket),
+                    default=0.0,
+                ),
+            }
+        )
+    return trend
 
 
 def _atlas_observation_cells(
@@ -1804,8 +2018,102 @@ def build_response_atlas(
     )
 
 
+def sweep_response_atlas_parameters(
+    config: LatticeConfig,
+    *,
+    backlash_values: Iterable[float] | None = None,
+    clearance_values: Iterable[float] | None = None,
+    protocol: CalibrationExperimentProtocol | None = None,
+    center_cell: tuple[int, int] | None = None,
+    alpha_step: float = -0.25,
+    z_step: float = 0.30,
+    physical: bool = False,
+    load_case: LoadCase | None = None,
+    tolerance: float = 1e-9,
+) -> ResponseAtlasSweep:
+    """Sweep backlash and pin-hole clearance through the atlas protocol.
+
+    This is a numerical experiment for programmable-discontinuity parameter
+    studies. The only varied fields are the alpha dead-zone (`backlash`) and
+    vertical dead-zone (`hole_radius - pin_radius`); all other configuration
+    values are inherited from the supplied base config.
+    """
+
+    backlash_tuple = tuple(
+        float(value)
+        for value in (
+            (config.backlash,) if backlash_values is None else backlash_values
+        )
+    )
+    clearance_tuple = tuple(
+        float(value)
+        for value in (
+            (config.pin_hole_clearance,)
+            if clearance_values is None
+            else clearance_values
+        )
+    )
+    if not backlash_tuple:
+        raise ValueError("backlash_values must contain at least one value")
+    if not clearance_tuple:
+        raise ValueError("clearance_values must contain at least one value")
+    if any(value < 0 for value in clearance_tuple):
+        raise ValueError("clearance_values must be non-negative")
+    if protocol is not None and protocol.config_shape != (config.rows, config.cols):
+        raise ValueError("protocol config_shape must match config shape")
+
+    center = (
+        protocol.center_cell
+        if protocol is not None
+        else _clamp_cell(
+            config,
+            center_cell if center_cell is not None else (config.rows // 2, config.cols // 2),
+        )
+    )
+    samples: list[ResponseAtlasSweepSample] = []
+    for backlash in backlash_tuple:
+        for clearance in clearance_tuple:
+            sample_config = replace(
+                config,
+                backlash=backlash,
+                hole_radius=config.pin_radius + clearance,
+            )
+            atlas = build_response_atlas(
+                sample_config,
+                protocol=protocol,
+                center_cell=center,
+                alpha_step=alpha_step,
+                z_step=z_step,
+                physical=physical,
+                load_case=load_case,
+                tolerance=tolerance,
+            )
+            samples.append(
+                ResponseAtlasSweepSample(
+                    backlash=sample_config.backlash,
+                    pin_hole_clearance=sample_config.pin_hole_clearance,
+                    pin_radius=sample_config.pin_radius,
+                    hole_radius=sample_config.hole_radius,
+                    atlas=atlas,
+                )
+            )
+
+    return ResponseAtlasSweep(
+        config_shape=(config.rows, config.cols),
+        center_cell=center,
+        backlash_values=backlash_tuple,
+        clearance_values=clearance_tuple,
+        samples=tuple(samples),
+        physical=physical,
+    )
+
+
 def export_response_atlas_json(atlas: ResponseAtlas) -> str:
     return json.dumps(atlas.to_dict(), indent=2)
+
+
+def export_response_atlas_sweep_json(sweep: ResponseAtlasSweep) -> str:
+    return json.dumps(sweep.to_dict(), indent=2)
 
 
 def compare_physical_response(
