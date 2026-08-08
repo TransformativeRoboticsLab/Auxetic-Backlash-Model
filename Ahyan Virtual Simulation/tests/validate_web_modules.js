@@ -538,14 +538,35 @@ for (let r = 0; r < underactuatedTargetState.grid.rows; r += 1) {
 }
 const underactuatedJacobian = RAD.buildResponseJacobian(underactuatedTargetState, { responseThreshold: 0.01 });
 assert.strictEqual(underactuatedJacobian.targetReachability.model, "finite-response-height-reachability");
+assert.strictEqual(underactuatedJacobian.targetReachability.directionalModel, "sign-compatible finite-response-height-reachability");
 assert.strictEqual(underactuatedJacobian.targetReachability.targetHeightCells, 1);
+assert.strictEqual(underactuatedJacobian.targetReachability.upwardTargetHeightCells, 1);
+assert.strictEqual(underactuatedJacobian.targetReachability.downwardTargetHeightCells, 0);
 assert.strictEqual(underactuatedJacobian.targetReachability.underactuatedHeightCells, 1);
+assert.strictEqual(underactuatedJacobian.targetReachability.positiveUnderactuatedHeightCells, 1);
+assert.strictEqual(underactuatedJacobian.targetReachability.negativeUnderactuatedHeightCells, 0);
 assert.strictEqual(underactuatedJacobian.targetReachability.worstUnderactuatedCell.row, 2);
 assert.strictEqual(underactuatedJacobian.targetReachability.worstUnderactuatedCell.col, 2);
 assert.ok(underactuatedJacobian.targetReachability.maxUnreachableHeightResidual > 0, "underactuated target report should expose residual magnitude");
 const underactuatedFit = RAD.solveLinearizedTargetFit(underactuatedTargetState, { maxActuators: 1, maxColumns: 2 });
 assert.strictEqual(underactuatedFit.underactuatedHeightCells, 1, "linear fit should carry underactuated target count");
 assert.strictEqual(underactuatedFit.targetReachability.worstUnderactuatedCell.col, 2);
+const downwardUnderactuatedTargetState = RAD.createState(3, 3);
+RAD.clearCommands(downwardUnderactuatedTargetState);
+downwardUnderactuatedTargetState.grid.zCouplingGain = 0;
+downwardUnderactuatedTargetState.target.type = "custom";
+downwardUnderactuatedTargetState.target.amplitude = 0.3;
+downwardUnderactuatedTargetState.target.customExpression = "r==2&&c==2?-amplitude:0";
+for (let r = 0; r < downwardUnderactuatedTargetState.grid.rows; r += 1) {
+  for (let c = 0; c < downwardUnderactuatedTargetState.grid.cols; c += 1) {
+    downwardUnderactuatedTargetState.cells.actuatorAllowed[r][c] = r === 0 && c === 0;
+  }
+}
+const downwardUnderactuatedJacobian = RAD.buildResponseJacobian(downwardUnderactuatedTargetState, { responseThreshold: 0.01 });
+assert.strictEqual(downwardUnderactuatedJacobian.targetReachability.upwardTargetHeightCells, 0);
+assert.strictEqual(downwardUnderactuatedJacobian.targetReachability.downwardTargetHeightCells, 1);
+assert.strictEqual(downwardUnderactuatedJacobian.targetReachability.positiveUnderactuatedHeightCells, 0);
+assert.strictEqual(downwardUnderactuatedJacobian.targetReachability.negativeUnderactuatedHeightCells, 1);
 
 const operatorState = RAD.createState(3, 3);
 RAD.clearCommands(operatorState);

@@ -36,6 +36,10 @@ class InverseDesignResult:
     reachable_height_mask: np.ndarray | None = None
     underactuated_alpha_mask: np.ndarray | None = None
     underactuated_height_mask: np.ndarray | None = None
+    positive_height_reachable_mask: np.ndarray | None = None
+    negative_height_reachable_mask: np.ndarray | None = None
+    positive_height_underactuated_mask: np.ndarray | None = None
+    negative_height_underactuated_mask: np.ndarray | None = None
     max_command_multiplier: float = 0.0
     saturated_column_count: int = 0
     near_saturated_column_count: int = 0
@@ -55,6 +59,30 @@ class InverseDesignResult:
         if self.underactuated_height_mask is None:
             return 0
         return int(np.count_nonzero(self.underactuated_height_mask))
+
+    @property
+    def positive_height_reachable_cells(self) -> int:
+        if self.positive_height_reachable_mask is None:
+            return 0
+        return int(np.count_nonzero(self.positive_height_reachable_mask))
+
+    @property
+    def negative_height_reachable_cells(self) -> int:
+        if self.negative_height_reachable_mask is None:
+            return 0
+        return int(np.count_nonzero(self.negative_height_reachable_mask))
+
+    @property
+    def positive_height_underactuated_cells(self) -> int:
+        if self.positive_height_underactuated_mask is None:
+            return 0
+        return int(np.count_nonzero(self.positive_height_underactuated_mask))
+
+    @property
+    def negative_height_underactuated_cells(self) -> int:
+        if self.negative_height_underactuated_mask is None:
+            return 0
+        return int(np.count_nonzero(self.negative_height_underactuated_mask))
 
     @property
     def saturated_column_fraction(self) -> float:
@@ -123,6 +151,10 @@ class InverseDesignResult:
                 "maxAbsHeightResidual": self.max_abs_height_residual,
                 "alphaUnderactuatedCells": self.alpha_underactuated_cells,
                 "heightUnderactuatedCells": self.height_underactuated_cells,
+                "positiveHeightReachableCells": self.positive_height_reachable_cells,
+                "negativeHeightReachableCells": self.negative_height_reachable_cells,
+                "positiveHeightUnderactuatedCells": self.positive_height_underactuated_cells,
+                "negativeHeightUnderactuatedCells": self.negative_height_underactuated_cells,
                 "saturatedColumnCount": self.saturated_column_count,
                 "nearSaturatedColumnCount": self.near_saturated_column_count,
                 "saturatedColumnFraction": self.saturated_column_fraction,
@@ -142,6 +174,10 @@ class InverseDesignResult:
                 "height": _array_or_none(self.reachable_height_mask),
                 "underactuatedAlpha": _array_or_none(self.underactuated_alpha_mask),
                 "underactuatedHeight": _array_or_none(self.underactuated_height_mask),
+                "positiveHeight": _array_or_none(self.positive_height_reachable_mask),
+                "negativeHeight": _array_or_none(self.negative_height_reachable_mask),
+                "underactuatedPositiveHeight": _array_or_none(self.positive_height_underactuated_mask),
+                "underactuatedNegativeHeight": _array_or_none(self.negative_height_underactuated_mask),
             },
             "responseMatrix": (
                 self.matrix.to_dict(tolerance=tolerance)
@@ -344,6 +380,17 @@ def _reachable_mask(matrix: ResponseMatrix, family: str, tolerance: float) -> np
     return flat.reshape(matrix.cell_shape)
 
 
+def _signed_height_reachable_masks(
+    matrix: ResponseMatrix,
+    tolerance: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    if matrix.height.shape[1] == 0:
+        flat = np.zeros(matrix.height.shape[0], dtype=bool)
+        return flat.reshape(matrix.cell_shape), flat.reshape(matrix.cell_shape)
+    reversible = np.any(np.abs(matrix.height) > tolerance, axis=1)
+    return reversible.reshape(matrix.cell_shape), reversible.reshape(matrix.cell_shape)
+
+
 def _underactuated_mask(
     target: np.ndarray | None,
     baseline: np.ndarray,
@@ -354,6 +401,21 @@ def _underactuated_mask(
         return None
     requested_change = np.abs(target - baseline) > tolerance
     return requested_change & ~reachable
+
+
+def _signed_height_underactuated_masks(
+    target: np.ndarray | None,
+    baseline: np.ndarray,
+    positive_reachable: np.ndarray,
+    negative_reachable: np.ndarray,
+    tolerance: float,
+) -> tuple[np.ndarray | None, np.ndarray | None]:
+    if target is None:
+        return None, None
+    residual = target - baseline
+    positive_requested = residual > tolerance
+    negative_requested = residual < -tolerance
+    return positive_requested & ~positive_reachable, negative_requested & ~negative_reachable
 
 
 def _saturation_counts(
@@ -465,6 +527,20 @@ def solve_inverse_design(
     )
     reachable_alpha = _reachable_mask(matrix, "alpha", tolerance)
     reachable_height = _reachable_mask(matrix, "height", tolerance)
+    positive_height_reachable, negative_height_reachable = _signed_height_reachable_masks(
+        matrix,
+        tolerance,
+    )
+    (
+        positive_height_underactuated,
+        negative_height_underactuated,
+    ) = _signed_height_underactuated_masks(
+        target_height_array,
+        baseline.metadata["height"],
+        positive_height_reachable,
+        negative_height_reachable,
+        tolerance,
+    )
     saturated_count, near_saturated_count = _saturation_counts(
         coefficients,
         max_command_multiplier,
@@ -502,6 +578,10 @@ def solve_inverse_design(
             reachable_height,
             tolerance,
         ),
+        positive_height_reachable_mask=positive_height_reachable,
+        negative_height_reachable_mask=negative_height_reachable,
+        positive_height_underactuated_mask=positive_height_underactuated,
+        negative_height_underactuated_mask=negative_height_underactuated,
         max_command_multiplier=max_command_multiplier,
         saturated_column_count=saturated_count,
         near_saturated_column_count=near_saturated_count,

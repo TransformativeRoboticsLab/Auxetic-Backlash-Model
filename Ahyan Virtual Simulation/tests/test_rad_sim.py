@@ -1361,8 +1361,32 @@ class RadSimTests(unittest.TestCase):
         self.assertFalse(solution.reachable_height_mask[2, 2])
         self.assertTrue(solution.underactuated_height_mask[2, 2])
         self.assertEqual(solution.height_underactuated_cells, 1)
+        self.assertEqual(solution.positive_height_underactuated_cells, 1)
+        self.assertEqual(solution.negative_height_underactuated_cells, 0)
         self.assertEqual(solution.alpha_underactuated_cells, 0)
         self.assertGreater(solution.height_rms_residual, 0.0)
+        payload = solution.to_dict(include_response_matrix=False)
+        self.assertEqual(payload["metrics"]["positiveHeightUnderactuatedCells"], 1)
+        self.assertEqual(payload["metrics"]["negativeHeightUnderactuatedCells"], 0)
+        self.assertFalse(payload["reachability"]["positiveHeight"][2][2])
+
+    def test_inverse_design_tracks_downward_underactuated_height_targets(self):
+        config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.0)
+        target = np.zeros((3, 3), dtype=float)
+        target[2, 2] = -0.25
+        solution = solve_inverse_design(
+            config,
+            target_height=target,
+            actuator_cells=[(0, 0)],
+            include_alpha=False,
+            include_z=True,
+        )
+        self.assertTrue(solution.underactuated_height_mask[2, 2])
+        self.assertEqual(solution.positive_height_underactuated_cells, 0)
+        self.assertEqual(solution.negative_height_underactuated_cells, 1)
+        payload = solution.to_dict(include_response_matrix=False)
+        self.assertEqual(payload["metrics"]["positiveHeightUnderactuatedCells"], 0)
+        self.assertEqual(payload["metrics"]["negativeHeightUnderactuatedCells"], 1)
 
     def test_inverse_design_physical_validation_reports_spring_hinge_fit(self):
         config = LatticeConfig(rows=3, cols=3, z_coupling_gain=0.0)

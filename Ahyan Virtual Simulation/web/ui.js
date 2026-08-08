@@ -1510,7 +1510,7 @@
       document.getElementById("inversePlanDelta").textContent = `delta ${Number(plan?.totalImprovement || 0).toFixed(3)}`;
       const reachability = this.state.inverse?.jacobian?.targetReachability || this.state.inverse?.linearSolution?.targetReachability;
       document.getElementById("inverseReachabilitySummary").textContent = reachability
-        ? `under targets ${reachability.underactuatedHeightCells || 0}, rms ${Number(reachability.unreachableHeightRms || 0).toFixed(3)}`
+        ? `under targets ${reachability.underactuatedHeightCells || 0} up ${reachability.positiveUnderactuatedHeightCells || 0} down ${reachability.negativeUnderactuatedHeightCells || 0}, rms ${Number(reachability.unreachableHeightRms || 0).toFixed(3)}`
         : "under targets 0";
       document.getElementById("inversePreviewSummary").textContent = preview
         ? this.formatInversePreview(preview)

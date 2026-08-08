@@ -112,11 +112,19 @@
     const responseThreshold = options.responseThreshold ?? 0.012;
     const targetThreshold = options.targetThreshold ?? responseThreshold;
     const heightReachableMap = RAD.matrix(rows, cols, false);
+    const positiveHeightReachableMap = RAD.matrix(rows, cols, false);
+    const negativeHeightReachableMap = RAD.matrix(rows, cols, false);
     const targetHeightMap = RAD.matrix(rows, cols, 0);
     const underactuatedHeightMap = RAD.matrix(rows, cols, 0);
     let heightReachableCells = 0;
+    let positiveHeightReachableCells = 0;
+    let negativeHeightReachableCells = 0;
     let targetHeightCells = 0;
+    let upwardTargetHeightCells = 0;
+    let downwardTargetHeightCells = 0;
     let underactuatedHeightCells = 0;
+    let positiveUnderactuatedHeightCells = 0;
+    let negativeUnderactuatedHeightCells = 0;
     let unreachableSquared = 0;
     let maxUnreachableHeightResidual = 0;
     let worstUnderactuatedCell = null;
@@ -124,18 +132,31 @@
     for (let index = 0; index < rows * cols; index += 1) {
       const r = Math.floor(index / cols);
       const c = index % cols;
-      const reachable = columns.some((column) => Math.abs(column.heightDelta?.[index] || 0) >= responseThreshold);
+      const positiveReachable = columns.some((column) => (column.heightDelta?.[index] || 0) >= responseThreshold);
+      const negativeReachable = columns.some((column) => (column.heightDelta?.[index] || 0) <= -responseThreshold);
+      const reachable = positiveReachable || negativeReachable;
       heightReachableMap[r][c] = reachable;
+      positiveHeightReachableMap[r][c] = positiveReachable;
+      negativeHeightReachableMap[r][c] = negativeReachable;
       if (reachable) heightReachableCells += 1;
+      if (positiveReachable) positiveHeightReachableCells += 1;
+      if (negativeReachable) negativeHeightReachableCells += 1;
       const residual = (baseSim.target?.[r]?.[c] || 0) - (baseSim.height?.[r]?.[c] || 0);
-      const requested = Math.abs(residual) >= targetThreshold;
+      const upwardRequested = residual >= targetThreshold;
+      const downwardRequested = residual <= -targetThreshold;
+      const requested = upwardRequested || downwardRequested;
       if (requested) {
         targetHeightCells += 1;
         targetHeightMap[r][c] = residual;
       }
-      if (requested && !reachable) {
+      if (upwardRequested) upwardTargetHeightCells += 1;
+      if (downwardRequested) downwardTargetHeightCells += 1;
+      const signedUnderactuated = (upwardRequested && !positiveReachable) || (downwardRequested && !negativeReachable);
+      if (signedUnderactuated) {
         const magnitude = Math.abs(residual);
         underactuatedHeightCells += 1;
+        if (upwardRequested) positiveUnderactuatedHeightCells += 1;
+        if (downwardRequested) negativeUnderactuatedHeightCells += 1;
         underactuatedHeightMap[r][c] = magnitude;
         unreachableSquared += residual * residual;
         if (magnitude > maxUnreachableHeightResidual) {
@@ -147,14 +168,23 @@
 
     return {
       model: "finite-response-height-reachability",
+      directionalModel: "sign-compatible finite-response-height-reachability",
       responseThreshold,
       targetThreshold,
       heightReachableMap,
+      positiveHeightReachableMap,
+      negativeHeightReachableMap,
       targetHeightMap,
       underactuatedHeightMap,
       heightReachableCells,
+      positiveHeightReachableCells,
+      negativeHeightReachableCells,
       targetHeightCells,
+      upwardTargetHeightCells,
+      downwardTargetHeightCells,
       underactuatedHeightCells,
+      positiveUnderactuatedHeightCells,
+      negativeUnderactuatedHeightCells,
       unreachableHeightRms: Math.sqrt(unreachableSquared / Math.max(1, underactuatedHeightCells)),
       maxUnreachableHeightResidual,
       worstUnderactuatedCell,
