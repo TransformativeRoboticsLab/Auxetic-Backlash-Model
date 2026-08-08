@@ -617,6 +617,10 @@ without requiring Playwright or a browser binary.
 - `web/analysis.js` `responseAtlas` / `exportResponseAtlas`: browser-side
   `rad-sim.response-atlas.v1` export behind `Save Atlas`, using the current
   protocol, kinematic response fields, and browser spring-preview validation.
+- `web/analysis.js` `responseAtlasSweep` / `exportResponseAtlasSweep`:
+  browser-side `rad-sim.response-atlas-sweep.v1` export behind `Save Sweep`,
+  varying the current backlash and pin-hole-clearance settings while preserving
+  the selected-cell protocol.
 - `calibration_experiment_results_template` /
   `compare_calibration_experiment_measurements` and the browser matching
   helpers: fillable bench-results schema plus simulator-vs-measurement error

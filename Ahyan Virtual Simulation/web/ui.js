@@ -506,6 +506,7 @@
       document.getElementById("nextCalibrationHotspot").addEventListener("click", () => this.selectCalibrationHotspot(1));
       document.getElementById("saveExperimentProtocol").addEventListener("click", () => this.saveExperimentProtocol());
       document.getElementById("saveResponseAtlas").addEventListener("click", () => this.saveResponseAtlas());
+      document.getElementById("saveResponseAtlasSweep").addEventListener("click", () => this.saveResponseAtlasSweep());
       document.getElementById("saveResultsTemplate").addEventListener("click", () => this.saveResultsTemplate());
       document.getElementById("loadResultsJson").addEventListener("click", () => this.els.calibrationResultsFileInput.click());
       this.els.calibrationResultsFileInput.addEventListener("change", () => this.loadCalibrationResults());
@@ -1510,6 +1511,22 @@
       const link = document.createElement("a");
       link.href = url;
       link.download = "rad-sim-response-atlas.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveResponseAtlasSweep() {
+      const payload =
+        typeof RAD.exportResponseAtlasSweep === "function"
+          ? RAD.exportResponseAtlasSweep(this.state, { ...this.state.selection })
+          : JSON.stringify({ schema: "rad-sim.response-atlas-sweep.v1" }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "rad-sim-response-atlas-sweep.json";
       document.body.appendChild(link);
       link.click();
       link.remove();

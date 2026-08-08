@@ -1244,6 +1244,97 @@
     }, {});
   }
 
+  function meanOrZero(values) {
+    const numeric = values.map(Number).filter(Number.isFinite);
+    if (!numeric.length) return 0;
+    return numeric.reduce((sum, value) => sum + value, 0) / numeric.length;
+  }
+
+  function uniqueParameterValues(values, fallback) {
+    const raw = Array.isArray(values) && values.length ? values : fallback;
+    const seen = new Set();
+    const out = [];
+    for (const value of raw) {
+      const numeric = Math.max(0, Number(value) || 0);
+      const key = numeric.toPrecision(12);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(numeric);
+    }
+    return out.length ? out : [0];
+  }
+
+  function defaultSweepValues(value, fallbackStep = 0.05) {
+    const current = Math.max(0, Number(value) || 0);
+    if (current <= 1e-9) return [0, fallbackStep, 2 * fallbackStep];
+    return [0.5 * current, current, 2 * current];
+  }
+
+  function stateWithSweepSettings(state, backlash, clearance) {
+    const temp = cloneForCharacterization(state);
+    const pinRadius = Math.max(0, Number(temp.grid.pinRadius ?? 0.18));
+    const pinHoleClearance = Math.max(0, Number(clearance) || 0);
+    temp.grid.backlash = Math.max(0, Number(backlash) || 0);
+    temp.grid.pinRadius = pinRadius;
+    temp.grid.holeRadius = Math.max(pinRadius, pinRadius + pinHoleClearance);
+    return temp;
+  }
+
+  function atlasSampleSummary(atlas) {
+    const entries = atlas.entries || [];
+    const observedZResiduals = [];
+    const neighborZResiduals = [];
+    for (const entry of entries) {
+      const commandCells = new Set((entry.commands || []).map((command) => `${command.row},${command.col}`));
+      for (const cell of entry.observationCells || []) {
+        const residual = Math.abs(Number(cell.zResidual) || 0);
+        observedZResiduals.push(residual);
+        if (!commandCells.has(`${cell.row},${cell.col}`)) neighborZResiduals.push(residual);
+      }
+    }
+    const physicalEntries = entries.filter((entry) => entry.physicalValidation?.physicalPreviewAvailable);
+    const physicalHeightErrors = physicalEntries.map((entry) => entry.physicalValidation?.heightRmsModelError);
+    return {
+      meanAlphaReach: meanOrZero(entries.map((entry) => entry.alphaReach)),
+      meanZReach: meanOrZero(entries.map((entry) => entry.zReach)),
+      maxAlphaReach: entries.reduce((max, entry) => Math.max(max, Number(entry.alphaReach) || 0), 0),
+      maxZReach: entries.reduce((max, entry) => Math.max(max, Number(entry.zReach) || 0), 0),
+      maxSuperpositionError: entries.reduce(
+        (max, entry) => Math.max(max, Number(entry.alphaSuperpositionError) || 0, Number(entry.heightSuperpositionError) || 0),
+        0
+      ),
+      maxObservedZResidual: observedZResiduals.reduce((max, value) => Math.max(max, value), 0),
+      maxObservedNeighborZResidual: neighborZResiduals.reduce((max, value) => Math.max(max, value), 0),
+      meanAbsAlphaDelta: meanOrZero(entries.map((entry) => entry.meanAbsAlphaDelta)),
+      meanAbsHeightDelta: meanOrZero(entries.map((entry) => entry.meanAbsHeightDelta)),
+      physicalSuccessRate: physicalEntries.length
+        ? physicalEntries.filter((entry) => entry.physicalValidation?.physicalSuccess).length / physicalEntries.length
+        : null,
+      meanPhysicalHeightRmsError: physicalEntries.length ? meanOrZero(physicalHeightErrors) : null,
+    };
+  }
+
+  function sweepTrend(samples, parameter) {
+    const buckets = new Map();
+    for (const sample of samples) {
+      const value = Number(sample.settings?.[parameter]) || 0;
+      const key = value.toPrecision(12);
+      if (!buckets.has(key)) buckets.set(key, { value, samples: [] });
+      buckets.get(key).samples.push(sample);
+    }
+    return Array.from(buckets.values())
+      .sort((a, b) => a.value - b.value)
+      .map((bucket) => ({
+        value: bucket.value,
+        sampleCount: bucket.samples.length,
+        meanAlphaReach: meanOrZero(bucket.samples.map((sample) => sample.summary.meanAlphaReach)),
+        meanZReach: meanOrZero(bucket.samples.map((sample) => sample.summary.meanZReach)),
+        maxObservedZResidual: bucket.samples.reduce((max, sample) => Math.max(max, sample.summary.maxObservedZResidual || 0), 0),
+        maxObservedNeighborZResidual: bucket.samples.reduce((max, sample) => Math.max(max, sample.summary.maxObservedNeighborZResidual || 0), 0),
+        maxSuperpositionError: bucket.samples.reduce((max, sample) => Math.max(max, sample.summary.maxSuperpositionError || 0), 0),
+      }));
+  }
+
   function atlasStepEntry(state, step, tolerance = 1e-9) {
     const commandState = protocolStepState(state, step, true);
     const baselineState = protocolStepState(state, step, false);
@@ -1327,6 +1418,76 @@
 
   function exportResponseAtlas(state, options = {}) {
     return JSON.stringify(responseAtlas(state, options), null, 2);
+  }
+
+  function responseAtlasSweep(state, options = {}) {
+    const tolerance = Number(options.tolerance ?? 1e-9);
+    const currentClearance = typeof RAD.pinHoleClearance === "function"
+      ? RAD.pinHoleClearance(state)
+      : Math.max(0, Number(state.grid.holeRadius ?? 0.225) - Number(state.grid.pinRadius ?? 0.18));
+    const backlashValues = uniqueParameterValues(
+      options.backlashValues,
+      defaultSweepValues(state.grid.backlash, 0.05)
+    );
+    const clearanceValues = uniqueParameterValues(
+      options.clearanceValues,
+      defaultSweepValues(currentClearance, 0.04)
+    );
+    const samples = [];
+    for (const backlash of backlashValues) {
+      for (const clearance of clearanceValues) {
+        const sampleState = stateWithSweepSettings(state, backlash, clearance);
+        const atlas = responseAtlas(sampleState, { ...options, tolerance });
+        samples.push({
+          settings: {
+            backlash: sampleState.grid.backlash,
+            pinHoleClearance: Math.max(0, Number(sampleState.grid.holeRadius) - Number(sampleState.grid.pinRadius)),
+            pinRadius: sampleState.grid.pinRadius,
+            holeRadius: sampleState.grid.holeRadius,
+          },
+          summary: atlasSampleSummary(atlas),
+          atlas,
+        });
+      }
+    }
+    return {
+      schema: "rad-sim.response-atlas-sweep.v1",
+      savedAt: new Date().toISOString(),
+      grid: { rows: state.grid.rows, cols: state.grid.cols },
+      centerCell: {
+        row: clampIndex(options.r ?? state.selection?.r ?? 0, state.grid.rows),
+        col: clampIndex(options.c ?? state.selection?.c ?? 0, state.grid.cols),
+      },
+      physical: samples.some((sample) => sample.summary.physicalSuccessRate !== null),
+      parameters: {
+        backlashValues,
+        pinHoleClearanceValues: clearanceValues,
+      },
+      notes: "Browser-generated sweep for comparing how backlash and pin-hole clearance change locality, residual vertical motion, and operator interaction before calibrated bench data exists.",
+      summary: {
+        sampleCount: samples.length,
+        maxAlphaReach: samples.reduce((max, sample) => Math.max(max, sample.summary.maxAlphaReach || 0), 0),
+        maxZReach: samples.reduce((max, sample) => Math.max(max, sample.summary.maxZReach || 0), 0),
+        maxObservedZResidual: samples.reduce((max, sample) => Math.max(max, sample.summary.maxObservedZResidual || 0), 0),
+        maxObservedNeighborZResidual: samples.reduce((max, sample) => Math.max(max, sample.summary.maxObservedNeighborZResidual || 0), 0),
+        maxSuperpositionError: samples.reduce((max, sample) => Math.max(max, sample.summary.maxSuperpositionError || 0), 0),
+      },
+      trends: {
+        byBacklash: sweepTrend(samples, "backlash"),
+        byPinHoleClearance: sweepTrend(samples, "pinHoleClearance"),
+      },
+      assumptions: {
+        source: "Each browser sample rebuilds the response atlas from the current calibration protocol commands.",
+        interpretation: "Backlash and clearance are treated as programmable-discontinuity dead-zone parameters; trend summaries are simulator diagnostics.",
+        physical: "Browser spring-preview metrics are model-disagreement diagnostics, not calibrated hardware validation.",
+      },
+      samples,
+      tolerance,
+    };
+  }
+
+  function exportResponseAtlasSweep(state, options = {}) {
+    return JSON.stringify(responseAtlasSweep(state, options), null, 2);
   }
 
   function calibrationExperimentResultsTemplate(state, options = {}) {
@@ -1838,6 +1999,8 @@
   RAD.exportCalibrationExperimentProtocol = exportCalibrationExperimentProtocol;
   RAD.responseAtlas = responseAtlas;
   RAD.exportResponseAtlas = exportResponseAtlas;
+  RAD.responseAtlasSweep = responseAtlasSweep;
+  RAD.exportResponseAtlasSweep = exportResponseAtlasSweep;
   RAD.calibrationExperimentResultsTemplate = calibrationExperimentResultsTemplate;
   RAD.exportCalibrationExperimentResultsTemplate = exportCalibrationExperimentResultsTemplate;
   RAD.compareCalibrationExperimentResults = compareCalibrationExperimentResults;

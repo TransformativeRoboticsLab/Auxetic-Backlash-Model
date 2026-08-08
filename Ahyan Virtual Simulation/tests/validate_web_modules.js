@@ -35,6 +35,8 @@ assert.strictEqual(typeof RAD.calibrationExperimentProtocol, "function", "analys
 assert.strictEqual(typeof RAD.exportCalibrationExperimentProtocol, "function", "analysis module should export calibration experiment protocol");
 assert.strictEqual(typeof RAD.responseAtlas, "function", "analysis module should expose response atlas");
 assert.strictEqual(typeof RAD.exportResponseAtlas, "function", "analysis module should export response atlas");
+assert.strictEqual(typeof RAD.responseAtlasSweep, "function", "analysis module should expose response atlas sweeps");
+assert.strictEqual(typeof RAD.exportResponseAtlasSweep, "function", "analysis module should export response atlas sweeps");
 assert.strictEqual(typeof RAD.buildResponseMatrix, "function", "analysis module should expose response matrix export");
 assert.strictEqual(typeof RAD.exportResponseMatrix, "function", "analysis module should serialize response matrices");
 assert.strictEqual(typeof RAD.programmableDiscontinuityReport, "function", "analysis module should expose programmable-discontinuity reports");
@@ -80,6 +82,7 @@ assert.ok(html.includes('id="underTargetCells"'), "metric strip should count und
 assert.ok(html.includes('id="inverseReachabilitySummary"'), "inverse plan readout should summarize underactuated targets");
 assert.ok(html.includes('id="saveExperimentProtocol"'), "response panel should expose a protocol export button");
 assert.ok(html.includes('id="saveResponseAtlas"'), "response panel should expose a response-atlas export button");
+assert.ok(html.includes('id="saveResponseAtlasSweep"'), "response panel should expose a response-atlas sweep export button");
 assert.ok(html.includes('id="saveResultsTemplate"'), "response panel should expose a results-template export button");
 assert.ok(html.includes('id="loadResultsJson"'), "response panel should expose a results import button");
 assert.ok(html.includes('id="saveComparisonReport"'), "response panel should expose a comparison-report export button");
@@ -290,6 +293,22 @@ assert.strictEqual(browserAtlas.summary.scopeCounts.lock, 1);
 assert.ok(browserAtlas.entries.some((entry) => entry.stepId === "single_z_lift" && entry.observationCells.length >= 2), "response atlas should include residual z observation cells");
 assert.strictEqual(browserAtlas.entries[0].physicalValidation.schema, "rad-sim.browser-physical-preview.v1");
 assert.strictEqual(JSON.parse(RAD.exportResponseAtlas(readyState)).schema, browserAtlas.schema);
+const browserSweep = RAD.responseAtlasSweep(readyState, {
+  backlashValues: [0.02, 0.14],
+  clearanceValues: [0.02, 0.12],
+});
+assert.strictEqual(browserSweep.schema, "rad-sim.response-atlas-sweep.v1");
+assert.strictEqual(browserSweep.summary.sampleCount, 4);
+assert.deepStrictEqual(Array.from(browserSweep.parameters.backlashValues), [0.02, 0.14]);
+assert.deepStrictEqual(Array.from(browserSweep.parameters.pinHoleClearanceValues), [0.02, 0.12]);
+assert.strictEqual(browserSweep.samples[0].atlas.schema, "rad-sim.response-atlas.v1");
+assert.ok(browserSweep.summary.maxObservedNeighborZResidual > 0, "response atlas sweep should track residual neighbor z motion");
+assert.ok(
+  browserSweep.trends.byPinHoleClearance[0].maxObservedNeighborZResidual >
+    browserSweep.trends.byPinHoleClearance[1].maxObservedNeighborZResidual,
+  "response atlas sweep should show clearance-gated neighbor residual trend"
+);
+assert.strictEqual(JSON.parse(RAD.exportResponseAtlasSweep(readyState, { backlashValues: [0.02], clearanceValues: [0.02] })).schema, browserSweep.schema);
 const resultsTemplate = RAD.calibrationExperimentResultsTemplate(readyState, { protocol: experimentProtocol });
 assert.strictEqual(resultsTemplate.schema, "rad-sim.calibration-experiment-results.v1");
 assert.strictEqual(resultsTemplate.steps.length, experimentProtocol.steps.reduce((sum, step) => sum + step.repeatCount, 0));

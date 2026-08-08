@@ -971,6 +971,7 @@ class WebStaticTests(unittest.TestCase):
             "characterizationUnderactuated",
             "saveProgrammableReport",
             "saveResponseAtlas",
+            "saveResponseAtlasSweep",
         ]:
             self.assertIn(f'id="{control_id}"', html)
         for option in ['value="single"', 'value="pair"', 'value="cluster"', 'value="lattice"']:
@@ -1000,7 +1001,10 @@ class WebStaticTests(unittest.TestCase):
             "exportProgrammableDiscontinuityReport",
             "responseAtlas",
             "exportResponseAtlas",
+            "responseAtlasSweep",
+            "exportResponseAtlasSweep",
             "rad-sim.response-atlas.v1",
+            "rad-sim.response-atlas-sweep.v1",
             "rad-sim.programmable-discontinuity-report.v1",
             "rad-sim.browser-physical-preview.v1",
             "paperSupportedAssumptions",
@@ -1023,7 +1027,9 @@ class WebStaticTests(unittest.TestCase):
             "characterizationUnderactuated",
             "saveProgrammableReport",
             "saveResponseAtlas",
+            "saveResponseAtlasSweep",
             "rad-sim-response-atlas",
+            "rad-sim-response-atlas-sweep",
             "rad-sim-programmable-discontinuity-report",
             "characterize:",
         ]:
@@ -1043,6 +1049,8 @@ class WebStaticTests(unittest.TestCase):
             "framework report should include browser physical preview validation",
             "browserAtlas",
             "response atlas should include residual z observation cells",
+            "browserSweep",
+            "response atlas sweep should show clearance-gated neighbor residual trend",
             "RAD.exportProgrammableDiscontinuityReport",
         ]:
             self.assertIn(symbol, script)
