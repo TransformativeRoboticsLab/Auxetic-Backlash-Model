@@ -295,6 +295,10 @@ def _response_dict(
         "effectiveZDieOff": response.effective_z_die_off,
         "maxAbsAlphaDelta": response.max_abs_alpha_delta,
         "maxAbsHeightDelta": response.max_abs_height_delta,
+        "positiveZReachCells": response.positive_z_reach,
+        "negativeZReachCells": response.negative_z_reach,
+        "maxPositiveHeightDelta": response.max_positive_height_delta,
+        "maxNegativeHeightDelta": response.max_negative_height_delta,
     }
     if include_fields:
         payload["fields"] = {

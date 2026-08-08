@@ -1161,6 +1161,8 @@
       if (!result) {
         document.getElementById("characterizationSummary").textContent = "No response run";
         document.getElementById("characterizationDetail").textContent = "reach a0 z0";
+        document.getElementById("characterizationZSign").textContent = "z sign +0/-0";
+        document.getElementById("characterizationZExtrema").textContent = "z max +0.000/-0.000";
         document.getElementById("characterizationSuperposition").textContent = "superposition 0.000";
         document.getElementById("characterizationScale").textContent = "clearance 0.000 mm";
         document.getElementById("characterizationPairwise").textContent = "pairs 0/0 nonadd 0";
@@ -1183,6 +1185,8 @@
         : `superposition ${Number(result.superpositionError || 0).toFixed(3)}`;
       document.getElementById("characterizationSummary").textContent = `${result.scope}: ${result.activeSources}/${result.regionCellCount} active, ${result.responseCells} cells`;
       document.getElementById("characterizationDetail").textContent = `reach a${result.alphaReachCells} z${result.zReachCells}, die ${result.alphaDieOff}/${result.zDieOff}`;
+      document.getElementById("characterizationZSign").textContent = `z sign +${result.positiveZReachCells || 0}/-${result.negativeZReachCells || 0}`;
+      document.getElementById("characterizationZExtrema").textContent = `z max +${Number(result.maxPositiveHeightDelta || 0).toFixed(3)}/-${Math.abs(Number(result.maxNegativeHeightDelta || 0)).toFixed(3)}`;
       document.getElementById("characterizationSuperposition").textContent = superposition;
       document.getElementById("characterizationScale").textContent = `clearance ${Number(result.pinHoleClearanceMm || 0).toFixed(3)} mm`;
       document.getElementById("characterizationPairwise").textContent = `pairs ${result.pairwiseEvaluatedPairs || 0}/${result.pairwiseTotalPairs || 0} nonadd ${result.pairwiseNonadditivePairs || 0}${result.pairwiseTruncated ? " trunc" : ""}`;

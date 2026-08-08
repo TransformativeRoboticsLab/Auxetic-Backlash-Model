@@ -133,6 +133,16 @@ class RadSimTests(unittest.TestCase):
         self.assertLess(abs(height[2, 3]), abs(height[2, 2]))
         self.assertAlmostEqual(height[2, 3], residual[2, 3])
         self.assertAlmostEqual(result.metadata["z_dead_zone"], config.pin_hole_clearance)
+        upward = characterize_response(config, (SourceCommand((2, 2), z=0.4),))
+        self.assertGreater(upward.positive_z_reach, 0)
+        self.assertEqual(upward.negative_z_reach, 0)
+        self.assertGreater(upward.max_positive_height_delta, 0.0)
+        self.assertAlmostEqual(upward.max_negative_height_delta, 0.0)
+        downward = characterize_response(config, (SourceCommand((2, 2), z=-0.4),))
+        self.assertGreater(downward.negative_z_reach, 0)
+        self.assertEqual(downward.positive_z_reach, 0)
+        self.assertLess(downward.max_negative_height_delta, 0.0)
+        self.assertAlmostEqual(downward.max_positive_height_delta, 0.0)
 
     def test_pin_hole_clearance_controls_vertical_residual_dieoff(self):
         tight = LatticeConfig(
@@ -1144,6 +1154,22 @@ class RadSimTests(unittest.TestCase):
         self.assertTrue(payload["composition"]["nonadditive"])
         self.assertTrue(payload["composition"]["orderSensitive"])
         self.assertIsNotNone(payload["sequenceOrder"])
+        self.assertEqual(
+            payload["combinedResponse"]["positiveZReachCells"],
+            diagnostic.combined.positive_z_reach,
+        )
+        self.assertEqual(
+            payload["combinedResponse"]["negativeZReachCells"],
+            diagnostic.combined.negative_z_reach,
+        )
+        self.assertEqual(
+            payload["combinedResponse"]["maxPositiveHeightDelta"],
+            diagnostic.combined.max_positive_height_delta,
+        )
+        self.assertEqual(
+            payload["combinedResponse"]["maxNegativeHeightDelta"],
+            diagnostic.combined.max_negative_height_delta,
+        )
         self.assertNotIn("fields", payload["combinedResponse"])
         self.assertNotIn("alpha", payload["responseMatrix"])
         self.assertEqual(

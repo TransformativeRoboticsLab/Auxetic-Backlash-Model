@@ -188,8 +188,12 @@
     let responseCells = 0;
     let alphaReachCells = 0;
     let zReachCells = 0;
+    let positiveZReachCells = 0;
+    let negativeZReachCells = 0;
     let maxAlphaDelta = 0;
     let maxHeightDelta = 0;
+    let maxPositiveHeightDelta = 0;
+    let maxNegativeHeightDelta = 0;
     let meanAbsAlphaDelta = 0;
     let meanAbsHeightDelta = 0;
     let activeSources = 0;
@@ -209,8 +213,12 @@
         if (alphaAbs > 1e-8 || heightAbs > 1e-8) responseCells += 1;
         if (!isSource && Math.abs(sim.influence?.[r]?.[c] || 0) > 1e-8) alphaReachCells += 1;
         if (!isSource && Math.abs(sim.zResidual?.[r]?.[c] || 0) > 1e-8) zReachCells += 1;
+        if (heightDelta > 1e-8) positiveZReachCells += 1;
+        if (heightDelta < -1e-8) negativeZReachCells += 1;
         maxAlphaDelta = Math.max(maxAlphaDelta, alphaAbs);
         maxHeightDelta = Math.max(maxHeightDelta, heightAbs);
+        maxPositiveHeightDelta = Math.max(maxPositiveHeightDelta, heightDelta);
+        maxNegativeHeightDelta = Math.min(maxNegativeHeightDelta, heightDelta);
         meanAbsAlphaDelta += alphaAbs;
         meanAbsHeightDelta += heightAbs;
       }
@@ -220,8 +228,12 @@
       responseCells,
       alphaReachCells,
       zReachCells,
+      positiveZReachCells,
+      negativeZReachCells,
       maxAlphaDelta,
       maxHeightDelta,
+      maxPositiveHeightDelta,
+      maxNegativeHeightDelta,
       meanAbsAlphaDelta: meanAbsAlphaDelta / totalCells,
       meanAbsHeightDelta: meanAbsHeightDelta / totalCells,
       alphaDieOff: finiteMax(sim.dieOff),
@@ -1037,6 +1049,10 @@
         maxAbsHeightDelta: characterization.maxHeightDelta,
         meanAbsAlphaDelta: characterization.meanAbsAlphaDelta,
         meanAbsHeightDelta: characterization.meanAbsHeightDelta,
+        positiveZReachCells: characterization.positiveZReachCells,
+        negativeZReachCells: characterization.negativeZReachCells,
+        maxPositiveHeightDelta: characterization.maxPositiveHeightDelta,
+        maxNegativeHeightDelta: characterization.maxNegativeHeightDelta,
       },
       responseMatrix,
       pairwiseInteractions: {

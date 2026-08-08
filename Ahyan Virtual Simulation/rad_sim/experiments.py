@@ -34,6 +34,10 @@ class ResponseCharacterization:
     effective_z_die_off: int
     max_abs_alpha_delta: float
     max_abs_height_delta: float
+    positive_z_reach: int
+    negative_z_reach: int
+    max_positive_height_delta: float
+    max_negative_height_delta: float
 
 
 @dataclass(frozen=True)
@@ -1184,6 +1188,10 @@ def characterize_response(
         effective_z_die_off=_effective_die_off(height_delta, z_die_off, tolerance),
         max_abs_alpha_delta=float(np.max(np.abs(alpha_delta))),
         max_abs_height_delta=float(np.max(np.abs(height_delta))),
+        positive_z_reach=int(np.count_nonzero(height_delta > tolerance)),
+        negative_z_reach=int(np.count_nonzero(height_delta < -tolerance)),
+        max_positive_height_delta=float(max(0.0, np.max(height_delta))),
+        max_negative_height_delta=float(min(0.0, np.min(height_delta))),
     )
 
 

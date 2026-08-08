@@ -358,6 +358,8 @@ targets and shows whether the primary target is ready, blocked by missing Lean
 tooling, or waiting for calibrated premises. This is an early numerical probe for
 programmable-discontinuity behavior: nonzero residual indicates that backlash,
 locks, or saturation are making the local operators interact non-additively.
+The signed z readout separates upward and downward response cells and extrema so
+vertical push/pull commands can be checked independently.
 
 Actuator display can be filtered to the selected cell and accepted inverse-plan
 cells, inverse-plan cells only, or all active cells. This keeps dense patterns
