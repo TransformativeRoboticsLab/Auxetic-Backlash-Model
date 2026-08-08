@@ -506,6 +506,7 @@
       document.getElementById("nextCalibrationHotspot").addEventListener("click", () => this.selectCalibrationHotspot(1));
       document.getElementById("saveExperimentProtocol").addEventListener("click", () => this.saveExperimentProtocol());
       document.getElementById("saveResponseAtlas").addEventListener("click", () => this.saveResponseAtlas());
+      document.getElementById("runResponseAtlasSweep").addEventListener("click", () => this.runResponseAtlasSweep());
       document.getElementById("saveResponseAtlasSweep").addEventListener("click", () => this.saveResponseAtlasSweep());
       document.getElementById("saveResultsTemplate").addEventListener("click", () => this.saveResultsTemplate());
       document.getElementById("loadResultsJson").addEventListener("click", () => this.els.calibrationResultsFileInput.click());
@@ -1168,6 +1169,7 @@
         document.getElementById("characterizationDecay").textContent = "decay a0.00 z0.00";
         document.getElementById("characterizationDecayLength").textContent = "len a0.0 z0.0";
         this.renderCalibrationResults();
+        this.renderResponseAtlasSweep();
         return;
       }
       const superposition = result.superpositionSkipped
@@ -1194,6 +1196,7 @@
       document.getElementById("characterizationDecay").textContent = `decay a${Number(result.alphaDecayRatio || 0).toFixed(2)} z${Number(result.zDecayRatio || 0).toFixed(2)}`;
       document.getElementById("characterizationDecayLength").textContent = `len a${Number(result.alphaDecayLength || 0).toFixed(1)} z${Number(result.zDecayLength || 0).toFixed(1)}`;
       this.renderCalibrationResults();
+      this.renderResponseAtlasSweep();
     }
 
     renderCalibrationResults() {
@@ -1220,6 +1223,39 @@
       const worst = summary.worstStepId ? ` worst ${summary.worstStepId}` : "";
       document.getElementById("calibrationResultsSummary").textContent = `cal results ${stepCount} steps, ${measured} cells, missing ${missing}, fit h ${heightGain} a ${alphaGain}`;
       document.getElementById("calibrationResultsError").textContent = `h ${height}/${heightBias}, a ${alpha}/${alphaBias}, raw ${max}, resid ${residualMax}${cell}${worst}`;
+    }
+
+    runResponseAtlasSweep() {
+      if (typeof RAD.responseAtlasSweep !== "function") return;
+      const sweep = RAD.responseAtlasSweep(this.state, { ...this.state.selection });
+      this.state.experiment.responseAtlasSweep = sweep;
+      RAD.recordEvent(this.state, {
+        type: "response-atlas-sweep",
+        samples: sweep.summary.sampleCount,
+        maxNeighborResidual: sweep.summary.maxObservedNeighborZResidual,
+        maxSuperpositionError: sweep.summary.maxSuperpositionError,
+      });
+      this.renderResponseAtlasSweep();
+      this.syncControls();
+      this.onChange(this.state);
+    }
+
+    renderResponseAtlasSweep() {
+      const sweep = this.state.experiment.responseAtlasSweep;
+      if (!sweep) {
+        document.getElementById("sweepSummary").textContent = "sweep not run";
+        document.getElementById("sweepTrend").textContent = "neighbor z --";
+        return;
+      }
+      const summary = sweep.summary || {};
+      const trend = sweep.trends?.byPinHoleClearance || [];
+      const low = trend[0];
+      const high = trend[trend.length - 1];
+      const lowResidual = low ? Number(low.maxObservedNeighborZResidual || 0) : 0;
+      const highResidual = high ? Number(high.maxObservedNeighborZResidual || 0) : 0;
+      const drop = lowResidual > 1e-12 ? 100 * (1 - highResidual / lowResidual) : 0;
+      document.getElementById("sweepSummary").textContent = `sweep ${summary.sampleCount || 0} samples, reach a${summary.maxAlphaReach || 0} z${summary.maxZReach || 0}`;
+      document.getElementById("sweepTrend").textContent = `neighbor z ${Number(summary.maxObservedNeighborZResidual || 0).toFixed(3)}, clear drop ${drop.toFixed(0)}%, super ${Number(summary.maxSuperpositionError || 0).toFixed(3)}`;
     }
 
     strongestInteractionHotspot(result) {

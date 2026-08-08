@@ -82,6 +82,7 @@ assert.ok(html.includes('id="underTargetCells"'), "metric strip should count und
 assert.ok(html.includes('id="inverseReachabilitySummary"'), "inverse plan readout should summarize underactuated targets");
 assert.ok(html.includes('id="saveExperimentProtocol"'), "response panel should expose a protocol export button");
 assert.ok(html.includes('id="saveResponseAtlas"'), "response panel should expose a response-atlas export button");
+assert.ok(html.includes('id="runResponseAtlasSweep"'), "response panel should expose a sweep run button");
 assert.ok(html.includes('id="saveResponseAtlasSweep"'), "response panel should expose a response-atlas sweep export button");
 assert.ok(html.includes('id="saveResultsTemplate"'), "response panel should expose a results-template export button");
 assert.ok(html.includes('id="loadResultsJson"'), "response panel should expose a results import button");
@@ -89,6 +90,8 @@ assert.ok(html.includes('id="saveComparisonReport"'), "response panel should exp
 assert.ok(html.includes('id="calibrationResultsFileInput"'), "response panel should include hidden calibration results file input");
 assert.ok(html.includes('id="calibrationResultsSummary"'), "response panel should expose calibration result summary");
 assert.ok(html.includes('id="calibrationResultsError"'), "response panel should expose calibration result error readout");
+assert.ok(html.includes('id="sweepSummary"'), "response panel should expose sweep summary readout");
+assert.ok(html.includes('id="sweepTrend"'), "response panel should expose sweep trend readout");
 assert.ok(html.includes('id="characterizationHotspot"'), "response panel should expose a hotspot readout");
 assert.ok(html.includes("./provenance.js"), "provenance module should be loaded by the browser entry");
 assert.ok(html.includes('id="modelProvenanceList"'), "browser UI should expose model provenance list");

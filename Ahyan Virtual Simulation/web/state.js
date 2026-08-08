@@ -208,6 +208,7 @@
         initialSnapshot: null,
         characterizationScope: "single",
         characterization: null,
+        responseAtlasSweep: null,
         calibrationResults: null,
         calibrationComparison: null,
         calibrationComparisonSummary: null,

@@ -971,13 +971,20 @@ class WebStaticTests(unittest.TestCase):
             "characterizationUnderactuated",
             "saveProgrammableReport",
             "saveResponseAtlas",
+            "runResponseAtlasSweep",
             "saveResponseAtlasSweep",
+            "sweepSummary",
+            "sweepTrend",
         ]:
             self.assertIn(f'id="{control_id}"', html)
         for option in ['value="single"', 'value="pair"', 'value="cluster"', 'value="lattice"']:
             self.assertIn(option, html)
         state_js = (WEB / "state.js").read_text(encoding="utf-8")
-        for symbol in ['characterizationScope: "single"', "characterization: null"]:
+        for symbol in [
+            'characterizationScope: "single"',
+            "characterization: null",
+            "responseAtlasSweep: null",
+        ]:
             self.assertIn(symbol, state_js)
         analysis_js = (WEB / "analysis.js").read_text(encoding="utf-8")
         for symbol in [
@@ -1027,7 +1034,12 @@ class WebStaticTests(unittest.TestCase):
             "characterizationUnderactuated",
             "saveProgrammableReport",
             "saveResponseAtlas",
+            "runResponseAtlasSweep",
             "saveResponseAtlasSweep",
+            "this.state.experiment.responseAtlasSweep = sweep",
+            "renderResponseAtlasSweep",
+            "sweepSummary",
+            "sweepTrend",
             "rad-sim-response-atlas",
             "rad-sim-response-atlas-sweep",
             "rad-sim-programmable-discontinuity-report",
