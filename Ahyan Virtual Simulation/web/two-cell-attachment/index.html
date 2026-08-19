@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RAD Three-Cell No-Backlash Primitive</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="viewer-panel" aria-label="RAD three-cell no-backlash simulator">
+        <header class="topbar">
+          <div>
+            <h1>Three-Cell No-Backlash Primitive</h1>
+            <p>Three connected RAD cells with mirrored two-pin constraints and uniform centerline contraction.</p>
+          </div>
+          <nav>
+            <a href="../one-cell-rotation/index.html">One cell</a>
+            <a href="../index.html">Lattice</a>
+          </nav>
+        </header>
+        <div id="threeMount" class="three-mount" aria-label="3D three-cell attachment view"></div>
+        <div class="viewbar" role="group" aria-label="View controls">
+          <button type="button" data-view="iso" aria-pressed="true">Iso</button>
+          <button type="button" data-view="top" aria-pressed="false">Top</button>
+          <button type="button" data-view="front" aria-pressed="false">Front</button>
+          <button type="button" data-view="side" aria-pressed="false">Side</button>
+          <button id="resetView" type="button">Reset</button>
+        </div>
+      </section>
+
+      <aside class="control-panel" aria-label="Three-cell attachment controls">
+        <section>
+          <h2>Drive</h2>
+          <label>
+            Uniform rotational actuation <output id="aTopOut">64 deg</output>
+            <input id="aTopAngle" type="range" min="-80" max="80" step="1" value="64" />
+          </label>
+          <label class="toggle"><input id="animate" type="checkbox" /> Animate Cell A</label>
+        </section>
+
+        <section>
+          <h2>Cross Colors</h2>
+          <div class="legend-grid" aria-label="Cross color legend">
+            <span><i class="swatch swatch-a-top"></i>Cell A upper cross</span>
+            <span><i class="swatch swatch-a-lower"></i>Cell A lower cross</span>
+            <span><i class="swatch swatch-b-top"></i>Cell B upper cross</span>
+            <span><i class="swatch swatch-b-lower"></i>Cell B lower cross</span>
+            <span><i class="swatch swatch-c-top"></i>Cell C upper cross</span>
+            <span><i class="swatch swatch-c-lower"></i>Cell C lower cross</span>
+          </div>
+        </section>
+
+        <section>
+          <h2>Primary A-B Attachment</h2>
+          <label>
+            Cell A upper cross hole
+            <select id="aSite">
+              <option value="east" selected>east arm</option>
+              <option value="north">north arm</option>
+              <option value="west">west arm</option>
+              <option value="south">south arm</option>
+            </select>
+          </label>
+          <label>
+            Cell B lower cross hole
+            <select id="bSite">
+              <option value="south" selected>south / bottom arm</option>
+              <option value="east">east arm</option>
+              <option value="north">north arm</option>
+              <option value="west">west arm</option>
+            </select>
+          </label>
+          <dl>
+            <div><dt>A-B pin residual</dt><dd id="residualMetric">0.000 mm</dd></div>
+            <div><dt>A-B center pitch</dt><dd id="pitchMetric">39.2 mm</dd></div>
+            <div><dt>Cell A moving center</dt><dd id="aCenterMetric">(-9.1, -17.4)</dd></div>
+            <div><dt>Cell B moving center</dt><dd id="bCenterMetric">(9.1, 17.4)</dd></div>
+            <div><dt>Cell C moving center</dt><dd id="cCenterMetric">(27.2, 52.2)</dd></div>
+            <div><dt>system center</dt><dd id="systemCenterMetric">(0.0, 0.0)</dd></div>
+          </dl>
+        </section>
+
+        <section>
+          <h2>A-B Loop Closure: Blue To Gray</h2>
+          <label>
+            Cell B upper cross hole
+            <select id="bTopSite">
+              <option value="south" selected>south / lower-facing arm</option>
+              <option value="east">east arm</option>
+              <option value="north">north / top arm</option>
+              <option value="west">west arm</option>
+            </select>
+          </label>
+          <label>
+            Cell A lower cross hole
+            <select id="aLowerSite">
+              <option value="north" selected>north / upper-facing arm</option>
+              <option value="east">east arm</option>
+              <option value="west">west arm</option>
+              <option value="south">south arm</option>
+            </select>
+          </label>
+          <dl>
+            <div><dt>second pin residual</dt><dd id="secondResidualMetric">0.000 mm</dd></div>
+            <div><dt>second pin target</dt><dd id="secondTargetMetric">(0.0, 22.1)</dd></div>
+            <div><dt>second pin on B</dt><dd id="secondBMetric">(0.0, 22.1)</dd></div>
+          </dl>
+        </section>
+
+        <section>
+          <h2>Mirrored B-C Attachments</h2>
+          <dl>
+            <div><dt>B lower to C upper</dt><dd id="bcPrimaryResidualMetric">0.000 mm</dd></div>
+            <div><dt>B upper to C lower</dt><dd id="bcSecondResidualMetric">0.000 mm</dd></div>
+            <div><dt>B-C center pitch</dt><dd id="bcPitchMetric">39.2 mm</dd></div>
+          </dl>
+        </section>
+
+        <section>
+          <h2>Material Restriction</h2>
+          <dl>
+            <div><dt>guard</dt><dd id="collisionState" class="status-ok">clear</dd></div>
+            <div><dt>allowed uniform drive</dt><dd id="allowedDriveMetric">checking</dd></div>
+            <div><dt>drive clamp</dt><dd id="driveClampMetric">none</dd></div>
+            <div><dt>max penetration</dt><dd id="penetrationMetric">0.000 mm</dd></div>
+            <div><dt>minimum clearance</dt><dd id="clearanceMetric">0.000 mm</dd></div>
+            <div><dt>effective B lower</dt><dd id="effectiveBLowerMetric">0.0 deg</dd></div>
+            <div><dt>effective B top</dt><dd id="effectiveBTopMetric">-25.0 deg</dd></div>
+            <div><dt>effective C lower</dt><dd id="effectiveCLowerMetric">0.0 deg</dd></div>
+            <div><dt>effective C top</dt><dd id="effectiveCTopMetric">64.0 deg</dd></div>
+          </dl>
+        </section>
+
+        <section>
+          <h2>Geometry</h2>
+          <dl>
+            <div><dt>cell envelope</dt><dd>55.6 mm</dd></div>
+            <div><dt>nominal hole</dt><dd>3.4 mm</dd></div>
+            <div><dt>body thickness</dt><dd>4.0 mm each</dd></div>
+            <div><dt>cell interface gap</dt><dd>0.0 mm</dd></div>
+          </dl>
+        </section>
+
+        <p class="note">
+          This is a three-cell no-backlash row primitive. A full lattice still needs all two-dimensional neighboring pad constraints and contact/clearance geometry.
+        </p>
+      </aside>
+    </main>
+
+    <script src="../vendor/three.min.js"></script>
+    <script src="./two_cell_attachment.js"></script>
+  </body>
+</html>
