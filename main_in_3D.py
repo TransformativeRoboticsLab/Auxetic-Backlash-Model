@@ -268,6 +268,86 @@ def simulate_auxetic_lattice_dome_points(b, L, t, alpha, m, n):
     return xyz_cells
 
 
+def get_ring_radius(L_center_to_center, n):
+    """
+    For n rigid cell-to-cell links of length L_center_to_center, hinged
+    edge-to-edge into a closed loop (a regular n-gon), get the circumradius
+    that exactly closes the ring.
+
+    This is the actual physical DOF of the hardware ring (see CAD "Crown"
+    parts / bench photos): n bilayer auxetic cells bolted arm-tip to arm-tip
+    into a closed loop, not a flat lattice. Exact for any n (not just a
+    large-n circle approximation) via the standard regular-polygon relation.
+    :param L_center_to_center: cell-to-cell pitch (chain link length) [mm]
+    :param n: number of cells/links around the ring (n >= 3)
+    :return: circumradius [mm]
+    """
+    return L_center_to_center / (2 * np.sin(np.pi / n))
+
+
+def simulate_auxetic_ring_points(b, L, t, alpha, n):
+    """
+    Model the wheel as it's actually built: n rigid auxetic cells hinged
+    edge-to-edge into a single closed ring (a regular n-gon), rather than a
+    flat lattice. Cell pitch uses the same geometry as
+    simulate_auxetic_lattice_dome_points; the ring closes exactly, so the
+    wheel radius is *derived* from cell pitch and cell count rather than
+    an input - as alpha dilates the cells, the ring (and thus wheel
+    diameter) grows or shrinks with it, matching the mechanism's real DOF.
+    :param b: cell backlash [mm]
+    :param L: cell arm length [mm]
+    :param t: cell thickness [mm]
+    :param alpha: dilation ratio across the ring (single value for the whole ring)
+    :param n: number of cells around the ring (ring closes after n cells, n >= 3)
+    :return: (xyz_cells, radius): list of [x, y, z] cell positions (z=0, ring lies flat)
+             and the resulting ring radius [mm]
+    """
+    L_center_to_center = L + 10 * alpha - 10
+    phi = np.arctan(b / t)
+    cell_spacing = np.cos(phi) * L_center_to_center
+    radius = get_ring_radius(cell_spacing, n)
+    d_theta = 2 * np.pi / n
+    xyz_cells = []
+    for j in range(n):
+        theta = j * d_theta
+        x = radius * np.cos(theta)
+        y = radius * np.sin(theta)
+        xyz_cells.append([x, y, 0.0])
+    return xyz_cells, radius
+
+
+def plot_auxetic_ring(points, filename, n):
+    """
+    Given a closed ring of cell points (see simulate_auxetic_ring_points),
+    plot the cells in 3D along with the hinge-to-hinge links connecting
+    each cell to its two neighbors, closing the loop back to cell 0.
+    :param points: list of [x, y, z] cell positions, ordered around the ring
+    :param filename: figure will be saved to ./figures/{filename}_3D_points.png
+    :param n: number of cells around the ring
+    :return:
+    """
+    fig = plt.figure()
+    fig.set_figheight(9)
+    fig.set_figwidth(9)
+    ax = fig.add_subplot(111, projection='3d')
+    x, y, z = zip(*points)
+    ax.scatter(x, y, z, c='b', marker='o', label="Model")
+    # draw hinge links between neighboring cells, wrapping back to cell 0 to close the ring
+    for j in range(n):
+        p1 = points[j]
+        p2 = points[(j + 1) % n]
+        ax.plot([p1[0], p2[0]], [p1[1], p2[1]], [p1[2], p2[2]], 'b-', linewidth=1.0)
+    ax.set_box_aspect([1.0, 1.0, 1.0])
+    ax.set_xlabel('X [mm]', labelpad=20, **csfont)
+    ax.set_ylabel('Y [mm]', labelpad=20, **csfont)
+    ax.set_zlabel('Z [mm]', labelpad=20, **csfont)
+    set_axes_equal(ax)
+    plt.legend()
+    plt.savefig("./figures/{}_3D_points.png".format(filename), dpi=600)
+    plt.close(fig)
+    return 0
+
+
 def get_sphere_points(xc, yc, zc, r):
     """
     Given a sphere centered at (x, y, z) with radius r, place points around sphere
@@ -659,6 +739,14 @@ if __name__ == '__main__':
     dome1_alpha = get_alpha_dome(points=dome_cells1_experiment, alpha=1, filename="dome1_alpha")
     dome2_alpha = get_alpha_dome(points=dome_cells2_experiment, alpha=2, filename="dome2_alpha")
 
+    # auxetic wheel: n cells hinged into a single closed ring at variable alpha (dilation),
+    # matching the physical "Crown" ring hardware (n cells bolted arm-tip to arm-tip in a loop)
+    RING_N = 10
+    ring_cells1, ring_radius1 = simulate_auxetic_ring_points(b=0.4, L=35, t=8, alpha=1, n=RING_N)
+    ring_cells2, ring_radius2 = simulate_auxetic_ring_points(b=0.4, L=35, t=8, alpha=2, n=RING_N)
+    for label, cells, radius in [("ring1", ring_cells1, ring_radius1), ("ring2", ring_cells2, ring_radius2)]:
+        print("{}: wheel radius={:.1f}mm, diameter={:.1f}mm".format(label, radius, 2 * radius))
+        plot_auxetic_ring(cells, filename=label, n=RING_N)
 
     quit()
 
