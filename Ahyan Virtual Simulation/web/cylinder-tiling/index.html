@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RAD Cylinder Tiling Primitive</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="viewer-panel" aria-label="RAD cylinder tiling simulator">
+        <header class="topbar">
+          <div>
+            <h1>Cylinder Tiling Primitive</h1>
+            <p>RAD cells closed into a ring (reconfigurable wheel cross-section), stacked into a cylindrical tiling.</p>
+          </div>
+          <nav>
+            <a href="../one-cell-rotation/index.html">One cell</a>
+            <a href="../two-cell-attachment/index.html">Row</a>
+            <a href="../index.html">Lattice</a>
+          </nav>
+        </header>
+        <div id="threeMount" class="three-mount" aria-label="3D cylinder tiling view"></div>
+        <div class="viewbar" role="group" aria-label="View controls">
+          <button type="button" data-view="iso" aria-pressed="true">Iso</button>
+          <button type="button" data-view="top" aria-pressed="false">Top</button>
+          <button type="button" data-view="front" aria-pressed="false">Front</button>
+          <button type="button" data-view="side" aria-pressed="false">Side</button>
+          <button id="resetView" type="button">Reset</button>
+        </div>
+      </section>
+
+      <aside class="control-panel" aria-label="Cylinder tiling controls">
+        <section>
+          <h2>Drive</h2>
+          <label>
+            Uniform rotational actuation <output id="aTopOut">30 deg</output>
+            <input id="aTopAngle" type="range" min="-80" max="80" step="1" value="30" />
+          </label>
+          <label class="toggle"><input id="animate" type="checkbox" /> Animate drive</label>
+        </section>
+
+        <section>
+          <h2>Ring Tiling</h2>
+          <label>
+            Cells per ring (n) <output id="ringCountOut">10</output>
+            <input id="ringCount" type="range" min="6" max="16" step="1" value="10" />
+          </label>
+          <label>
+            Outgoing cross hole
+            <select id="aSite">
+              <option value="east" selected>east arm</option>
+              <option value="north">north arm</option>
+              <option value="west">west arm</option>
+              <option value="south">south arm</option>
+            </select>
+          </label>
+          <label>
+            Incoming cross hole
+            <select id="bSite">
+              <option value="west" selected>west arm</option>
+              <option value="east">east arm</option>
+              <option value="north">north arm</option>
+              <option value="south">south arm</option>
+            </select>
+          </label>
+          <dl>
+            <div><dt>cell pitch (chord)</dt><dd id="pitchMetric">44.1 mm</dd></div>
+            <div><dt>turn angle per joint</dt><dd id="turnMetric">36.0 deg</dd></div>
+            <div><dt>wheel diameter</dt><dd id="diameterMetric">142.8 mm</dd></div>
+            <div><dt>wheel radius</dt><dd id="radiusMetric">71.4 mm</dd></div>
+            <div><dt>ring closure residual</dt><dd id="closureMetric">0.000 mm</dd></div>
+          </dl>
+        </section>
+
+        <section>
+          <h2>Cylinder Stacking</h2>
+          <label>
+            Rows along axis (m) <output id="rowCountOut">3</output>
+            <input id="rowCount" type="range" min="1" max="6" step="1" value="3" />
+          </label>
+          <label>
+            Axial pitch <output id="axialPitchOut">50 mm</output>
+            <input id="axialPitch" type="range" min="30" max="70" step="1" value="50" />
+          </label>
+          <dl>
+            <div><dt>total cells</dt><dd id="totalCellsMetric">30</dd></div>
+            <div><dt>assembly height</dt><dd id="heightMetric">100.0 mm</dd></div>
+          </dl>
+        </section>
+
+        <section>
+          <h2>Cross Colors</h2>
+          <div id="colorLegend" class="legend-grid" aria-label="Cross color legend by row"></div>
+        </section>
+
+        <section>
+          <h2>Geometry</h2>
+          <dl>
+            <div><dt>cell envelope</dt><dd>55.6 mm</dd></div>
+            <div><dt>nominal hole</dt><dd>3.4 mm</dd></div>
+            <div><dt>body thickness</dt><dd>4.0 mm each</dd></div>
+          </dl>
+        </section>
+
+        <p class="note">
+          This is a first-pass ring/cylinder primitive: each ring closes exactly by construction (n identical
+          single-pin joints, turn angle 2*pi/n per joint - see the closure residual above), so the wheel diameter
+          is derived from cell pitch and cell count, not chosen directly. It reuses the row primitive's single "A-B"
+          pin relation only; it does not yet include the row's second mirrored pin, backlash dead-zone, or
+          collision/clearance checking, and axial row-to-row attachment is a rigid z-offset copy rather than a
+          solved joint. Extending those (double-pin joints, backlash-gated dilation limits, axial attach kinematics)
+          is the natural next step before this becomes a fabrication-level wheel model.
+        </p>
+      </aside>
+    </main>
+
+    <script src="../vendor/three.min.js"></script>
+    <script src="./cylinder_tiling.js"></script>
+  </body>
+</html>

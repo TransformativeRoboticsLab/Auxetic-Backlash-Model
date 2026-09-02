@@ -542,7 +542,15 @@ shared-node CAD constraints.
 ```powershell
 python -m unittest discover -s tests
 & "C:\Users\ahyan\.cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe" tests\validate_web_modules.js
+node tests\validate_one_cell_rotation_page.js
+node tests\validate_two_cell_attachment_page.js
+node tests\validate_cylinder_tiling_page.js
 ```
+
+The three `validate_*_page.js` scripts use Playwright (`npm install playwright pngjs`
+plus `npx playwright install chromium` once) to load each primitive page in a real
+browser, read its live DOM readouts, sweep its sliders, and check rendered pixel
+colors from a viewport screenshot.
 
 The Node validation script executes the browser state/math/inverse modules in a
 VM context. It also checks that `web/index.html` uses existing local assets with
