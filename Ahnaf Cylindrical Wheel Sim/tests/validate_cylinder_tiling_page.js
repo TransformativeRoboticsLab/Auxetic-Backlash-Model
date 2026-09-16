@@ -130,6 +130,28 @@ async function checkViewport(browser, name, viewport) {
   assert.strictEqual(deadzoned.alphaEffective, "1.00", `${name} effective alpha inside the dead zone should stay at the reference`);
   const deadzonedTheta = Number(deadzoned.theta.replace(/ ?deg$/, ""));
   assert.ok(Math.abs(deadzonedTheta - 10) <= 0.05, `${name} theta at the dead-zone reference should be 70*1-60=10deg`);
+
+  // The dead-zone ruler under the Drive slider should visually agree with
+  // the numeric state: at alpha=1.0 (still set from above) the marker
+  // should fall inside the shaded band; the band's own bounds should match
+  // the "alpha dead zone" readout (0.90-1.10 at the default backlash=0.1).
+  const ruler = await page.evaluate(() => {
+    const band = document.getElementById("deadzoneBand");
+    const marker = document.getElementById("deadzoneMarker");
+    return {
+      bandLeft: parseFloat(band.style.left),
+      bandWidth: parseFloat(band.style.width),
+      markerLeft: parseFloat(marker.style.left),
+      rangeText: document.getElementById("deadzoneRangeMetric").textContent,
+    };
+  });
+  assert.strictEqual(ruler.rangeText, "0.90 - 1.10", `${name} the dead zone readout should match alpha=1 +/- backlash=0.1`);
+  assert.ok(ruler.bandWidth > 0, `${name} the dead-zone band should have nonzero width`);
+  assert.ok(
+    ruler.markerLeft >= ruler.bandLeft && ruler.markerLeft <= ruler.bandLeft + ruler.bandWidth,
+    `${name} at alpha=1.0 the marker (${ruler.markerLeft}%) should fall inside the band [${ruler.bandLeft}%, ${ruler.bandLeft + ruler.bandWidth}%]`
+  );
+
   await page.evaluate(() => {
     document.getElementById("alpha").value = "1.3";
     document.getElementById("alpha").dispatchEvent(new Event("input", { bubbles: true }));
@@ -387,6 +409,21 @@ async function checkViewport(browser, name, viewport) {
   // computed the fit ignoring the backlash dead-zone the render pipeline
   // applies, so the alpha it picked rendered at a different diameter than
   // what the fit claimed.
+  // Dragging the slider alone (no button click) must apply the fit live,
+  // matching every other control in the app - it previously only updated
+  // its own label until "Fit Alpha" was separately clicked, which read as
+  // "target diameter doesn't do anything" since nothing else here requires
+  // a second step.
+  const alphaBeforeDrag = await page.evaluate(() => document.getElementById("alpha").value);
+  await page.evaluate(() => {
+    document.getElementById("targetDiameter").value = "125";
+    document.getElementById("targetDiameter").dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForTimeout(150);
+  const afterDragOnly = await readMetrics(page);
+  assert.notStrictEqual(afterDragOnly.alpha, alphaBeforeDrag, `${name} dragging Target Diameter alone (no button click) should already change alpha`);
+  assert.strictEqual(mmValue(afterDragOnly.diameter).toFixed(1), "125.0", `${name} dragging Target Diameter alone should already re-render the ring at the new target`);
+
   await page.evaluate(() => {
     document.getElementById("targetDiameter").value = "140";
     document.getElementById("targetDiameter").dispatchEvent(new Event("input", { bubbles: true }));

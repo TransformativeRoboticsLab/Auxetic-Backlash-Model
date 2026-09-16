@@ -29,6 +29,9 @@
   const alphaEffectiveMetric = document.getElementById("alphaEffectiveMetric");
   const thetaMetric = document.getElementById("thetaMetric");
   const deadzoneState = document.getElementById("deadzoneState");
+  const deadzoneRangeMetric = document.getElementById("deadzoneRangeMetric");
+  const deadzoneBand = document.getElementById("deadzoneBand");
+  const deadzoneMarker = document.getElementById("deadzoneMarker");
   const collisionEnabledInput = document.getElementById("collisionEnabled");
   const collisionState = document.getElementById("collisionState");
   const penetrationMetric = document.getElementById("penetrationMetric");
@@ -597,6 +600,29 @@
     return clamp(alphaToThetaDeg(alphaValue), THETA_SAFETY_MIN_DEG, THETA_SAFETY_MAX_DEG);
   }
 
+  // Draws the backlash dead-zone as a shaded band under the Drive slider
+  // (a separate ruler element, not a background painted onto the range
+  // input itself - modern Chrome's native "filled track" range-input
+  // styling draws over any CSS background set directly on the element, so
+  // that approach was tried first and silently did nothing visible), plus
+  // a marker for the current commanded alpha. Makes it visually obvious -
+  // not just readable in a separate metric - which alpha values are "free"
+  // (inside the gap, dragging does nothing) versus "engaged" (outside it,
+  // dragging moves the wheel). This is the direct fix for alpha and
+  // backlash otherwise reading as "doing the same thing": from an
+  // already-engaged alpha, both controls do shift the same effective value
+  // (by design - that's the real coupling law), but nothing on screen
+  // explained why until now.
+  function updateAlphaSliderTrack(backlash, alphaCommand) {
+    const range = ALPHA_MAX - ALPHA_MIN;
+    const lowPct = clamp(((ALPHA_REFERENCE - backlash - ALPHA_MIN) / range) * 100, 0, 100);
+    const highPct = clamp(((ALPHA_REFERENCE + backlash - ALPHA_MIN) / range) * 100, 0, 100);
+    deadzoneBand.style.left = `${lowPct}%`;
+    deadzoneBand.style.width = `${Math.max(0, highPct - lowPct)}%`;
+    const markerPct = clamp(((alphaCommand - ALPHA_MIN) / range) * 100, 0, 100);
+    deadzoneMarker.style.left = `${markerPct}%`;
+  }
+
   // Alpha heatmap: blue (contracted, near ALPHA_MIN) -> light gray (neutral,
   // mid-range) -> red (expanded, near ALPHA_MAX), so coupling propagation
   // and per-row diameter differences are visible at a glance instead of
@@ -807,6 +833,8 @@
     deadzoneState.textContent = inDeadzone ? "free (dead zone)" : "engaged";
     deadzoneState.classList.toggle("status-adjusted", inDeadzone);
     deadzoneState.classList.toggle("status-ok", !inDeadzone);
+    deadzoneRangeMetric.textContent = `${(ALPHA_REFERENCE - backlash).toFixed(2)} - ${(ALPHA_REFERENCE + backlash).toFixed(2)}`;
+    updateAlphaSliderTrack(backlash, alphaCommand);
 
     ringCountOut.textContent = String(n);
     rowCountOut.textContent = String(m);
@@ -1060,11 +1088,7 @@
     updateMechanism();
   });
 
-  targetDiameterInput.addEventListener("input", () => {
-    targetDiameterOut.textContent = `${targetDiameterInput.value} mm`;
-  });
-
-  fitDiameterBtn.addEventListener("click", () => {
+  function applyDiameterFit() {
     const n = clamp(Math.round(Number(ringCountInput.value)), RING_COUNT_MIN, RING_COUNT_MAX);
     const target = Number(targetDiameterInput.value);
     const backlash = Number(backlashInput.value);
@@ -1074,6 +1098,19 @@
     achievedDiameterMetric.textContent = `${fit.achievedDiameter.toFixed(1)} mm`;
     fitResidualMetric.textContent = `${(fit.achievedDiameter - target).toFixed(1)} mm`;
     updateMechanism();
+  }
+
+  targetDiameterInput.addEventListener("input", () => {
+    targetDiameterOut.textContent = `${targetDiameterInput.value} mm`;
+    // Live-apply like every other slider in the app - previously this only
+    // updated its own label, and the wheel would not actually change until
+    // the separate Fit Alpha button was clicked, which read as "target
+    // diameter doesn't do anything" since nothing else here works that way.
+    applyDiameterFit();
+  });
+
+  fitDiameterBtn.addEventListener("click", () => {
+    applyDiameterFit();
   });
 
   [
