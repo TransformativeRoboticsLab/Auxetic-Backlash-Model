@@ -345,6 +345,36 @@ async function checkViewport(browser, name, viewport) {
   const loadedAlpha = await page.evaluate(() => document.getElementById("alpha").value);
   assert.strictEqual(loadedAlpha, "1.7", `${name} loading the saved JSON should restore alpha=1.7`);
 
+  // Target Diameter: fitting should set an alpha whose *actual rendered*
+  // diameter (not just the fit tool's own estimate) matches the achieved
+  // value it reports - this is a real regression check: an earlier version
+  // computed the fit ignoring the backlash dead-zone the render pipeline
+  // applies, so the alpha it picked rendered at a different diameter than
+  // what the fit claimed.
+  await page.evaluate(() => {
+    document.getElementById("targetDiameter").value = "140";
+    document.getElementById("targetDiameter").dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.click("#fitDiameterBtn");
+  await page.waitForTimeout(150);
+  const fitResult = await readMetrics(page);
+  const fitAchieved = await page.evaluate(() => document.getElementById("achievedDiameterMetric").textContent);
+  assert.ok(fitAchieved.endsWith("mm"), `${name} fit should report an achieved diameter`);
+  assert.strictEqual(mmValue(fitAchieved).toFixed(1), mmValue(fitResult.diameter).toFixed(1), `${name} the fit's reported achieved diameter should match the actual rendered ring diameter`);
+  assert.strictEqual(fitResult.actuatorCount, "0", `${name} fitting should clear any actuators first (targets one shared alpha)`);
+  assert.strictEqual(fitResult.lockedCount, "0", `${name} fitting should clear any locks first`);
+
+  // An unreachable target (above the achievable range) should still report
+  // an honest, non-hidden residual rather than silently clamping.
+  await page.evaluate(() => {
+    document.getElementById("targetDiameter").value = "259";
+    document.getElementById("targetDiameter").dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.click("#fitDiameterBtn");
+  await page.waitForTimeout(150);
+  const outOfRangeResidual = await page.evaluate(() => document.getElementById("fitResidualMetric").textContent);
+  assert.ok(mmValue(outOfRangeResidual) < -1, `${name} an unreachable target diameter should report a clearly nonzero residual instead of pretending it matched`);
+
   // Timeline: capture two keyframes at different alphas, jump between them,
   // play the sequence end to end, then save/load/delete.
   await page.evaluate(() => {

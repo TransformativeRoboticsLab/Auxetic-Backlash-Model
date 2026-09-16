@@ -61,6 +61,11 @@
   const saveSequenceBtn = document.getElementById("saveSequenceBtn");
   const loadSequenceBtn = document.getElementById("loadSequenceBtn");
   const loadSequenceFile = document.getElementById("loadSequenceFile");
+  const targetDiameterInput = document.getElementById("targetDiameter");
+  const targetDiameterOut = document.getElementById("targetDiameterOut");
+  const fitDiameterBtn = document.getElementById("fitDiameterBtn");
+  const achievedDiameterMetric = document.getElementById("achievedDiameterMetric");
+  const fitResidualMetric = document.getElementById("fitResidualMetric");
 
   const CAD = Object.freeze({
     cellWidthMm: 55.604331,
@@ -575,6 +580,40 @@
     return clamp(alphaToThetaDeg(alphaValue), THETA_SAFETY_MIN_DEG, THETA_SAFETY_MAX_DEG);
   }
 
+  // Diameter vs alpha is NOT monotonic (it rises then falls as cells
+  // over-rotate past their most-open pose - verified numerically before
+  // building this: for n=10, diameter peaks around alpha=1.4 then drops
+  // back down toward alpha=2.0), so this can't be solved with a bisection
+  // search or a closed-form inverse of theta=70*alpha-60. Instead it
+  // exhaustively evaluates every alpha the slider can reach (a uniform
+  // ring, all cells at the same theta) and keeps whichever is closest to
+  // the target - simple, robust to non-monotonicity, and cheap since a
+  // whole ring build is just O(n).
+  function fitAlphaToDiameter(targetDiameter, n, backlash) {
+    let bestAlpha = ALPHA_REFERENCE;
+    let bestDiameter = 0;
+    let bestDiff = Infinity;
+    const step = 0.01;
+    const steps = Math.round((ALPHA_MAX - ALPHA_MIN) / step);
+    for (let s = 0; s <= steps; s += 1) {
+      const a = Math.round((ALPHA_MIN + s * step) * 100) / 100;
+      // Must match updateMechanism's pipeline exactly (commanded alpha ->
+      // backlash dead-zone -> theta), otherwise the alpha this picks would
+      // get shifted by the dead-zone once actually applied and render at a
+      // different diameter than what was just fit.
+      const effectiveAlpha = ALPHA_REFERENCE + reluDeadzone(a - ALPHA_REFERENCE, backlash);
+      const thetaRad = degToRad(cellThetaDeg(effectiveAlpha));
+      const diameter = buildRing(n, new Array(n).fill(thetaRad)).diameter;
+      const diff = Math.abs(diameter - targetDiameter);
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        bestAlpha = a;
+        bestDiameter = diameter;
+      }
+    }
+    return { alpha: bestAlpha, achievedDiameter: bestDiameter };
+  }
+
   function addAxisLine(points, color) {
     const geometry = new THREE.BufferGeometry().setFromPoints(points.map((p) => new THREE.Vector3(...p)));
     scene.add(new THREE.Line(geometry, new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.75 })));
@@ -966,12 +1005,32 @@
     updateMechanism();
   });
 
-  clearRolesBtn.addEventListener("click", () => {
+  function clearAllRoles() {
     for (let row = 0; row < cellRoles.length; row += 1) {
       for (let i = 0; i < cellRoles[row].length; i += 1) {
         cellRoles[row][i] = { role: "free", alpha: ALPHA_REFERENCE };
       }
     }
+  }
+
+  clearRolesBtn.addEventListener("click", () => {
+    clearAllRoles();
+    updateMechanism();
+  });
+
+  targetDiameterInput.addEventListener("input", () => {
+    targetDiameterOut.textContent = `${targetDiameterInput.value} mm`;
+  });
+
+  fitDiameterBtn.addEventListener("click", () => {
+    const n = clamp(Math.round(Number(ringCountInput.value)), RING_COUNT_MIN, RING_COUNT_MAX);
+    const target = Number(targetDiameterInput.value);
+    const backlash = Number(backlashInput.value);
+    const fit = fitAlphaToDiameter(target, n, backlash);
+    clearAllRoles();
+    alphaInput.value = String(fit.alpha);
+    achievedDiameterMetric.textContent = `${fit.achievedDiameter.toFixed(1)} mm`;
+    fitResidualMetric.textContent = `${(fit.achievedDiameter - target).toFixed(1)} mm`;
     updateMechanism();
   });
 

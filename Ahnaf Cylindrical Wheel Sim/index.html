@@ -108,6 +108,26 @@
           </dl>
         </details>
 
+        <details class="panel-section">
+          <summary>Target Diameter</summary>
+          <p class="hint">
+            Diameter isn't monotonic in alpha (it rises then falls as the cells over-rotate), so this searches
+            every reachable alpha for the closest match rather than solving a formula directly. Fitting clears
+            any actuators/locks first, since it targets one shared alpha for the whole wheel.
+          </p>
+          <label>
+            Target diameter <output id="targetDiameterOut">140 mm</output>
+            <input id="targetDiameter" type="range" min="60" max="260" step="1" value="140" />
+          </label>
+          <div class="button-row">
+            <button id="fitDiameterBtn" type="button">Fit Alpha</button>
+          </div>
+          <dl>
+            <div><dt>achieved diameter</dt><dd id="achievedDiameterMetric">-</dd></div>
+            <div><dt>fit residual</dt><dd id="fitResidualMetric">-</dd></div>
+          </dl>
+        </details>
+
         <details class="panel-section" open>
           <summary>Per-Cell Actuation</summary>
           <p class="hint">
