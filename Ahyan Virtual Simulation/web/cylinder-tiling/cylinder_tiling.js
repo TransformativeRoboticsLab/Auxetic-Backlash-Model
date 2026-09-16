@@ -389,10 +389,21 @@
     heightMetric.textContent = `${((m - 1) * axialPitch).toFixed(1)} mm`;
   }
 
+  let lastWidth = -1;
+  let lastHeight = -1;
+
   function resize() {
     const rect = mount.getBoundingClientRect();
     const width = Math.max(1, Math.floor(rect.width));
     const height = Math.max(1, Math.floor(rect.height));
+    // Skip degenerate/unsettled layout sizes (e.g. a page that reports 0x0
+    // for a frame or two while its CSS grid is still resolving) rather than
+    // baking a corrupted aspect ratio into the camera - render() retries
+    // this every frame, so a real size is picked up as soon as it appears.
+    if (width <= 2 || height <= 2) return;
+    if (width === lastWidth && height === lastHeight) return;
+    lastWidth = width;
+    lastHeight = height;
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
@@ -453,6 +464,7 @@
   setView("iso");
 
   function render(timeMs) {
+    resize();
     updateMechanism(timeMs);
     renderer.render(scene, camera);
     requestAnimationFrame(render);
