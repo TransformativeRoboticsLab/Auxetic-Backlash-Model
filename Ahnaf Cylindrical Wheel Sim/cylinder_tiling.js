@@ -54,6 +54,13 @@
   const clearRolesBtn = document.getElementById("clearRolesBtn");
   const minDiameterMetric = document.getElementById("minDiameterMetric");
   const maxDiameterMetric = document.getElementById("maxDiameterMetric");
+  const captureKeyframeBtn = document.getElementById("captureKeyframeBtn");
+  const playSequenceBtn = document.getElementById("playSequenceBtn");
+  const keyframeList = document.getElementById("keyframeList");
+  const keyframeCountMetric = document.getElementById("keyframeCountMetric");
+  const saveSequenceBtn = document.getElementById("saveSequenceBtn");
+  const loadSequenceBtn = document.getElementById("loadSequenceBtn");
+  const loadSequenceFile = document.getElementById("loadSequenceFile");
 
   const CAD = Object.freeze({
     cellWidthMm: 55.604331,
@@ -1055,6 +1062,126 @@
     reader.readAsText(file);
     loadJsonFile.value = "";
   });
+
+  // --- Timeline: named keyframes are full state snapshots (same shape as
+  // Save JSON), applied as discrete jumps - no interpolation between poses.
+  const SEQUENCE_FORMAT = "rad-cylinder-tiling-sequence.v1";
+  let keyframes = [];
+  let activeKeyframeIndex = -1;
+  let playbackTimer = null;
+
+  function stopSequence() {
+    if (playbackTimer !== null) {
+      clearInterval(playbackTimer);
+      playbackTimer = null;
+    }
+    playSequenceBtn.textContent = "Play Sequence";
+  }
+
+  function goToKeyframe(index) {
+    if (index < 0 || index >= keyframes.length) return;
+    activeKeyframeIndex = index;
+    applyStateSnapshot(keyframes[index].snapshot);
+    renderKeyframeList();
+  }
+
+  function renderKeyframeList() {
+    keyframeList.innerHTML = "";
+    keyframes.forEach((keyframe, index) => {
+      const row = document.createElement("div");
+      row.className = "keyframe-row" + (index === activeKeyframeIndex ? " active" : "");
+      const label = document.createElement("span");
+      label.textContent = keyframe.label;
+      const goBtn = document.createElement("button");
+      goBtn.type = "button";
+      goBtn.textContent = "Go";
+      goBtn.addEventListener("click", () => {
+        stopSequence();
+        goToKeyframe(index);
+      });
+      const deleteBtn = document.createElement("button");
+      deleteBtn.type = "button";
+      deleteBtn.textContent = "×";
+      deleteBtn.setAttribute("aria-label", `Delete ${keyframe.label}`);
+      deleteBtn.addEventListener("click", () => {
+        stopSequence();
+        keyframes.splice(index, 1);
+        if (activeKeyframeIndex === index) activeKeyframeIndex = -1;
+        else if (activeKeyframeIndex > index) activeKeyframeIndex -= 1;
+        renderKeyframeList();
+      });
+      row.appendChild(label);
+      row.appendChild(goBtn);
+      row.appendChild(deleteBtn);
+      keyframeList.appendChild(row);
+    });
+    keyframeCountMetric.textContent = String(keyframes.length);
+    playSequenceBtn.disabled = keyframes.length === 0;
+    saveSequenceBtn.disabled = keyframes.length === 0;
+  }
+
+  captureKeyframeBtn.addEventListener("click", () => {
+    keyframes.push({ label: `Keyframe ${keyframes.length + 1}`, snapshot: currentStateSnapshot() });
+    activeKeyframeIndex = keyframes.length - 1;
+    renderKeyframeList();
+  });
+
+  playSequenceBtn.addEventListener("click", () => {
+    if (playbackTimer !== null) {
+      stopSequence();
+      return;
+    }
+    if (keyframes.length === 0) return;
+    let index = 0;
+    goToKeyframe(index);
+    playSequenceBtn.textContent = "Stop";
+    playbackTimer = setInterval(() => {
+      index += 1;
+      if (index >= keyframes.length) {
+        stopSequence();
+        return;
+      }
+      goToKeyframe(index);
+    }, 1200);
+  });
+
+  saveSequenceBtn.addEventListener("click", () => {
+    const payload = { format: SEQUENCE_FORMAT, keyframes };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "rad-cylinder-tiling-sequence.json";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  });
+
+  loadSequenceBtn.addEventListener("click", () => loadSequenceFile.click());
+  loadSequenceFile.addEventListener("change", () => {
+    const file = loadSequenceFile.files && loadSequenceFile.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const payload = JSON.parse(String(reader.result));
+        if (!Array.isArray(payload.keyframes)) throw new Error("missing keyframes array");
+        stopSequence();
+        keyframes = payload.keyframes
+          .filter((k) => k && typeof k === "object" && k.snapshot)
+          .map((k, index) => ({ label: typeof k.label === "string" ? k.label : `Keyframe ${index + 1}`, snapshot: k.snapshot }));
+        activeKeyframeIndex = -1;
+        renderKeyframeList();
+      } catch (_error) {
+        window.alert("Could not parse that sequence JSON file.");
+      }
+    };
+    reader.readAsText(file);
+    loadSequenceFile.value = "";
+  });
+
+  renderKeyframeList();
 
   new ResizeObserver(resize).observe(mount);
   resize();

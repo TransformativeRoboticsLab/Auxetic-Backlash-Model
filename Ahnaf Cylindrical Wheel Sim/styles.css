@@ -322,6 +322,39 @@ dd {
   flex-wrap: wrap;
 }
 
+.keyframe-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.keyframe-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-2);
+}
+
+.keyframe-row span {
+  flex: 1 1 auto;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.keyframe-row button {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.keyframe-row.active {
+  border-color: var(--accent);
+}
+
 @media (max-width: 900px) {
   .app-shell {
     grid-template-columns: 1fr;

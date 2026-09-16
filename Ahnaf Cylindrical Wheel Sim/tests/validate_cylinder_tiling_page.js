@@ -345,6 +345,68 @@ async function checkViewport(browser, name, viewport) {
   const loadedAlpha = await page.evaluate(() => document.getElementById("alpha").value);
   assert.strictEqual(loadedAlpha, "1.7", `${name} loading the saved JSON should restore alpha=1.7`);
 
+  // Timeline: capture two keyframes at different alphas, jump between them,
+  // play the sequence end to end, then save/load/delete.
+  await page.evaluate(() => {
+    document.getElementById("alpha").value = "1.3";
+    document.getElementById("alpha").dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.click("#captureKeyframeBtn");
+  await page.waitForTimeout(80);
+  await page.evaluate(() => {
+    document.getElementById("alpha").value = "1.9";
+    document.getElementById("alpha").dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.click("#captureKeyframeBtn");
+  await page.waitForTimeout(80);
+  const afterTwoCaptures = await page.evaluate(() => ({
+    count: document.getElementById("keyframeCountMetric").textContent,
+    rowCount: document.querySelectorAll(".keyframe-row").length,
+    playDisabled: document.getElementById("playSequenceBtn").disabled,
+    saveDisabled: document.getElementById("saveSequenceBtn").disabled,
+  }));
+  assert.strictEqual(afterTwoCaptures.count, "2", `${name} capturing two keyframes should count two`);
+  assert.strictEqual(afterTwoCaptures.rowCount, 2, `${name} should render two keyframe rows`);
+  assert.ok(!afterTwoCaptures.playDisabled, `${name} Play Sequence should be enabled once keyframes exist`);
+  assert.ok(!afterTwoCaptures.saveDisabled, `${name} Save Sequence JSON should be enabled once keyframes exist`);
+
+  await page.click(".keyframe-row:first-child button:nth-of-type(1)");
+  await page.waitForTimeout(100);
+  const afterGoToFirst = await page.evaluate(() => document.getElementById("alpha").value);
+  assert.strictEqual(afterGoToFirst, "1.3", `${name} jumping to the first keyframe should restore alpha=1.3`);
+
+  await page.click("#playSequenceBtn");
+  await page.waitForTimeout(100);
+  const duringPlayback = await page.evaluate(() => document.getElementById("playSequenceBtn").textContent);
+  assert.strictEqual(duringPlayback, "Stop", `${name} Play Sequence should relabel to Stop while playing`);
+  await page.waitForTimeout(2900); // two keyframes at a 1200ms step interval, plus margin
+  const afterPlayback = await page.evaluate(() => ({
+    label: document.getElementById("playSequenceBtn").textContent,
+    alpha: document.getElementById("alpha").value,
+  }));
+  assert.strictEqual(afterPlayback.label, "Play Sequence", `${name} playback should stop itself and relabel after the last keyframe`);
+  assert.strictEqual(afterPlayback.alpha, "1.9", `${name} playback should end on the last keyframe's alpha`);
+
+  const sequenceDownloadPromise = page.waitForEvent("download");
+  await page.click("#saveSequenceBtn");
+  const sequenceDownload = await sequenceDownloadPromise;
+  const sequencePath = path.join(root, `cylinder-tiling-${name}-sequence.json`);
+  await sequenceDownload.saveAs(sequencePath);
+  const savedSequence = require(sequencePath);
+  assert.strictEqual(savedSequence.format, "rad-cylinder-tiling-sequence.v1", `${name} saved sequence JSON should carry the expected format tag`);
+  assert.strictEqual(savedSequence.keyframes.length, 2, `${name} saved sequence JSON should include both keyframes`);
+
+  await page.click(".keyframe-row:first-child button:nth-of-type(2)"); // delete
+  await page.waitForTimeout(80);
+  const afterDelete = await page.evaluate(() => document.getElementById("keyframeCountMetric").textContent);
+  assert.strictEqual(afterDelete, "1", `${name} deleting a keyframe should reduce the count`);
+
+  const [sequenceFileChooser] = await Promise.all([page.waitForEvent("filechooser"), page.click("#loadSequenceBtn")]);
+  await sequenceFileChooser.setFiles(sequencePath);
+  await page.waitForTimeout(100);
+  const afterLoadSequence = await page.evaluate(() => document.getElementById("keyframeCountMetric").textContent);
+  assert.strictEqual(afterLoadSequence, "2", `${name} loading a saved sequence should restore both keyframes`);
+
   assert.deepStrictEqual(errors, [], `${name} should not emit browser errors`);
 
   const screenshotPath = path.join(root, `cylinder-tiling-${name}-check.png`);

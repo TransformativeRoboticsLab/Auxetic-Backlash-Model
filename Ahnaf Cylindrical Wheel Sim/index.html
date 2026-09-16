@@ -184,6 +184,24 @@
         </details>
 
         <details class="panel-section">
+          <summary>Timeline</summary>
+          <p class="hint">Capture named poses (alpha, backlash, ring/row counts, attachment sites, and every cell's role/alpha) and step or play back through them. Jumps are discrete, not interpolated.</p>
+          <div class="button-row">
+            <button id="captureKeyframeBtn" type="button">Capture Keyframe</button>
+            <button id="playSequenceBtn" type="button" disabled>Play Sequence</button>
+          </div>
+          <div id="keyframeList" class="keyframe-list" aria-label="Captured keyframes"></div>
+          <dl>
+            <div><dt>keyframes</dt><dd id="keyframeCountMetric">0</dd></div>
+          </dl>
+          <div class="button-row">
+            <button id="saveSequenceBtn" type="button" disabled>Save Sequence JSON</button>
+            <button id="loadSequenceBtn" type="button">Load Sequence JSON</button>
+            <input id="loadSequenceFile" type="file" accept="application/json" hidden />
+          </div>
+        </details>
+
+        <details class="panel-section">
           <summary>Save / Load</summary>
           <div class="button-row">
             <button id="saveJsonBtn" type="button">Save JSON</button>
