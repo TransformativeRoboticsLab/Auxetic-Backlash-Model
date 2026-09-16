@@ -5,7 +5,7 @@ const { PNG } = require("pngjs");
 const { chromium } = require("playwright");
 
 const root = path.resolve(__dirname, "..");
-const pageUrl = pathToFileURL(path.join(root, "web", "cylinder-tiling", "index.html")).href;
+const pageUrl = pathToFileURL(path.join(root, "index.html")).href;
 
 function colorCount(buffer, predicate) {
   const png = PNG.sync.read(buffer);

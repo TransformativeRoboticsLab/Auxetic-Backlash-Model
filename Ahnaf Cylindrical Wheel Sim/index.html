@@ -3,23 +3,18 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>RAD Cylinder Tiling Primitive</title>
+    <title>Cylindrical Wheel Tiling Simulator</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="app-shell">
-      <section class="viewer-panel" aria-label="RAD cylinder tiling simulator">
+      <section class="viewer-panel" aria-label="Cylindrical wheel tiling simulator">
         <header class="topbar">
           <div>
-            <h1>Cylinder Tiling Primitive</h1>
+            <h1>Cylindrical Wheel Tiling Simulator</h1>
             <p>RAD cells closed into a ring (reconfigurable wheel cross-section), stacked into a cylindrical tiling.</p>
           </div>
-          <nav>
-            <a href="../one-cell-rotation/index.html">One cell</a>
-            <a href="../two-cell-attachment/index.html">Row</a>
-            <a href="../index.html">Lattice</a>
-          </nav>
         </header>
         <div id="threeMount" class="three-mount" aria-label="3D cylinder tiling view"></div>
         <div class="viewbar" role="group" aria-label="View controls">
@@ -175,7 +170,7 @@
       </aside>
     </main>
 
-    <script src="../vendor/three.min.js"></script>
+    <script src="./vendor/three.min.js"></script>
     <script src="./cylinder_tiling.js"></script>
   </body>
 </html>
