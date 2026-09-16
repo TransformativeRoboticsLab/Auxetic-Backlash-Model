@@ -71,6 +71,7 @@
   const achievedDiameterMetric = document.getElementById("achievedDiameterMetric");
   const fitResidualMetric = document.getElementById("fitResidualMetric");
   const heatmapEnabledInput = document.getElementById("heatmapEnabled");
+  const showMeasurementsInput = document.getElementById("showMeasurements");
 
   const CAD = Object.freeze({
     cellWidthMm: 55.604331,
@@ -538,7 +539,7 @@
       radius += c.distanceTo(centroid);
     });
     radius /= n;
-    return { centers, bottomRot, pitch: pitchSum / n, closureResidual, radius, diameter: 2 * radius };
+    return { centers, bottomRot, pitch: pitchSum / n, closureResidual, radius, diameter: 2 * radius, centroid };
   }
 
   // --- Per-cell actuation: each cell is "free" (tracks a backlash-gated
@@ -721,6 +722,48 @@
   selectionMarker.visible = false;
   scene.add(selectionMarker);
 
+  // CAD-style dimension line across row 0's diameter: a straight line
+  // through the ring's own centroid plus small perpendicular end ticks,
+  // for a visual scale reference alongside the numeric "wheel diameter"
+  // readout - most useful together with Export OBJ, when eyeballing a
+  // configuration against real-world size before pulling it into CAD.
+  const measurementMaterial = new THREE.LineBasicMaterial({ color: 0x121820 });
+  const measurementLine = new THREE.Line(new THREE.BufferGeometry(), measurementMaterial);
+  const measurementTickA = new THREE.Line(new THREE.BufferGeometry(), measurementMaterial);
+  const measurementTickB = new THREE.Line(new THREE.BufferGeometry(), measurementMaterial);
+  measurementLine.visible = false;
+  measurementTickA.visible = false;
+  measurementTickB.visible = false;
+  scene.add(measurementLine, measurementTickA, measurementTickB);
+
+  function setLineGeometry(line, points) {
+    line.geometry.dispose();
+    line.geometry = new THREE.BufferGeometry().setFromPoints(points);
+  }
+
+  // A dimension line drawn straight through the ring's own center (at the
+  // cells' own z) gets occluded by the cell geometry itself from most
+  // camera angles - confirmed by screenshot before landing on this
+  // approach. Real CAD/engineering drawings offset the dimension line
+  // clear of the part instead, connected back to the actual measured
+  // points by short extension lines, which is what this draws: extension
+  // lines from the true diameter endpoints (at row 0's own z) down to a
+  // dimension line comfortably below the whole assembly.
+  const MEASUREMENT_DROP_MM = 30;
+
+  function updateMeasurementLine(ring0, z) {
+    const c = ring0.centroid;
+    const r = ring0.radius;
+    const dimZ = z - MEASUREMENT_DROP_MM;
+    const pointA = new THREE.Vector3(c.x - r, c.y, z);
+    const pointB = new THREE.Vector3(c.x + r, c.y, z);
+    const dimA = new THREE.Vector3(c.x - r, c.y, dimZ);
+    const dimB = new THREE.Vector3(c.x + r, c.y, dimZ);
+    setLineGeometry(measurementLine, [dimA, dimB]);
+    setLineGeometry(measurementTickA, [pointA, dimA]);
+    setLineGeometry(measurementTickB, [pointB, dimB]);
+  }
+
   const raycaster = new THREE.Raycaster();
   const pointerNdc = new THREE.Vector2();
   let selected = null; // { row, i }
@@ -797,6 +840,12 @@
     const thetaPerRow = cellAlphas.map((row) => row.map((a) => degToRad(cellThetaDeg(a))));
     const rings = [];
     for (let row = 0; row < m; row += 1) rings.push(buildRing(n, thetaPerRow[row]));
+
+    const showMeasurements = showMeasurementsInput.checked && !isolateActive;
+    measurementLine.visible = showMeasurements;
+    measurementTickA.visible = showMeasurements;
+    measurementTickB.visible = showMeasurements;
+    if (showMeasurements) updateMeasurementLine(rings[0], 0);
 
     for (let row = 0; row < m; row += 1) {
       const z = row * axialPitch;
@@ -1043,6 +1092,34 @@
     focusToggle.textContent = active ? "Controls" : "Focus";
   });
 
+  document.getElementById("resetAllBtn").addEventListener("click", () => {
+    // .defaultValue/.defaultChecked reflect each input's original HTML
+    // attribute, so this always matches what's actually declared in
+    // index.html rather than a second, driftable copy of the same numbers.
+    [alphaInput, backlashInput, ringCountInput, rowCountInput, axialPitchInput, targetDiameterInput].forEach((input) => {
+      input.value = input.defaultValue;
+    });
+    [aSiteInput, bSiteInput].forEach((select) => {
+      select.value = Array.from(select.options).find((option) => option.defaultSelected).value;
+    });
+    [animateInput, collisionEnabledInput, heatmapEnabledInput].forEach((input) => {
+      input.checked = input.defaultChecked;
+    });
+    clearAllRoles();
+    selected = null;
+    if (isolateActive) {
+      isolateActive = false;
+      isolateCellBtn.textContent = "Isolate Cell";
+    }
+    if (document.body.classList.contains("focus-mode")) {
+      document.body.classList.remove("focus-mode");
+      focusToggle.textContent = "Focus";
+    }
+    stopSequence();
+    setView("iso");
+    updateMechanism();
+  });
+
   frameCellBtn.addEventListener("click", () => {
     if (!selected) return;
     cameraState.target.copy(selectedWorld);
@@ -1125,6 +1202,7 @@
     animateInput,
     collisionEnabledInput,
     heatmapEnabledInput,
+    showMeasurementsInput,
   ].forEach((input) => {
     input.addEventListener("input", () => updateMechanism());
     input.addEventListener("change", () => updateMechanism());

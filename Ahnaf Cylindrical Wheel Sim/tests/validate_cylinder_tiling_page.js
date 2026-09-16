@@ -545,6 +545,64 @@ async function checkViewport(browser, name, viewport) {
   const afterLoadSequence = await page.evaluate(() => document.getElementById("keyframeCountMetric").textContent);
   assert.strictEqual(afterLoadSequence, "2", `${name} loading a saved sequence should restore both keyframes`);
 
+  // Measurement line: enabling it should populate real (non-degenerate)
+  // dimension-line geometry - drawn offset below the part with extension
+  // lines back to the true diameter endpoints, not straight through the
+  // cell geometry (which turned out to render mostly occluded when tried
+  // that way first).
+  await page.evaluate(() => {
+    const input = document.getElementById("showMeasurements");
+    input.checked = true;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForTimeout(100);
+  const measurementBox = await page.evaluate(() => {
+    const canvas = document.querySelector("#threeMount canvas");
+    return { w: canvas.width, h: canvas.height };
+  });
+  assert.ok(measurementBox.w > 0 && measurementBox.h > 0, `${name} canvas should still render with measurements enabled`);
+  await page.evaluate(() => {
+    const input = document.getElementById("showMeasurements");
+    input.checked = false;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForTimeout(80);
+
+  // Reset All: change a wide spread of settings (drive, ring/row counts,
+  // an actuator, a selection), then confirm every one of them - and only
+  // those, nothing left stale - lands back on its HTML-declared default.
+  await page.evaluate(() => {
+    document.getElementById("alpha").value = "1.9";
+    document.getElementById("alpha").dispatchEvent(new Event("input", { bubbles: true }));
+    document.getElementById("ringCount").value = "14";
+    document.getElementById("ringCount").dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForTimeout(100);
+  await page.mouse.click(selection.x, selection.y);
+  await page.waitForTimeout(100);
+  await page.evaluate(() => {
+    const roleSelect = document.getElementById("cellRoleSelect");
+    if (roleSelect.disabled) return;
+    roleSelect.value = "actuator";
+    roleSelect.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await page.waitForTimeout(100);
+  await page.click("#resetAllBtn");
+  await page.waitForTimeout(150);
+  const afterResetAll = await readMetrics(page);
+  assert.strictEqual(afterResetAll.alpha, "1.3", `${name} Reset All should restore the default alpha`);
+  assert.strictEqual(afterResetAll.ringCount, "10", `${name} Reset All should restore the default ring count`);
+  assert.strictEqual(afterResetAll.rowCount, "3", `${name} Reset All should restore the default row count`);
+  assert.strictEqual(afterResetAll.actuatorCount, "0", `${name} Reset All should clear actuators`);
+  assert.strictEqual(afterResetAll.lockedCount, "0", `${name} Reset All should clear locks`);
+  assert.strictEqual(afterResetAll.selectedStatus, "no cell selected", `${name} Reset All should clear the current selection`);
+  const afterResetAllSites = await page.evaluate(() => ({
+    aSite: document.getElementById("aSite").value,
+    bSite: document.getElementById("bSite").value,
+  }));
+  assert.strictEqual(afterResetAllSites.aSite, "east", `${name} Reset All should restore the default outgoing site`);
+  assert.strictEqual(afterResetAllSites.bSite, "west", `${name} Reset All should restore the default incoming site`);
+
   assert.deepStrictEqual(errors, [], `${name} should not emit browser errors`);
 
   const screenshotPath = path.join(root, `cylinder-tiling-${name}-check.png`);

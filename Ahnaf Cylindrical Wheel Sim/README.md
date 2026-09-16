@@ -88,7 +88,8 @@ python -m http.server 8000
   whichever produces the closest ring diameter, reporting the achieved
   diameter and residual honestly (including when a target is out of the
   achievable range) rather than solving a closed-form inverse. Fitting
-  clears any actuators/locks first, since it targets one shared alpha.
+  clears any actuators/locks first, since it targets one shared alpha, and
+  applies live as the slider is dragged, the same as every other control.
 - **Cylinder stacking**: `m` rings are repeated along the axle (`z`) axis at
   a configurable pitch. Axial row-to-row attachment is currently a rigid
   copy, not a solved joint - see Known limitations.
@@ -111,6 +112,16 @@ python -m http.server 8000
   geometry snapshot, not a print-ready model - it does not perform boolean
   subtraction, so hole locations remain solid placeholder cylinders, same
   as on screen.
+- **Measurement line**: an optional CAD-style dimension line for row 0's
+  diameter, offset below the assembly with extension lines back to the
+  true diameter endpoints (drawing it straight through the ring's own
+  center renders mostly occluded by the cell geometry, so it's offset
+  clear of the part instead, the way an engineering drawing would).
+- **Reset All**: restores every control to its HTML-declared default,
+  clears actuators/locks, deselects the current cell, exits Isolate/Focus,
+  stops any Timeline playback, and resets the camera - a clean-slate
+  button distinct from the viewbar's own Reset (which only resets the
+  camera).
 - **Timeline**: capture named keyframes (full state snapshots - alpha,
   backlash, ring/row counts, axial pitch, attachment sites, and every
   cell's role/alpha), jump between them, or play through them as discrete

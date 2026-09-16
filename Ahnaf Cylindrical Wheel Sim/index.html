@@ -24,6 +24,7 @@
           <button type="button" data-view="side" aria-pressed="false">Side</button>
           <button id="resetView" type="button">Reset</button>
           <button id="focusToggle" type="button">Focus</button>
+          <button id="resetAllBtn" type="button" title="Reset every control to its default value, clear actuators/locks, and reset the camera">Reset All</button>
           <span class="spacer"></span>
           <span id="selectedCellStatus" class="hud-chip">no cell selected</span>
         </div>
@@ -108,6 +109,7 @@
             <div><dt>wheel radius, row 0</dt><dd id="radiusMetric">71.4 mm</dd></div>
             <div><dt>ring closure residual, row 0</dt><dd id="closureMetric">0.000 mm</dd></div>
           </dl>
+          <label class="toggle"><input id="showMeasurements" type="checkbox" /> Show diameter dimension line (row 0)</label>
         </details>
 
         <details class="panel-section" open>
