@@ -50,6 +50,11 @@ async function readMetrics(page) {
     clearance: document.getElementById("clearanceMetric").textContent,
     pairsChecked: document.getElementById("pairsCheckedMetric").textContent,
     selectedStatus: document.getElementById("selectedCellStatus").textContent,
+    actuatorCount: document.getElementById("actuatorCountMetric").textContent,
+    lockedCount: document.getElementById("lockedCountMetric").textContent,
+    selectedCellAlpha: document.getElementById("selectedCellAlphaMetric").textContent,
+    minDiameter: document.getElementById("minDiameterMetric").textContent,
+    maxDiameter: document.getElementById("maxDiameterMetric").textContent,
   }));
 }
 
@@ -238,6 +243,77 @@ async function checkViewport(browser, name, viewport) {
   assert.ok(!unfocusState.bodyHasClass, `${name} clicking Focus again should remove focus-mode`);
   assert.strictEqual(unfocusState.label, "Focus", `${name} button should relabel back to Focus`);
 
+  // Per-cell actuation: making the selected cell an actuator at max alpha
+  // should (a) show up in the actuator count, (b) break the exact ring
+  // closure that only holds when every cell shares one alpha, and (c) pull
+  // a neighboring free cell's alpha away from the shared baseline through
+  // the backlash-gated propagation - not just the actuated cell itself.
+  const beforeActuation = await readMetrics(page);
+  assert.strictEqual(beforeActuation.selectedStatus === "no cell selected" ? "no" : "yes", "yes", `${name} a cell should still be selected here`);
+  const preActuationAlpha = await page.evaluate(() => document.getElementById("selectedCellAlphaMetric").textContent);
+  await page.evaluate(() => {
+    const roleSelect = document.getElementById("cellRoleSelect");
+    roleSelect.value = "actuator";
+    roleSelect.dispatchEvent(new Event("change", { bubbles: true }));
+    const cellAlpha = document.getElementById("cellAlpha");
+    cellAlpha.value = cellAlpha.max;
+    cellAlpha.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForTimeout(150);
+  const afterActuation = await readMetrics(page);
+  assert.strictEqual(afterActuation.actuatorCount, "1", `${name} setting a cell's role to actuator should count it`);
+  assert.ok(Number(afterActuation.selectedCellAlpha) > Number(preActuationAlpha), `${name} the actuated cell's alpha should jump toward its commanded max`);
+  assert.ok(Math.abs(mmValue(afterActuation.closure)) > 0.01, `${name} an actuated cell should generally break exact ring closure (non-uniform per-cell alpha)`);
+
+  // Read the full per-cell alpha grid through the debug hook (window.__cylinderTilingDebug,
+  // exposed specifically because guessing screen coordinates to click a
+  // particular (row, i) cell is fragile across camera angles/viewports) and
+  // confirm propagation reached the actuated cell's circumferential
+  // neighbor, not just the actuated cell itself.
+  const propagation = await page.evaluate(() => {
+    const debugHook = window.__cylinderTilingDebug;
+    const selectedCell = debugHook.getSelected();
+    const alphas = debugHook.getCellAlphas();
+    const roles = debugHook.getCellRoles();
+    if (!selectedCell || !alphas) return null;
+    const n = alphas[selectedCell.row].length;
+    const neighborIndex = (selectedCell.i + 1) % n;
+    return {
+      selectedAlpha: alphas[selectedCell.row][selectedCell.i],
+      neighborAlpha: alphas[selectedCell.row][neighborIndex],
+      neighborRole: roles[selectedCell.row][neighborIndex].role,
+    };
+  });
+  assert.ok(propagation, `${name} debug hook should report the selected cell and alpha grid`);
+  assert.ok(propagation.selectedAlpha >= 1.99, `${name} the actuated cell's own alpha should be at its commanded max (~2.0)`);
+  assert.strictEqual(propagation.neighborRole, "free", `${name} the actuated cell's circumferential neighbor should still be "free"`);
+  assert.ok(
+    Math.abs(propagation.neighborAlpha - 1.2) > 0.01,
+    `${name} the actuated cell's free neighbor should shift away from the 1.20 no-actuator baseline (got ${propagation.neighborAlpha})`
+  );
+
+  // Clear All Actuators/Locks should reset the ring back to the uniform,
+  // exactly-closed baseline state.
+  await page.click("#clearRolesBtn");
+  await page.waitForTimeout(150);
+  const afterClear = await readMetrics(page);
+  assert.strictEqual(afterClear.actuatorCount, "0", `${name} Clear All should remove every actuator`);
+  assert.strictEqual(afterClear.lockedCount, "0", `${name} Clear All should remove every lock`);
+  assert.ok(Math.abs(mmValue(afterClear.closure)) <= 0.01, `${name} clearing all roles should restore exact ring closure`);
+
+  // Re-actuate once more so the JSON save/load round-trip below has
+  // non-trivial per-cell state to carry through.
+  await page.mouse.click(selection.x, selection.y);
+  await page.waitForTimeout(100);
+  await page.evaluate(() => {
+    const roleSelect = document.getElementById("cellRoleSelect");
+    roleSelect.value = "locked";
+    roleSelect.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await page.waitForTimeout(100);
+  const beforeSaveRoles = await readMetrics(page);
+  assert.strictEqual(beforeSaveRoles.lockedCount, "1", `${name} locking the selected cell should count it before saving`);
+
   // Save/Load JSON: round-trip a changed alpha through a downloaded file.
   const downloadPromise = page.waitForEvent("download");
   await page.evaluate(() => {
@@ -251,14 +327,21 @@ async function checkViewport(browser, name, viewport) {
   const saved = require(savedPath);
   assert.strictEqual(saved.format, "rad-cylinder-tiling.v1", `${name} saved JSON should carry the expected format tag`);
   assert.strictEqual(saved.alpha, 1.7, `${name} saved JSON should capture the current alpha`);
+  assert.ok(Array.isArray(saved.cellRoles), `${name} saved JSON should include per-cell roles`);
+  const savedLockedCount = saved.cellRoles.flat().filter((c) => c && c.role === "locked").length;
+  assert.strictEqual(savedLockedCount, 1, `${name} saved JSON should capture the locked cell`);
 
   await page.evaluate(() => {
     document.getElementById("alpha").value = "0.4";
     document.getElementById("alpha").dispatchEvent(new Event("input", { bubbles: true }));
+    document.getElementById("clearRolesBtn").click();
   });
+  await page.waitForTimeout(100);
   const [fileChooser] = await Promise.all([page.waitForEvent("filechooser"), page.click("#loadJsonBtn")]);
   await fileChooser.setFiles(savedPath);
   await page.waitForTimeout(100);
+  const afterLoadRoles = await readMetrics(page);
+  assert.strictEqual(afterLoadRoles.lockedCount, "1", `${name} loading the saved JSON should restore the locked cell`);
   const loadedAlpha = await page.evaluate(() => document.getElementById("alpha").value);
   assert.strictEqual(loadedAlpha, "1.7", `${name} loading the saved JSON should restore alpha=1.7`);
 

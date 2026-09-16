@@ -83,11 +83,11 @@
             </select>
           </label>
           <dl>
-            <div><dt>cell pitch (chord)</dt><dd id="pitchMetric">44.1 mm</dd></div>
+            <div><dt>cell pitch, row 0 (avg chord)</dt><dd id="pitchMetric">44.1 mm</dd></div>
             <div><dt>turn angle per joint</dt><dd id="turnMetric">36.0 deg</dd></div>
-            <div><dt>wheel diameter</dt><dd id="diameterMetric">142.8 mm</dd></div>
-            <div><dt>wheel radius</dt><dd id="radiusMetric">71.4 mm</dd></div>
-            <div><dt>ring closure residual</dt><dd id="closureMetric">0.000 mm</dd></div>
+            <div><dt>wheel diameter, row 0</dt><dd id="diameterMetric">142.8 mm</dd></div>
+            <div><dt>wheel radius, row 0</dt><dd id="radiusMetric">71.4 mm</dd></div>
+            <div><dt>ring closure residual, row 0</dt><dd id="closureMetric">0.000 mm</dd></div>
           </dl>
         </details>
 
@@ -104,7 +104,25 @@
           <dl>
             <div><dt>total cells</dt><dd id="totalCellsMetric">30</dd></div>
             <div><dt>assembly height</dt><dd id="heightMetric">100.0 mm</dd></div>
+            <div><dt>diameter range (all rows)</dt><dd><span id="minDiameterMetric">142.8</span>-<span id="maxDiameterMetric">142.8</span> mm</dd></div>
           </dl>
+        </details>
+
+        <details class="panel-section" open>
+          <summary>Per-Cell Actuation</summary>
+          <p class="hint">
+            Every cell defaults to "free": its alpha relaxes toward its neighbors' alpha through the same
+            backlash-gated coupling law as Drive, so actuating or locking one cell tugs nearby free cells by a
+            die-off distance instead of every cell being an independent input - matching the paper's coupling
+            model rather than a plain per-cell slider bank.
+          </p>
+          <dl>
+            <div><dt>actuator cells</dt><dd id="actuatorCountMetric">0</dd></div>
+            <div><dt>locked cells</dt><dd id="lockedCountMetric">0</dd></div>
+          </dl>
+          <div class="button-row">
+            <button id="clearRolesBtn" type="button">Clear All Actuators/Locks</button>
+          </div>
         </details>
 
         <details class="panel-section">
@@ -125,17 +143,35 @@
             <button id="frameCellBtn" type="button" disabled>Frame Cell</button>
             <button id="isolateCellBtn" type="button" disabled>Isolate Cell</button>
           </div>
+          <label>
+            Role
+            <select id="cellRoleSelect" disabled>
+              <option value="free" selected>free (coupled)</option>
+              <option value="actuator">actuator (commanded)</option>
+              <option value="locked">locked (frozen)</option>
+            </select>
+          </label>
+          <label>
+            Cell alpha <output id="cellAlphaOut">-</output>
+            <input id="cellAlpha" type="range" min="0.4" max="2.0" step="0.01" value="1.3" disabled />
+          </label>
           <dl>
             <div><dt>row, index</dt><dd id="selectedIndexMetric">-</dd></div>
             <div><dt>center</dt><dd id="selectedCenterMetric">-</dd></div>
             <div><dt>bottom rotation</dt><dd id="selectedBottomRotMetric">-</dd></div>
             <div><dt>top rotation</dt><dd id="selectedTopRotMetric">-</dd></div>
+            <div><dt>current alpha</dt><dd id="selectedCellAlphaMetric">-</dd></div>
           </dl>
         </details>
 
         <details class="panel-section">
           <summary>Cross Colors</summary>
           <div id="colorLegend" class="legend-grid" aria-label="Cross color legend by row"></div>
+          <div class="legend-grid" aria-label="Role marker legend">
+            <span><i class="swatch" style="background:#ffd54a"></i>Selected cell</span>
+            <span><i class="swatch" style="background:#e14b4b"></i>Actuator cell</span>
+            <span><i class="swatch" style="background:#4b7de1"></i>Locked cell</span>
+          </div>
         </details>
 
         <details class="panel-section">
@@ -154,18 +190,22 @@
             <button id="loadJsonBtn" type="button">Load JSON</button>
             <input id="loadJsonFile" type="file" accept="application/json" hidden />
           </div>
-          <p class="hint">Captures alpha, backlash, ring/row counts, axial pitch, and attachment sites.</p>
+          <p class="hint">Captures alpha, backlash, ring/row counts, axial pitch, attachment sites, and every cell's role/alpha.</p>
         </details>
 
         <p class="note">
-          Each ring closes exactly by construction (n identical single-pin joints, turn angle 2*pi/n per joint -
-          see the closure residual above), so wheel diameter is derived from cell pitch and cell count, not chosen
-          directly. Drive is the paper's <code>alpha</code> dilation factor with the reported
-          <code>theta = 70*alpha - 60</code> angle law and a backlash dead-zone around alpha=1. Material Restriction
-          checks clearance between circumferential and axial neighbor cells only (not the full n*m x n*m pair set).
-          This still reuses the row primitive's single "A-B" pin relation rather than its mirrored double-pin
-          closure, and axial row-to-row attachment is a rigid z-offset copy rather than a solved joint - both remain
-          natural next steps before this is a fabrication-level wheel model.
+          Each ring closes exactly by construction when every cell shares one alpha (n single-pin joints, turn
+          angle 2*pi/n per joint). Actuating or locking individual cells makes per-cell alpha genuinely vary, so
+          the same fixed-turn construction generally will not land back on its own start - the "ring closure
+          residual" then measures how inconsistent the per-cell commands are with a physically closed ring, which
+          the backlash-gated coupling above is what keeps small in practice. Wheel diameter is derived from cell
+          pitch and count, not chosen directly, and can now differ row to row (see the diameter range above) since
+          each row is its own ring solved from that row's own per-cell alphas. Drive is the paper's
+          <code>alpha</code> dilation factor with the reported <code>theta = 70*alpha - 60</code> angle law.
+          Material Restriction checks clearance between circumferential and axial neighbor cells only (not the
+          full n*m x n*m pair set). This still reuses the row primitive's single "A-B" pin relation rather than
+          its mirrored double-pin closure, and axial row-to-row attachment is a rigid z-offset copy rather than a
+          solved joint - both remain natural next steps before this is a fabrication-level wheel model.
         </p>
       </aside>
     </main>

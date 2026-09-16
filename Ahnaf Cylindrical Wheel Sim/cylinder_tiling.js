@@ -45,6 +45,15 @@
   const focusToggle = document.getElementById("focusToggle");
   const frameCellBtn = document.getElementById("frameCellBtn");
   const isolateCellBtn = document.getElementById("isolateCellBtn");
+  const cellRoleSelect = document.getElementById("cellRoleSelect");
+  const cellAlphaInput = document.getElementById("cellAlpha");
+  const cellAlphaOut = document.getElementById("cellAlphaOut");
+  const selectedCellAlphaMetric = document.getElementById("selectedCellAlphaMetric");
+  const actuatorCountMetric = document.getElementById("actuatorCountMetric");
+  const lockedCountMetric = document.getElementById("lockedCountMetric");
+  const clearRolesBtn = document.getElementById("clearRolesBtn");
+  const minDiameterMetric = document.getElementById("minDiameterMetric");
+  const maxDiameterMetric = document.getElementById("maxDiameterMetric");
 
   const CAD = Object.freeze({
     cellWidthMm: 55.604331,
@@ -122,6 +131,8 @@
   const sharedMaterials = {
     edge: new THREE.LineBasicMaterial({ color: 0x121820, transparent: true, opacity: 0.52 }),
     hole: new THREE.MeshStandardMaterial({ color: 0x15191f, roughness: 0.72, metalness: 0.03 }),
+    actuatorMarker: new THREE.MeshStandardMaterial({ color: 0xe14b4b, emissive: 0x5a1414, roughness: 0.3 }),
+    lockedMarker: new THREE.MeshStandardMaterial({ color: 0x4b7de1, emissive: 0x142a5a, roughness: 0.3 }),
   };
 
   // Row cross-color palette, cycled if there are more rows than palette entries.
@@ -272,14 +283,20 @@
   // (circumferential ring neighbors and axial row neighbors), not every
   // n*m x n*m pair - non-adjacent cells sit far apart at typical ring
   // radii, and this keeps the check O(n*m) instead of O((n*m)^2).
-  function checkNeighborClearance(n, m, ring, axialPitch, aTopRad) {
+  function checkNeighborClearance(n, m, rings, axialPitch, thetaPerRow) {
     function bodiesForCell(row, i) {
-      const center = ring.centers[i];
+      const center = rings[row].centers[i];
       const z = row * axialPitch;
       const origin2 = new THREE.Vector2(center.x, center.y);
       return [
-        { cell: `${row}-${i}-lower`, origin: origin2, rotation: ring.bottomRot[i], zMin: z - CAD.bodyThicknessMm, zMax: z },
-        { cell: `${row}-${i}-upper`, origin: origin2, rotation: ring.bottomRot[i] + aTopRad, zMin: z, zMax: z + CAD.bodyThicknessMm },
+        { cell: `${row}-${i}-lower`, origin: origin2, rotation: rings[row].bottomRot[i], zMin: z - CAD.bodyThicknessMm, zMax: z },
+        {
+          cell: `${row}-${i}-upper`,
+          origin: origin2,
+          rotation: rings[row].bottomRot[i] + thetaPerRow[row][i],
+          zMin: z,
+          zMax: z + CAD.bodyThicknessMm,
+        },
       ];
     }
 
@@ -407,6 +424,7 @@
     cellPool.forEach((cell) => {
       scene.remove(cell.group);
       disposeGroup(cell.group);
+      if (cell.roleMarker) scene.remove(cell.roleMarker);
     });
     cellPool = [];
     for (let row = 0; row < m; row += 1) {
@@ -414,6 +432,10 @@
       for (let i = 0; i < n; i += 1) {
         const cell = createCell(`ring${row}-cell${i}`, mats.top, mats.bottom);
         scene.add(cell.group);
+        const roleMarker = cylinderZ(2.6, CAD.bodyThicknessMm * 2.6, sharedMaterials.actuatorMarker, 20);
+        roleMarker.visible = false;
+        scene.add(roleMarker);
+        cell.roleMarker = roleMarker;
         cellPool.push(cell);
       }
     }
@@ -436,29 +458,40 @@
     }
   }
 
-  // Close n identical single-pin joints into a ring: cell i's upper-cross hole
-  // (aSite, at absolute rotation bottomRot[i] + aTopRad) meets cell i+1's
+  // Close n single-pin joints into a ring: cell i's upper-cross hole (aSite,
+  // at absolute rotation bottomRot[i] + thetaPerCell[i]) meets cell i+1's
   // lower-cross hole (bSite, at absolute rotation bottomRot[i+1]), where each
-  // step turns by 2*pi/n. This is the same forward relation
-  // two_cell_attachment.js uses for its A-B pin (aAttachWorld - bAttachOffset),
-  // just walked n times with a fixed turn increment instead of laid flat -
-  // a regular n-gon closes exactly by construction, which the residual below verifies.
-  function buildRing(n, aTopRad) {
+  // step turns by a fixed 2*pi/n regardless of thetaPerCell. This is the same
+  // forward relation two_cell_attachment.js uses for its A-B pin
+  // (aAttachWorld - bAttachOffset), just walked n times with a fixed turn
+  // increment instead of laid flat.
+  //
+  // When every thetaPerCell[i] is equal this is an exact regular n-gon (the
+  // classic turtle-graphics closure: identical local steps + a turn summing
+  // to 2*pi always return to the start) - closureResidual is ~0. When cells
+  // differ, the fixed-turn construction still walks all the way around
+  // (heading always returns to 0 after n steps), but the *chord lengths*
+  // differ per joint, so the loop generally will not land back exactly on
+  // its own start - closureResidual becomes a genuine, meaningful measure of
+  // how inconsistent the per-cell commands are with a physically closed
+  // ring, the same way real backlash/compliance would have to absorb that
+  // mismatch in hardware.
+  function buildRing(n, thetaPerCell) {
     const aAttachLocal = SITE_VECTORS[aSiteInput.value] || SITE_VECTORS.east;
     const bAttachLocal = SITE_VECTORS[bSiteInput.value] || SITE_VECTORS.west;
     const turn = (2 * Math.PI) / n;
     const centers = [new THREE.Vector2(0, 0)];
     const bottomRot = [0];
     let heading = 0;
-    let pitch = 0;
+    let pitchSum = 0;
     let closureResidual = 0;
     for (let i = 0; i < n; i += 1) {
-      const aAttachWorld = rotate2(aAttachLocal, heading + aTopRad);
+      const aAttachWorld = rotate2(aAttachLocal, heading + thetaPerCell[i]);
       heading += turn;
       const bAttachWorld = rotate2(bAttachLocal, heading);
       const step = aAttachWorld.clone().sub(bAttachWorld);
       const nextCenter = centers[i].clone().add(step);
-      if (i === 0) pitch = step.length();
+      pitchSum += step.length();
       if (i < n - 1) {
         centers.push(nextCenter);
         bottomRot.push(heading);
@@ -472,7 +505,67 @@
       radius += c.distanceTo(centroid);
     });
     radius /= n;
-    return { centers, bottomRot, pitch, closureResidual, radius, diameter: 2 * radius };
+    return { centers, bottomRot, pitch: pitchSum / n, closureResidual, radius, diameter: 2 * radius };
+  }
+
+  // --- Per-cell actuation: each cell is "free" (tracks a backlash-gated
+  // relaxation toward its neighbors' alpha), "actuator" (a directly
+  // commanded alpha), or "locked" (frozen at whatever alpha it had when
+  // locked). This is the discrete analogue of the paper's coupling law
+  // (docs/research_grounding.md) applied over the ring/cylinder's actual
+  // neighbor graph (circumferential + axial) instead of only around a
+  // single global reference - actuating one cell should tug its neighbors
+  // by die-off distance, gated by the same backlash gap, rather than every
+  // cell being an independent free input.
+  let cellRoles = [];
+  let rolesN = -1;
+  let rolesM = -1;
+
+  function ensureRoles(n, m) {
+    if (n === rolesN && m === rolesM) return;
+    cellRoles = [];
+    for (let row = 0; row < m; row += 1) {
+      const r = [];
+      for (let i = 0; i < n; i += 1) r.push({ role: "free", alpha: ALPHA_REFERENCE });
+      cellRoles.push(r);
+    }
+    rolesN = n;
+    rolesM = m;
+  }
+
+  function isFixedCell(row, i) {
+    return cellRoles[row][i].role !== "free";
+  }
+
+  const PROPAGATION_ITERATIONS = 24;
+
+  function computeCellAlphas(n, m, baselineAlpha, backlash) {
+    let alphas = [];
+    for (let row = 0; row < m; row += 1) alphas.push(new Array(n).fill(baselineAlpha));
+    for (let row = 0; row < m; row += 1) {
+      for (let i = 0; i < n; i += 1) {
+        if (isFixedCell(row, i)) alphas[row][i] = cellRoles[row][i].alpha;
+      }
+    }
+    for (let iter = 0; iter < PROPAGATION_ITERATIONS; iter += 1) {
+      const next = alphas.map((r) => r.slice());
+      for (let row = 0; row < m; row += 1) {
+        for (let i = 0; i < n; i += 1) {
+          if (isFixedCell(row, i)) continue;
+          const neighbors = [alphas[row][(i - 1 + n) % n], alphas[row][(i + 1) % n]];
+          if (row > 0) neighbors.push(alphas[row - 1][i]);
+          if (row < m - 1) neighbors.push(alphas[row + 1][i]);
+          const avg = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
+          next[row][i] = alphas[row][i] + reluDeadzone(avg - alphas[row][i], backlash);
+        }
+      }
+      alphas = next;
+    }
+    return alphas;
+  }
+
+  function cellThetaDeg(alphaValue) {
+    return clamp(alphaToThetaDeg(alphaValue), THETA_SAFETY_MIN_DEG, THETA_SAFETY_MAX_DEG);
   }
 
   function addAxisLine(points, color) {
@@ -527,6 +620,8 @@
   let selected = null; // { row, i }
   let isolateActive = false;
   const selectedWorld = new THREE.Vector3();
+  let lastCellAlphas = null;
+  let lastCellRolesSnapshot = null;
 
   function updateCamera() {
     const r = cameraState.radius;
@@ -577,9 +672,8 @@
       alphaInput.value = String(alphaCommand);
     }
     const backlash = Number(backlashInput.value);
-    const alphaEffective = ALPHA_REFERENCE + reluDeadzone(alphaCommand - ALPHA_REFERENCE, backlash);
-    const thetaDeg = clamp(alphaToThetaDeg(alphaEffective), THETA_SAFETY_MIN_DEG, THETA_SAFETY_MAX_DEG);
-    const aTopRad = degToRad(thetaDeg);
+    const baselineAlpha = ALPHA_REFERENCE + reluDeadzone(alphaCommand - ALPHA_REFERENCE, backlash);
+    const baselineThetaDeg = cellThetaDeg(baselineAlpha);
     const inDeadzone = Math.abs(alphaCommand - ALPHA_REFERENCE) <= backlash;
 
     if (n !== poolN || m !== poolM) {
@@ -589,25 +683,39 @@
         selected = null;
       }
     }
+    ensureRoles(n, m);
 
-    const ring = buildRing(n, aTopRad);
+    const cellAlphas = computeCellAlphas(n, m, baselineAlpha, backlash);
+    lastCellAlphas = cellAlphas;
+    lastCellRolesSnapshot = cellRoles;
+    const thetaPerRow = cellAlphas.map((row) => row.map((a) => degToRad(cellThetaDeg(a))));
+    const rings = [];
+    for (let row = 0; row < m; row += 1) rings.push(buildRing(n, thetaPerRow[row]));
 
     for (let row = 0; row < m; row += 1) {
       const z = row * axialPitch;
       for (let i = 0; i < n; i += 1) {
         const cell = cellPool[row * n + i];
-        const center = ring.centers[i];
+        const center = rings[row].centers[i];
         cell.group.position.set(center.x, center.y, z);
-        cell.bottom.rotation.z = ring.bottomRot[i];
-        cell.top.rotation.z = ring.bottomRot[i] + aTopRad;
+        cell.bottom.rotation.z = rings[row].bottomRot[i];
+        cell.top.rotation.z = rings[row].bottomRot[i] + thetaPerRow[row][i];
+        const role = cellRoles[row][i].role;
+        if (role === "free") {
+          cell.roleMarker.visible = false;
+        } else {
+          cell.roleMarker.visible = true;
+          cell.roleMarker.material = role === "actuator" ? sharedMaterials.actuatorMarker : sharedMaterials.lockedMarker;
+          cell.roleMarker.position.set(center.x, center.y, z);
+        }
       }
     }
 
     alphaOut.textContent = alphaCommand.toFixed(2);
     backlashOut.textContent = backlash.toFixed(2);
     alphaCommandMetric.textContent = alphaCommand.toFixed(2);
-    alphaEffectiveMetric.textContent = alphaEffective.toFixed(2);
-    thetaMetric.textContent = `${thetaDeg.toFixed(1)} deg`;
+    alphaEffectiveMetric.textContent = baselineAlpha.toFixed(2);
+    thetaMetric.textContent = `${baselineThetaDeg.toFixed(1)} deg`;
     deadzoneState.textContent = inDeadzone ? "free (dead zone)" : "engaged";
     deadzoneState.classList.toggle("status-adjusted", inDeadzone);
     deadzoneState.classList.toggle("status-ok", !inDeadzone);
@@ -615,16 +723,36 @@
     ringCountOut.textContent = String(n);
     rowCountOut.textContent = String(m);
     axialPitchOut.textContent = `${axialPitch.toFixed(0)} mm`;
-    pitchMetric.textContent = `${ring.pitch.toFixed(1)} mm`;
+    pitchMetric.textContent = `${rings[0].pitch.toFixed(1)} mm`;
     turnMetric.textContent = `${radToDeg((2 * Math.PI) / n).toFixed(1)} deg`;
-    diameterMetric.textContent = `${ring.diameter.toFixed(1)} mm`;
-    radiusMetric.textContent = `${ring.radius.toFixed(1)} mm`;
-    closureMetric.textContent = `${ring.closureResidual.toFixed(4)} mm`;
+    diameterMetric.textContent = `${rings[0].diameter.toFixed(1)} mm`;
+    radiusMetric.textContent = `${rings[0].radius.toFixed(1)} mm`;
+    closureMetric.textContent = `${rings[0].closureResidual.toFixed(4)} mm`;
     totalCellsMetric.textContent = String(n * m);
     heightMetric.textContent = `${((m - 1) * axialPitch).toFixed(1)} mm`;
 
+    let minDiameter = Infinity;
+    let maxDiameter = -Infinity;
+    rings.forEach((r) => {
+      minDiameter = Math.min(minDiameter, r.diameter);
+      maxDiameter = Math.max(maxDiameter, r.diameter);
+    });
+    minDiameterMetric.textContent = minDiameter.toFixed(1);
+    maxDiameterMetric.textContent = maxDiameter.toFixed(1);
+
+    let actuatorCount = 0;
+    let lockedCount = 0;
+    for (let row = 0; row < m; row += 1) {
+      for (let i = 0; i < n; i += 1) {
+        if (cellRoles[row][i].role === "actuator") actuatorCount += 1;
+        else if (cellRoles[row][i].role === "locked") lockedCount += 1;
+      }
+    }
+    actuatorCountMetric.textContent = String(actuatorCount);
+    lockedCountMetric.textContent = String(lockedCount);
+
     if (collisionEnabledInput.checked) {
-      const report = checkNeighborClearance(n, m, ring, axialPitch, aTopRad);
+      const report = checkNeighborClearance(n, m, rings, axialPitch, thetaPerRow);
       collisionState.textContent = report.clear ? "clear" : "blocked";
       collisionState.classList.toggle("status-ok", report.clear);
       collisionState.classList.toggle("status-blocked", !report.clear);
@@ -640,19 +768,30 @@
     }
 
     if (selected && selected.row < m && selected.i < n) {
-      const center = ring.centers[selected.i];
-      const z = selected.row * axialPitch;
+      const row = selected.row;
+      const i = selected.i;
+      const center = rings[row].centers[i];
+      const z = row * axialPitch;
       selectionMarker.visible = true;
-      selectionMarker.position.set(center.x, center.y, z);
+      selectionMarker.position.set(center.x, center.y, z + 0.01);
       selectedWorld.set(center.x, center.y, z);
-      selectedCellStatus.textContent = `row ${selected.row}, cell ${selected.i}`;
+      selectedCellStatus.textContent = `row ${row}, cell ${i}`;
       selectedCellStatus.classList.add("status-ok");
-      selectedIndexMetric.textContent = `${selected.row}, ${selected.i}`;
+      selectedIndexMetric.textContent = `${row}, ${i}`;
       selectedCenterMetric.textContent = `(${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${z.toFixed(1)})`;
-      selectedBottomRotMetric.textContent = `${radToDeg(ring.bottomRot[selected.i]).toFixed(1)} deg`;
-      selectedTopRotMetric.textContent = `${radToDeg(ring.bottomRot[selected.i] + aTopRad).toFixed(1)} deg`;
+      selectedBottomRotMetric.textContent = `${radToDeg(rings[row].bottomRot[i]).toFixed(1)} deg`;
+      selectedTopRotMetric.textContent = `${radToDeg(rings[row].bottomRot[i] + thetaPerRow[row][i]).toFixed(1)} deg`;
+      selectedCellAlphaMetric.textContent = cellAlphas[row][i].toFixed(2);
       frameCellBtn.disabled = false;
       isolateCellBtn.disabled = false;
+      cellRoleSelect.disabled = false;
+      const role = cellRoles[row][i].role;
+      if (document.activeElement !== cellRoleSelect) cellRoleSelect.value = role;
+      cellAlphaInput.disabled = role === "free";
+      if (document.activeElement !== cellAlphaInput) {
+        cellAlphaInput.value = String(cellAlphas[row][i]);
+      }
+      cellAlphaOut.textContent = cellAlphas[row][i].toFixed(2);
     } else {
       selectionMarker.visible = false;
       selectedCellStatus.textContent = "no cell selected";
@@ -661,8 +800,12 @@
       selectedCenterMetric.textContent = "-";
       selectedBottomRotMetric.textContent = "-";
       selectedTopRotMetric.textContent = "-";
+      selectedCellAlphaMetric.textContent = "-";
       frameCellBtn.disabled = true;
       isolateCellBtn.disabled = true;
+      cellRoleSelect.disabled = true;
+      cellAlphaInput.disabled = true;
+      cellAlphaOut.textContent = "-";
       if (isolateActive) {
         isolateActive = false;
         isolateCellBtn.textContent = "Isolate Cell";
@@ -672,7 +815,9 @@
     for (let row = 0; row < m; row += 1) {
       for (let i = 0; i < n; i += 1) {
         const cell = cellPool[row * n + i];
-        cell.group.visible = !isolateActive || (selected && row === selected.row && i === selected.i);
+        const visible = !isolateActive || (selected && row === selected.row && i === selected.i);
+        cell.group.visible = visible;
+        cell.roleMarker.visible = visible && cellRoles[row][i].role !== "free";
       }
     }
     grid.visible = !isolateActive;
@@ -792,6 +937,37 @@
     isolateActive = !isolateActive;
     isolateCellBtn.textContent = isolateActive ? "Show Lattice" : "Isolate Cell";
   });
+
+  cellRoleSelect.addEventListener("change", () => {
+    if (!selected) return;
+    const { row, i } = selected;
+    const newRole = cellRoleSelect.value;
+    if (newRole !== "free" && cellRoles[row][i].role === "free") {
+      // Seed the actuator/lock value from the cell's last computed alpha so
+      // switching roles doesn't cause a visible jump in the mechanism.
+      cellRoles[row][i].alpha = clamp(Number(cellAlphaInput.value) || ALPHA_REFERENCE, ALPHA_MIN, ALPHA_MAX);
+    }
+    cellRoles[row][i].role = newRole;
+    updateMechanism();
+  });
+
+  cellAlphaInput.addEventListener("input", () => {
+    if (!selected) return;
+    const { row, i } = selected;
+    if (cellRoles[row][i].role === "free") return;
+    cellRoles[row][i].alpha = clamp(Number(cellAlphaInput.value), ALPHA_MIN, ALPHA_MAX);
+    updateMechanism();
+  });
+
+  clearRolesBtn.addEventListener("click", () => {
+    for (let row = 0; row < cellRoles.length; row += 1) {
+      for (let i = 0; i < cellRoles[row].length; i += 1) {
+        cellRoles[row][i] = { role: "free", alpha: ALPHA_REFERENCE };
+      }
+    }
+    updateMechanism();
+  });
+
   [
     alphaInput,
     backlashInput,
@@ -819,6 +995,7 @@
       axialPitch: Number(axialPitchInput.value),
       aSite: aSiteInput.value,
       bSite: bSiteInput.value,
+      cellRoles,
     };
   }
 
@@ -831,6 +1008,23 @@
     if (Number.isFinite(state.axialPitch)) axialPitchInput.value = String(clamp(state.axialPitch, Number(axialPitchInput.min), Number(axialPitchInput.max)));
     if (state.aSite && SITE_VECTORS[state.aSite]) aSiteInput.value = state.aSite;
     if (state.bSite && SITE_VECTORS[state.bSite]) bSiteInput.value = state.bSite;
+
+    const n = clamp(Math.round(Number(ringCountInput.value)), RING_COUNT_MIN, RING_COUNT_MAX);
+    const m = clamp(Math.round(Number(rowCountInput.value)), ROW_COUNT_MIN, ROW_COUNT_MAX);
+    ensureRoles(n, m);
+    if (Array.isArray(state.cellRoles)) {
+      for (let row = 0; row < m && row < state.cellRoles.length; row += 1) {
+        const savedRow = state.cellRoles[row];
+        if (!Array.isArray(savedRow)) continue;
+        for (let i = 0; i < n && i < savedRow.length; i += 1) {
+          const savedCell = savedRow[i];
+          if (!savedCell || typeof savedCell !== "object") continue;
+          const role = ["free", "actuator", "locked"].includes(savedCell.role) ? savedCell.role : "free";
+          const alphaValue = Number.isFinite(savedCell.alpha) ? clamp(savedCell.alpha, ALPHA_MIN, ALPHA_MAX) : ALPHA_REFERENCE;
+          cellRoles[row][i] = { role, alpha: alphaValue };
+        }
+      }
+    }
     updateMechanism();
   }
 
@@ -865,6 +1059,16 @@
   new ResizeObserver(resize).observe(mount);
   resize();
   setView("iso");
+
+  // Minimal read-only hook for automated testing: the per-cell alpha grid
+  // isn't otherwise DOM-observable, and guessing screen coordinates to
+  // click a specific (row, i) cell is fragile across camera angles/
+  // viewports. Exposes no way to mutate simulator state.
+  window.__cylinderTilingDebug = {
+    getCellAlphas: () => lastCellAlphas,
+    getCellRoles: () => lastCellRolesSnapshot,
+    getSelected: () => selected,
+  };
 
   function render(timeMs) {
     resize();
