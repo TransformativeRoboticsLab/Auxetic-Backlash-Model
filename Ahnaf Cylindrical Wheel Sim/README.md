@@ -100,6 +100,11 @@ python -m http.server 8000
   it), Isolate Cell (hide everything else), or edit its role/alpha directly
   from the Selected Cell panel. Focus hides the control panel for a clean
   view.
+- **Alpha heatmap**: an optional toggle (Cross Colors panel) that colors
+  each cell by its own current alpha (blue=contracted, gray=neutral,
+  red=expanded) instead of the fixed row palette, so coupling propagation
+  from an actuator and per-row diameter differences are visible at a
+  glance.
 - **Timeline**: capture named keyframes (full state snapshots - alpha,
   backlash, ring/row counts, axial pitch, attachment sites, and every
   cell's role/alpha), jump between them, or play through them as discrete
