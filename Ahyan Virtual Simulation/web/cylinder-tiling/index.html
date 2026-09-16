@@ -28,17 +28,38 @@
           <button type="button" data-view="front" aria-pressed="false">Front</button>
           <button type="button" data-view="side" aria-pressed="false">Side</button>
           <button id="resetView" type="button">Reset</button>
+          <span class="spacer"></span>
+          <span id="selectedCellStatus" class="hud-chip">no cell selected</span>
         </div>
       </section>
 
       <aside class="control-panel" aria-label="Cylinder tiling controls">
         <section>
-          <h2>Drive</h2>
+          <h2>Drive (alpha)</h2>
           <label>
-            Uniform rotational actuation <output id="aTopOut">30 deg</output>
-            <input id="aTopAngle" type="range" min="-80" max="80" step="1" value="30" />
+            Dilation alpha <output id="alphaOut">1.30</output>
+            <input id="alpha" type="range" min="0.4" max="2.0" step="0.01" value="1.3" />
           </label>
           <label class="toggle"><input id="animate" type="checkbox" /> Animate drive</label>
+          <dl>
+            <div><dt>commanded alpha</dt><dd id="alphaCommandMetric">1.30</dd></div>
+            <div><dt>effective alpha</dt><dd id="alphaEffectiveMetric">1.20</dd></div>
+            <div><dt>theta (70*alpha-60)</dt><dd id="thetaMetric">24.0 deg</dd></div>
+            <div><dt>coupling state</dt><dd id="deadzoneState" class="status-ok">engaged</dd></div>
+          </dl>
+        </section>
+
+        <section>
+          <h2>Backlash</h2>
+          <label>
+            Normalized gap b/L <output id="backlashOut">0.10</output>
+            <input id="backlash" type="range" min="0" max="0.3" step="0.01" value="0.1" />
+          </label>
+          <p class="hint">
+            Dead-zone applied around alpha=1 (reference/undilated cell) using the paper's
+            <code>f(x) = max(0, x-b) + min(x+b, 0)</code> coupling law: commanded alpha inside the gap produces no
+            motion, so <code>effective alpha</code> and <code>theta</code> stay pinned until the command clears it.
+          </p>
         </section>
 
         <section>
@@ -91,6 +112,28 @@
         </section>
 
         <section>
+          <h2>Material Restriction</h2>
+          <label class="toggle"><input id="collisionEnabled" type="checkbox" checked /> Check neighbor clearance</label>
+          <dl>
+            <div><dt>guard</dt><dd id="collisionState" class="status-ok">clear</dd></div>
+            <div><dt>max penetration</dt><dd id="penetrationMetric">0.000 mm</dd></div>
+            <div><dt>minimum clearance</dt><dd id="clearanceMetric">0.000 mm</dd></div>
+            <div><dt>pairs checked</dt><dd id="pairsCheckedMetric">0</dd></div>
+          </dl>
+        </section>
+
+        <section>
+          <h2>Selected Cell</h2>
+          <p class="hint">Click a cell in the 3D view to inspect it.</p>
+          <dl>
+            <div><dt>row, index</dt><dd id="selectedIndexMetric">-</dd></div>
+            <div><dt>center</dt><dd id="selectedCenterMetric">-</dd></div>
+            <div><dt>bottom rotation</dt><dd id="selectedBottomRotMetric">-</dd></div>
+            <div><dt>top rotation</dt><dd id="selectedTopRotMetric">-</dd></div>
+          </dl>
+        </section>
+
+        <section>
           <h2>Cross Colors</h2>
           <div id="colorLegend" class="legend-grid" aria-label="Cross color legend by row"></div>
         </section>
@@ -104,14 +147,25 @@
           </dl>
         </section>
 
+        <section>
+          <h2>Save / Load</h2>
+          <div class="button-row">
+            <button id="saveJsonBtn" type="button">Save JSON</button>
+            <button id="loadJsonBtn" type="button">Load JSON</button>
+            <input id="loadJsonFile" type="file" accept="application/json" hidden />
+          </div>
+          <p class="hint">Captures alpha, backlash, ring/row counts, axial pitch, and attachment sites.</p>
+        </section>
+
         <p class="note">
-          This is a first-pass ring/cylinder primitive: each ring closes exactly by construction (n identical
-          single-pin joints, turn angle 2*pi/n per joint - see the closure residual above), so the wheel diameter
-          is derived from cell pitch and cell count, not chosen directly. It reuses the row primitive's single "A-B"
-          pin relation only; it does not yet include the row's second mirrored pin, backlash dead-zone, or
-          collision/clearance checking, and axial row-to-row attachment is a rigid z-offset copy rather than a
-          solved joint. Extending those (double-pin joints, backlash-gated dilation limits, axial attach kinematics)
-          is the natural next step before this becomes a fabrication-level wheel model.
+          Each ring closes exactly by construction (n identical single-pin joints, turn angle 2*pi/n per joint -
+          see the closure residual above), so wheel diameter is derived from cell pitch and cell count, not chosen
+          directly. Drive is the paper's <code>alpha</code> dilation factor with the reported
+          <code>theta = 70*alpha - 60</code> angle law and a backlash dead-zone around alpha=1. Material Restriction
+          checks clearance between circumferential and axial neighbor cells only (not the full n*m x n*m pair set).
+          This still reuses the row primitive's single "A-B" pin relation rather than its mirrored double-pin
+          closure, and axial row-to-row attachment is a rigid z-offset copy rather than a solved joint - both remain
+          natural next steps before this is a fabrication-level wheel model.
         </p>
       </aside>
     </main>

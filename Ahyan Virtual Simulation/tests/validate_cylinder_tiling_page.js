@@ -30,9 +30,14 @@ async function launchBrowser() {
 
 async function readMetrics(page) {
   return page.evaluate(() => ({
-    aTop: document.getElementById("aTopAngle").value,
+    alpha: document.getElementById("alpha").value,
+    backlash: document.getElementById("backlash").value,
     ringCount: document.getElementById("ringCount").value,
     rowCount: document.getElementById("rowCount").value,
+    alphaCommand: document.getElementById("alphaCommandMetric").textContent,
+    alphaEffective: document.getElementById("alphaEffectiveMetric").textContent,
+    theta: document.getElementById("thetaMetric").textContent,
+    deadzone: document.getElementById("deadzoneState").textContent,
     pitch: document.getElementById("pitchMetric").textContent,
     turn: document.getElementById("turnMetric").textContent,
     diameter: document.getElementById("diameterMetric").textContent,
@@ -40,6 +45,11 @@ async function readMetrics(page) {
     closure: document.getElementById("closureMetric").textContent,
     totalCells: document.getElementById("totalCellsMetric").textContent,
     height: document.getElementById("heightMetric").textContent,
+    collisionState: document.getElementById("collisionState").textContent,
+    penetration: document.getElementById("penetrationMetric").textContent,
+    clearance: document.getElementById("clearanceMetric").textContent,
+    pairsChecked: document.getElementById("pairsCheckedMetric").textContent,
+    selectedStatus: document.getElementById("selectedCellStatus").textContent,
   }));
 }
 
@@ -74,6 +84,14 @@ async function checkViewport(browser, name, viewport) {
   assert.strictEqual(defaults.ringCount, "10", `${name} default ring count should be 10`);
   assert.strictEqual(defaults.rowCount, "3", `${name} default row count should be 3`);
   assert.strictEqual(defaults.totalCells, "30", `${name} default total cells should be n*m`);
+  assert.strictEqual(defaults.alpha, "1.3", `${name} default alpha should be 1.3`);
+  assert.strictEqual(defaults.alphaCommand, "1.30", `${name} commanded alpha readout should mirror the slider`);
+  // Dead-zone shifts the engaged effective alpha down by the gap width:
+  // effective = 1.0 + reluDeadzone(alpha-1.0, backlash) = 1.0 + (0.3-0.1) = 1.2
+  assert.strictEqual(defaults.alphaEffective, "1.20", `${name} at backlash=0.1 and |alpha-1|=0.3>0.1, effective alpha should be shifted by the gap width to 1.20`);
+  assert.strictEqual(defaults.deadzone, "engaged", `${name} default alpha=1.3 should be outside the b=0.1 dead zone around 1.0`);
+  const theta = Number(defaults.theta.replace(/ ?deg$/, ""));
+  assert.ok(Math.abs(theta - (70 * 1.2 - 60)) <= 0.05, `${name} theta should follow theta = 70*effectiveAlpha - 60`);
   assert.ok(Math.abs(mmValue(defaults.closure)) <= 0.01, `${name} default ring closure residual should be ~0`);
   const defaultDiameter = mmValue(defaults.diameter);
   const defaultRadius = mmValue(defaults.radius);
@@ -84,21 +102,46 @@ async function checkViewport(browser, name, viewport) {
   const defaultHeight = mmValue(defaults.height);
   assert.ok(Math.abs(defaultHeight - 2 * 50) <= 0.5, `${name} default assembly height should be (m-1)*axialPitch`);
 
-  // Sweep the drive angle across its full range; the ring should stay closed at every setting.
+  // Backlash dead-zone: alpha exactly at the reference (1.0) with a nonzero
+  // gap should read as "free (dead zone)" and pin theta at 70*1-60=10deg.
+  const deadzoned = await page.evaluate(() => {
+    document.getElementById("alpha").value = "1.0";
+    document.getElementById("alpha").dispatchEvent(new Event("input", { bubbles: true }));
+    return {
+      deadzone: document.getElementById("deadzoneState").textContent,
+      theta: document.getElementById("thetaMetric").textContent,
+      alphaEffective: document.getElementById("alphaEffectiveMetric").textContent,
+    };
+  });
+  assert.strictEqual(deadzoned.deadzone, "free (dead zone)", `${name} alpha=1.0 (the reference) should sit inside the backlash dead zone`);
+  assert.strictEqual(deadzoned.alphaEffective, "1.00", `${name} effective alpha inside the dead zone should stay at the reference`);
+  const deadzonedTheta = Number(deadzoned.theta.replace(/ ?deg$/, ""));
+  assert.ok(Math.abs(deadzonedTheta - 10) <= 0.05, `${name} theta at the dead-zone reference should be 70*1-60=10deg`);
+  await page.evaluate(() => {
+    document.getElementById("alpha").value = "1.3";
+    document.getElementById("alpha").dispatchEvent(new Event("input", { bubbles: true }));
+  });
+
+  // Sweep alpha across its full range; the ring should stay closed at every setting.
   for (const which of ["min", "max"]) {
     const swept = await page.evaluate((minOrMax) => {
-      const input = document.getElementById("aTopAngle");
+      const input = document.getElementById("alpha");
       input.value = input[minOrMax];
       input.dispatchEvent(new Event("input", { bubbles: true }));
       return document.getElementById("closureMetric").textContent;
     }, which);
-    assert.ok(Math.abs(mmValue(swept)) <= 0.01, `${name} ring closure residual should stay ~0 at drive ${which}`);
+    assert.ok(Math.abs(mmValue(swept)) <= 0.01, `${name} ring closure residual should stay ~0 at alpha ${which}`);
   }
   await page.evaluate((value) => {
-    const input = document.getElementById("aTopAngle");
+    const input = document.getElementById("alpha");
     input.value = value;
     input.dispatchEvent(new Event("input", { bubbles: true }));
-  }, defaults.aTop);
+  }, defaults.alpha);
+
+  // Material clearance guard should be reporting something sane at defaults.
+  assert.notStrictEqual(defaults.collisionState, "not checked", `${name} clearance checking should be on by default`);
+  assert.ok(defaults.clearance.endsWith("mm"), `${name} should report minimum clearance`);
+  assert.ok(Number(defaults.pairsChecked) > 0, `${name} should report a positive number of clearance pairs checked`);
 
   // Resize the ring (n) and stack (m); pool should rebuild and stay closed.
   const resized = await page.evaluate(() => {
@@ -129,6 +172,40 @@ async function checkViewport(browser, name, viewport) {
     document.getElementById("rowCount").dispatchEvent(new Event("input", { bubbles: true }));
   }, defaults);
   await page.waitForTimeout(50);
+
+  // Cell selection: click near the center of the viewport (where a cell should be under the default iso view).
+  const selection = await page.evaluate(() => {
+    const rect = document.querySelector("#threeMount canvas").getBoundingClientRect();
+    return { x: rect.left + rect.width * 0.5, y: rect.top + rect.height * 0.5 };
+  });
+  await page.mouse.click(selection.x, selection.y);
+  await page.waitForTimeout(100);
+  const afterClick = await readMetrics(page);
+  assert.notStrictEqual(afterClick.selectedStatus, "no cell selected", `${name} clicking near a cell should select it`);
+
+  // Save/Load JSON: round-trip a changed alpha through a downloaded file.
+  const downloadPromise = page.waitForEvent("download");
+  await page.evaluate(() => {
+    document.getElementById("alpha").value = "1.7";
+    document.getElementById("alpha").dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.click("#saveJsonBtn");
+  const download = await downloadPromise;
+  const savedPath = path.join(root, `cylinder-tiling-${name}-saved.json`);
+  await download.saveAs(savedPath);
+  const saved = require(savedPath);
+  assert.strictEqual(saved.format, "rad-cylinder-tiling.v1", `${name} saved JSON should carry the expected format tag`);
+  assert.strictEqual(saved.alpha, 1.7, `${name} saved JSON should capture the current alpha`);
+
+  await page.evaluate(() => {
+    document.getElementById("alpha").value = "0.4";
+    document.getElementById("alpha").dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const [fileChooser] = await Promise.all([page.waitForEvent("filechooser"), page.click("#loadJsonBtn")]);
+  await fileChooser.setFiles(savedPath);
+  await page.waitForTimeout(100);
+  const loadedAlpha = await page.evaluate(() => document.getElementById("alpha").value);
+  assert.strictEqual(loadedAlpha, "1.7", `${name} loading the saved JSON should restore alpha=1.7`);
 
   assert.deepStrictEqual(errors, [], `${name} should not emit browser errors`);
 
