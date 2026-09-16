@@ -82,6 +82,16 @@ python -m http.server 8000
   from that row's own per-cell alphas, so rows can end up at different
   diameters (barrel/cone profiles) instead of always stacking as a true
   cylinder.
+- **Differential dilation (batch selection + shape presets)**: the whole
+  structure does not have to dilate uniformly. Shift-click any number of
+  cells in the 3D view to build a batch selection (shown with a green ring
+  marker, independent of the single-cell inspector below), then set a role
+  and alpha in the Per-Cell Actuation panel and apply it to every selected
+  cell at once - this is the direct "select individual cells to expand/
+  contract independently" workflow. For a faster demo, the three Shape
+  Preset buttons (Barrel, Cone, Saddle) command a different alpha per row in
+  one click, producing an immediately visible non-uniform wheel profile
+  without clicking every cell by hand.
 - **Target Diameter fit**: diameter isn't monotonic in alpha (it rises then
   falls as cells over-rotate past their most-open pose), so "Fit Alpha"
   exhaustively evaluates every alpha the slider can reach and keeps
@@ -174,7 +184,10 @@ and per-cell-actuated cases), the paper angle law, the backlash dead-zone,
 neighbor clearance reporting, cell picking, Frame/Isolate/Focus behavior,
 per-cell actuator/lock roles and their coupling propagation to a neighbor
 (read through a minimal `window.__cylinderTilingDebug` hook rather than
-guessing screen coordinates across camera angles), Target Diameter fitting
+guessing screen coordinates across camera angles), shift-click batch
+selection and applying a role/alpha to every selected cell at once, the
+Shape Preset buttons producing a genuinely non-uniform per-row alpha
+pattern, Target Diameter fitting
 (including that the reported achieved diameter matches what's actually
 rendered), Timeline capture/jump/play/save/load, and a Save/Load JSON
 round-trip - then screenshots the rendered cells and checks their colors.

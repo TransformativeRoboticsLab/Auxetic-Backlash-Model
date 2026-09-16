@@ -216,6 +216,16 @@ async function checkViewport(browser, name, viewport) {
   });
   await page.mouse.click(selection.x, selection.y);
   await page.waitForTimeout(100);
+  async function shiftClickSelection() {
+    // Locator.click's modifiers option reliably holds Shift for the whole
+    // click across viewports; page.keyboard.down/up around page.mouse.click
+    // was found to silently drop the modifier on the mobile viewport size.
+    const box = await page.locator("#threeMount canvas").boundingBox();
+    await page.locator("#threeMount canvas").click({
+      position: { x: box.width * 0.5, y: box.height * 0.5 },
+      modifiers: ["Shift"],
+    });
+  }
   const afterClick = await readMetrics(page);
   assert.notStrictEqual(afterClick.selectedStatus, "no cell selected", `${name} clicking near a cell should select it`);
 
@@ -359,6 +369,80 @@ async function checkViewport(browser, name, viewport) {
   assert.strictEqual(afterClear.actuatorCount, "0", `${name} Clear All should remove every actuator`);
   assert.strictEqual(afterClear.lockedCount, "0", `${name} Clear All should remove every lock`);
   assert.ok(Math.abs(mmValue(afterClear.closure)) <= 0.01, `${name} clearing all roles should restore exact ring closure`);
+
+  // Batch selection (shift-click): toggle a cell into/out of a multi-select
+  // set without disturbing the single-cell Selected Cell inspector, then
+  // apply a role/alpha to every selected cell at once - the "select
+  // individual cells to expand/contract independently" workflow, distinct
+  // from actuating one cell at a time.
+  await page.mouse.click(selection.x, selection.y);
+  await page.waitForTimeout(100);
+  const batchTargetCell = await page.evaluate(() => window.__cylinderTilingDebug.getSelected());
+  assert.ok(batchTargetCell, `${name} a cell should be selectable at the known screen point for batch testing`);
+
+  await shiftClickSelection();
+  await page.waitForTimeout(100);
+  const batchCountAfterAdd = await page.evaluate(() => document.getElementById("batchSelectedCountMetric").textContent);
+  assert.strictEqual(batchCountAfterAdd, "1", `${name} shift-clicking a cell should add it to the batch selection`);
+
+  await shiftClickSelection();
+  await page.waitForTimeout(100);
+  const batchCountAfterToggleOff = await page.evaluate(() => document.getElementById("batchSelectedCountMetric").textContent);
+  assert.strictEqual(batchCountAfterToggleOff, "0", `${name} shift-clicking the same cell again should remove it from the batch selection`);
+
+  await shiftClickSelection();
+  await page.waitForTimeout(100);
+  await page.evaluate(() => {
+    document.getElementById("batchRoleSelect").value = "actuator";
+    const alphaInput = document.getElementById("batchAlpha");
+    alphaInput.value = "1.8";
+    alphaInput.dispatchEvent(new Event("input", { bubbles: true }));
+    document.getElementById("applyBatchBtn").click();
+  });
+  await page.waitForTimeout(150);
+  const batchApplyResult = await page.evaluate((cell) => {
+    const roles = window.__cylinderTilingDebug.getCellRoles();
+    const alphas = window.__cylinderTilingDebug.getCellAlphas();
+    return { role: roles[cell.row][cell.i].role, alpha: alphas[cell.row][cell.i] };
+  }, batchTargetCell);
+  assert.strictEqual(batchApplyResult.role, "actuator", `${name} Apply to Selected should set the batch-selected cell's role`);
+  assert.ok(
+    Math.abs(batchApplyResult.alpha - 1.8) < 0.05,
+    `${name} Apply to Selected should command the batch-selected cell's alpha (got ${batchApplyResult.alpha})`
+  );
+
+  // Clear Selection should empty the batch set but must not undo the role/
+  // alpha it already applied.
+  await page.click("#clearBatchSelectionBtn");
+  await page.waitForTimeout(100);
+  const batchCountAfterClear = await page.evaluate(() => document.getElementById("batchSelectedCountMetric").textContent);
+  assert.strictEqual(batchCountAfterClear, "0", `${name} Clear Selection should empty the batch selection`);
+  const roleAfterClearSelection = await page.evaluate(
+    (cell) => window.__cylinderTilingDebug.getCellRoles()[cell.row][cell.i].role,
+    batchTargetCell
+  );
+  assert.strictEqual(roleAfterClearSelection, "actuator", `${name} clearing the batch selection should not undo the role it already applied`);
+
+  await page.click("#clearRolesBtn");
+  await page.waitForTimeout(150);
+
+  // Shape presets: Barrel should command a different alpha per row (bulging
+  // the middle rows relative to the ends) instead of the whole structure
+  // dilating uniformly - the "enabling different shapes" capability.
+  await page.click("#presetBarrelBtn");
+  await page.waitForTimeout(150);
+  const barrelAlphas = await page.evaluate(() => window.__cylinderTilingDebug.getCellAlphas().map((row) => row[0]));
+  assert.ok(barrelAlphas.length >= 3, `${name} preset test needs at least 3 rows (the default row count)`);
+  const midRow = Math.floor((barrelAlphas.length - 1) / 2);
+  assert.ok(
+    barrelAlphas[midRow] > barrelAlphas[0] - 1e-6,
+    `${name} Barrel preset's middle row alpha should be >= its end row alpha (got ${JSON.stringify(barrelAlphas)})`
+  );
+  const uniqueBarrelAlphas = new Set(barrelAlphas.map((a) => a.toFixed(3)));
+  assert.ok(uniqueBarrelAlphas.size > 1, `${name} Barrel preset should command different alphas across rows, not a uniform structure`);
+
+  await page.click("#clearRolesBtn");
+  await page.waitForTimeout(150);
 
   // Re-actuate once more so the JSON save/load round-trip below has
   // non-trivial per-cell state to carry through.

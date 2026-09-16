@@ -55,6 +55,15 @@
   const actuatorCountMetric = document.getElementById("actuatorCountMetric");
   const lockedCountMetric = document.getElementById("lockedCountMetric");
   const clearRolesBtn = document.getElementById("clearRolesBtn");
+  const batchSelectedCountMetric = document.getElementById("batchSelectedCountMetric");
+  const batchRoleSelect = document.getElementById("batchRoleSelect");
+  const batchAlphaInput = document.getElementById("batchAlpha");
+  const batchAlphaOut = document.getElementById("batchAlphaOut");
+  const applyBatchBtn = document.getElementById("applyBatchBtn");
+  const clearBatchSelectionBtn = document.getElementById("clearBatchSelectionBtn");
+  const presetBarrelBtn = document.getElementById("presetBarrelBtn");
+  const presetConeBtn = document.getElementById("presetConeBtn");
+  const presetSaddleBtn = document.getElementById("presetSaddleBtn");
   const minDiameterMetric = document.getElementById("minDiameterMetric");
   const maxDiameterMetric = document.getElementById("maxDiameterMetric");
   const captureKeyframeBtn = document.getElementById("captureKeyframeBtn");
@@ -151,6 +160,7 @@
     hole: new THREE.MeshStandardMaterial({ color: 0x15191f, roughness: 0.72, metalness: 0.03 }),
     actuatorMarker: new THREE.MeshStandardMaterial({ color: 0xe14b4b, emissive: 0x5a1414, roughness: 0.3 }),
     lockedMarker: new THREE.MeshStandardMaterial({ color: 0x4b7de1, emissive: 0x142a5a, roughness: 0.3 }),
+    batchMarker: new THREE.MeshStandardMaterial({ color: 0x39e07a, emissive: 0x0f5a2c, roughness: 0.3 }),
   };
 
   // Row cross-color palette, cycled if there are more rows than palette entries.
@@ -456,8 +466,10 @@
       if (cell.topMaterial) cell.topMaterial.dispose();
       if (cell.bottomMaterial) cell.bottomMaterial.dispose();
       if (cell.roleMarker) scene.remove(cell.roleMarker);
+      if (cell.batchMarker) scene.remove(cell.batchMarker);
     });
     cellPool = [];
+    multiSelected.clear();
     for (let row = 0; row < m; row += 1) {
       for (let i = 0; i < n; i += 1) {
         const mats = createCellMaterials(row);
@@ -470,6 +482,10 @@
         roleMarker.visible = false;
         scene.add(roleMarker);
         cell.roleMarker = roleMarker;
+        const batchMarker = cylinderZ(4.4, CAD.bodyThicknessMm * 3.6, sharedMaterials.batchMarker, 24);
+        batchMarker.visible = false;
+        scene.add(batchMarker);
+        cell.batchMarker = batchMarker;
         cellPool.push(cell);
       }
     }
@@ -793,6 +809,10 @@
   const raycaster = new THREE.Raycaster();
   const pointerNdc = new THREE.Vector2();
   let selected = null; // { row, i }
+  const multiSelected = new Set(); // "row,i" keys - batch selection for differential dilation
+  function cellKey(row, i) {
+    return `${row},${i}`;
+  }
   let isolateActive = false;
   const selectedWorld = new THREE.Vector3();
   let lastCellAlphas = null;
@@ -897,6 +917,12 @@
           cell.roleMarker.visible = true;
           cell.roleMarker.material = role === "actuator" ? sharedMaterials.actuatorMarker : sharedMaterials.lockedMarker;
           cell.roleMarker.position.set(center.x, center.y, z);
+        }
+        if (multiSelected.has(cellKey(row, i))) {
+          cell.batchMarker.visible = true;
+          cell.batchMarker.position.set(center.x, center.y, z - 0.01);
+        } else {
+          cell.batchMarker.visible = false;
         }
         if (heatmapEnabledInput.checked) {
           const color = heatColor(cellAlphas[row][i]);
@@ -1019,6 +1045,7 @@
         const visible = !isolateActive || (selected && row === selected.row && i === selected.i);
         cell.group.visible = visible;
         cell.roleMarker.visible = visible && cellRoles[row][i].role !== "free";
+        cell.batchMarker.visible = visible && multiSelected.has(cellKey(row, i));
       }
     }
     grid.visible = !isolateActive;
@@ -1051,7 +1078,7 @@
   let pointerDownY = 0;
   const CLICK_MOVE_THRESHOLD_PX = 4;
 
-  function pickCellAt(clientX, clientY) {
+  function pickCellAt(clientX, clientY, additive) {
     const rect = renderer.domElement.getBoundingClientRect();
     pointerNdc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
     pointerNdc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
@@ -1061,17 +1088,28 @@
       true
     );
     if (!hits.length) {
-      selected = null;
+      if (!additive) selected = null;
       return;
     }
     let node = hits[0].object;
     while (node && node.parent && node.parent !== scene) node = node.parent;
     const index = cellPool.findIndex((cell) => cell.group === node);
     if (index === -1) {
-      selected = null;
+      if (!additive) selected = null;
       return;
     }
-    selected = { row: Math.floor(index / poolN), i: index % poolN };
+    const picked = { row: Math.floor(index / poolN), i: index % poolN };
+    if (additive) {
+      // Shift-click builds a batch selection for differential dilation
+      // (apply a role/alpha to many cells at once) without disturbing the
+      // single-cell inspector in the Selected Cell panel.
+      const key = cellKey(picked.row, picked.i);
+      if (multiSelected.has(key)) multiSelected.delete(key);
+      else multiSelected.add(key);
+      updateBatchSelectionUi();
+    } else {
+      selected = picked;
+    }
   }
 
   renderer.domElement.addEventListener("pointerdown", (event) => {
@@ -1098,7 +1136,7 @@
     dragging = false;
     const moved = Math.hypot(event.clientX - pointerDownX, event.clientY - pointerDownY);
     if (moved <= CLICK_MOVE_THRESHOLD_PX) {
-      pickCellAt(event.clientX, event.clientY);
+      pickCellAt(event.clientX, event.clientY, event.shiftKey);
     }
     try {
       renderer.domElement.releasePointerCapture(event.pointerId);
@@ -1142,6 +1180,8 @@
     });
     clearAllRoles();
     selected = null;
+    multiSelected.clear();
+    updateBatchSelectionUi();
     if (isolateActive) {
       isolateActive = false;
       isolateCellBtn.textContent = "Isolate Cell";
@@ -1199,6 +1239,75 @@
   clearRolesBtn.addEventListener("click", () => {
     clearAllRoles();
     updateMechanism();
+  });
+
+  function updateBatchSelectionUi() {
+    const count = multiSelected.size;
+    batchSelectedCountMetric.textContent = String(count);
+    applyBatchBtn.disabled = count === 0;
+    clearBatchSelectionBtn.disabled = count === 0;
+  }
+
+  batchAlphaInput.addEventListener("input", () => {
+    batchAlphaOut.textContent = Number(batchAlphaInput.value).toFixed(2);
+  });
+
+  applyBatchBtn.addEventListener("click", () => {
+    if (!multiSelected.size) return;
+    const role = batchRoleSelect.value;
+    const alpha = clamp(Number(batchAlphaInput.value), ALPHA_MIN, ALPHA_MAX);
+    multiSelected.forEach((key) => {
+      const [row, i] = key.split(",").map(Number);
+      if (!cellRoles[row] || !cellRoles[row][i]) return;
+      cellRoles[row][i] = { role, alpha: role === "free" ? ALPHA_REFERENCE : alpha };
+    });
+    updateMechanism();
+  });
+
+  clearBatchSelectionBtn.addEventListener("click", () => {
+    multiSelected.clear();
+    updateBatchSelectionUi();
+    updateMechanism();
+  });
+
+  // Shape presets: command every cell in a row to the same alpha, but vary
+  // that alpha row-to-row, so each ring settles at a different diameter
+  // (rows already solve independently - see computeCellAlphas) producing a
+  // visibly non-uniform wheel profile in one click, as a fast demo of
+  // differential dilation on top of the shift-click batch tool above.
+  function applyRowAlphaPreset(rowAlphaFn) {
+    const m = cellRoles.length;
+    for (let row = 0; row < m; row += 1) {
+      const n = cellRoles[row].length;
+      const alpha = clamp(rowAlphaFn(row, m), ALPHA_MIN, ALPHA_MAX);
+      for (let i = 0; i < n; i += 1) {
+        cellRoles[row][i] = { role: "actuator", alpha };
+      }
+    }
+    updateMechanism();
+  }
+
+  presetBarrelBtn.addEventListener("click", () => {
+    applyRowAlphaPreset((row, m) => {
+      const mid = (m - 1) / 2;
+      const t = mid === 0 ? 0 : 1 - Math.abs(row - mid) / mid;
+      return ALPHA_REFERENCE + t * 0.5;
+    });
+  });
+
+  presetConeBtn.addEventListener("click", () => {
+    applyRowAlphaPreset((row, m) => {
+      const t = m <= 1 ? 0 : row / (m - 1);
+      return 0.75 + t * 0.7;
+    });
+  });
+
+  presetSaddleBtn.addEventListener("click", () => {
+    applyRowAlphaPreset((row, m) => {
+      const mid = (m - 1) / 2;
+      const t = mid === 0 ? 0 : 1 - Math.abs(row - mid) / mid;
+      return ALPHA_REFERENCE - t * 0.4;
+    });
   });
 
   function applyDiameterFit() {
