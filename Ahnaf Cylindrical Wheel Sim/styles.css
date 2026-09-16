@@ -125,7 +125,10 @@ a:hover {
 }
 
 .three-mount {
+  position: relative;
   min-height: 440px;
+  min-width: 0;
+  overflow: hidden;
   background:
     linear-gradient(180deg, light-dark(#f8fafc, #151a20), light-dark(#edf1f5, #101419));
   cursor: grab;

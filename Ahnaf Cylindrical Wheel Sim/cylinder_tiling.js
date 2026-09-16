@@ -99,6 +99,17 @@
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   renderer.shadowMap.enabled = true;
+  // Pin the canvas's on-screen CSS size to its container explicitly. Without
+  // this, renderer.setSize(w, h, false) (false = don't let three.js manage
+  // the CSS size) leaves the canvas's displayed size to fall back to its
+  // width/height attributes, which are the backing-buffer resolution
+  // (w*devicePixelRatio) rather than CSS pixels whenever the display isn't
+  // at 100% scaling. That made the canvas render larger than its container
+  // on every resize pass, which (combined with resize() running every
+  // frame, below) compounded into a runaway feedback loop.
+  renderer.domElement.style.display = "block";
+  renderer.domElement.style.width = "100%";
+  renderer.domElement.style.height = "100%";
   mount.appendChild(renderer.domElement);
 
   const cameraState = {

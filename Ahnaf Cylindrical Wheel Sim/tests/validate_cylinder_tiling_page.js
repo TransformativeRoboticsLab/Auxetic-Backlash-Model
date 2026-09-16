@@ -274,11 +274,51 @@ async function checkViewport(browser, name, viewport) {
   await page.close();
 }
 
+// Regression test for a real bug: renderer.setSize(w, h, false) leaves the
+// canvas's on-screen CSS size to fall back to its width/height attributes
+// (the backing-buffer resolution, i.e. w*devicePixelRatio) whenever the
+// display isn't at 100% OS scaling, unless the canvas's CSS size is pinned
+// explicitly. Combined with resize() running every render frame, that
+// mismatch compounded into a runaway feedback loop (canvas measuring
+// itself too big, growing, being measured too big again, ...), observed
+// growing to tens of millions of pixels within about a second on a
+// 150%-scaled display. This checks the canvas's rendered CSS size stays
+// locked to its container at several non-100% scale factors, across
+// several seconds of real frames, instead of drifting or exploding.
+async function checkDeviceScaleFactor(browser, scaleFactor) {
+  const page = await browser.newPage({ viewport: { width: 1000, height: 700 }, deviceScaleFactor: scaleFactor });
+  await page.goto(pageUrl);
+  await page.waitForSelector("#threeMount canvas", { state: "visible" });
+  await page.waitForTimeout(2500); // ~150 frames at 60fps - long enough for a feedback loop to blow up
+  const sizes = await page.evaluate(() => {
+    const canvas = document.querySelector("#threeMount canvas");
+    const mount = document.getElementById("threeMount");
+    const mountRect = mount.getBoundingClientRect();
+    const canvasRect = canvas.getBoundingClientRect();
+    return { mountRect: { w: mountRect.width, h: mountRect.height }, canvasRect: { w: canvasRect.width, h: canvasRect.height } };
+  });
+  const label = `deviceScaleFactor=${scaleFactor}`;
+  assert.ok(sizes.canvasRect.w < 3000, `${label}: canvas CSS width should stay near its container (got ${sizes.canvasRect.w}px) - not run away`);
+  assert.ok(sizes.canvasRect.h < 3000, `${label}: canvas CSS height should stay near its container (got ${sizes.canvasRect.h}px) - not run away`);
+  assert.ok(
+    Math.abs(sizes.canvasRect.w - sizes.mountRect.w) <= 2,
+    `${label}: canvas CSS width (${sizes.canvasRect.w}) should match its container (${sizes.mountRect.w})`
+  );
+  assert.ok(
+    Math.abs(sizes.canvasRect.h - sizes.mountRect.h) <= 2,
+    `${label}: canvas CSS height (${sizes.canvasRect.h}) should match its container (${sizes.mountRect.h})`
+  );
+  await page.close();
+}
+
 (async () => {
   const browser = await launchBrowser();
   try {
     await checkViewport(browser, "desktop", { width: 1280, height: 820 });
     await checkViewport(browser, "mobile", { width: 390, height: 860 });
+    for (const scaleFactor of [1.25, 1.5, 2]) {
+      await checkDeviceScaleFactor(browser, scaleFactor);
+    }
   } finally {
     await browser.close();
   }
