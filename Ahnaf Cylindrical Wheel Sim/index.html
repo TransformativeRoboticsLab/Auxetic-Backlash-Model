@@ -257,6 +257,19 @@
           <p class="hint">Captures alpha, backlash, ring/row counts, axial pitch, attachment sites, and every cell's role/alpha.</p>
         </details>
 
+        <details class="panel-section">
+          <summary>Export Geometry</summary>
+          <div class="button-row">
+            <button id="exportObjBtn" type="button">Export OBJ</button>
+          </div>
+          <p class="hint">
+            Exports the current pose's actual 3D geometry (every visible cell's arms, hubs, and pads, in real mm) as
+            a Wavefront OBJ file for reference/measurement in CAD software. This is a geometry snapshot, not a
+            print-ready model: hole locations are solid placeholder cylinders (no boolean subtraction), and there
+            is no fastener/tolerance detail beyond what's already in the 3D view.
+          </p>
+        </details>
+
         <p class="note">
           Each ring closes exactly by construction when every cell shares one alpha (n single-pin joints, turn
           angle 2*pi/n per joint). Actuating or locking individual cells makes per-cell alpha genuinely vary, so

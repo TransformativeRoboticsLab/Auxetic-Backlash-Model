@@ -105,6 +105,12 @@ python -m http.server 8000
   red=expanded) instead of the fixed row palette, so coupling propagation
   from an actuator and per-row diameter differences are visible at a
   glance.
+- **Export OBJ**: serializes the actual rendered geometry of every visible
+  cell (arms, hubs, pads, hole placeholders, in real millimeters) into a
+  Wavefront OBJ file for reference/measurement in CAD software. This is a
+  geometry snapshot, not a print-ready model - it does not perform boolean
+  subtraction, so hole locations remain solid placeholder cylinders, same
+  as on screen.
 - **Timeline**: capture named keyframes (full state snapshots - alpha,
   backlash, ring/row counts, axial pitch, attachment sites, and every
   cell's role/alpha), jump between them, or play through them as discrete

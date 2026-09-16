@@ -1,4 +1,5 @@
 const assert = require("assert");
+const fs = require("fs");
 const path = require("path");
 const { pathToFileURL } = require("url");
 const { PNG } = require("pngjs");
@@ -371,6 +372,40 @@ async function checkViewport(browser, name, viewport) {
   await page.waitForTimeout(100);
   const beforeSaveRoles = await readMetrics(page);
   assert.strictEqual(beforeSaveRoles.lockedCount, "1", `${name} locking the selected cell should count it before saving`);
+
+  // Export OBJ: the downloaded file should have one "o" group per visible
+  // cell and internally consistent face indices (every face index must
+  // reference a vertex that was actually written, and in range).
+  const objDownloadPromise = page.waitForEvent("download");
+  await page.click("#exportObjBtn");
+  const objDownload = await objDownloadPromise;
+  const objPath = path.join(root, `cylinder-tiling-${name}.obj`);
+  await objDownload.saveAs(objPath);
+  const objContent = fs.readFileSync(objPath, "utf8");
+  const objLines = objContent.split("\n");
+  const vertexCount = objLines.filter((line) => line.startsWith("v ")).length;
+  const faceLines = objLines.filter((line) => line.startsWith("f "));
+  const objectCount = objLines.filter((line) => line.startsWith("o ")).length;
+  const expectedCellCount = Number(defaults.totalCells);
+  assert.strictEqual(objectCount, expectedCellCount, `${name} OBJ export should have one object per visible cell (n*m=${expectedCellCount})`);
+  assert.ok(vertexCount > 0, `${name} OBJ export should contain vertices`);
+  assert.ok(faceLines.length > 0, `${name} OBJ export should contain faces`);
+  let maxFaceIndex = 0;
+  let minFaceIndex = Infinity;
+  faceLines.forEach((line) => {
+    line
+      .slice(2)
+      .trim()
+      .split(/\s+/)
+      .forEach((token) => {
+        const index = parseInt(token, 10);
+        maxFaceIndex = Math.max(maxFaceIndex, index);
+        minFaceIndex = Math.min(minFaceIndex, index);
+      });
+  });
+  assert.ok(minFaceIndex >= 1, `${name} OBJ face indices should be 1-based (got min ${minFaceIndex})`);
+  assert.ok(maxFaceIndex <= vertexCount, `${name} OBJ face indices (max ${maxFaceIndex}) should not exceed the vertex count (${vertexCount})`);
+  fs.unlinkSync(objPath);
 
   // Save/Load JSON: round-trip a changed alpha through a downloaded file.
   const downloadPromise = page.waitForEvent("download");

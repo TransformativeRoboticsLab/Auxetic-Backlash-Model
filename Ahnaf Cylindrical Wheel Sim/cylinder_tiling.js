@@ -64,6 +64,7 @@
   const saveSequenceBtn = document.getElementById("saveSequenceBtn");
   const loadSequenceBtn = document.getElementById("loadSequenceBtn");
   const loadSequenceFile = document.getElementById("loadSequenceFile");
+  const exportObjBtn = document.getElementById("exportObjBtn");
   const targetDiameterInput = document.getElementById("targetDiameter");
   const targetDiameterOut = document.getElementById("targetDiameterOut");
   const fitDiameterBtn = document.getElementById("fitDiameterBtn");
@@ -1173,6 +1174,65 @@
     }
     updateMechanism();
   }
+
+  // Serializes the actual rendered geometry (not a re-derivation of it) of
+  // every currently-visible cell into a Wavefront OBJ: walks each cell's
+  // Three.js meshes (arms, hubs, pads, hole placeholders - not the role
+  // marker or selection marker, since those live outside cell.group and so
+  // are naturally skipped by traversing only cell.group), transforms their
+  // vertices into world-space millimeters via the already-computed
+  // matrixWorld, and writes triangle faces. This does not perform boolean
+  // subtraction - hole locations remain solid placeholder cylinders, same
+  // as they are on screen - so it's a geometry/measurement reference for
+  // CAD, not a print-ready model.
+  function buildObjText() {
+    scene.updateMatrixWorld(true);
+    const lines = ["# Cylindrical Wheel Tiling Simulator - geometry export", `# ${new Date().toISOString()}`];
+    let vertexOffset = 0;
+    const vertex = new THREE.Vector3();
+    cellPool.forEach((cell, cellIndex) => {
+      if (!cell.group.visible) return;
+      lines.push(`o cell_${cellIndex}`);
+      cell.group.traverse((object) => {
+        if (!object.isMesh) return;
+        const geometry = object.geometry;
+        const position = geometry.attributes.position;
+        if (!position) return;
+        for (let vi = 0; vi < position.count; vi += 1) {
+          vertex.fromBufferAttribute(position, vi);
+          vertex.applyMatrix4(object.matrixWorld);
+          lines.push(`v ${vertex.x.toFixed(4)} ${vertex.y.toFixed(4)} ${vertex.z.toFixed(4)}`);
+        }
+        const index = geometry.index;
+        if (index) {
+          for (let fi = 0; fi < index.count; fi += 3) {
+            const a = index.getX(fi) + 1 + vertexOffset;
+            const b = index.getX(fi + 1) + 1 + vertexOffset;
+            const c = index.getX(fi + 2) + 1 + vertexOffset;
+            lines.push(`f ${a} ${b} ${c}`);
+          }
+        } else {
+          for (let fi = 0; fi + 2 < position.count; fi += 3) {
+            lines.push(`f ${fi + 1 + vertexOffset} ${fi + 2 + vertexOffset} ${fi + 3 + vertexOffset}`);
+          }
+        }
+        vertexOffset += position.count;
+      });
+    });
+    return lines.join("\n");
+  }
+
+  exportObjBtn.addEventListener("click", () => {
+    const blob = new Blob([buildObjText()], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "rad-cylinder-tiling.obj";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  });
 
   saveJsonBtn.addEventListener("click", () => {
     const blob = new Blob([JSON.stringify(currentStateSnapshot(), null, 2)], { type: "application/json" });
