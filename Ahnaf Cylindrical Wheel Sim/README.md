@@ -90,6 +90,17 @@ python -m http.server 8000
   achievable range) rather than solving a closed-form inverse. Fitting
   clears any actuators/locks first, since it targets one shared alpha, and
   applies live as the slider is dragged, the same as every other control.
+- **Radial cell orientation**: each cell's thickness axis (top/bottom cross
+  plane normal) points radially outward from the ring's own center, not
+  along the cylinder's axial (`z`) direction. Earlier versions oriented every
+  cell flat-on to the axle, which looked like a flat sheet wrapped into a
+  ring rather than the actual hardware, where each cell tips outward like a
+  spoke. The per-cell local frame is built directly from the cell's heading
+  angle around the ring (`setRadialOrientation`, via `THREE.Matrix4.makeBasis`
+  on tangential/axial/radial basis vectors) rather than composed from
+  incremental rotations, so it stays exact at any `n`. The two crosses'
+  relative twist (the dilation angle `theta`) is unchanged - only which way
+  the whole cell faces changed, matching the assembled-hardware photos.
 - **Cylinder stacking**: `m` rings are repeated along the axle (`z`) axis at
   a configurable pitch. Axial row-to-row attachment is currently a rigid
   copy, not a solved joint - see Known limitations.

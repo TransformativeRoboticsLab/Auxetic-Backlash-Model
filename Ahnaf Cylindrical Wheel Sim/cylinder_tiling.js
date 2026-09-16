@@ -634,6 +634,32 @@
   const HEATMAP_HIGH = new THREE.Color(0xd63a2f);
   const heatmapColorScratch = new THREE.Color();
 
+  // Per Jacob's feedback: cells were rendering face-on to the axle (their
+  // flat cross plane normal to world Z), stacking rings like coins on a
+  // rod. The reference structure instead has each cell's face tangent to
+  // the cylinder's own surface - normal pointing radially outward, like
+  // scales on the tube - with its arms sweeping in the tangential/axial
+  // plane. This only changes each cell GROUP's base orientation; the
+  // existing bottom/top .rotation.z calls are left untouched and keep
+  // working exactly as before, now just measured within this reoriented
+  // local frame instead of world XY - matching "equations unchanged, only
+  // the visualization needs adjusting". Local X (where the east/west
+  // SITE_VECTORS point) maps to the tangential direction, so the existing
+  // circumferential attach math is unaffected; local Y maps to axial.
+  const radialScratchX = new THREE.Vector3();
+  const radialScratchY = new THREE.Vector3(0, 0, 1);
+  const radialScratchZ = new THREE.Vector3();
+  const radialScratchMatrix = new THREE.Matrix4();
+
+  function setRadialOrientation(object3d, theta) {
+    const cosT = Math.cos(theta);
+    const sinT = Math.sin(theta);
+    radialScratchX.set(-sinT, cosT, 0); // tangential
+    radialScratchZ.set(cosT, sinT, 0); // radial (outward)
+    radialScratchMatrix.makeBasis(radialScratchX, radialScratchY, radialScratchZ);
+    object3d.quaternion.setFromRotationMatrix(radialScratchMatrix);
+  }
+
   function heatColor(alphaValue) {
     const t = clamp((alphaValue - ALPHA_MIN) / (ALPHA_MAX - ALPHA_MIN), 0, 1);
     if (t < 0.5) heatmapColorScratch.lerpColors(HEATMAP_LOW, HEATMAP_MID, t / 0.5);
@@ -853,8 +879,17 @@
         const cell = cellPool[row * n + i];
         const center = rings[row].centers[i];
         cell.group.position.set(center.x, center.y, z);
-        cell.bottom.rotation.z = rings[row].bottomRot[i];
-        cell.top.rotation.z = rings[row].bottomRot[i] + thetaPerRow[row][i];
+        setRadialOrientation(cell.group, rings[row].bottomRot[i]);
+        // The group's own orientation now carries the cell's heading
+        // around the ring (bottomRot[i], via setRadialOrientation above),
+        // so the child crosses' local z-rotation should only be the
+        // *relative* dilation twist between layers, not heading + twist -
+        // otherwise heading would be double-applied. The bottom cross's
+        // 4-fold symmetry makes 0 an arbitrary but equally valid reference;
+        // top stays exactly theta ahead of bottom, preserving the same
+        // "opens up by theta" dilation visual as before.
+        cell.bottom.rotation.z = 0;
+        cell.top.rotation.z = thetaPerRow[row][i];
         const role = cellRoles[row][i].role;
         if (role === "free") {
           cell.roleMarker.visible = false;
@@ -1476,6 +1511,16 @@
       const n = poolN;
       const cell = cellPool[row * n + i];
       return cell ? `#${cell.topMaterial.color.getHexString()}` : null;
+    },
+    getCellGroupNormal: (row, i) => {
+      // World-space direction of the cell group's local Z axis (its
+      // "thickness"/face-normal direction) - radially outward once
+      // oriented correctly, (0,0,1)-ish when still axial-facing.
+      const n = poolN;
+      const cell = cellPool[row * n + i];
+      if (!cell) return null;
+      const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(cell.group.quaternion);
+      return { x: normal.x, y: normal.y, z: normal.z };
     },
   };
 
