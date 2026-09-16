@@ -79,6 +79,36 @@ h2 {
   color: var(--muted);
 }
 
+summary {
+  font-size: 14px;
+  line-height: 1.2;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0;
+  color: var(--muted);
+  cursor: pointer;
+  list-style: none;
+}
+
+summary::-webkit-details-marker {
+  display: none;
+}
+
+summary::before {
+  content: "\25B8";
+  display: inline-block;
+  width: 1em;
+  color: var(--accent);
+}
+
+details[open] > summary::before {
+  content: "\25BE";
+}
+
+.panel-section[open] > summary {
+  margin-bottom: 4px;
+}
+
 p {
   margin-top: 4px;
   color: var(--muted);
@@ -161,11 +191,22 @@ button[aria-pressed="true"] {
   overflow: auto;
 }
 
-.control-panel section {
-  display: grid;
-  gap: 10px;
+.control-panel .panel-section {
+  display: block;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border);
+}
+
+.control-panel .panel-section > *:not(summary) {
+  margin-top: 10px;
+}
+
+body.focus-mode .control-panel {
+  display: none;
+}
+
+body.focus-mode .app-shell {
+  grid-template-columns: 1fr;
 }
 
 label {

@@ -70,6 +70,14 @@ async function checkViewport(browser, name, viewport) {
   await page.waitForSelector("#threeMount canvas", { state: "visible" });
   await page.waitForTimeout(500);
 
+  // Expand every collapsible panel section so its controls/readouts are
+  // reachable regardless of which ones default to collapsed.
+  await page.evaluate(() => {
+    document.querySelectorAll("details.panel-section").forEach((details) => {
+      details.open = true;
+    });
+  });
+
   const canvasSize = await page.evaluate(() => {
     const canvas = document.querySelector("#threeMount canvas");
     return { width: canvas.width, height: canvas.height };
@@ -182,6 +190,53 @@ async function checkViewport(browser, name, viewport) {
   await page.waitForTimeout(100);
   const afterClick = await readMetrics(page);
   assert.notStrictEqual(afterClick.selectedStatus, "no cell selected", `${name} clicking near a cell should select it`);
+
+  const frameIsolateEnabled = await page.evaluate(() => ({
+    frame: !document.getElementById("frameCellBtn").disabled,
+    isolate: !document.getElementById("isolateCellBtn").disabled,
+  }));
+  assert.ok(frameIsolateEnabled.frame, `${name} Frame Cell should be enabled once a cell is selected`);
+  assert.ok(frameIsolateEnabled.isolate, `${name} Isolate Cell should be enabled once a cell is selected`);
+
+  // Frame Cell should not throw (camera-target state is internal to the module, not DOM-observable).
+  await page.click("#frameCellBtn");
+  await page.waitForTimeout(50);
+
+  // Isolate Cell should visibly reduce rendered cell pixels (only the selected cell stays visible)
+  // and flip its own label to "Show Lattice".
+  const beforeIsolateBuffer = await page.locator("#threeMount").screenshot();
+  const beforeIsolatePixels = colorCount(beforeIsolateBuffer, (r, g, b) => r + g + b < 720);
+  await page.click("#isolateCellBtn");
+  await page.waitForTimeout(150);
+  const isolateLabel = await page.evaluate(() => document.getElementById("isolateCellBtn").textContent);
+  assert.strictEqual(isolateLabel, "Show Lattice", `${name} Isolate Cell button should relabel to Show Lattice while active`);
+  const afterIsolateBuffer = await page.locator("#threeMount").screenshot();
+  const afterIsolatePixels = colorCount(afterIsolateBuffer, (r, g, b) => r + g + b < 720);
+  assert.ok(afterIsolatePixels < beforeIsolatePixels * 0.5, `${name} isolating a cell should render far fewer non-background pixels`);
+  await page.click("#isolateCellBtn");
+  await page.waitForTimeout(50);
+  const restoredLabel = await page.evaluate(() => document.getElementById("isolateCellBtn").textContent);
+  assert.strictEqual(restoredLabel, "Isolate Cell", `${name} clicking Isolate Cell again should restore the full lattice`);
+
+  // Focus mode should hide the control panel and relabel the toggle to Controls.
+  await page.click("#focusToggle");
+  await page.waitForTimeout(50);
+  const focusState = await page.evaluate(() => ({
+    bodyHasClass: document.body.classList.contains("focus-mode"),
+    panelDisplay: getComputedStyle(document.querySelector(".control-panel")).display,
+    label: document.getElementById("focusToggle").textContent,
+  }));
+  assert.ok(focusState.bodyHasClass, `${name} Focus should add the focus-mode class`);
+  assert.strictEqual(focusState.panelDisplay, "none", `${name} Focus should hide the control panel`);
+  assert.strictEqual(focusState.label, "Controls", `${name} Focus button should relabel to Controls while active`);
+  await page.click("#focusToggle");
+  await page.waitForTimeout(50);
+  const unfocusState = await page.evaluate(() => ({
+    bodyHasClass: document.body.classList.contains("focus-mode"),
+    label: document.getElementById("focusToggle").textContent,
+  }));
+  assert.ok(!unfocusState.bodyHasClass, `${name} clicking Focus again should remove focus-mode`);
+  assert.strictEqual(unfocusState.label, "Focus", `${name} button should relabel back to Focus`);
 
   // Save/Load JSON: round-trip a changed alpha through a downloaded file.
   const downloadPromise = page.waitForEvent("download");

@@ -42,6 +42,9 @@
   const saveJsonBtn = document.getElementById("saveJsonBtn");
   const loadJsonBtn = document.getElementById("loadJsonBtn");
   const loadJsonFile = document.getElementById("loadJsonFile");
+  const focusToggle = document.getElementById("focusToggle");
+  const frameCellBtn = document.getElementById("frameCellBtn");
+  const isolateCellBtn = document.getElementById("isolateCellBtn");
 
   const CAD = Object.freeze({
     cellWidthMm: 55.604331,
@@ -511,6 +514,8 @@
   const raycaster = new THREE.Raycaster();
   const pointerNdc = new THREE.Vector2();
   let selected = null; // { row, i }
+  let isolateActive = false;
+  const selectedWorld = new THREE.Vector3();
 
   function updateCamera() {
     const r = cameraState.radius;
@@ -628,12 +633,15 @@
       const z = selected.row * axialPitch;
       selectionMarker.visible = true;
       selectionMarker.position.set(center.x, center.y, z);
+      selectedWorld.set(center.x, center.y, z);
       selectedCellStatus.textContent = `row ${selected.row}, cell ${selected.i}`;
       selectedCellStatus.classList.add("status-ok");
       selectedIndexMetric.textContent = `${selected.row}, ${selected.i}`;
       selectedCenterMetric.textContent = `(${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${z.toFixed(1)})`;
       selectedBottomRotMetric.textContent = `${radToDeg(ring.bottomRot[selected.i]).toFixed(1)} deg`;
       selectedTopRotMetric.textContent = `${radToDeg(ring.bottomRot[selected.i] + aTopRad).toFixed(1)} deg`;
+      frameCellBtn.disabled = false;
+      isolateCellBtn.disabled = false;
     } else {
       selectionMarker.visible = false;
       selectedCellStatus.textContent = "no cell selected";
@@ -642,7 +650,21 @@
       selectedCenterMetric.textContent = "-";
       selectedBottomRotMetric.textContent = "-";
       selectedTopRotMetric.textContent = "-";
+      frameCellBtn.disabled = true;
+      isolateCellBtn.disabled = true;
+      if (isolateActive) {
+        isolateActive = false;
+        isolateCellBtn.textContent = "Isolate Cell";
+      }
     }
+
+    for (let row = 0; row < m; row += 1) {
+      for (let i = 0; i < n; i += 1) {
+        const cell = cellPool[row * n + i];
+        cell.group.visible = !isolateActive || (selected && row === selected.row && i === selected.i);
+      }
+    }
+    grid.visible = !isolateActive;
   }
 
   let lastWidth = -1;
@@ -742,6 +764,23 @@
     button.addEventListener("click", () => setView(button.dataset.view));
   });
   document.getElementById("resetView").addEventListener("click", () => setView("iso"));
+
+  focusToggle.addEventListener("click", () => {
+    const active = document.body.classList.toggle("focus-mode");
+    focusToggle.textContent = active ? "Controls" : "Focus";
+  });
+
+  frameCellBtn.addEventListener("click", () => {
+    if (!selected) return;
+    cameraState.target.copy(selectedWorld);
+    updateCamera();
+  });
+
+  isolateCellBtn.addEventListener("click", () => {
+    if (!selected) return;
+    isolateActive = !isolateActive;
+    isolateCellBtn.textContent = isolateActive ? "Show Lattice" : "Isolate Cell";
+  });
   [
     alphaInput,
     backlashInput,

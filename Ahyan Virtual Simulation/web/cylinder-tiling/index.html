@@ -28,14 +28,15 @@
           <button type="button" data-view="front" aria-pressed="false">Front</button>
           <button type="button" data-view="side" aria-pressed="false">Side</button>
           <button id="resetView" type="button">Reset</button>
+          <button id="focusToggle" type="button">Focus</button>
           <span class="spacer"></span>
           <span id="selectedCellStatus" class="hud-chip">no cell selected</span>
         </div>
       </section>
 
       <aside class="control-panel" aria-label="Cylinder tiling controls">
-        <section>
-          <h2>Drive (alpha)</h2>
+        <details class="panel-section" open>
+          <summary>Drive (alpha)</summary>
           <label>
             Dilation alpha <output id="alphaOut">1.30</output>
             <input id="alpha" type="range" min="0.4" max="2.0" step="0.01" value="1.3" />
@@ -47,10 +48,10 @@
             <div><dt>theta (70*alpha-60)</dt><dd id="thetaMetric">24.0 deg</dd></div>
             <div><dt>coupling state</dt><dd id="deadzoneState" class="status-ok">engaged</dd></div>
           </dl>
-        </section>
+        </details>
 
-        <section>
-          <h2>Backlash</h2>
+        <details class="panel-section">
+          <summary>Backlash</summary>
           <label>
             Normalized gap b/L <output id="backlashOut">0.10</output>
             <input id="backlash" type="range" min="0" max="0.3" step="0.01" value="0.1" />
@@ -60,10 +61,10 @@
             <code>f(x) = max(0, x-b) + min(x+b, 0)</code> coupling law: commanded alpha inside the gap produces no
             motion, so <code>effective alpha</code> and <code>theta</code> stay pinned until the command clears it.
           </p>
-        </section>
+        </details>
 
-        <section>
-          <h2>Ring Tiling</h2>
+        <details class="panel-section" open>
+          <summary>Ring Tiling</summary>
           <label>
             Cells per ring (n) <output id="ringCountOut">10</output>
             <input id="ringCount" type="range" min="6" max="16" step="1" value="10" />
@@ -93,10 +94,10 @@
             <div><dt>wheel radius</dt><dd id="radiusMetric">71.4 mm</dd></div>
             <div><dt>ring closure residual</dt><dd id="closureMetric">0.000 mm</dd></div>
           </dl>
-        </section>
+        </details>
 
-        <section>
-          <h2>Cylinder Stacking</h2>
+        <details class="panel-section" open>
+          <summary>Cylinder Stacking</summary>
           <label>
             Rows along axis (m) <output id="rowCountOut">3</output>
             <input id="rowCount" type="range" min="1" max="6" step="1" value="3" />
@@ -109,10 +110,10 @@
             <div><dt>total cells</dt><dd id="totalCellsMetric">30</dd></div>
             <div><dt>assembly height</dt><dd id="heightMetric">100.0 mm</dd></div>
           </dl>
-        </section>
+        </details>
 
-        <section>
-          <h2>Material Restriction</h2>
+        <details class="panel-section">
+          <summary>Material Restriction</summary>
           <label class="toggle"><input id="collisionEnabled" type="checkbox" checked /> Check neighbor clearance</label>
           <dl>
             <div><dt>guard</dt><dd id="collisionState" class="status-ok">clear</dd></div>
@@ -120,42 +121,46 @@
             <div><dt>minimum clearance</dt><dd id="clearanceMetric">0.000 mm</dd></div>
             <div><dt>pairs checked</dt><dd id="pairsCheckedMetric">0</dd></div>
           </dl>
-        </section>
+        </details>
 
-        <section>
-          <h2>Selected Cell</h2>
+        <details class="panel-section" open>
+          <summary>Selected Cell</summary>
           <p class="hint">Click a cell in the 3D view to inspect it.</p>
+          <div class="button-row">
+            <button id="frameCellBtn" type="button" disabled>Frame Cell</button>
+            <button id="isolateCellBtn" type="button" disabled>Isolate Cell</button>
+          </div>
           <dl>
             <div><dt>row, index</dt><dd id="selectedIndexMetric">-</dd></div>
             <div><dt>center</dt><dd id="selectedCenterMetric">-</dd></div>
             <div><dt>bottom rotation</dt><dd id="selectedBottomRotMetric">-</dd></div>
             <div><dt>top rotation</dt><dd id="selectedTopRotMetric">-</dd></div>
           </dl>
-        </section>
+        </details>
 
-        <section>
-          <h2>Cross Colors</h2>
+        <details class="panel-section">
+          <summary>Cross Colors</summary>
           <div id="colorLegend" class="legend-grid" aria-label="Cross color legend by row"></div>
-        </section>
+        </details>
 
-        <section>
-          <h2>Geometry</h2>
+        <details class="panel-section">
+          <summary>Geometry</summary>
           <dl>
             <div><dt>cell envelope</dt><dd>55.6 mm</dd></div>
             <div><dt>nominal hole</dt><dd>3.4 mm</dd></div>
             <div><dt>body thickness</dt><dd>4.0 mm each</dd></div>
           </dl>
-        </section>
+        </details>
 
-        <section>
-          <h2>Save / Load</h2>
+        <details class="panel-section">
+          <summary>Save / Load</summary>
           <div class="button-row">
             <button id="saveJsonBtn" type="button">Save JSON</button>
             <button id="loadJsonBtn" type="button">Load JSON</button>
             <input id="loadJsonFile" type="file" accept="application/json" hidden />
           </div>
           <p class="hint">Captures alpha, backlash, ring/row counts, axial pitch, and attachment sites.</p>
-        </section>
+        </details>
 
         <p class="note">
           Each ring closes exactly by construction (n identical single-pin joints, turn angle 2*pi/n per joint -
