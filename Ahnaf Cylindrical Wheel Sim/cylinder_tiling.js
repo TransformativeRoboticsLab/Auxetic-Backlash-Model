@@ -66,6 +66,7 @@
   const fitDiameterBtn = document.getElementById("fitDiameterBtn");
   const achievedDiameterMetric = document.getElementById("achievedDiameterMetric");
   const fitResidualMetric = document.getElementById("fitResidualMetric");
+  const heatmapEnabledInput = document.getElementById("heatmapEnabled");
 
   const CAD = Object.freeze({
     cellWidthMm: 55.604331,
@@ -432,17 +433,33 @@
   let poolN = -1;
   let poolM = -1;
 
+  // Each cell gets its own material instances (not shared per row) so the
+  // alpha heatmap toggle can recolor individual cells without disturbing
+  // their row-mates.
+  function createCellMaterials(row) {
+    const entry = ROW_PALETTE[row % ROW_PALETTE.length];
+    return {
+      top: new THREE.MeshStandardMaterial({ color: entry.top, roughness: 0.5, metalness: 0.12 }),
+      bottom: new THREE.MeshStandardMaterial({ color: entry.bottom, roughness: 0.55, metalness: 0.1 }),
+    };
+  }
+
   function rebuildPool(n, m) {
     cellPool.forEach((cell) => {
       scene.remove(cell.group);
       disposeGroup(cell.group);
+      if (cell.topMaterial) cell.topMaterial.dispose();
+      if (cell.bottomMaterial) cell.bottomMaterial.dispose();
       if (cell.roleMarker) scene.remove(cell.roleMarker);
     });
     cellPool = [];
     for (let row = 0; row < m; row += 1) {
-      const mats = materialsForRow(row);
       for (let i = 0; i < n; i += 1) {
+        const mats = createCellMaterials(row);
         const cell = createCell(`ring${row}-cell${i}`, mats.top, mats.bottom);
+        cell.topMaterial = mats.top;
+        cell.bottomMaterial = mats.bottom;
+        cell.baseRow = row;
         scene.add(cell.group);
         const roleMarker = cylinderZ(2.6, CAD.bodyThicknessMm * 2.6, sharedMaterials.actuatorMarker, 20);
         roleMarker.visible = false;
@@ -578,6 +595,22 @@
 
   function cellThetaDeg(alphaValue) {
     return clamp(alphaToThetaDeg(alphaValue), THETA_SAFETY_MIN_DEG, THETA_SAFETY_MAX_DEG);
+  }
+
+  // Alpha heatmap: blue (contracted, near ALPHA_MIN) -> light gray (neutral,
+  // mid-range) -> red (expanded, near ALPHA_MAX), so coupling propagation
+  // and per-row diameter differences are visible at a glance instead of
+  // only readable by clicking through cells one at a time.
+  const HEATMAP_LOW = new THREE.Color(0x2f6fd6);
+  const HEATMAP_MID = new THREE.Color(0xd8d8d8);
+  const HEATMAP_HIGH = new THREE.Color(0xd63a2f);
+  const heatmapColorScratch = new THREE.Color();
+
+  function heatColor(alphaValue) {
+    const t = clamp((alphaValue - ALPHA_MIN) / (ALPHA_MAX - ALPHA_MIN), 0, 1);
+    if (t < 0.5) heatmapColorScratch.lerpColors(HEATMAP_LOW, HEATMAP_MID, t / 0.5);
+    else heatmapColorScratch.lerpColors(HEATMAP_MID, HEATMAP_HIGH, (t - 0.5) / 0.5);
+    return heatmapColorScratch;
   }
 
   // Diameter vs alpha is NOT monotonic (it rises then falls as cells
@@ -753,6 +786,15 @@
           cell.roleMarker.visible = true;
           cell.roleMarker.material = role === "actuator" ? sharedMaterials.actuatorMarker : sharedMaterials.lockedMarker;
           cell.roleMarker.position.set(center.x, center.y, z);
+        }
+        if (heatmapEnabledInput.checked) {
+          const color = heatColor(cellAlphas[row][i]);
+          cell.topMaterial.color.copy(color);
+          cell.bottomMaterial.color.copy(color);
+        } else {
+          const entry = ROW_PALETTE[row % ROW_PALETTE.length];
+          cell.topMaterial.color.setHex(entry.top);
+          cell.bottomMaterial.color.setHex(entry.bottom);
         }
       }
     }
@@ -1044,6 +1086,7 @@
     bSiteInput,
     animateInput,
     collisionEnabledInput,
+    heatmapEnabledInput,
   ].forEach((input) => {
     input.addEventListener("input", () => updateMechanism());
     input.addEventListener("change", () => updateMechanism());
@@ -1254,6 +1297,11 @@
     getCellAlphas: () => lastCellAlphas,
     getCellRoles: () => lastCellRolesSnapshot,
     getSelected: () => selected,
+    getCellTopColor: (row, i) => {
+      const n = poolN;
+      const cell = cellPool[row * n + i];
+      return cell ? `#${cell.topMaterial.color.getHexString()}` : null;
+    },
   };
 
   function render(timeMs) {

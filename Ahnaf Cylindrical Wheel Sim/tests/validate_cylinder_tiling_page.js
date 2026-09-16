@@ -292,6 +292,42 @@ async function checkViewport(browser, name, viewport) {
     `${name} the actuated cell's free neighbor should shift away from the 1.20 no-actuator baseline (got ${propagation.neighborAlpha})`
   );
 
+  // Alpha heatmap: read the actuated cell's actual material color through
+  // the debug hook (precise; a screenshot pixel-color approach turned out
+  // to be too fragile here, since lighting/shading shifts rendered pixels
+  // away from the material's raw hex color, and several row-palette colors
+  // incidentally fall inside any reasonably wide "reddish" band). With the
+  // actuator still at alpha~2.0, its material color should be near the
+  // heatmap's "expanded" red once the toggle is on, and back to its row
+  // palette color once off.
+  const colorBeforeHeatmap = await page.evaluate(() => {
+    const selectedCell = window.__cylinderTilingDebug.getSelected();
+    return window.__cylinderTilingDebug.getCellTopColor(selectedCell.row, selectedCell.i);
+  });
+  assert.notStrictEqual(colorBeforeHeatmap, "#d63a2f", `${name} the actuated cell should not already be heatmap-red before the toggle is on`);
+  await page.evaluate(() => {
+    const heatmapInput = document.getElementById("heatmapEnabled");
+    heatmapInput.checked = true;
+    heatmapInput.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForTimeout(150);
+  const colorDuringHeatmap = await page.evaluate(() => {
+    const selectedCell = window.__cylinderTilingDebug.getSelected();
+    return window.__cylinderTilingDebug.getCellTopColor(selectedCell.row, selectedCell.i);
+  });
+  assert.strictEqual(colorDuringHeatmap, "#d63a2f", `${name} an alpha~2.0 (max) cell should render at the heatmap's "expanded" red once enabled`);
+  await page.evaluate(() => {
+    const heatmapInput = document.getElementById("heatmapEnabled");
+    heatmapInput.checked = false;
+    heatmapInput.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForTimeout(100);
+  const colorAfterHeatmap = await page.evaluate(() => {
+    const selectedCell = window.__cylinderTilingDebug.getSelected();
+    return window.__cylinderTilingDebug.getCellTopColor(selectedCell.row, selectedCell.i);
+  });
+  assert.strictEqual(colorAfterHeatmap, colorBeforeHeatmap, `${name} disabling the heatmap should restore the cell's original row-palette color`);
+
   // Clear All Actuators/Locks should reset the ring back to the uniform,
   // exactly-closed baseline state.
   await page.click("#clearRolesBtn");

@@ -186,6 +186,13 @@
 
         <details class="panel-section">
           <summary>Cross Colors</summary>
+          <label class="toggle"><input id="heatmapEnabled" type="checkbox" /> Color cells by alpha (heatmap)</label>
+          <p class="hint">
+            <span style="color:#2f6fd6">&#9632;</span> contracted (low alpha) -
+            <span style="color:#9a9a9a">&#9632;</span> neutral -
+            <span style="color:#d63a2f">&#9632;</span> expanded (high alpha). Overrides the row colors below while
+            on, so propagation from an actuator and per-row diameter differences are visible at a glance.
+          </p>
           <div id="colorLegend" class="legend-grid" aria-label="Cross color legend by row"></div>
           <div class="legend-grid" aria-label="Role marker legend">
             <span><i class="swatch" style="background:#ffd54a"></i>Selected cell</span>
