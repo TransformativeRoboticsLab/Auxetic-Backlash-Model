@@ -36,16 +36,22 @@ the RAD tooling:
   a ring built here is dimensionally comparable to the row/one-cell
   primitives there rather than using different made-up numbers.
 
-The ring-closure math, the cylinder stacking, the backlash dead-zone
-handling, collision checking, cell picking, and the UI are new work, not
-adapted from that project's files.
+Everything else - the ring-closure math, cylinder stacking, backlash
+coupling/propagation, per-cell actuation, collision checking, cell picking,
+timeline, target-diameter fitting, and the UI - is new work, not adapted
+from that project's files.
 
 ## Open it
 
-Static HTML/CSS/JS, no build step, no server required:
+Static HTML/CSS/JS, no build step. Opening `index.html` directly via
+`file://` works, but Chrome treats every `file://` reload as a distinct
+security origin and can block a same-tab refresh outright (harmless but
+confusing - closing and reopening the tab works around it). A local server
+avoids that entirely and is the more reliable way to keep working in it:
 
 ```powershell
-start index.html
+python -m http.server 8000
+# then open http://localhost:8000/ in a browser
 ```
 
 ## What it models
@@ -53,38 +59,73 @@ start index.html
 - **Ring closure**: `n` cells are placed by walking the same single-pin
   attach relation used elsewhere in the RAD tooling (a fixed local step,
   rotated by a turn angle of `2*pi/n` at each step) all the way around a
-  loop. A regular n-gon closes exactly by construction - the "ring closure
-  residual" readout is a live numerical check of that, not a fixed display
-  value.
+  loop. When every cell shares one alpha this is an exact regular n-gon -
+  the "ring closure residual" readout is a live numerical check of that,
+  not a fixed display value. With per-cell actuation (below), cells
+  generally differ, so the fixed-turn construction still walks all the way
+  around but the *chord lengths* differ per joint - the residual then
+  measures how inconsistent the per-cell commands are with a physically
+  closed ring, which the coupling propagation is what keeps small in
+  practice.
 - **Drive**: the paper-supported dilation factor `alpha`, converted to the
   cell rotation `theta = 70*alpha - 60`, with a bidirectional backlash
-  dead-zone (`f(x) = max(0, x-b) + min(x+b, 0)`) applied around `alpha = 1`
-  so the wheel doesn't respond to small commands inside its mechanical
-  backlash gap.
+  dead-zone (`f(x) = max(0, x-b) + min(x+b, 0)`) applied around `alpha = 1`.
+- **Per-cell actuation and coupling propagation**: every cell is "free"
+  (its alpha relaxes toward its neighbors' through the same backlash-gated
+  `reluDeadzone` law Drive uses), an "actuator" (a directly commanded
+  alpha), or "locked" (frozen at whatever alpha it had when locked). This
+  is a discrete relaxation over the ring/cylinder's actual neighbor graph
+  (circumferential + axial neighbors), not an independent slider per cell -
+  actuating one cell tugs nearby free cells by a die-off distance, matching
+  the paper's coupling model. With no actuators/locks this reduces exactly
+  to the uniform-ring behavior. Each of the `m` rows solves its own ring
+  from that row's own per-cell alphas, so rows can end up at different
+  diameters (barrel/cone profiles) instead of always stacking as a true
+  cylinder.
+- **Target Diameter fit**: diameter isn't monotonic in alpha (it rises then
+  falls as cells over-rotate past their most-open pose), so "Fit Alpha"
+  exhaustively evaluates every alpha the slider can reach and keeps
+  whichever produces the closest ring diameter, reporting the achieved
+  diameter and residual honestly (including when a target is out of the
+  achievable range) rather than solving a closed-form inverse. Fitting
+  clears any actuators/locks first, since it targets one shared alpha.
 - **Cylinder stacking**: `m` rings are repeated along the axle (`z`) axis at
   a configurable pitch. Axial row-to-row attachment is currently a rigid
   copy, not a solved joint - see Known limitations.
 - **Material Restriction**: neighbor-only clearance checking (circumferential
   and axial neighbors only, not every cell pair) using the same disk/capsule
   primitive distance math as the row primitive.
-- **Selection tools**: click a cell to inspect it, then Frame Cell (recenter
-  the camera on it) or Isolate Cell (hide everything else) from the Selected
-  Cell panel. Focus hides the control panel for a clean view.
-- **Save / Load**: JSON export/import of alpha, backlash, ring/row counts,
-  axial pitch, and attachment sites.
+- **Selection tools**: click a cell to inspect it (row/index, center,
+  rotations, current alpha, role), then Frame Cell (recenter the camera on
+  it), Isolate Cell (hide everything else), or edit its role/alpha directly
+  from the Selected Cell panel. Focus hides the control panel for a clean
+  view.
+- **Timeline**: capture named keyframes (full state snapshots - alpha,
+  backlash, ring/row counts, axial pitch, attachment sites, and every
+  cell's role/alpha), jump between them, or play through them as discrete
+  1.2s-interval steps (not interpolated). Save/Load Sequence JSON
+  round-trips the whole keyframe list through a file.
+- **Save / Load**: JSON export/import of the full configuration, including
+  per-cell roles.
 
 ## Known limitations (intentional, not yet done)
 
 - Only a single-pin joint per cell-to-cell connection is modeled, not the
   row primitive's mirrored double-pin closure. Generalizing double-pin
-  closure to an arbitrary n-cell ring is a real nonlinear loop-closure
-  problem (2 unknowns and 2 constraints per joint); it was left for later
-  rather than shipped half-verified.
+  closure to an arbitrary n-cell ring with independently-actuated cells is
+  a real nonlinear loop-closure problem; it was left for later rather than
+  shipped half-verified.
 - Axial (row-to-row) attachment is a rigid z-offset copy, not a solved
   joint - there's no axial backlash or clearance-driven pitch yet.
-- No inverse design, timeline/keyframes, or Jacobian sensitivity analysis,
-  unlike the much larger RAD digital workbench in `../Ahyan Virtual
-  Simulation/web/`. Those are large, separate undertakings.
+- Per-cell actuation is a discrete backlash-gated relaxation, not a force/
+  energy equilibrium solve - it's a reasonable discrete analogue of the
+  paper's coupling law, not a calibrated mechanics model.
+- Timeline playback jumps between keyframes rather than interpolating
+  between them.
+- No Jacobian sensitivity analysis or gradient-based inverse design (the
+  Target Diameter fit is a direct exhaustive search over one shared alpha,
+  not a general per-cell optimizer), unlike the much larger RAD digital
+  workbench in `../Ahyan Virtual Simulation/web/`.
 
 ## Test
 
@@ -95,7 +136,15 @@ node tests/validate_cylinder_tiling_page.js
 ```
 
 The Playwright script loads the page in a real Chromium browser (desktop and
-mobile viewports), checks the ring closure residual, the paper angle law,
-the backlash dead-zone, neighbor clearance reporting, cell picking, Focus/
-Frame/Isolate behavior, and a Save/Load JSON round-trip, then screenshots
-the rendered cells and checks their colors.
+mobile viewports) and checks: the ring closure residual (both the uniform
+and per-cell-actuated cases), the paper angle law, the backlash dead-zone,
+neighbor clearance reporting, cell picking, Frame/Isolate/Focus behavior,
+per-cell actuator/lock roles and their coupling propagation to a neighbor
+(read through a minimal `window.__cylinderTilingDebug` hook rather than
+guessing screen coordinates across camera angles), Target Diameter fitting
+(including that the reported achieved diameter matches what's actually
+rendered), Timeline capture/jump/play/save/load, and a Save/Load JSON
+round-trip - then screenshots the rendered cells and checks their colors.
+It also includes a regression test for a real display-scaling bug: on a
+non-100%-scaled monitor, the canvas's on-screen size could drift or run
+away across frames if not pinned to its container explicitly.
