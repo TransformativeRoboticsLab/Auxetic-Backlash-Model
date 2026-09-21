@@ -555,7 +555,15 @@
       radius += c.distanceTo(centroid);
     });
     radius /= n;
-    return { centers, bottomRot, pitch: pitchSum / n, closureResidual, radius, diameter: 2 * radius, centroid };
+    // bottomRot[i] is the cell's own chain-walking heading, not its polar
+    // position angle around the ring - for a turtle-graphics polygon walk
+    // those differ by a constant phase (heading leads the true radial
+    // direction, exact amount depends on n and the chosen attachment sites).
+    // Radial cell orientation needs the true outward direction from the
+    // ring's own centroid, so compute it directly from each cell's actual
+    // position rather than reusing bottomRot.
+    const radialAngle = centers.map((c) => Math.atan2(c.y - centroid.y, c.x - centroid.x));
+    return { centers, bottomRot, radialAngle, pitch: pitchSum / n, closureResidual, radius, diameter: 2 * radius, centroid };
   }
 
   // --- Per-cell actuation: each cell is "free" (tracks a backlash-gated
@@ -817,6 +825,7 @@
   const selectedWorld = new THREE.Vector3();
   let lastCellAlphas = null;
   let lastCellRolesSnapshot = null;
+  let lastRingsSnapshot = null;
 
   function updateCamera() {
     const r = cameraState.radius;
@@ -886,6 +895,7 @@
     const thetaPerRow = cellAlphas.map((row) => row.map((a) => degToRad(cellThetaDeg(a))));
     const rings = [];
     for (let row = 0; row < m; row += 1) rings.push(buildRing(n, thetaPerRow[row]));
+    lastRingsSnapshot = rings;
 
     const showMeasurements = showMeasurementsInput.checked && !isolateActive;
     measurementLine.visible = showMeasurements;
@@ -899,11 +909,15 @@
         const cell = cellPool[row * n + i];
         const center = rings[row].centers[i];
         cell.group.position.set(center.x, center.y, z);
-        setRadialOrientation(cell.group, rings[row].bottomRot[i]);
-        // The group's own orientation now carries the cell's heading
-        // around the ring (bottomRot[i], via setRadialOrientation above),
-        // so the child crosses' local z-rotation should only be the
-        // *relative* dilation twist between layers, not heading + twist -
+        setRadialOrientation(cell.group, rings[row].radialAngle[i]);
+        // The group's own orientation now carries the cell's true outward
+        // direction (radialAngle[i], measured from the ring's own centroid -
+        // not bottomRot[i], which is the chain-walking heading used for pin
+        // closure and leads the true radial direction by a construction-
+        // dependent phase, not a fixed 90deg, so reusing it here pointed the
+        // wide cross face radially instead of tangentially). The child
+        // crosses' local z-rotation is only the *relative* dilation twist
+        // between layers on top of that heading, not heading + twist -
         // otherwise heading would be double-applied. The bottom cross's
         // 4-fold symmetry makes 0 an arbitrary but equally valid reference;
         // top stays exactly theta ahead of bottom, preserving the same
@@ -1630,6 +1644,20 @@
       if (!cell) return null;
       const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(cell.group.quaternion);
       return { x: normal.x, y: normal.y, z: normal.z };
+    },
+    getRingGeometry: (row) => {
+      // Exposes each ring's actual center positions and centroid so tests
+      // can verify cell orientation against the ring's true geometric
+      // outward direction, not just against the orientation code's own
+      // inputs (bottomRot is the chain-walking heading, not the polar
+      // position angle, and trusting it directly was the root cause of a
+      // real bug where cells ended up rotated 90-ish degrees off).
+      const r = lastRingsSnapshot && lastRingsSnapshot[row];
+      if (!r) return null;
+      return {
+        centroid: { x: r.centroid.x, y: r.centroid.y },
+        centers: r.centers.map((c) => ({ x: c.x, y: c.y })),
+      };
     },
   };
 

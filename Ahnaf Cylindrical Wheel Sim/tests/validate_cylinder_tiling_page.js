@@ -116,6 +116,39 @@ async function checkViewport(browser, name, viewport) {
   const defaultHeight = mmValue(defaults.height);
   assert.ok(Math.abs(defaultHeight - 2 * 50) <= 0.5, `${name} default assembly height should be (m-1)*axialPitch`);
 
+  // Radial cell orientation: each cell's thickness-axis normal (read via the
+  // debug hook, which reports the cell group's local-Z direction in world
+  // space) should point away from the ring's own centroid - not merely
+  // agree with whatever angle the orientation code itself was fed. A prior
+  // version fed the ring-closure walk's chain heading (bottomRot) into the
+  // orientation code directly; that heading leads the true polar position
+  // angle by a construction-dependent phase (not a fixed 90deg), so cells
+  // rendered rotated off-axis (arms pointing radially like spokes, normals
+  // pointing tangentially) despite every self-consistency check on the
+  // orientation code's own math passing. This test catches that class of
+  // bug by comparing against the ring's actual center/centroid geometry,
+  // an independent source of truth the orientation code does not feed from.
+  const radialOrientation = await page.evaluate(() => {
+    const debugHook = window.__cylinderTilingDebug;
+    const ring = debugHook.getRingGeometry(0);
+    const samples = [0, 2, 5];
+    return samples.map((i) => {
+      const normal = debugHook.getCellGroupNormal(0, i);
+      const center = ring.centers[i];
+      const expectedAngle = Math.atan2(center.y - ring.centroid.y, center.x - ring.centroid.x);
+      const actualAngle = Math.atan2(normal.y, normal.x);
+      let diffDeg = ((actualAngle - expectedAngle) * 180) / Math.PI;
+      diffDeg = ((((diffDeg + 180) % 360) + 360) % 360) - 180;
+      return { i, diffDeg };
+    });
+  });
+  radialOrientation.forEach(({ i, diffDeg }) => {
+    assert.ok(
+      Math.abs(diffDeg) <= 1,
+      `${name} cell ${i}'s orientation normal should point away from the ring's own centroid (off by ${diffDeg.toFixed(1)}deg)`
+    );
+  });
+
   // Backlash dead-zone: alpha exactly at the reference (1.0) with a nonzero
   // gap should read as "free (dead zone)" and pin theta at 70*1-60=10deg.
   const deadzoned = await page.evaluate(() => {

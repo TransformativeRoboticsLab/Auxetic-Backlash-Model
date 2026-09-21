@@ -101,16 +101,22 @@ python -m http.server 8000
   clears any actuators/locks first, since it targets one shared alpha, and
   applies live as the slider is dragged, the same as every other control.
 - **Radial cell orientation**: each cell's thickness axis (top/bottom cross
-  plane normal) points radially outward from the ring's own center, not
-  along the cylinder's axial (`z`) direction. Earlier versions oriented every
-  cell flat-on to the axle, which looked like a flat sheet wrapped into a
-  ring rather than the actual hardware, where each cell tips outward like a
-  spoke. The per-cell local frame is built directly from the cell's heading
-  angle around the ring (`setRadialOrientation`, via `THREE.Matrix4.makeBasis`
-  on tangential/axial/radial basis vectors) rather than composed from
-  incremental rotations, so it stays exact at any `n`. The two crosses'
-  relative twist (the dilation angle `theta`) is unchanged - only which way
-  the whole cell faces changed, matching the assembled-hardware photos.
+  plane normal) points radially outward from the ring's own center, and its
+  flat cross face lies tangent to the cylinder (spanning the circumferential
+  and axial directions) - the same way the physical hardware's cells tile
+  the wheel's surface, not flat-on to the axle like earlier versions. The
+  per-cell local frame is built from each cell's true polar position angle
+  around its own ring (`atan2` against the ring's centroid, exposed for
+  testing as `getRingGeometry`) via `THREE.Matrix4.makeBasis` on
+  tangential/axial/radial basis vectors - deliberately *not* the
+  ring-closure walk's chain heading (`bottomRot`), which is the direction
+  each cell's pin joints face for closing the loop and leads the true polar
+  angle by a construction-dependent phase, not a fixed 90deg. Reusing that
+  heading directly was an earlier bug: it rendered every cell rotated off by
+  that phase, so the wide tangential face pointed radially (like spokes)
+  instead of wrapping the surface. The two crosses' relative twist (the
+  dilation angle `theta`) is unchanged - only which way the whole cell
+  faces changed, matching the assembled-hardware photos.
 - **Cylinder stacking**: `m` rings are repeated along the axle (`z`) axis at
   a configurable pitch. Axial row-to-row attachment is currently a rigid
   copy, not a solved joint - see Known limitations.
@@ -193,4 +199,8 @@ rendered), Timeline capture/jump/play/save/load, and a Save/Load JSON
 round-trip - then screenshots the rendered cells and checks their colors.
 It also includes a regression test for a real display-scaling bug: on a
 non-100%-scaled monitor, the canvas's on-screen size could drift or run
-away across frames if not pinned to its container explicitly.
+away across frames if not pinned to its container explicitly. A second
+regression test checks radial cell orientation against the ring's actual
+center/centroid geometry (not just the orientation code's own inputs) -
+the way an earlier version's bug passed every self-consistency check on
+its own math while still rendering every cell rotated off-axis.
