@@ -212,6 +212,40 @@ async function checkViewport(browser, name, viewport) {
   assert.ok(defaults.clearance.endsWith("mm"), `${name} should report minimum clearance`);
   assert.ok(Number(defaults.pairsChecked) > 0, `${name} should report a positive number of clearance pairs checked`);
 
+  // Pin-hole alignment: a real gap measurement between each joint's actual
+  // pin holes (from each cell's true 3D orientation), not just whether cell
+  // bodies overlap. At the default (uniform) state, the circumferential gap
+  // should be small (a straight cross arm can't perfectly face two curved
+  // neighbors, so it's an honest residual, not forced to zero) and the
+  // axial gap should match the known geometric constant: axial pitch minus
+  // the two half-cells' site reach (50 - 2*22.1 = 5.8mm), since every row
+  // shares the same diameter with no differential dilation yet.
+  const pinAlignmentDefault = await page.evaluate(() => window.__cylinderTilingDebug.getPinAlignment());
+  assert.ok(
+    pinAlignmentDefault.maxCircumferential >= 0 && pinAlignmentDefault.maxCircumferential < 5,
+    `${name} default circumferential pin gap should be small (got ${pinAlignmentDefault.maxCircumferential})`
+  );
+  assert.ok(
+    Math.abs(pinAlignmentDefault.maxAxial - 5.8) < 0.5,
+    `${name} default axial pin gap should match axialPitch - 2*siteRadius = 5.8mm (got ${pinAlignmentDefault.maxAxial})`
+  );
+  const circumferentialPinText = await page.evaluate(() => document.getElementById("circumferentialPinMetric").textContent);
+  assert.ok(circumferentialPinText.endsWith("mm"), `${name} circumferential pin gap readout should be in mm`);
+
+  // Under differential dilation (Barrel preset), rows end up at different
+  // diameters, so the axial pin gap should grow well past the uniform-row
+  // baseline - it's honestly reporting that rows no longer stack as a true
+  // cylinder, the same way ring closure residual reports per-cell mismatch.
+  await page.evaluate(() => document.getElementById("presetBarrelBtn").click());
+  await page.waitForTimeout(150);
+  const pinAlignmentBarrel = await page.evaluate(() => window.__cylinderTilingDebug.getPinAlignment());
+  assert.ok(
+    pinAlignmentBarrel.maxAxial > pinAlignmentDefault.maxAxial + 5,
+    `${name} Barrel preset should noticeably increase the axial pin gap (default ${pinAlignmentDefault.maxAxial}, barrel ${pinAlignmentBarrel.maxAxial})`
+  );
+  await page.evaluate(() => document.getElementById("clearRolesBtn").click());
+  await page.waitForTimeout(150);
+
   // Resize the ring (n) and stack (m); pool should rebuild and stay closed.
   const resized = await page.evaluate(() => {
     const ringInput = document.getElementById("ringCount");

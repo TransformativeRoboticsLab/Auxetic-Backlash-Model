@@ -123,6 +123,18 @@ python -m http.server 8000
 - **Material Restriction**: neighbor-only clearance checking (circumferential
   and axial neighbors only, not every cell pair) using the same disk/capsule
   primitive distance math as the row primitive.
+- **Pin-hole alignment**: a real gap measurement between each joint's actual
+  connecting holes, computed from each cell's true 3D orientation (not the
+  clearance guard's flat 2D body approximation above). Each cell's tangential
+  heading is aimed along the chord from its previous neighbor to its next one
+  (the standard vertex-tangent estimate for a curved polygon) rather than a
+  pure circle-tangent angle, which minimizes - but can't fully eliminate - the
+  circumferential gap: a straight cross arm can't perfectly face two curved
+  neighbors at once, so a small residual is expected and reported honestly,
+  the same way ring closure residual is. The axial gap is exactly the
+  geometric constant `axialPitch - 2*siteRadius` when every row shares one
+  diameter, and grows honestly once differential dilation gives rows
+  different diameters (rows no longer stack as a true cylinder).
 - **Selection tools**: click a cell to inspect it (row/index, center,
   rotations, current alpha, role), then Frame Cell (recenter the camera on
   it), Isolate Cell (hide everything else), or edit its role/alpha directly
@@ -175,6 +187,11 @@ python -m http.server 8000
   Target Diameter fit is a direct exhaustive search over one shared alpha,
   not a general per-cell optimizer), unlike the much larger RAD digital
   workbench in `../Ahyan Virtual Simulation/web/`.
+- Pin-hole alignment (above) is a *measurement*, not a constraint: nothing
+  stops a cell from moving independently of what its neighbors' holes would
+  require, and there's no check against discontinuous motion between states
+  (a cell "fusing through" another between two alpha values). Solving that
+  properly is a contact-dynamics problem, not a visualization fix.
 
 ## Test
 
@@ -187,7 +204,10 @@ node tests/validate_cylinder_tiling_page.js
 The Playwright script loads the page in a real Chromium browser (desktop and
 mobile viewports) and checks: the ring closure residual (both the uniform
 and per-cell-actuated cases), the paper angle law, the backlash dead-zone,
-neighbor clearance reporting, cell picking, Frame/Isolate/Focus behavior,
+neighbor clearance reporting, pin-hole alignment (both the small honest
+circumferential residual at the default uniform state and the exact axial
+gap constant, plus that it grows under differential dilation), cell picking,
+Frame/Isolate/Focus behavior,
 per-cell actuator/lock roles and their coupling propagation to a neighbor
 (read through a minimal `window.__cylinderTilingDebug` hook rather than
 guessing screen coordinates across camera angles), shift-click batch

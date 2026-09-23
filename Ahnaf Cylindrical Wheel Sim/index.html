@@ -203,13 +203,24 @@
         </details>
 
         <details class="panel-section">
-          <summary>Material Restriction</summary>
+          <summary>Material Restriction &amp; Pin Alignment</summary>
           <label class="toggle"><input id="collisionEnabled" type="checkbox" checked /> Check neighbor clearance</label>
           <dl>
             <div><dt>guard</dt><dd id="collisionState" class="status-ok">clear</dd></div>
             <div><dt>max penetration</dt><dd id="penetrationMetric">0.000 mm</dd></div>
             <div><dt>minimum clearance</dt><dd id="clearanceMetric">0.000 mm</dd></div>
             <div><dt>pairs checked</dt><dd id="pairsCheckedMetric">0</dd></div>
+          </dl>
+          <p class="hint">
+            The clearance guard above only checks that neighboring cell bodies don't overlap. It doesn't know where
+            the actual connecting holes are. These two readouts measure the real gap between each joint's pin holes
+            (computed from each cell's actual 3D orientation): a straight cross arm can't perfectly face two curved
+            neighbors at once, so a small circumferential gap is expected and honestly reported, the same way ring
+            closure residual is - it is not forced to a fake zero.
+          </p>
+          <dl>
+            <div><dt>circumferential pin gap (max)</dt><dd id="circumferentialPinMetric">0.000 mm</dd></div>
+            <div><dt>axial pin gap (max)</dt><dd id="axialPinMetric">0.000 mm</dd></div>
           </dl>
         </details>
 

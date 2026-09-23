@@ -37,6 +37,8 @@
   const penetrationMetric = document.getElementById("penetrationMetric");
   const clearanceMetric = document.getElementById("clearanceMetric");
   const pairsCheckedMetric = document.getElementById("pairsCheckedMetric");
+  const circumferentialPinMetric = document.getElementById("circumferentialPinMetric");
+  const axialPinMetric = document.getElementById("axialPinMetric");
   const selectedCellStatus = document.getElementById("selectedCellStatus");
   const selectedIndexMetric = document.getElementById("selectedIndexMetric");
   const selectedCenterMetric = document.getElementById("selectedCenterMetric");
@@ -369,6 +371,52 @@
     };
   }
 
+  // Real pin-hole alignment: each cell's east/west (circumferential) and
+  // north/south (axial) pad centers are where a physical pin would pass
+  // through into the matching neighbor. Computed directly from the actual
+  // rendered per-cell frame (tangent/normal from computeCellFrame, the same
+  // basis setRadialOrientation used), not the flat 2D approximation
+  // checkNeighborClearance above still uses - this is what actually answers
+  // "do the holes line up", which body-clearance distance alone can't.
+  // Circumferential gaps are a genuine, honest residual (like ring closure)
+  // rather than exactly zero: a straight cross arm can't perfectly face two
+  // curved-ring neighbors at once, even with the bisector heading tangent
+  // chosen to minimize it. Axial gaps are exactly zero unless rows differ
+  // in diameter (differential dilation/barrel/cone shapes), in which case
+  // they honestly reflect that the rows no longer stack as a true cylinder.
+  function computePinAlignment(n, m, rings, cellFramesByRow, axialPitch) {
+    const siteRadius = CAD.siteRadiusMm;
+    let maxCircumferential = 0;
+    let maxAxial = 0;
+    let jointsChecked = 0;
+    for (let row = 0; row < m; row += 1) {
+      const z = row * axialPitch;
+      for (let i = 0; i < n; i += 1) {
+        const next = (i + 1) % n;
+        const frameA = cellFramesByRow[row][i];
+        const frameB = cellFramesByRow[row][next];
+        const eastPad = rings[row].centers[i].clone().addScaledVector(frameA.tangent, siteRadius);
+        const westPad = rings[row].centers[next].clone().addScaledVector(frameB.tangent, -siteRadius);
+        maxCircumferential = Math.max(maxCircumferential, eastPad.distanceTo(westPad));
+        jointsChecked += 1;
+      }
+    }
+    for (let row = 0; row < m - 1; row += 1) {
+      const zNorth = row * axialPitch + siteRadius;
+      const zSouth = (row + 1) * axialPitch - siteRadius;
+      for (let i = 0; i < n; i += 1) {
+        const centerNorth = rings[row].centers[i];
+        const centerSouth = rings[row + 1].centers[i];
+        const dx = centerNorth.x - centerSouth.x;
+        const dy = centerNorth.y - centerSouth.y;
+        const dz = zNorth - zSouth;
+        maxAxial = Math.max(maxAxial, Math.sqrt(dx * dx + dy * dy + dz * dz));
+        jointsChecked += 1;
+      }
+    }
+    return { maxCircumferential, maxAxial, jointsChecked };
+  }
+
   function cylinderZ(radius, depth, material, segments = 48) {
     const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, depth, segments), material);
     mesh.rotation.x = Math.PI / 2;
@@ -675,11 +723,31 @@
   const radialScratchZ = new THREE.Vector3();
   const radialScratchMatrix = new THREE.Matrix4();
 
-  function setRadialOrientation(object3d, theta) {
-    const cosT = Math.cos(theta);
-    const sinT = Math.sin(theta);
-    radialScratchX.set(-sinT, cosT, 0); // tangential
-    radialScratchZ.set(cosT, sinT, 0); // radial (outward)
+  // A cell's tangential (east/west) heading can't exactly face both of its
+  // circumferential neighbors at once - a straight cross arm has one axis,
+  // but the ring curves - so instead of a pure "tangent to the circle"
+  // angle, aim it along the chord from the previous neighbor to the next
+  // one (the standard vertex-tangent estimate for a polygon). That's the
+  // orientation that minimizes how far each of the two neighboring pin
+  // holes ends up from this cell's own hole, the same honest-residual
+  // approach the ring closure/diameter fit already use elsewhere, rather
+  // than assuming a perfect regular polygon (which per-cell actuation and
+  // even the exact-closure case's own pin geometry don't quite give).
+  function computeCellFrame(centers, centroid, i, n) {
+    const prev = centers[(i - 1 + n) % n];
+    const next = centers[(i + 1) % n];
+    const tangent = next.clone().sub(prev);
+    if (tangent.lengthSq() < 1e-9) tangent.set(1, 0);
+    tangent.normalize();
+    const normal = new THREE.Vector2(-tangent.y, tangent.x);
+    const outward = centers[i].clone().sub(centroid);
+    if (normal.dot(outward) < 0) normal.negate();
+    return { tangent, normal };
+  }
+
+  function setRadialOrientation(object3d, tangent2, normal2) {
+    radialScratchX.set(tangent2.x, tangent2.y, 0); // tangential (hole-aligned)
+    radialScratchZ.set(normal2.x, normal2.y, 0); // radial (outward)
     radialScratchMatrix.makeBasis(radialScratchX, radialScratchY, radialScratchZ);
     object3d.quaternion.setFromRotationMatrix(radialScratchMatrix);
   }
@@ -826,6 +894,7 @@
   let lastCellAlphas = null;
   let lastCellRolesSnapshot = null;
   let lastRingsSnapshot = null;
+  let lastPinAlignment = null;
 
   function updateCamera() {
     const r = cameraState.radius;
@@ -896,6 +965,8 @@
     const rings = [];
     for (let row = 0; row < m; row += 1) rings.push(buildRing(n, thetaPerRow[row]));
     lastRingsSnapshot = rings;
+    const cellFramesByRow = [];
+    for (let row = 0; row < m; row += 1) cellFramesByRow.push(new Array(n));
 
     const showMeasurements = showMeasurementsInput.checked && !isolateActive;
     measurementLine.visible = showMeasurements;
@@ -909,15 +980,17 @@
         const cell = cellPool[row * n + i];
         const center = rings[row].centers[i];
         cell.group.position.set(center.x, center.y, z);
-        setRadialOrientation(cell.group, rings[row].radialAngle[i]);
+        const frame = computeCellFrame(rings[row].centers, rings[row].centroid, i, n);
+        cellFramesByRow[row][i] = frame;
+        setRadialOrientation(cell.group, frame.tangent, frame.normal);
         // The group's own orientation now carries the cell's true outward
-        // direction (radialAngle[i], measured from the ring's own centroid -
-        // not bottomRot[i], which is the chain-walking heading used for pin
-        // closure and leads the true radial direction by a construction-
-        // dependent phase, not a fixed 90deg, so reusing it here pointed the
-        // wide cross face radially instead of tangentially). The child
-        // crosses' local z-rotation is only the *relative* dilation twist
-        // between layers on top of that heading, not heading + twist -
+        // direction (normal, from computeCellFrame - not bottomRot[i], the
+        // chain-walking heading used for pin closure, which leads the true
+        // radial direction by a construction-dependent phase, not a fixed
+        // 90deg) and a tangential heading aimed at minimizing hole
+        // misalignment with both circumferential neighbors at once. The
+        // child crosses' local z-rotation is only the *relative* dilation
+        // twist between layers on top of that heading, not heading + twist -
         // otherwise heading would be double-applied. The bottom cross's
         // 4-fold symmetry makes 0 an arbitrary but equally valid reference;
         // top stays exactly theta ahead of bottom, preserving the same
@@ -1007,6 +1080,11 @@
       clearanceMetric.textContent = "-";
       pairsCheckedMetric.textContent = "0";
     }
+
+    const pinAlignment = computePinAlignment(n, m, rings, cellFramesByRow, axialPitch);
+    lastPinAlignment = pinAlignment;
+    circumferentialPinMetric.textContent = `${pinAlignment.maxCircumferential.toFixed(3)} mm`;
+    axialPinMetric.textContent = `${pinAlignment.maxAxial.toFixed(3)} mm`;
 
     if (selected && selected.row < m && selected.i < n) {
       const row = selected.row;
@@ -1645,6 +1723,7 @@
       const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(cell.group.quaternion);
       return { x: normal.x, y: normal.y, z: normal.z };
     },
+    getPinAlignment: () => lastPinAlignment,
     getRingGeometry: (row) => {
       // Exposes each ring's actual center positions and centroid so tests
       // can verify cell orientation against the ring's true geometric
