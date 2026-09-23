@@ -11,6 +11,10 @@
     return JSON.parse(JSON.stringify(state));
   }
 
+  function cloneData(value) {
+    return value === undefined ? null : JSON.parse(JSON.stringify(value));
+  }
+
   function planningStateFrom(state) {
     const next = cloneState(state);
     const locked = JSON.parse(JSON.stringify(next.cells.locked));
@@ -41,6 +45,27 @@
       }
     }
     return { rms: Math.sqrt(sum / Math.max(1, count)), peak };
+  }
+
+  function rmsTargetResidual(target, height) {
+    let sum = 0;
+    let count = 0;
+    let maxAbs = 0;
+    let bias = 0;
+    for (let r = 0; r < target.length; r += 1) {
+      for (let c = 0; c < target[r].length; c += 1) {
+        const residual = target[r][c] - height[r][c];
+        sum += residual * residual;
+        bias += residual;
+        maxAbs = Math.max(maxAbs, Math.abs(residual));
+        count += 1;
+      }
+    }
+    return {
+      rms: Math.sqrt(sum / Math.max(1, count)),
+      maxAbs,
+      bias: bias / Math.max(1, count),
+    };
   }
 
   function countResponsiveCells(a, b, threshold) {
@@ -80,6 +105,90 @@
       for (let c = 0; c < sim.target[r].length; c += 1) values.push(sim.target[r][c] - sim.height[r][c]);
     }
     return values;
+  }
+
+  function targetReachabilityReport(state, baseSim, columns, options = {}) {
+    const { rows, cols } = state.grid;
+    const responseThreshold = options.responseThreshold ?? 0.012;
+    const targetThreshold = options.targetThreshold ?? responseThreshold;
+    const heightReachableMap = RAD.matrix(rows, cols, false);
+    const positiveHeightReachableMap = RAD.matrix(rows, cols, false);
+    const negativeHeightReachableMap = RAD.matrix(rows, cols, false);
+    const targetHeightMap = RAD.matrix(rows, cols, 0);
+    const underactuatedHeightMap = RAD.matrix(rows, cols, 0);
+    let heightReachableCells = 0;
+    let positiveHeightReachableCells = 0;
+    let negativeHeightReachableCells = 0;
+    let targetHeightCells = 0;
+    let upwardTargetHeightCells = 0;
+    let downwardTargetHeightCells = 0;
+    let underactuatedHeightCells = 0;
+    let positiveUnderactuatedHeightCells = 0;
+    let negativeUnderactuatedHeightCells = 0;
+    let unreachableSquared = 0;
+    let maxUnreachableHeightResidual = 0;
+    let worstUnderactuatedCell = null;
+
+    for (let index = 0; index < rows * cols; index += 1) {
+      const r = Math.floor(index / cols);
+      const c = index % cols;
+      const positiveReachable = columns.some((column) => (column.heightDelta?.[index] || 0) >= responseThreshold);
+      const negativeReachable = columns.some((column) => (column.heightDelta?.[index] || 0) <= -responseThreshold);
+      const reachable = positiveReachable || negativeReachable;
+      heightReachableMap[r][c] = reachable;
+      positiveHeightReachableMap[r][c] = positiveReachable;
+      negativeHeightReachableMap[r][c] = negativeReachable;
+      if (reachable) heightReachableCells += 1;
+      if (positiveReachable) positiveHeightReachableCells += 1;
+      if (negativeReachable) negativeHeightReachableCells += 1;
+      const residual = (baseSim.target?.[r]?.[c] || 0) - (baseSim.height?.[r]?.[c] || 0);
+      const upwardRequested = residual >= targetThreshold;
+      const downwardRequested = residual <= -targetThreshold;
+      const requested = upwardRequested || downwardRequested;
+      if (requested) {
+        targetHeightCells += 1;
+        targetHeightMap[r][c] = residual;
+      }
+      if (upwardRequested) upwardTargetHeightCells += 1;
+      if (downwardRequested) downwardTargetHeightCells += 1;
+      const signedUnderactuated = (upwardRequested && !positiveReachable) || (downwardRequested && !negativeReachable);
+      if (signedUnderactuated) {
+        const magnitude = Math.abs(residual);
+        underactuatedHeightCells += 1;
+        if (upwardRequested) positiveUnderactuatedHeightCells += 1;
+        if (downwardRequested) negativeUnderactuatedHeightCells += 1;
+        underactuatedHeightMap[r][c] = magnitude;
+        unreachableSquared += residual * residual;
+        if (magnitude > maxUnreachableHeightResidual) {
+          maxUnreachableHeightResidual = magnitude;
+          worstUnderactuatedCell = { row: r, col: c, residual, absResidual: magnitude };
+        }
+      }
+    }
+
+    return {
+      model: "finite-response-height-reachability",
+      directionalModel: "sign-compatible finite-response-height-reachability",
+      responseThreshold,
+      targetThreshold,
+      heightReachableMap,
+      positiveHeightReachableMap,
+      negativeHeightReachableMap,
+      targetHeightMap,
+      underactuatedHeightMap,
+      heightReachableCells,
+      positiveHeightReachableCells,
+      negativeHeightReachableCells,
+      targetHeightCells,
+      upwardTargetHeightCells,
+      downwardTargetHeightCells,
+      underactuatedHeightCells,
+      positiveUnderactuatedHeightCells,
+      negativeUnderactuatedHeightCells,
+      unreachableHeightRms: Math.sqrt(unreachableSquared / Math.max(1, underactuatedHeightCells)),
+      maxUnreachableHeightResidual,
+      worstUnderactuatedCell,
+    };
   }
 
   function commandFromResidual(state, residual) {
@@ -194,7 +303,7 @@
       candidates: candidates.slice(0, Math.min(48, candidates.length)),
       commands,
     };
-    state.inverse = { ...(state.inverse || {}), maxActuators, lastScore: baseScore, plan, preview: null };
+    state.inverse = { ...(state.inverse || {}), maxActuators, lastScore: baseScore, plan, preview: null, physicalValidation: null };
     return plan;
   }
 
@@ -274,7 +383,7 @@
       maxGain,
       baseScore,
     };
-    state.inverse = { ...(state.inverse || {}), sensitivity, preview: null };
+    state.inverse = { ...(state.inverse || {}), sensitivity, preview: null, physicalValidation: null };
     return sensitivity;
   }
 
@@ -400,6 +509,10 @@
       }
     }
 
+    const targetReachability = targetReachabilityReport(projectedState, baseSim, columns, {
+      responseThreshold: options.responseThreshold ?? 0.012,
+      targetThreshold: options.targetThreshold,
+    });
     const norms = columns.map((column) => column.heightNorm).filter((value) => value > 1e-9).sort((a, b) => a - b);
     const conditionEstimate = norms.length > 1 ? norms[norms.length - 1] / norms[0] : 0;
     columns.sort((a, b) => b.targetAlignment - a.targetAlignment || b.heightNorm - a.heightNorm);
@@ -414,10 +527,11 @@
       meanCoverage: meanCoverage / Math.max(1, actuatorCount),
       maxCoverage,
       conditionEstimate,
+      targetReachability,
       baseError: baseSim.metrics.rmsTargetError,
       columns: columns.slice(0, Math.min(96, columns.length)),
     };
-    state.inverse = { ...(state.inverse || {}), jacobian, preview: null };
+    state.inverse = { ...(state.inverse || {}), jacobian, preview: null, physicalValidation: null };
     return jacobian;
   }
 
@@ -433,6 +547,10 @@
     const damping = options.damping ?? 0.018;
     const minGain = options.minGain ?? 1e-5;
     const jacobian = state.inverse?.jacobian?.columns?.length ? state.inverse.jacobian : buildResponseJacobian(state, options);
+    jacobian.targetReachability = targetReachabilityReport(projectedState, baseSim, jacobian.columns || [], {
+      responseThreshold: options.responseThreshold ?? jacobian.targetReachability?.responseThreshold ?? 0.012,
+      targetThreshold: options.targetThreshold ?? jacobian.targetReachability?.targetThreshold,
+    });
     const limits = RAD.commandLimits(projectedState);
     const residual = targetResidualVector(baseSim);
     const accepted = [];
@@ -495,6 +613,10 @@
       predictedError: residualNorm(residual),
       projectedError: projectedSim.metrics.rmsTargetError,
       projectedActuators: projectedSim.metrics.recommendedActuators,
+      targetReachability: jacobian.targetReachability,
+      underactuatedHeightCells: jacobian.targetReachability?.underactuatedHeightCells || 0,
+      unreachableHeightRms: jacobian.targetReachability?.unreachableHeightRms || 0,
+      maxUnreachableHeightResidual: jacobian.targetReachability?.maxUnreachableHeightResidual || 0,
       steps: accepted.length,
       commands: Array.from(commandsByCell.entries()).map(([key, command], index) => {
         const [r, c] = key.split(",").map(Number);
@@ -502,7 +624,7 @@
       }),
       history: accepted,
     };
-    state.inverse = { ...(state.inverse || {}), jacobian, linearSolution: solution, preview: null };
+    state.inverse = { ...(state.inverse || {}), jacobian, linearSolution: solution, preview: null, physicalValidation: null };
     return solution;
   }
 
@@ -522,7 +644,143 @@
       baseError: solution.baseError,
       projectedError: solution.projectedError,
     });
+    state.inverse = { ...(state.inverse || {}), physicalValidation: null };
     return solution;
+  }
+
+  function inverseCommandSet(state, source = "auto") {
+    const linear = state.inverse?.linearSolution?.commands || [];
+    const plan = state.inverse?.plan?.commands || [];
+    if (source === "linear") return { source: "linear", commands: linear };
+    if (source === "plan") return { source: "plan", commands: plan };
+    if (linear.length) return { source: "linear", commands: linear };
+    return { source: "plan", commands: plan };
+  }
+
+  function validateInversePlanPhysical(state, options = {}) {
+    const selected = inverseCommandSet(state, options.source || "auto");
+    const commands = selected.commands || [];
+    const planningState = planningStateFrom(state);
+    const baseKinematic = RAD.simulate(planningState);
+    const commandState = cloneState(planningState);
+    for (const command of commands) {
+      commandState.cells.commandZ[command.r][command.c] = command.commandZ;
+      commandState.cells.commandAlpha[command.r][command.c] = command.commandAlpha;
+    }
+    const projectedKinematic = RAD.simulate(commandState);
+    const physicalAvailable = typeof RAD.simulatePhysicalRelaxation === "function";
+    const basePhysical = physicalAvailable
+      ? RAD.simulatePhysicalRelaxation(planningState, {
+          baseSim: baseKinematic,
+          iterations: options.iterations ?? 24,
+        })
+      : baseKinematic;
+    const projectedPhysical = physicalAvailable
+      ? RAD.simulatePhysicalRelaxation(commandState, {
+          baseSim: projectedKinematic,
+          iterations: options.iterations ?? 24,
+        })
+      : projectedKinematic;
+    const baseResidual = rmsTargetResidual(basePhysical.target, basePhysical.height);
+    const projectedResidual = rmsTargetResidual(projectedPhysical.target, projectedPhysical.height);
+    const validation = {
+      strategy: "spring-preview-inverse-validation",
+      source: selected.source,
+      physicalAvailable,
+      physicalSuccess: physicalAvailable,
+      iterations: projectedPhysical.metrics?.physicalIterations || 0,
+      commandCount: commands.length,
+      baseKinematicError: baseKinematic.metrics.rmsTargetError,
+      projectedKinematicError: projectedKinematic.metrics.rmsTargetError,
+      physicalBaseError: baseResidual.rms,
+      physicalProjectedError: projectedResidual.rms,
+      physicalErrorDelta: baseResidual.rms - projectedResidual.rms,
+      physicalMaxAbsResidual: projectedResidual.maxAbs,
+      physicalMeanResidual: projectedResidual.bias,
+      heightModelRms: projectedPhysical.metrics?.physicalRmsHeightDelta || 0,
+      heightModelMax: projectedPhysical.metrics?.physicalMaxHeightDelta || 0,
+      centerModelRms: projectedPhysical.metrics?.physicalRmsCenterDelta || 0,
+      centerModelMax: projectedPhysical.metrics?.physicalMaxCenterDelta || 0,
+      modelAgreementScore: 1 / (1 + (projectedPhysical.metrics?.physicalRmsCenterDelta || 0)),
+      commands: commands.map((command) => ({
+        r: command.r,
+        c: command.c,
+        commandZ: command.commandZ,
+        commandAlpha: command.commandAlpha,
+      })),
+    };
+    state.inverse = { ...(state.inverse || {}), physicalValidation: validation };
+    return validation;
+  }
+
+  function inverseDesignReport(state) {
+    const sim = RAD.simulateActive(state);
+    const inverse = state.inverse || {};
+    const jacobian = inverse.jacobian?.columns?.length ? inverse.jacobian : null;
+    const linearSolution = inverse.linearSolution?.commands?.length || inverse.linearSolution?.steps ? inverse.linearSolution : null;
+    const plan = inverse.plan?.commands?.length || inverse.plan?.candidates?.length ? inverse.plan : null;
+    const targetReachability =
+      jacobian?.targetReachability ||
+      linearSolution?.targetReachability ||
+      null;
+    let lockedCount = 0;
+    let allowedCount = 0;
+    let activeCommandCount = 0;
+    for (let r = 0; r < state.grid.rows; r += 1) {
+      for (let c = 0; c < state.grid.cols; c += 1) {
+        if (state.cells.locked?.[r]?.[c]) lockedCount += 1;
+        if (state.cells.actuatorAllowed?.[r]?.[c] !== false) allowedCount += 1;
+        if (Math.abs(state.cells.commandAlpha?.[r]?.[c] || 0) > 1e-9 || Math.abs(state.cells.commandZ?.[r]?.[c] || 0) > 1e-9) activeCommandCount += 1;
+      }
+    }
+    return {
+      schema: "rad-sim.inverse-design-report.v1",
+      grid: {
+        rows: state.grid.rows,
+        cols: state.grid.cols,
+        backlash: state.grid.backlash,
+        couplingGain: state.grid.couplingGain,
+        zCouplingGain: state.grid.zCouplingGain,
+        zTravelLimit: state.grid.zTravelLimit,
+        alphaContractLimit: state.grid.alphaContractLimit,
+        alphaExpandLimit: state.grid.alphaExpandLimit,
+      },
+      target: cloneData(state.target),
+      selection: cloneData(state.selection),
+      actuatorState: {
+        lockedCount,
+        allowedCount,
+        activeCommandCount,
+        commandAlpha: cloneData(state.cells.commandAlpha),
+        commandZ: cloneData(state.cells.commandZ),
+        locked: cloneData(state.cells.locked),
+        actuatorAllowed: cloneData(state.cells.actuatorAllowed),
+      },
+      currentMetrics: {
+        rmsTargetError: sim.metrics.rmsTargetError,
+        meanSignedTargetError: sim.metrics.meanSignedTargetError,
+        maxNegativeTargetError: sim.metrics.maxNegativeTargetError,
+        maxPositiveTargetError: sim.metrics.maxPositiveTargetError,
+        activeCells: sim.metrics.activeCells,
+        recommendedActuators: sim.metrics.recommendedActuators,
+        maxSaturation: sim.metrics.maxSaturation,
+      },
+      inverse: {
+        plan: cloneData(plan),
+        jacobian: cloneData(jacobian),
+        linearSolution: cloneData(linearSolution),
+        physicalValidation: cloneData(inverse.physicalValidation || null),
+        targetReachability: cloneData(targetReachability),
+      },
+      assumptions: {
+        inverseModel: "browser finite-difference columns and greedy linearized target fit",
+        physicalValidation: "spring-preview validation is a check of proposed commands, not a calibrated optimizer",
+      },
+    };
+  }
+
+  function exportInverseDesignReport(state) {
+    return JSON.stringify(inverseDesignReport(state), null, 2);
   }
 
   function previewFromCommands(state, commands, meta = {}) {
@@ -618,6 +876,7 @@
       actuators: plan.commands.length,
       score: plan.baseScore,
     });
+    state.inverse = { ...(state.inverse || {}), physicalValidation: null };
     return plan;
   }
 
@@ -626,6 +885,9 @@
   RAD.buildResponseJacobian = buildResponseJacobian;
   RAD.solveLinearizedTargetFit = solveLinearizedTargetFit;
   RAD.applyLinearizedTargetFit = applyLinearizedTargetFit;
+  RAD.validateInversePlanPhysical = validateInversePlanPhysical;
+  RAD.inverseDesignReport = inverseDesignReport;
+  RAD.exportInverseDesignReport = exportInverseDesignReport;
   RAD.setInversePreview = setInversePreview;
   RAD.setInversePlanStepPreview = setInversePlanStepPreview;
   RAD.applyInverseDesignPlan = applyInverseDesignPlan;

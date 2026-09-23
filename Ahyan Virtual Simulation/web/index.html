@@ -45,6 +45,7 @@
             <div class="advanced-metric"><span id="meanSensitivity">0.000</span><small>mean sensitivity</small></div>
             <div class="advanced-metric"><span id="jacobianColumns">0</span><small>jacobian cols</small></div>
             <div class="advanced-metric"><span id="meanReachability">0.000</span><small>mean reach</small></div>
+            <div class="advanced-metric"><span id="underTargetCells">0</span><small>under targets</small></div>
             <div class="advanced-metric"><span id="linearFitSteps">0</span><small>linear fit steps</small></div>
             <div class="advanced-metric"><span id="linearFitError">0.000</span><small>linear fit err</small></div>
             <div class="advanced-metric"><span id="drawCalls">0</span><small>draw calls</small></div>
@@ -124,6 +125,20 @@
                 <button id="applyCommand" type="button">Apply</button>
                 <button id="clearCell" type="button">Clear Cell</button>
               </div>
+              <div class="operator-panel" aria-label="Programmable discontinuity event controls">
+                <div class="button-row operator-row">
+                  <button id="operatorCommitLock" type="button">Event Lock</button>
+                  <button id="operatorReleaseLock" type="button">Event Release</button>
+                  <button id="operatorCheckOrder" type="button">Check Order</button>
+                </div>
+                <dl class="operator-inspector">
+                  <div><dt>order</dt><dd id="operatorOrderState">not checked</dd></div>
+                  <div><dt>alpha error</dt><dd id="operatorAlphaError">0.000</dd></div>
+                  <div><dt>height error</dt><dd id="operatorHeightError">0.000</dd></div>
+                  <div><dt>swaps</dt><dd id="operatorSequenceState">0/0</dd></div>
+                  <div><dt>max order</dt><dd id="operatorMaxOrderError">0.000</dd></div>
+                </dl>
+              </div>
               <div class="button-row actuator-mask-row">
                 <button id="allowAllActuators" type="button">Allow All</button>
                 <button id="blockRimActuators" type="button">Block Rim</button>
@@ -174,6 +189,30 @@
           <label>Backlash <output id="backlashOut">0.10</output><input id="backlash" type="range" min="0" max="0.5" step="0.01" value="0.10" /></label>
           <label>Coupling <output id="couplingOut">0.55</output><input id="coupling" type="range" min="0" max="1" step="0.01" value="0.55" /></label>
           <label>Z coupling <output id="zCouplingOut">0.32</output><input id="zCoupling" type="range" min="0" max="0.8" step="0.01" value="0.32" /></label>
+          <label>Pin radius <output id="pinRadiusOut">0.180</output><input id="pinRadius" type="range" min="0.02" max="0.45" step="0.005" value="0.18" /></label>
+          <label>Hole radius <output id="holeRadiusOut">0.225</output><input id="holeRadius" type="range" min="0.02" max="0.50" step="0.005" value="0.225" /></label>
+          <div class="help-text">Z free play <span id="pinHoleClearanceOut">0.045</span> normalized cell units.</div>
+          <label>Paper side mm <output id="paperSideLengthMmOut">35.0</output><input id="paperSideLengthMm" type="range" min="10" max="80" step="0.5" value="35" /></label>
+          <label>Hole tol mm <output id="paperHoleToleranceMmOut">0.100</output><input id="paperHoleToleranceMm" type="range" min="0" max="0.5" step="0.005" value="0.1" /></label>
+          <div class="help-text">Paper scale: backlash <span id="backlashMmOut">3.500</span> mm, free play <span id="pinHoleClearanceMmOut">1.575</span> mm, tol <span id="holeToleranceModelOut">0.0029</span> model units.</div>
+          <div class="help-text">Calibration profile: <span id="hardwareProfileOut">paper-reference</span>, measured <span id="hardwareCoverageOut">0/5</span>, missing <span id="hardwareMissingOut">pin, hole, plate, stack, boss</span>.</div>
+          <div class="help-text">Readiness: <span id="hardwareReadinessOut">paper-scale</span>, solver gaps <span id="hardwareSolverGapOut">stiffness, actuator, friction, response</span>.</div>
+          <div class="help-text">Next measurements: <span id="hardwareMeasurementPlanOut">pin radius, hole radius, plate thickness</span>.</div>
+          <div class="calibration-editor" aria-label="Measured hardware calibration profile">
+            <label>Profile <input id="hardwareProfileName" type="text" value="paper-reference" /></label>
+            <label>Source <input id="hardwareProfileSource" type="text" value="RAD preprint defaults" /></label>
+            <label>Backlash mm <input id="hardwareBacklashMm" type="number" min="0" step="0.01" placeholder="optional" /></label>
+            <label>Pin mm <input id="hardwarePinRadiusMm" type="number" min="0" step="0.001" placeholder="optional" /></label>
+            <label>Hole mm <input id="hardwareHoleRadiusMm" type="number" min="0" step="0.001" placeholder="optional" /></label>
+            <label>Plate mm <input id="hardwarePlateThicknessMm" type="number" min="0" step="0.001" placeholder="optional" /></label>
+            <label>Stack mm <input id="hardwareJointStackHeightMm" type="number" min="0" step="0.001" placeholder="optional" /></label>
+            <label>Boss mm <input id="hardwareBossRadiusMm" type="number" min="0" step="0.001" placeholder="optional" /></label>
+          </div>
+          <div class="button-row calibration-actions">
+            <button id="applyHardwareProfile" type="button">Apply Measured Dims</button>
+            <button id="clearHardwareProfile" type="button">Clear Measurements</button>
+            <button id="saveCalibrationPlan" type="button">Save Calibration Plan</button>
+          </div>
         </section>
 
         <section>
@@ -181,7 +220,15 @@
           <label>Cell visual
             <select id="cellVisualMode">
               <option value="abstract">Cell abstraction</option>
+              <option value="paperRad">Paper RAD cell</option>
+              <option value="calibratedRad">Calibrated RAD cell</option>
               <option value="mechanism">Mechanism detail</option>
+            </select>
+          </label>
+          <label>Simulation
+            <select id="simulationMode">
+              <option value="kinematic">Kinematic</option>
+              <option value="springPreview">3D spring preview</option>
             </select>
           </label>
           <label>Overlay
@@ -195,11 +242,16 @@
               <option value="travel">Actuator travel</option>
               <option value="saturation">Actuator saturation</option>
               <option value="strain">Linkage strain</option>
+              <option value="modelError">Model disagreement</option>
+              <option value="calibrationError">Calibration error</option>
+              <option value="calibrationResidual">Calibration residual</option>
               <option value="displacement">Reference displacement</option>
               <option value="slope">Surface slope</option>
+              <option value="operatorInteraction">Operator interaction</option>
               <option value="inverse">Inverse plan</option>
               <option value="sensitivity">Sensitivity</option>
               <option value="reachability">Reachability</option>
+              <option value="underactuated">Underactuated target</option>
               <option value="state">State</option>
             </select>
           </label>
@@ -231,6 +283,7 @@
               <option value="theta">Rotation theta</option>
               <option value="height">Height z</option>
               <option value="backlash">Backlash gap</option>
+              <option value="hardware">Hardware profile</option>
             </select>
           </label>
           <label class="toggle"><input id="showTarget" type="checkbox" /> Show target surface</label>
@@ -280,7 +333,10 @@
             <button id="analyzeInversePlan" type="button">Analyze Plan</button>
             <button id="analyzeSensitivity" type="button">Analyze Sensitivity</button>
             <button id="buildJacobian" type="button">Build Jacobian</button>
+            <button id="selectUnderactuatedTarget" type="button">Select Under Target</button>
             <button id="solveLinearFit" type="button">Solve Linear Fit</button>
+            <button id="validatePhysicalFit" type="button">Validate Physical</button>
+            <button id="saveInverseReport" type="button">Save Inverse Report</button>
             <button id="applyInversePlan" type="button">Apply Plan</button>
             <button id="applyLinearFit" type="button">Apply Linear Fit</button>
             <button id="seedTargetFit" type="button">Seed Fit</button>
@@ -294,7 +350,12 @@
           <div class="selected-readout">
             <span id="inversePlanSummary">No plan analyzed</span>
             <span id="inversePlanDelta">delta 0.000</span>
+            <span id="inverseReachabilitySummary">under targets 0</span>
             <span id="inversePreviewSummary">No actuator preview</span>
+          </div>
+          <div class="selected-readout">
+            <span id="inversePhysicalSummary">physical validation not run</span>
+            <span id="inversePhysicalModel">model delta 0.000</span>
           </div>
           <label>Preview plan step <output id="inverseStepPreviewOut">0</output><input id="inverseStepPreview" type="range" min="0" max="0" step="1" value="0" /></label>
           <div class="button-row">
@@ -303,6 +364,80 @@
           </div>
           <div id="inversePlanHistory" class="plan-history" aria-label="Accepted inverse design steps"></div>
           <div id="inverseCandidateList" class="candidate-list" aria-label="Ranked inverse design candidates"></div>
+        </section>
+
+        <section>
+          <h2>Response Experiments</h2>
+          <label>Scope
+            <select id="characterizationScope">
+              <option value="single">Selected cell</option>
+              <option value="pair">Selected pair</option>
+              <option value="cluster">Local cluster</option>
+              <option value="lattice">Active lattice</option>
+            </select>
+          </label>
+          <div class="button-row">
+            <button id="runCharacterization" type="button">Characterize</button>
+            <button id="saveResponseMatrix" type="button">Save Matrix</button>
+            <button id="saveProgrammableReport" type="button">Save Framework Report</button>
+            <button id="saveFormalizationTargets" type="button">Save Formal Targets</button>
+            <button id="selectInteractionHotspot" type="button">Select Hotspot</button>
+            <button id="selectCalibrationHotspot" type="button">Select Cal Error</button>
+            <button id="nextCalibrationHotspot" type="button">Next Cal Error</button>
+            <button id="saveExperimentProtocol" type="button">Save Protocol</button>
+            <button id="saveResponseAtlas" type="button">Save Atlas</button>
+            <button id="runResponseAtlasSweep" type="button">Run Sweep</button>
+            <button id="saveResponseAtlasSweep" type="button">Save Sweep</button>
+            <button id="saveResultsTemplate" type="button">Save Results Template</button>
+            <button id="loadResultsJson" type="button">Load Results</button>
+            <button id="saveComparisonReport" type="button">Save Comparison</button>
+          </div>
+          <input id="calibrationResultsFileInput" class="hidden-file" type="file" accept="application/json,.json" />
+          <div class="selected-readout">
+            <span id="characterizationSummary">No response run</span>
+            <span id="characterizationDetail">reach a0 z0</span>
+          </div>
+          <div class="selected-readout">
+            <span id="characterizationZSign">z sign +0/-0</span>
+            <span id="characterizationZExtrema">z max +0.000/-0.000</span>
+          </div>
+          <div class="selected-readout">
+            <span id="characterizationSuperposition">superposition 0.000</span>
+            <span id="characterizationScale">clearance 0.000 mm</span>
+          </div>
+          <div class="selected-readout">
+            <span id="characterizationPairwise">pairs 0/0 nonadd 0</span>
+            <span id="characterizationPairwiseMax">pair max 0.000</span>
+            <span id="characterizationHotspot">hotspot none</span>
+          </div>
+          <div class="selected-readout">
+            <span id="characterizationRank">rank a0 z0</span>
+            <span id="characterizationUnderactuated">under a0 z0</span>
+          </div>
+          <div class="selected-readout">
+            <span id="characterizationPhysical">phys rms 0.000</span>
+            <span id="characterizationPhysicalMax">phys max 0.000</span>
+          </div>
+          <div class="selected-readout">
+            <span id="characterizationDecay">decay a0.00 z0.00</span>
+            <span id="characterizationDecayLength">len a0.0 z0.0</span>
+          </div>
+          <div class="selected-readout">
+            <span id="frameworkLawSummary">laws not run</span>
+            <span id="frameworkLawDetail">candidate --</span>
+          </div>
+          <div class="selected-readout">
+            <span id="formalizationSummary">formal targets not run</span>
+            <span id="formalizationDetail">proof --</span>
+          </div>
+          <div class="selected-readout">
+            <span id="calibrationResultsSummary">calibration results none</span>
+            <span id="calibrationResultsError">height rmse --</span>
+          </div>
+          <div class="selected-readout">
+            <span id="sweepSummary">sweep not run</span>
+            <span id="sweepTrend">neighbor z --</span>
+          </div>
         </section>
 
         <section>
@@ -371,18 +506,36 @@
           <h2>Persistence</h2>
           <div class="button-row">
             <button id="saveJson" type="button">Save JSON</button>
+            <button id="saveObj" type="button">Save OBJ</button>
             <button id="loadJson" type="button">Load JSON</button>
           </div>
           <input id="fileInput" class="hidden-file" type="file" accept="application/json,.json" />
+        </section>
+
+        <section>
+          <h2>Model Provenance</h2>
+          <div class="selected-readout">
+            <span id="provenancePaper">paper 0</span>
+            <span id="provenanceAssumptions">assumptions 0</span>
+          </div>
+          <div class="selected-readout">
+            <span id="provenanceDiagnostics">diagnostics 0</span>
+            <span id="provenanceGaps">gaps 0</span>
+          </div>
+          <div id="modelProvenanceList" class="provenance-list" aria-label="Model provenance summary"></div>
         </section>
       </aside>
     </main>
 
     <script src="./vendor/three.min.js"></script>
     <script src="./state.js"></script>
+    <script src="./provenance.js"></script>
     <script src="./math.js"></script>
+    <script src="./operators.js"></script>
     <script src="./inverse.js"></script>
     <script src="./analysis.js"></script>
+    <script src="./physics.js"></script>
+    <script src="./mesh_export.js"></script>
     <script src="./renderer.js"></script>
     <script src="./ui.js"></script>
     <script src="./app.js"></script>

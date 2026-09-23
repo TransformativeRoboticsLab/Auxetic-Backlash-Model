@@ -1,0 +1,863 @@
+Yes, with the right workflow. I would not rely on Codex directly opening a native Autodesk Fusion .f3d file and understanding the entire parametric/assembly structure by itself.
+
+Codex can read files in a local project, inspect unfamiliar structures, run scripts and local development tools, and maintain project-specific instructions/context. OpenAI does not currently document a built-in Autodesk Fusion CAD parser, so I would treat native .f3d interpretation as something you should expose to Codex through tooling rather than expect the model to do natively.
+
+The best architecture would be:
+
+Fusion model → Fusion API extraction → structured JSON/graph → Codex
+
+For example, suppose your RAD lattice has:
+
+Assembly
+├── BasePlate
+├── Cell_01
+│   ├── Link_Left
+│   ├── Link_Right
+│   └── ServoHorn
+├── Cell_02
+│   ├── Link_Left
+│   ├── Link_Right
+│   └── ServoHorn
+...
+
+You could have Codex write a Fusion Python script that extracts something like:
+
+{
+  "components": {
+    "cell_01": {
+      "bodies": [
+        "link_left",
+        "link_right"
+      ],
+      "parameters": {
+        "theta": 32.4,
+        "length": 42.0
+      }
+    }
+  },
+
+
+  "relationships": [
+    {
+      "type": "joint",
+      "from": "cell_01.link_right",
+      "to": "cell_02.link_left",
+      "joint": "revolute"
+    },
+    {
+      "type": "actuation",
+      "from": "servo_01",
+      "to": "cell_01",
+      "parameter": "theta"
+    }
+  ]
+}
+
+Then Codex can reason over it extremely well.
+
+The more interesting version is to turn the CAD model into a graph:
+
+G=(V,E)
+
+where the vertices V might be
+
+V={components,bodies,sketches,features,joints,parameters}
+
+and edges encode relationships such as
+
+contains,connected_to,depends_on,generated_by,controlled_by.
+
+So Codex could see:
+
+Servo_3
+   │
+   └── controls ──> Parameter θ3
+                         │
+                         └── modifies ──> Joint_3
+                                              │
+                                 ┌────────────┴────────────┐
+                                 ▼                         ▼
+                              Link_5                    Link_6
+The important part: "retain relationships"
+
+There are two different meanings of retain.
+
+Codex can retain the relationships during a working session, but I would not use the model's conversational memory as the source of truth.
+
+Instead, have Codex generate something like:
+
+cad/
+├── RAD.f3d
+├── extract_fusion_model.py
+├── design_graph.json
+├── parameters.json
+├── geometry/
+│   ├── body_001.step
+│   ├── body_002.step
+│   └── ...
+└── docs/
+    └── CAD_MODEL.md
+
+Then every time Codex works on the project, it can reread design_graph.json.
+
+That fits very naturally with how Codex is intended to operate: OpenAI explicitly describes it as an agent that can explore a repository, run local tooling, and use repository-resident context such as AGENTS.md.
+
+You could even put in AGENTS.md:
+
+# CAD instructions
+
+
+Before modifying CAD-related code:
+
+
+1. Read cad/design_graph.json.
+2. Do not assume two bodies are independent.
+3. Preserve all joint relationships.
+4. Preserve parent/child component relationships.
+5. Treat parameter IDs as persistent identifiers.
+6. If geometry changes, rerun extract_fusion_model.py.
+7. Validate the resulting relationship graph before committing changes.
+Where this becomes especially powerful for your RAD work
+
+For something like your reconfigurable auxetic lattice, I think this could be much more powerful than simply giving Codex STEP files.
+
+You could expose the design as:
+
+x=[θ
+1
+	​
+
+,…,θ
+9
+	​
+
+,L
+1
+	​
+
+,…,L
+n
+	​
+
+,h
+1
+	​
+
+,…,h
+n
+	​
+
+,…]
+
+along with a structural graph
+
+G
+CAD
+	​
+
+
+and constraints
+
+C(x)=0,g(x)≤0.
+
+Then you could tell Codex:
+
+Increase the achievable Gaussian deformation amplitude while preserving the existing actuator positions and avoiding link interference.
+
+Codex could:
+
+inspect the CAD relationship graph;
+identify which parameters control the relevant links;
+modify a Fusion API script;
+generate candidate parameter sets;
+tell Fusion to regenerate the model;
+export geometry;
+run collision/constraint tests;
+compare results;
+iterate.
+
+Codex is especially suited to this sort of setup because it can use code and command-line tools as part of an agent loop rather than merely generate code snippets.
+
+Native file vs structured representation
+Input to Codex	Geometry	Body identity	Assembly relationships	Parametric relationships	Good for reasoning
+STL	✓	poor	✗	✗	poor
+STEP	✓	✓	sometimes	✗	moderate
+Raw .f3d	potentially	potentially	potentially	potentially	not something I'd trust directly
+Fusion-generated JSON + STEP	✓	✓	✓	✓	excellent
+Fusion API directly	✓	✓	✓	✓	best
+
+So for what I suspect you're considering, the answer is yes: you could build a Codex ↔ Fusion workflow where Codex has a persistent semantic understanding of which bodies/components depend on one another. The key is making the Fusion model graph explicit rather than asking Codex to infer it repeatedly from raw CAD files.
+
+And this opens up a substantially more ambitious possibility: Codex could effectively become an agentic CAD engineer for your RAD system, where it edits the parametric model, simulates candidate configurations, checks constraints, and preserves the assembly topology automatically. That architecture is very feasible with Codex's ability to operate local tools and scripts.
+
+the fusion generated json + step how would i generate the fusion file 
+
+Yes. Assuming you already have the design open in Autodesk Fusion, I would have Fusion itself generate two companion files:
+
+RAD_design.f3d        ← original editable Fusion model
+RAD_design.step       ← geometry for Codex
+RAD_design_graph.json ← relationships/parameters for Codex
+
+Fusion exposes its assembly occurrences, bodies, joints, user parameters, and transforms through its Python Application Programming Interface (API), and its ExportManager can directly export STEP.
+
+1. In Fusion, make a Python script
+
+With your .f3d design open, go to Scripts and Add-Ins, create a new Python Script, and run it from there. Autodesk specifically supports creating and running Python scripts this way.
+
+Use something along these lines:
+
+import adsk.core
+
+
+                    "occurrence_two":
+                        occurrence_name(joint.occurrenceTwo),
+
+
+                    "motion_type":
+                        motion_type
+                })
+
+
+        # --------------------------------------------------
+        # WRITE JSON
+        # --------------------------------------------------
+
+
+        base_name = app.activeDocument.name
+
+
+        # Remove characters that Windows doesn't like.
+        safe_name = "".join(
+            c if c.isalnum() or c in "-_" else "_"
+            for c in base_name
+        )
+
+
+        json_path = os.path.join(
+            output_dir,
+            safe_name + "_graph.json"
+        )
+
+
+        with open(json_path, "w", encoding="utf-8") as file:
+            json.dump(
+                data,
+                file,
+                indent=2
+            )
+
+
+        # --------------------------------------------------
+        # EXPORT STEP
+        # --------------------------------------------------
+
+
+        step_path = os.path.join(
+            output_dir,
+            safe_name + ".step"
+        )
+
+
+        export_manager = design.exportManager
+
+
+        step_options = (
+            export_manager.createSTEPExportOptions(
+                step_path
+            )
+        )
+
+
+        success = export_manager.execute(
+            step_options
+        )
+
+
+        # --------------------------------------------------
+        # DONE
+        # --------------------------------------------------
+
+
+        ui.messageBox(
+            "Export complete.\n\n"
+            f"JSON:\n{json_path}\n\n"
+            f"STEP:\n{step_path}\n\n"
+            f"STEP success: {success}"
+        )
+
+
+    except:
+        if ui:
+            ui.messageBox(
+                "Failed:\n{}".format(
+                    traceback.format_exc()
+                )
+            )
+
+Fusion's transform2 gives the position/orientation matrix for an occurrence, and Matrix3D.asArray() converts that transform into 16 values suitable for JSON. Autodesk recommends transform2 rather than the older retired transform property.
+
+After running it, you'd get something approximately like:
+
+RAD_project/
+│
+├── RAD.f3d
+│
+├── RAD.step
+│
+└── RAD_graph.json
+
+And the JSON might contain:
+
+{
+  "design_name": "RAD",
+  "user_parameters": [
+    {
+      "name": "cellWidth",
+      "expression": "42 mm"
+    },
+    {
+      "name": "theta",
+      "expression": "35 deg"
+    }
+  ],
+
+
+  "assembly": [
+    {
+      "name": "Cell_01:1",
+      "full_path": "Cell_01:1",
+      "component": "Cell_01",
+      "transform": [
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0,
+        0, 0, 0, 1
+      ],
+
+
+      "bodies": [
+        {
+          "name": "Left_Link",
+          "id": "Cell_01:1/Left_Link"
+        },
+
+
+        {
+          "name": "Right_Link",
+          "id": "Cell_01:1/Right_Link"
+        }
+      ]
+    }
+  ],
+
+
+  "joints": [
+    {
+      "name": "Cell01_to_Cell02",
+      "occurrence_one": "Cell_01:1",
+      "occurrence_two": "Cell_02:1",
+      "motion_type":
+        "adsk::fusion::RevoluteJointMotion"
+    }
+  ]
+}
+
+That distinction is important. STEP contains what the object physically is; JSON contains why everything is where it is and how the pieces relate.
+
+Fusion's API explicitly exposes Joint.occurrenceOne, Joint.occurrenceTwo, and Joint.jointMotion, so we don't need Codex to guess which components are mechanically connected.
+
+For your actual CAD files, I would go further
+
+The script above is what I'd call Version 1. For your use case, I would eventually export:
+
+G
+CAD
+	​
+
+=(V,E)
+
+with nodes for
+
+Component
+Occurrence
+Body
+Sketch
+Feature
+User Parameter
+Model Parameter
+Joint
+Joint Origin
+
+and edges such as
+
+OCCURRENCE --instance_of--> COMPONENT
+
+
+COMPONENT --contains--> BODY
+
+
+COMPONENT --contains--> SKETCH
+
+
+SKETCH --drives--> FEATURE
+
+
+PARAMETER --used_by--> SKETCH_DIMENSION
+
+
+FEATURE --creates--> BODY
+
+
+JOINT --connects--> OCCURRENCE_A
+JOINT --connects--> OCCURRENCE_B
+
+That would give Codex something substantially closer to the actual Fusion dependency graph, rather than merely an assembly listing.
+
+Autodesk already exposes all components through Design.allComponents, user parameters through Design.userParameters, bodies through the Boundary Representation (B-Rep) body collections, and occurrence hierarchy matching the Fusion browser.
+
+For example, if one of your lattice dimensions is:
+
+w
+cell
+	​
+
+=42 mm,
+
+Codex could eventually see:
+
+cellWidth
+    │
+    ├──> Sketch_Cell_01
+    │       │
+    │       └──> Extrude_Cell_01
+    │                  │
+    │                  └──> CellBody_01
+    │
+    ├──> Sketch_Cell_02
+    │       │
+    │       └──> Extrude_Cell_02
+    │
+    └──> ...
+
+Then changing one parameter would not look to Codex like an arbitrary geometric transformation. It would understand that it's changing a parameter that propagates through several dependent features.
+
+One caveat: the basic exporter above captures components, bodies, transforms, parameters and ordinary joints, but it does not yet completely serialize the feature timeline, sketch constraints, model-parameter dependencies, as-built joints, rigid groups, or every other Fusion dependency. I'd add those before using it for autonomous CAD modification.
+
+And if by “generate the Fusion file” you meant the reverse direction—create a native .f3d from the JSON + STEP—that's different. JSON + STEP cannot perfectly recreate the original Fusion feature timeline. For that direction, I would have Codex generate a Fusion Python construction script that rebuilds the parametric model; the .f3d would then be produced by Fusion itself.
+
+For what you're trying to do, that construction-script + semantic-exporter approach is probably the architecture I'd use, because it gives Codex both read and write access to the CAD design rather than treating Fusion as a static file.
+
+now what about an API 
+
+Yes — and for what you’re describing, an API-based connection is better than repeatedly exporting JSON + STEP.
+
+As of 2026, Autodesk actually gives you three levels of integration, and one of them fits Codex extremely well.
+
+1. Best for you: Codex ↔ Fusion MCP ↔ live Fusion
+
+Autodesk Fusion now exposes a local Model Context Protocol (MCP) server while Fusion is running. Autodesk explicitly describes it as allowing MCP clients to execute actions against a live Fusion session.
+
+And Codex natively supports local/HTTP MCP servers.
+
+So your architecture becomes:
+
+                 natural language
+                       │
+                       ▼
+                    CODEX
+                       │
+                       │ MCP
+                       ▼
+           http://127.0.0.1:27182/mcp
+                       │
+                       ▼
+              AUTODESK FUSION
+                       │
+            ┌──────────┼───────────┐
+            ▼          ▼           ▼
+         Bodies     Joints     Parameters
+            │          │           │
+            └──────────┼───────────┘
+                       ▼
+                  CAD model
+
+You don't necessarily need:
+
+Fusion → JSON → Codex → JSON → Fusion
+
+for every interaction.
+
+Instead:
+
+Codex ⇄ live Fusion
+
+Autodesk's setup is remarkably simple:
+
+Open Fusion.
+Go to Preferences → General → API.
+Enable Fusion MCP Server (runs locally on this device).
+Fusion exposes:
+http://127.0.0.1:27182/mcp
+
+Autodesk even gives the test prompt:
+
+Create a 10 mm cube.
+
+and says Fusion will execute it if the MCP connection is working.
+
+Connecting Codex
+
+For Codex, your .codex/config.toml can essentially contain:
+
+[mcp_servers.fusion]
+url = "http://127.0.0.1:27182/mcp"
+default_tools_approval_mode = "writes"
+
+Codex supports Streamable HTTP MCP servers using exactly this kind of url configuration. It also lets you require approval specifically for write operations, which I would definitely do initially for CAD.
+
+Then restart Codex and use:
+
+/mcp
+
+to check that Fusion appears.
+
+What this changes for your original problem
+
+You originally asked whether Codex could preserve relationships between bodies.
+
+With a direct API/MCP architecture, Fusion itself remains the source of truth.
+
+Suppose your model contains:
+
+Component: RAD_Cell_04
+
+
+Bodies:
+    LeftLink
+    RightLink
+    Hinge
+
+
+Joint J4:
+    Cell_04.RightLink
+        ↕ revolute
+    Cell_05.LeftLink
+
+
+Parameter:
+    theta_4 = 37 deg
+
+Instead of Codex remembering:
+
+"I think Link A was attached to Link B..."
+
+you want Codex to query Fusion:
+
+What occurrences does joint J4 connect?
+
+Fusion returns the current model state.
+
+Then Codex reasons about it.
+
+So conceptually:
+
+Fusion state=S
+t
+	​
+
+
+and Codex operates as
+
+a
+t
+	​
+
+=π(S
+t
+	​
+
+,goal)
+
+where a
+t
+	​
+
+ might be:
+
+change_parameter(theta_4, 40°)
+
+Fusion executes it:
+
+S
+t+1
+	​
+
+=F(S
+t
+	​
+
+,a
+t
+	​
+
+)
+
+Then Codex queries the resulting state again.
+
+That is substantially safer than maintaining a stale external representation.
+
+But I would still keep the JSON
+
+There is an important reason.
+
+I would make the system:
+
+                         CODEX
+                           │
+                 ┌─────────┴─────────┐
+                 │                   │
+                 ▼                   ▼
+            Fusion MCP          design_graph.json
+                 │                   │
+                 ▼                   │
+           Live Fusion               │
+                 │                   │
+                 └────────┬──────────┘
+                          ▼
+                       checks
+
+The JSON becomes a snapshot/cache/verification artifact, rather than the actual interface.
+
+For example:
+
+{
+  "snapshot": "2026-08-14T16:20:00",
+  "parameters": {
+    "theta_1": "32 deg",
+    "theta_2": "38 deg"
+  },
+  "relationships": [
+    {
+      "joint": "J1",
+      "a": "cell01/right_link",
+      "b": "cell02/left_link",
+      "type": "revolute"
+    }
+  ]
+}
+
+That gives Codex a compact global picture without potentially making hundreds of API queries.
+
+Then before it modifies something important, it can re-query Fusion.
+
+2. The actual Fusion Application Programming Interface
+
+Underneath all this, Fusion also has a traditional Application Programming Interface (API) for Python and C++ desktop add-ins/scripts. Autodesk continues to expose things such as components, occurrences, bodies, parameters, features, joints, and transforms through this API.
+
+This means we can write our own very high-level commands.
+
+For example, instead of exposing raw Fusion operations to Codex, you could make tools like:
+
+get_design_graph()
+get_component("Cell_04")
+get_joint("J4")
+set_parameter("theta_4", "42 deg")
+check_interference(
+    "Cell_04",
+    "Cell_05"
+)
+export_step()
+save_design_version()
+
+Now Codex's world is much cleaner.
+
+For your project, I'd actually prefer this.
+
+Instead of Codex having 500 low-level CAD operations available, give it perhaps 20 carefully designed engineering tools.
+
+3. There is also a cloud Fusion API
+
+Autodesk now has the Fusion Automation API through Autodesk Platform Services (APS).
+
+This one is especially interesting.
+
+It can run Fusion headlessly in the cloud, including reading native Fusion designs, analyzing them, modifying them, creating new designs and assemblies, and running manufacturing operations.
+
+So you can eventually have:
+
+                      Codex
+                        │
+                        ▼
+                Optimization agent
+                        │
+           ┌────────────┼────────────┐
+           ▼            ▼            ▼
+       Candidate 1  Candidate 2  Candidate 3
+           │            │            │
+           ▼            ▼            ▼
+       Fusion Cloud  Fusion Cloud  Fusion Cloud
+           │            │            │
+           ▼            ▼            ▼
+       geometry       geometry      geometry
+       constraints    constraints   constraints
+       metrics        metrics       metrics
+            \           |           /
+             \          |          /
+                  evaluator
+                      │
+                      ▼
+                    best
+
+Autodesk says nearly anything automated in desktop Fusion can now be automated headlessly in the cloud.
+
+That would be particularly powerful for design optimization.
+
+For example, your RAD problem
+
+You could eventually tell Codex:
+
+Find actuator commands and cell geometry that maximize the Gaussian deformation amplitude while maintaining connectivity, avoiding collisions, keeping maximum servo angle below 60°, and preserving the current external dimensions.
+
+Codex could formulate:
+
+x
+max
+	​
+
+A(x)
+
+subject to
+
+θ
+i
+	​
+
+∈[−60
+∘
+,60
+∘
+]
+d
+collision
+	​
+
+(x)≥d
+min
+	​
+
+G(x)≅G
+0
+	​
+
+
+where
+
+x=[θ
+1
+	​
+
+,…,θ
+9
+	​
+
+,l
+1
+	​
+
+,…,l
+k
+	​
+
+,α
+1
+	​
+
+,…,α
+m
+	​
+
+].
+
+Then:
+
+Codex
+   │
+   ├─ change parameters
+   │
+   ▼
+Fusion
+   │
+   ├─ regenerate
+   ├─ detect interference
+   ├─ measure geometry
+   └─ return values
+   │
+   ▼
+Codex
+   │
+   ├─ evaluate objective
+   └─ propose next configuration
+
+Repeat.
+
+That is essentially an agentic CAD optimization loop.
+
+The architecture I would use
+
+For your project specifically:
+
+┌───────────────────────────────────────┐
+│                CODEX                  │
+│                                       │
+│ Reasoning                             │
+│ Optimization                          │
+│ Code generation                       │
+│ Experiment planning                   │
+└──────────────────┬────────────────────┘
+                   │
+                   │ MCP
+                   ▼
+┌───────────────────────────────────────┐
+│          Fusion tool layer            │
+│                                       │
+│ get_design_graph()                    │
+│ get_parameters()                      │
+│ get_body_geometry()                   │
+│ get_joint_graph()                     │
+│ set_parameter()                       │
+│ create_body()                         │
+│ modify_sketch()                       │
+│ check_interference()                  │
+│ calculate_mass_properties()           │
+│ export_step()                         │
+│ save_version()                        │
+└──────────────────┬────────────────────┘
+                   │
+                   ▼
+┌───────────────────────────────────────┐
+│            AUTODESK FUSION            │
+│                                       │
+│ Native parametric model               │
+│ Feature history                       │
+│ Bodies                                │
+│ Components                            │
+│ Joints                                │
+│ Sketch constraints                    │
+│ Parameters                            │
+└───────────────────────────────────────┘
+
+And this is better than the approach I gave you previously.
+
+The earlier:
+
+STEP + JSON → Codex
+
+approach makes sense when the model is static or Codex does not have Fusion access.
+
+But given that Autodesk now provides a local Fusion MCP server and Codex supports MCP directly, I would build around:
+
+Codex → Fusion MCP → native Fusion API/model
+
+and use JSON merely for snapshots, debugging, versioning, and optimization history.
+
+The next interesting step would be to determine exactly what tools Autodesk's Fusion MCP currently exposes versus what custom tools we would need to implement using the Fusion API. That determines whether you can start doing this almost immediately or whether we should build a thin Fusion add-in around it.

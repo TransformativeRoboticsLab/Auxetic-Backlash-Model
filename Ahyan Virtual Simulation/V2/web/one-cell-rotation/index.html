@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RAD One-Cell Rotation Primitive</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="viewer-panel" aria-label="One-cell RAD rotation simulator">
+        <header class="topbar">
+          <div>
+            <h1>One-Cell Rotation Primitive</h1>
+            <p>Two identical cross bodies stacked around one center axis: lower body fixed, upper body driven in rotation.</p>
+          </div>
+          <a href="../index.html">Back to lattice</a>
+        </header>
+        <div id="threeMount" class="three-mount" aria-label="3D one-cell mechanism view"></div>
+        <div class="viewbar" role="group" aria-label="View controls">
+          <button type="button" data-view="iso" aria-pressed="true">Iso</button>
+          <button type="button" data-view="top" aria-pressed="false">Top</button>
+          <button type="button" data-view="front" aria-pressed="false">Front</button>
+          <button type="button" data-view="side" aria-pressed="false">Side</button>
+          <button id="resetView" type="button">Reset</button>
+        </div>
+      </section>
+
+      <aside class="control-panel" aria-label="Cell rotation controls">
+        <section>
+          <h2>Drive</h2>
+          <label>
+            Upper rotation <output id="angleOut">35 deg</output>
+            <input id="angle" type="range" min="-75" max="75" step="1" value="35" />
+          </label>
+          <label class="toggle"><input id="animate" type="checkbox" /> Animate rotation</label>
+        </section>
+
+        <section>
+          <h2>Geometry</h2>
+          <dl>
+            <div><dt>cell envelope</dt><dd id="cellWidth">55.6 mm</dd></div>
+            <div><dt>nominal hole</dt><dd id="holeDiameter">3.4 mm</dd></div>
+            <div><dt>body thickness</dt><dd id="thickness">4.0 mm each</dd></div>
+            <div><dt>interface gap</dt><dd>0.0 mm</dd></div>
+            <div><dt>center axis</dt><dd>fixed z axis</dd></div>
+          </dl>
+        </section>
+
+        <section>
+          <h2>Live Readout</h2>
+          <dl>
+            <div><dt>theta</dt><dd id="thetaMetric">35.0 deg</dd></div>
+            <div><dt>rim arc</dt><dd id="arcMetric">16.0 mm</dd></div>
+            <div><dt>pad offset</dt><dd id="padMetric">15.7 mm</dd></div>
+            <div><dt>center drift</dt><dd>0.0 mm</dd></div>
+          </dl>
+        </section>
+
+        <p class="note">
+          This is the isolated cell primitive only. Expansion between two cells should be built next from the coupled pad/joint constraints, not from this page alone.
+        </p>
+      </aside>
+    </main>
+
+    <script src="../vendor/three.min.js"></script>
+    <script src="./one_cell_rotation.js"></script>
+  </body>
+</html>

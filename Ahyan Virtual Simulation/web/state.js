@@ -21,6 +21,22 @@
     };
   }
 
+  function defaultHardwareProfile() {
+    return {
+      name: "paper-reference",
+      source: "RAD preprint defaults",
+      sideLengthMm: 35,
+      fabricationHoleToleranceMm: 0.1,
+      backlashMm: null,
+      pinRadiusMm: null,
+      holeRadiusMm: null,
+      plateThicknessMm: null,
+      jointStackHeightMm: null,
+      bossRadiusMm: null,
+      notes: "",
+    };
+  }
+
   function updateDerivedCells(state, sim) {
     if (!state?.cells || !sim) return state;
     const { rows, cols } = state.grid;
@@ -40,12 +56,42 @@
     if (!state.cells.commandAlpha) state.cells.commandAlpha = matrix(rows, cols, 0);
     if (!state.cells.commandZ) state.cells.commandZ = matrix(rows, cols, 0);
     if (!state.cells.locked) state.cells.locked = matrix(rows, cols, false);
+    if (!state.cells.lockAlpha) state.cells.lockAlpha = matrix(rows, cols, initialAlpha);
     if (!state.cells.actuatorAllowed) state.cells.actuatorAllowed = matrix(rows, cols, true);
     return state;
   }
 
   function ensureGridSchema(state) {
     if (state.grid.zCouplingGain === undefined) state.grid.zCouplingGain = 0.32;
+    if (state.grid.pinRadius === undefined) state.grid.pinRadius = 0.18;
+    if (state.grid.holeRadius === undefined) state.grid.holeRadius = 0.225;
+    if (state.grid.paperSideLengthMm === undefined) state.grid.paperSideLengthMm = 35;
+    if (state.grid.paperHoleToleranceMm === undefined) state.grid.paperHoleToleranceMm = 0.1;
+    const rawHardwareProfile = state.grid.hardwareProfile || {};
+    state.grid.hardwareProfile = {
+      ...defaultHardwareProfile(),
+      ...rawHardwareProfile,
+    };
+    if (rawHardwareProfile.sideLengthMm === undefined || rawHardwareProfile.sideLengthMm === null) {
+      state.grid.hardwareProfile.sideLengthMm = state.grid.paperSideLengthMm;
+    }
+    if (
+      rawHardwareProfile.fabricationHoleToleranceMm === undefined ||
+      rawHardwareProfile.fabricationHoleToleranceMm === null
+    ) {
+      state.grid.hardwareProfile.fabricationHoleToleranceMm = state.grid.paperHoleToleranceMm;
+    }
+    if (!Number.isFinite(Number(state.grid.hardwareProfile.sideLengthMm))) {
+      state.grid.hardwareProfile.sideLengthMm = state.grid.paperSideLengthMm;
+    }
+    if (!Number.isFinite(Number(state.grid.hardwareProfile.fabricationHoleToleranceMm))) {
+      state.grid.hardwareProfile.fabricationHoleToleranceMm = state.grid.paperHoleToleranceMm;
+    }
+    state.grid.hardwareProfile.sideLengthMm = Math.max(1e-9, Number(state.grid.hardwareProfile.sideLengthMm));
+    state.grid.hardwareProfile.fabricationHoleToleranceMm = Math.max(0, Number(state.grid.hardwareProfile.fabricationHoleToleranceMm));
+    state.grid.paperSideLengthMm = state.grid.hardwareProfile.sideLengthMm;
+    state.grid.paperHoleToleranceMm = state.grid.hardwareProfile.fabricationHoleToleranceMm;
+    if (state.grid.holeRadius < state.grid.pinRadius) state.grid.holeRadius = state.grid.pinRadius;
     return state;
   }
 
@@ -67,6 +113,11 @@
         backlash: 0.1,
         couplingGain: 0.55,
         zCouplingGain: 0.32,
+        pinRadius: 0.18,
+        holeRadius: 0.225,
+        paperSideLengthMm: 35,
+        paperHoleToleranceMm: 0.1,
+        hardwareProfile: defaultHardwareProfile(),
         initialAlpha: 1,
         alphaMin: 0.25,
         alphaMax: 1.75,
@@ -79,10 +130,12 @@
         commandAlpha: matrix(rows, cols, 0),
         commandZ: matrix(rows, cols, 0),
         locked: matrix(rows, cols, false),
+        lockAlpha: matrix(rows, cols, 1),
         actuatorAllowed: matrix(rows, cols, true),
       },
       view: {
         cellVisualMode: "abstract",
+        simulationMode: "kinematic",
         isolateSelected: false,
         explodedSelected: false,
         quickDockCollapsed: false,
@@ -136,8 +189,9 @@
         plan: { candidates: [], commands: [], history: [] },
         preview: null,
         sensitivity: { candidates: [], map: matrix(rows, cols, 0), stepZ: 0.12, stepAlpha: 0.12, controllableCells: 0, meanGain: 0, maxGain: 0 },
-        jacobian: { columns: [], coverageMap: matrix(rows, cols, 0), actuatorCount: 0, columnCount: 0, meanCoverage: 0, maxCoverage: 0, stepZ: 0.12, stepAlpha: 0.12, conditionEstimate: 0 },
-        linearSolution: { commands: [], history: [], steps: 0, baseError: 0, predictedError: 0, projectedError: 0, projectedActuators: 0 },
+        jacobian: { columns: [], coverageMap: matrix(rows, cols, 0), actuatorCount: 0, columnCount: 0, meanCoverage: 0, maxCoverage: 0, stepZ: 0.12, stepAlpha: 0.12, conditionEstimate: 0, targetReachability: null },
+        linearSolution: { commands: [], history: [], steps: 0, baseError: 0, predictedError: 0, projectedError: 0, projectedActuators: 0, targetReachability: null },
+        physicalValidation: null,
       },
       timeline: {
         playing: false,
@@ -152,6 +206,14 @@
         presetName: "center",
         eventList: [],
         initialSnapshot: null,
+        characterizationScope: "single",
+        characterization: null,
+        responseAtlasSweep: null,
+        frameworkLawCandidates: null,
+        frameworkFormalizationTargets: null,
+        calibrationResults: null,
+        calibrationComparison: null,
+        calibrationComparisonSummary: null,
         notes: "",
       },
     };
@@ -165,7 +227,7 @@
     next.grid = { ...state.grid, rows, cols };
     next.view = { ...state.view };
     next.target = { ...state.target };
-    next.inverse = { ...state.inverse, plan: { candidates: [], commands: [], history: [] }, jacobian: { columns: [], coverageMap: matrix(rows, cols, 0), actuatorCount: 0, columnCount: 0, meanCoverage: 0, maxCoverage: 0, stepZ: 0.12, stepAlpha: 0.12, conditionEstimate: 0 } };
+    next.inverse = { ...state.inverse, plan: { candidates: [], commands: [], history: [] }, jacobian: { columns: [], coverageMap: matrix(rows, cols, 0), actuatorCount: 0, columnCount: 0, meanCoverage: 0, maxCoverage: 0, stepZ: 0.12, stepAlpha: 0.12, conditionEstimate: 0, targetReachability: null }, linearSolution: { commands: [], history: [], steps: 0, baseError: 0, predictedError: 0, projectedError: 0, projectedActuators: 0, targetReachability: null }, physicalValidation: null };
     next.timeline = { ...state.timeline, index: Math.min(state.timeline.index, next.experiment.eventList.length) };
     next.experiment = { ...state.experiment };
     next.selection = {
@@ -180,6 +242,7 @@
         next.cells.commandAlpha[r][c] = old.commandAlpha[r][c];
         next.cells.commandZ[r][c] = old.commandZ[r][c];
         next.cells.locked[r][c] = old.locked[r][c];
+        next.cells.lockAlpha[r][c] = old.lockAlpha?.[r]?.[c] ?? next.grid.initialAlpha;
         next.cells.actuatorAllowed[r][c] = old.actuatorAllowed?.[r]?.[c] ?? true;
       }
     }
@@ -195,6 +258,7 @@
     state.cells.commandAlpha = matrix(rows, cols, 0);
     state.cells.commandZ = matrix(rows, cols, 0);
     state.cells.locked = matrix(rows, cols, false);
+    state.cells.lockAlpha = matrix(rows, cols, state.grid.initialAlpha);
     if (!state.cells.actuatorAllowed) state.cells.actuatorAllowed = matrix(rows, cols, true);
   }
 
@@ -221,7 +285,11 @@
 
   function restoreSnapshot(state, snapshot) {
     if (!snapshot) return state;
-    state.grid = { ...state.grid, ...cloneData(snapshot.grid) };
+    const snapshotGrid = cloneData(snapshot.grid) || {};
+    state.grid = { ...state.grid, ...snapshotGrid };
+    if (!Object.prototype.hasOwnProperty.call(snapshotGrid, "hardwareProfile")) {
+      delete state.grid.hardwareProfile;
+    }
     ensureGridSchema(state);
     state.cells = cloneData(snapshot.cells);
     ensureCellSchema(state);
@@ -257,7 +325,7 @@
     if (!rowsMatch || !colsMatch) return amount < 1 ? cloneData(from) : cloneData(to);
     const out = cloneData(amount < 0.5 ? from : to);
     out.grid = { ...to.grid };
-    for (const key of ["cellSize", "backlash", "couplingGain", "zCouplingGain", "initialAlpha", "alphaMin", "alphaMax", "zTravelLimit", "alphaContractLimit", "alphaExpandLimit"]) {
+    for (const key of ["cellSize", "backlash", "couplingGain", "zCouplingGain", "pinRadius", "holeRadius", "paperSideLengthMm", "paperHoleToleranceMm", "initialAlpha", "alphaMin", "alphaMax", "zTravelLimit", "alphaContractLimit", "alphaExpandLimit"]) {
       if (typeof from.grid?.[key] === "number" && typeof to.grid?.[key] === "number") out.grid[key] = lerp(from.grid[key], to.grid[key], amount);
     }
     out.cells = {
@@ -267,6 +335,7 @@
       commandAlpha: interpolateMatrix(from.cells?.commandAlpha, to.cells?.commandAlpha, amount, []),
       commandZ: interpolateMatrix(from.cells?.commandZ, to.cells?.commandZ, amount, []),
       locked: interpolateMatrix(from.cells?.locked, to.cells?.locked, amount, []),
+      lockAlpha: interpolateMatrix(from.cells?.lockAlpha, to.cells?.lockAlpha, amount, []),
       actuatorAllowed: interpolateMatrix(from.cells?.actuatorAllowed, to.cells?.actuatorAllowed, amount, []),
     };
     out.target = { ...to.target };
@@ -386,7 +455,12 @@
     }
     const lastSnapshot = importedEvents.at(-1).snapshot;
     restoreSnapshot(state, lastSnapshot);
-    state.grid = { ...state.grid, ...cloneData(parsed.grid || lastSnapshot.grid) };
+    const importedGrid = cloneData(parsed.grid || lastSnapshot.grid) || {};
+    state.grid = { ...state.grid, ...importedGrid };
+    if (!Object.prototype.hasOwnProperty.call(importedGrid, "hardwareProfile")) {
+      delete state.grid.hardwareProfile;
+    }
+    ensureGridSchema(state);
     state.target = { ...state.target, ...cloneData(parsed.target || lastSnapshot.target) };
     state.timeline = {
       ...state.timeline,
@@ -407,6 +481,9 @@
     const cols = parsed.grid.cols;
     const state = createState(rows, cols);
     state.grid = { ...state.grid, ...parsed.grid };
+    if (!Object.prototype.hasOwnProperty.call(parsed.grid, "hardwareProfile")) {
+      delete state.grid.hardwareProfile;
+    }
     ensureGridSchema(state);
     if (!state.grid.zTravelLimit) state.grid.zTravelLimit = 0.8;
     if (!state.grid.alphaContractLimit) state.grid.alphaContractLimit = 0.55;
@@ -415,6 +492,7 @@
     ensureCellSchema(state);
     state.view = { ...state.view, ...parsed.view };
     if (!state.view.cellVisualMode) state.view.cellVisualMode = "abstract";
+    if (!state.view.simulationMode) state.view.simulationMode = "kinematic";
     if (state.view.isolateSelected === undefined) state.view.isolateSelected = false;
     if (state.view.explodedSelected === undefined) state.view.explodedSelected = false;
     if (state.view.quickDockCollapsed === undefined) state.view.quickDockCollapsed = false;
@@ -450,11 +528,14 @@
       state.inverse.sensitivity = { candidates: [], map: matrix(rows, cols, 0), stepZ: 0.12, stepAlpha: 0.12, controllableCells: 0, meanGain: 0, maxGain: 0 };
     }
     if (!state.inverse.jacobian) {
-      state.inverse.jacobian = { columns: [], coverageMap: matrix(rows, cols, 0), actuatorCount: 0, columnCount: 0, meanCoverage: 0, maxCoverage: 0, stepZ: 0.12, stepAlpha: 0.12, conditionEstimate: 0 };
+      state.inverse.jacobian = { columns: [], coverageMap: matrix(rows, cols, 0), actuatorCount: 0, columnCount: 0, meanCoverage: 0, maxCoverage: 0, stepZ: 0.12, stepAlpha: 0.12, conditionEstimate: 0, targetReachability: null };
     }
+    if (state.inverse.jacobian.targetReachability === undefined) state.inverse.jacobian.targetReachability = null;
     if (!state.inverse.linearSolution) {
-      state.inverse.linearSolution = { commands: [], history: [], steps: 0, baseError: 0, predictedError: 0, projectedError: 0, projectedActuators: 0 };
+      state.inverse.linearSolution = { commands: [], history: [], steps: 0, baseError: 0, predictedError: 0, projectedError: 0, projectedActuators: 0, targetReachability: null };
     }
+    if (state.inverse.linearSolution.targetReachability === undefined) state.inverse.linearSolution.targetReachability = null;
+    if (state.inverse.physicalValidation === undefined) state.inverse.physicalValidation = null;
     state.timeline = { ...state.timeline, ...parsed.timeline };
     if (state.timeline.smooth === undefined) state.timeline.smooth = true;
     if (!state.timeline.transitionMs) state.timeline.transitionMs = 900;
@@ -465,6 +546,7 @@
   }
 
   RAD.matrix = matrix;
+  RAD.defaultHardwareProfile = defaultHardwareProfile;
   RAD.createState = createState;
   RAD.resizeState = resizeState;
   RAD.clearCommands = clearCommands;

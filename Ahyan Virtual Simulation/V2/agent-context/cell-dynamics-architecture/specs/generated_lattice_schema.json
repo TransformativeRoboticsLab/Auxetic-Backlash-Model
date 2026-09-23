@@ -1,0 +1,123 @@
+{
+  "schema": "rad-sim.generated-shape-lattice.v1",
+  "purpose": "Reproducible state contract for generating a RAD lattice from an arbitrary 2D or 3D target shape.",
+  "fidelityLevels": [
+    "normalized_no_backlash_proxy",
+    "calibrated_no_backlash",
+    "backlash_graph_proxy",
+    "spring_hinge_proxy",
+    "cad_contact_calibrated"
+  ],
+  "generator": {
+    "type": "rectangular_grid | binary_mask | signed_distance_field | polygon_boundary | mesh_footprint_plus_height | procedural_generator",
+    "name": "string",
+    "seed": "integer_or_null",
+    "parameters": "object",
+    "sourceFile": "path_or_null",
+    "sourceUnits": "string_or_null"
+  },
+  "shape": {
+    "domainRepresentation": "rectangle | mask | sdf | polygon | mesh_projection | procedural",
+    "bounds": {
+      "xMin": "number",
+      "xMax": "number",
+      "yMin": "number",
+      "yMax": "number"
+    },
+    "outerBoundary": "array_of_points_or_null",
+    "holes": "array_of_boundaries",
+    "sdfExpression": "string_or_null",
+    "maskResolution": "array_or_null",
+    "heightField": "object_or_null"
+  },
+  "grid": {
+    "rows": "integer",
+    "cols": "integer",
+    "cellPitchReference": "number",
+    "basisX": ["number", "number", "number"],
+    "basisY": ["number", "number", "number"],
+    "origin": ["number", "number", "number"],
+    "axisAlignedDisplay": true
+  },
+  "cells": [
+    {
+      "id": "string",
+      "row": "integer",
+      "col": "integer",
+      "center": ["number", "number", "number"],
+      "state": "interior | boundary | removed | hole_boundary | anchor",
+      "removed": "boolean",
+      "locked": "boolean",
+      "positionLocked": "boolean",
+      "actuatorCandidate": "boolean",
+      "commandAlpha": "number",
+      "commandZ": "number",
+      "targetZ": "number_or_null",
+      "metadata": "object"
+    }
+  ],
+  "edges": [
+    {
+      "id": "string",
+      "from": "cell_id",
+      "to": "cell_id",
+      "direction": "east | west | north | south",
+      "constraintType": "no_backlash_two_pin | backlash_gap | spring_proxy | cut",
+      "active": "boolean",
+      "boundaryEdge": "boolean",
+      "constraintSource": "string",
+      "pinPairs": [
+        {
+          "first": ["cell_id", "upper_cross | lower_cross", "east | north | west | south"],
+          "second": ["cell_id", "upper_cross | lower_cross", "east | north | west | south"]
+        }
+      ],
+      "restPitch": "number",
+      "backlashGap": "number_or_null",
+      "clearance": "number_or_null"
+    }
+  ],
+  "constraints": {
+    "globalActuation": "single_uniform_q | per_cell_q | grouped_q",
+    "noBacklash": "boolean",
+    "fixedABSeed": {
+      "primary": "A upper east = B lower south",
+      "loopClosure": "B upper south = A lower north"
+    },
+    "contactGuard": "primitive_capsule_disk | cad_mesh | none",
+    "pinResidualToleranceMm": "number"
+  },
+  "boundary": {
+    "supports": "array",
+    "walls": "array",
+    "positionLocks": "array",
+    "heightLocks": "array",
+    "symmetryPlanes": "array"
+  },
+  "actuation": {
+    "groups": "array",
+    "maxActuators": "integer_or_null",
+    "commandLimits": "object",
+    "selectionPolicy": "manual | greedy_inverse | prescribed"
+  },
+  "surfaceTarget": {
+    "enabled": "boolean",
+    "heightSamples": "array_or_null",
+    "normalSamples": "array_or_null",
+    "contourLevels": "array_or_null",
+    "targetSource": "string_or_null"
+  },
+  "validation": {
+    "cellCount": "integer",
+    "edgeCount": "integer",
+    "removedCellCount": "integer",
+    "boundaryCellCount": "integer",
+    "connectedComponentCount": "integer",
+    "largestComponentFraction": "number",
+    "footprintCoverageRatio": "number",
+    "maxPinResidual": "number_or_null",
+    "estimatedMinClearance": "number_or_null",
+    "warnings": "array",
+    "errors": "array"
+  }
+}

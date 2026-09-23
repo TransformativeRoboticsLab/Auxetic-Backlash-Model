@@ -13,6 +13,21 @@
         backlash: document.getElementById("backlash"),
         coupling: document.getElementById("coupling"),
         zCoupling: document.getElementById("zCoupling"),
+        pinRadius: document.getElementById("pinRadius"),
+        holeRadius: document.getElementById("holeRadius"),
+        paperSideLengthMm: document.getElementById("paperSideLengthMm"),
+        paperHoleToleranceMm: document.getElementById("paperHoleToleranceMm"),
+        hardwareProfileName: document.getElementById("hardwareProfileName"),
+        hardwareProfileSource: document.getElementById("hardwareProfileSource"),
+        hardwareBacklashMm: document.getElementById("hardwareBacklashMm"),
+        hardwarePinRadiusMm: document.getElementById("hardwarePinRadiusMm"),
+        hardwareHoleRadiusMm: document.getElementById("hardwareHoleRadiusMm"),
+        hardwarePlateThicknessMm: document.getElementById("hardwarePlateThicknessMm"),
+        hardwareJointStackHeightMm: document.getElementById("hardwareJointStackHeightMm"),
+        hardwareBossRadiusMm: document.getElementById("hardwareBossRadiusMm"),
+        applyHardwareProfile: document.getElementById("applyHardwareProfile"),
+        clearHardwareProfile: document.getElementById("clearHardwareProfile"),
+        saveCalibrationPlan: document.getElementById("saveCalibrationPlan"),
         quickDock: document.querySelector(".quick-actuation-dock"),
         toggleQuickDock: document.getElementById("toggleQuickDock"),
         quickDockMini: document.getElementById("quickDockMini"),
@@ -23,6 +38,7 @@
         locked: document.getElementById("locked"),
         actuatorAllowed: document.getElementById("actuatorAllowed"),
         cellVisualMode: document.getElementById("cellVisualMode"),
+        simulationMode: document.getElementById("simulationMode"),
         overlayMode: document.getElementById("overlayMode"),
         showMembrane: document.getElementById("showMembrane"),
         showReference: document.getElementById("showReference"),
@@ -67,10 +83,26 @@
         inversePlanHistory: document.getElementById("inversePlanHistory"),
         inverseCandidateList: document.getElementById("inverseCandidateList"),
         inverseStepPreview: document.getElementById("inverseStepPreview"),
+        characterizationScope: document.getElementById("characterizationScope"),
         cellGrid: document.getElementById("cellGrid"),
         sequenceChart: document.getElementById("sequenceChart"),
         fileInput: document.getElementById("fileInput"),
         sequenceFileInput: document.getElementById("sequenceFileInput"),
+        calibrationResultsFileInput: document.getElementById("calibrationResultsFileInput"),
+        saveObj: document.getElementById("saveObj"),
+        provenancePaper: document.getElementById("provenancePaper"),
+        provenanceAssumptions: document.getElementById("provenanceAssumptions"),
+        provenanceDiagnostics: document.getElementById("provenanceDiagnostics"),
+        provenanceGaps: document.getElementById("provenanceGaps"),
+        modelProvenanceList: document.getElementById("modelProvenanceList"),
+        operatorCommitLock: document.getElementById("operatorCommitLock"),
+        operatorReleaseLock: document.getElementById("operatorReleaseLock"),
+        operatorCheckOrder: document.getElementById("operatorCheckOrder"),
+        operatorOrderState: document.getElementById("operatorOrderState"),
+        operatorAlphaError: document.getElementById("operatorAlphaError"),
+        operatorHeightError: document.getElementById("operatorHeightError"),
+        operatorSequenceState: document.getElementById("operatorSequenceState"),
+        operatorMaxOrderError: document.getElementById("operatorMaxOrderError"),
       };
       this.playTimer = null;
       this.transitionFrame = null;
@@ -79,8 +111,10 @@
       this.lastSequenceAnalysisSignature = "";
       this.sequenceChartLayout = null;
       this.hoveredSequenceFrame = null;
+      this.lastOperatorDiagnostic = null;
       this.bind();
       this.syncControls();
+      this.renderModelProvenance();
     }
 
     bind() {
@@ -104,6 +138,39 @@
         this.state.grid.zCouplingGain = Number(this.els.zCoupling.value);
         this.onChange(this.state);
       });
+      this.els.pinRadius.addEventListener("input", () => {
+        this.state.grid.pinRadius = Number(this.els.pinRadius.value);
+        if (this.state.grid.holeRadius < this.state.grid.pinRadius) this.state.grid.holeRadius = this.state.grid.pinRadius;
+        this.onChange(this.state);
+      });
+      this.els.holeRadius.addEventListener("input", () => {
+        this.state.grid.holeRadius = Math.max(Number(this.els.holeRadius.value), Number(this.state.grid.pinRadius || 0));
+        this.onChange(this.state);
+      });
+      this.els.paperSideLengthMm.addEventListener("input", () => {
+        this.state.grid.paperSideLengthMm = Math.max(1e-9, Number(this.els.paperSideLengthMm.value));
+        this.state.grid.hardwareProfile = {
+          ...(this.state.grid.hardwareProfile || {}),
+          sideLengthMm: this.state.grid.paperSideLengthMm,
+        };
+        this.onChange(this.state);
+      });
+      this.els.paperHoleToleranceMm.addEventListener("input", () => {
+        this.state.grid.paperHoleToleranceMm = Math.max(0, Number(this.els.paperHoleToleranceMm.value));
+        this.state.grid.hardwareProfile = {
+          ...(this.state.grid.hardwareProfile || {}),
+          fabricationHoleToleranceMm: this.state.grid.paperHoleToleranceMm,
+        };
+        this.onChange(this.state);
+      });
+      this.els.hardwareProfileName.addEventListener("input", () => this.updateHardwareProfileText("name", this.els.hardwareProfileName.value));
+      this.els.hardwareProfileSource.addEventListener("input", () => this.updateHardwareProfileText("source", this.els.hardwareProfileSource.value));
+      for (const [field, element] of this.hardwareProfileNumberInputs()) {
+        element.addEventListener("input", () => this.updateHardwareProfileNumber(field, element.value));
+      }
+      this.els.applyHardwareProfile.addEventListener("click", () => this.applyHardwareProfile());
+      this.els.clearHardwareProfile.addEventListener("click", () => this.clearHardwareProfileMeasurements());
+      this.els.saveCalibrationPlan.addEventListener("click", () => this.saveCalibrationPlan());
       this.els.toggleQuickDock.addEventListener("click", () => {
         this.state.view.quickDockCollapsed = !this.state.view.quickDockCollapsed;
         this.syncQuickDock();
@@ -127,8 +194,16 @@
         this.applyCellVisualMode(this.els.cellVisualMode.value);
         this.onChange(this.state);
       });
+      this.els.simulationMode.addEventListener("change", () => {
+        this.state.view.simulationMode = this.els.simulationMode.value === "springPreview" ? "springPreview" : "kinematic";
+        this.onChange(this.state);
+      });
       this.els.overlayMode.addEventListener("change", () => {
         this.state.view.overlayMode = this.els.overlayMode.value;
+        if (this.state.view.overlayMode === "modelError") {
+          this.state.view.simulationMode = "springPreview";
+          this.els.simulationMode.value = "springPreview";
+        }
         this.onChange(this.state);
       });
       this.els.showMembrane.addEventListener("change", () => {
@@ -283,6 +358,9 @@
       });
       document.getElementById("applyCommand").addEventListener("click", () => this.applySelected());
       document.getElementById("clearCell").addEventListener("click", () => this.clearSelected());
+      this.els.operatorCommitLock.addEventListener("click", () => this.commitSelectedLockEvent());
+      this.els.operatorReleaseLock.addEventListener("click", () => this.releaseSelectedLockEvent());
+      this.els.operatorCheckOrder.addEventListener("click", () => this.checkSelectedEventOrder());
       document.getElementById("nudgeAlphaContract").addEventListener("click", () => this.nudgeSelectedCommand(-0.08, 0));
       document.getElementById("nudgeAlphaExpand").addEventListener("click", () => this.nudgeSelectedCommand(0.08, 0));
       document.getElementById("nudgeZDown").addEventListener("click", () => this.nudgeSelectedCommand(0, -0.08));
@@ -324,11 +402,13 @@
           actuators: jacobian.actuatorCount,
           meanCoverage: jacobian.meanCoverage,
           conditionEstimate: jacobian.conditionEstimate,
+          underactuatedTargets: jacobian.targetReachability?.underactuatedHeightCells || 0,
         });
-        this.state.view.overlayMode = "reachability";
+        this.state.view.overlayMode = jacobian.targetReachability?.underactuatedHeightCells ? "underactuated" : "reachability";
         this.syncControls();
         this.onChange(this.state);
       });
+      document.getElementById("selectUnderactuatedTarget").addEventListener("click", () => this.selectUnderactuatedTarget());
       document.getElementById("solveLinearFit").addEventListener("click", () => {
         const solution = RAD.solveLinearizedTargetFit(this.state);
         RAD.recordEvent(this.state, {
@@ -337,12 +417,30 @@
           steps: solution.steps,
           baseError: solution.baseError,
           projectedError: solution.projectedError,
+          underactuatedTargets: solution.underactuatedHeightCells || 0,
         });
         this.state.view.overlayMode = "inverse";
         this.state.view.targetVisible = this.state.target.type !== "none";
         this.syncControls();
         this.onChange(this.state);
       });
+      document.getElementById("validatePhysicalFit").addEventListener("click", () => {
+        const validation = RAD.validateInversePlanPhysical(this.state);
+        RAD.recordEvent(this.state, {
+          type: "inverse-physical-validated",
+          source: validation.source,
+          actuators: validation.commandCount,
+          physicalError: validation.physicalProjectedError,
+          modelError: validation.centerModelRms,
+        });
+        this.state.view.simulationMode = "springPreview";
+        this.els.simulationMode.value = "springPreview";
+        this.state.view.overlayMode = "modelError";
+        this.state.view.targetVisible = this.state.target.type !== "none";
+        this.syncControls();
+        this.onChange(this.state);
+      });
+      document.getElementById("saveInverseReport").addEventListener("click", () => this.saveInverseReport());
       document.getElementById("applyInversePlan").addEventListener("click", () => {
         RAD.applyInverseDesignPlan(this.state);
         this.state.view.targetVisible = this.state.target.type !== "none";
@@ -376,8 +474,9 @@
         this.state.inverse.preview = null;
         this.state.inverse.lastScore = 0;
         this.state.inverse.sensitivity = { candidates: [], map: RAD.matrix(this.state.grid.rows, this.state.grid.cols, 0), stepZ: 0.12, stepAlpha: 0.12, controllableCells: 0, meanGain: 0, maxGain: 0 };
-        this.state.inverse.jacobian = { columns: [], coverageMap: RAD.matrix(this.state.grid.rows, this.state.grid.cols, 0), actuatorCount: 0, columnCount: 0, meanCoverage: 0, maxCoverage: 0, stepZ: 0.12, stepAlpha: 0.12, conditionEstimate: 0 };
-        this.state.inverse.linearSolution = { commands: [], history: [], steps: 0, baseError: 0, predictedError: 0, projectedError: 0, projectedActuators: 0 };
+        this.state.inverse.jacobian = { columns: [], coverageMap: RAD.matrix(this.state.grid.rows, this.state.grid.cols, 0), actuatorCount: 0, columnCount: 0, meanCoverage: 0, maxCoverage: 0, stepZ: 0.12, stepAlpha: 0.12, conditionEstimate: 0, targetReachability: null };
+        this.state.inverse.linearSolution = { commands: [], history: [], steps: 0, baseError: 0, predictedError: 0, projectedError: 0, projectedActuators: 0, targetReachability: null };
+        this.state.inverse.physicalValidation = null;
         this.syncControls();
         this.onChange(this.state);
       });
@@ -395,6 +494,25 @@
         this.syncControls();
         this.onChange(this.state);
       });
+      this.els.characterizationScope.addEventListener("change", () => {
+        this.state.experiment.characterizationScope = this.els.characterizationScope.value;
+        this.updateLabels(null);
+      });
+      document.getElementById("runCharacterization").addEventListener("click", () => this.runCharacterization());
+      document.getElementById("saveResponseMatrix").addEventListener("click", () => this.saveResponseMatrix());
+      document.getElementById("saveProgrammableReport").addEventListener("click", () => this.saveProgrammableReport());
+      document.getElementById("saveFormalizationTargets").addEventListener("click", () => this.saveFormalizationTargets());
+      document.getElementById("selectInteractionHotspot").addEventListener("click", () => this.selectInteractionHotspot());
+      document.getElementById("selectCalibrationHotspot").addEventListener("click", () => this.selectCalibrationHotspot());
+      document.getElementById("nextCalibrationHotspot").addEventListener("click", () => this.selectCalibrationHotspot(1));
+      document.getElementById("saveExperimentProtocol").addEventListener("click", () => this.saveExperimentProtocol());
+      document.getElementById("saveResponseAtlas").addEventListener("click", () => this.saveResponseAtlas());
+      document.getElementById("runResponseAtlasSweep").addEventListener("click", () => this.runResponseAtlasSweep());
+      document.getElementById("saveResponseAtlasSweep").addEventListener("click", () => this.saveResponseAtlasSweep());
+      document.getElementById("saveResultsTemplate").addEventListener("click", () => this.saveResultsTemplate());
+      document.getElementById("loadResultsJson").addEventListener("click", () => this.els.calibrationResultsFileInput.click());
+      this.els.calibrationResultsFileInput.addEventListener("change", () => this.loadCalibrationResults());
+      document.getElementById("saveComparisonReport").addEventListener("click", () => this.saveComparisonReport());
       document.getElementById("playTimeline").addEventListener("click", () => this.toggleTimeline());
       document.getElementById("stepTimeline").addEventListener("click", () => this.stepTimeline());
       document.getElementById("captureKeyframe").addEventListener("click", () => this.captureKeyframe());
@@ -428,6 +546,7 @@
         });
       });
       document.getElementById("saveJson").addEventListener("click", () => this.saveJson());
+      this.els.saveObj.addEventListener("click", () => this.saveObj());
       document.getElementById("loadJson").addEventListener("click", () => this.els.fileInput.click());
       this.els.fileInput.addEventListener("change", () => this.loadJson());
     }
@@ -474,6 +593,84 @@
       return RAD.brushCells(this.state, r, c, this.state.view.paintRadius);
     }
 
+    hardwareProfileNumberInputs() {
+      return [
+        ["backlashMm", this.els.hardwareBacklashMm],
+        ["pinRadiusMm", this.els.hardwarePinRadiusMm],
+        ["holeRadiusMm", this.els.hardwareHoleRadiusMm],
+        ["plateThicknessMm", this.els.hardwarePlateThicknessMm],
+        ["jointStackHeightMm", this.els.hardwareJointStackHeightMm],
+        ["bossRadiusMm", this.els.hardwareBossRadiusMm],
+      ];
+    }
+
+    ensureHardwareProfile() {
+      const defaults = typeof RAD.defaultHardwareProfile === "function" ? RAD.defaultHardwareProfile() : {};
+      this.state.grid.hardwareProfile = {
+        ...defaults,
+        ...(this.state.grid.hardwareProfile || {}),
+        sideLengthMm: Math.max(1e-9, Number(this.state.grid.paperSideLengthMm ?? 35)),
+        fabricationHoleToleranceMm: Math.max(0, Number(this.state.grid.paperHoleToleranceMm ?? 0.1)),
+      };
+      return this.state.grid.hardwareProfile;
+    }
+
+    optionalProfileNumber(value) {
+      if (value === "" || value === null || value === undefined) return null;
+      const numeric = Number(value);
+      return Number.isFinite(numeric) && numeric >= 0 ? numeric : null;
+    }
+
+    profileNumberInputValue(value) {
+      return value === null || value === undefined ? "" : String(value);
+    }
+
+    enforceHardwareProfileRadii(profile) {
+      if (
+        profile.pinRadiusMm !== null &&
+        profile.pinRadiusMm !== undefined &&
+        profile.holeRadiusMm !== null &&
+        profile.holeRadiusMm !== undefined &&
+        profile.holeRadiusMm < profile.pinRadiusMm
+      ) {
+        profile.holeRadiusMm = profile.pinRadiusMm;
+        this.els.hardwareHoleRadiusMm.value = this.profileNumberInputValue(profile.holeRadiusMm);
+      }
+    }
+
+    updateHardwareProfileText(field, value) {
+      const profile = this.ensureHardwareProfile();
+      profile[field] = String(value || "").trim() || (field === "name" ? "paper-reference" : "unspecified");
+      this.updateLabels(null);
+      this.onChange(this.state);
+    }
+
+    updateHardwareProfileNumber(field, value) {
+      const profile = this.ensureHardwareProfile();
+      profile[field] = this.optionalProfileNumber(value);
+      this.enforceHardwareProfileRadii(profile);
+      this.updateLabels(null);
+      this.onChange(this.state);
+    }
+
+    applyHardwareProfile() {
+      this.ensureHardwareProfile();
+      if (typeof RAD.applyHardwareProfileToGrid === "function") RAD.applyHardwareProfileToGrid(this.state);
+      if (this.state.grid.holeRadius < this.state.grid.pinRadius) this.state.grid.holeRadius = this.state.grid.pinRadius;
+      this.syncControls();
+      this.onChange(this.state);
+    }
+
+    clearHardwareProfileMeasurements() {
+      const profile = this.ensureHardwareProfile();
+      for (const [field, element] of this.hardwareProfileNumberInputs()) {
+        profile[field] = null;
+        element.value = "";
+      }
+      this.updateLabels(null);
+      this.onChange(this.state);
+    }
+
     applySelected() {
       const { r, c } = this.state.selection;
       if (!this.state.experiment.initialSnapshot) this.state.experiment.initialSnapshot = RAD.snapshotState(this.state);
@@ -499,6 +696,7 @@
       this.state.cells.commandAlpha[r][c] = RAD.clampCommandAlpha(this.state, this.els.alphaCommand.value);
       this.state.cells.commandZ[r][c] = RAD.clampCommandZ(this.state, this.els.zCommand.value);
       this.state.cells.locked[r][c] = this.els.locked.checked;
+      this.state.inverse.physicalValidation = null;
       this.onChange(this.state);
     }
 
@@ -521,6 +719,7 @@
       this.state.inverse.plan = { candidates: [], commands: [], history: [] };
       this.state.inverse.preview = null;
       this.state.inverse.sensitivity = { candidates: [], map: RAD.matrix(this.state.grid.rows, this.state.grid.cols, 0), stepZ: 0.12, stepAlpha: 0.12, controllableCells: 0, meanGain: 0, maxGain: 0 };
+      this.state.inverse.physicalValidation = null;
       this.onChange(this.state);
     }
 
@@ -532,6 +731,7 @@
       this.state.inverse.plan = { candidates: [], commands: [], history: [] };
       this.state.inverse.preview = null;
       this.state.inverse.sensitivity = { candidates: [], map: RAD.matrix(this.state.grid.rows, this.state.grid.cols, 0), stepZ: 0.12, stepAlpha: 0.12, controllableCells: 0, meanGain: 0, maxGain: 0 };
+      this.state.inverse.physicalValidation = null;
       this.syncControls();
       this.onChange(this.state);
     }
@@ -556,6 +756,7 @@
       this.state.inverse.plan = { candidates: [], commands: [], history: [] };
       this.state.inverse.preview = null;
       this.state.inverse.sensitivity = { candidates: [], map: RAD.matrix(rows, cols, 0), stepZ: 0.12, stepAlpha: 0.12, controllableCells: 0, meanGain: 0, maxGain: 0 };
+      this.state.inverse.physicalValidation = null;
       RAD.recordEvent(this.state, { type: "actuator-mask", name, allowed });
       this.syncControls();
       this.onChange(this.state);
@@ -567,13 +768,107 @@
       this.state.cells.commandAlpha[r][c] = 0;
       this.state.cells.commandZ[r][c] = 0;
       this.state.cells.locked[r][c] = false;
+      if (this.state.cells.lockAlpha) this.state.cells.lockAlpha[r][c] = this.state.grid.initialAlpha;
+      this.state.inverse.physicalValidation = null;
       RAD.recordEvent(this.state, { type: "cell-clear", r, c });
       this.syncControls();
       this.onChange(this.state);
     }
 
+    commitSelectedLockEvent() {
+      const { r, c } = this.state.selection;
+      if (!this.state.experiment.initialSnapshot) this.state.experiment.initialSnapshot = RAD.snapshotState(this.state);
+      this.state.cells.commandAlpha[r][c] = RAD.clampCommandAlpha(this.state, this.els.alphaCommand.value);
+      this.state.cells.commandZ[r][c] = RAD.clampCommandZ(this.state, this.els.zCommand.value);
+      this.state = RAD.applyProgrammableEvent(this.state, RAD.lockEvent({ r, c }));
+      RAD.recordEvent(this.state, {
+        type: "operator-lock",
+        r,
+        c,
+        lockAlpha: this.state.cells.lockAlpha?.[r]?.[c] ?? this.state.grid.initialAlpha,
+      });
+      this.syncControls();
+      this.onChange(this.state);
+    }
+
+    releaseSelectedLockEvent() {
+      const { r, c } = this.state.selection;
+      if (!this.state.experiment.initialSnapshot) this.state.experiment.initialSnapshot = RAD.snapshotState(this.state);
+      this.state = RAD.applyProgrammableEvent(this.state, RAD.releaseEvent({ r, c }));
+      RAD.recordEvent(this.state, { type: "operator-release", r, c });
+      this.syncControls();
+      this.onChange(this.state);
+    }
+
+    selectedEventBaseline(r, c) {
+      const base = JSON.parse(JSON.stringify(this.state));
+      if (!base.cells.lockAlpha) {
+        base.cells.lockAlpha = RAD.matrix(base.grid.rows, base.grid.cols, base.grid.initialAlpha);
+      }
+      base.cells.commandAlpha[r][c] = 0;
+      base.cells.commandZ[r][c] = 0;
+      base.cells.locked[r][c] = false;
+      base.cells.lockAlpha[r][c] = base.grid.initialAlpha;
+      return base;
+    }
+
+    checkSelectedEventOrder() {
+      const { r, c } = this.state.selection;
+      const alpha = RAD.clampCommandAlpha(this.state, this.els.alphaCommand.value);
+      const z = RAD.clampCommandZ(this.state, this.els.zCommand.value);
+      const diagnostic = RAD.compareEventOrder(
+        this.selectedEventBaseline(r, c),
+        RAD.localActuationEvent({ r, c }, alpha, z),
+        RAD.lockEvent({ r, c })
+      );
+      const sequence = RAD.compareSequenceOrder(this.selectedEventBaseline(r, c), [
+        RAD.localActuationEvent({ r, c }, alpha, z),
+        RAD.lockEvent({ r, c }),
+        RAD.clearActuationEvent({ r, c }),
+      ]);
+      diagnostic.sequence = sequence;
+      this.lastOperatorDiagnostic = diagnostic;
+      RAD.recordEvent(this.state, {
+        type: "operator-order-check",
+        r,
+        c,
+        alpha,
+        z,
+        finalAlphaError: diagnostic.finalAlphaError,
+        finalHeightError: diagnostic.finalHeightError,
+        maxOrderError: sequence.maxOrderError,
+        noncommutingAdjacentPairs: sequence.noncommutingAdjacentPairs,
+      });
+      this.updateOperatorInspector(diagnostic);
+      this.onChange(this.state);
+    }
+
+    updateOperatorInspector(diagnostic) {
+      if (!diagnostic) {
+        this.els.operatorOrderState.textContent = "not checked";
+        this.els.operatorAlphaError.textContent = "0.000";
+        this.els.operatorHeightError.textContent = "0.000";
+        this.els.operatorSequenceState.textContent = "0/0";
+        this.els.operatorMaxOrderError.textContent = "0.000";
+        return;
+      }
+      const commutes = diagnostic.modeCommutes && diagnostic.commandCommutes && diagnostic.lockAlphaCommutes && diagnostic.finalAlphaError < 1e-9 && diagnostic.finalHeightError < 1e-9;
+      const sequence = diagnostic.sequence;
+      this.els.operatorOrderState.textContent = commutes ? "commutes" : "path dependent";
+      this.els.operatorAlphaError.textContent = diagnostic.finalAlphaError.toFixed(3);
+      this.els.operatorHeightError.textContent = diagnostic.finalHeightError.toFixed(3);
+      this.els.operatorOrderState.title = `mode ${diagnostic.modeCommutes ? "same" : "diff"}, commands ${diagnostic.commandCommutes ? "same" : "diff"}, lock alpha ${diagnostic.lockAlphaCommutes ? "same" : "diff"}`;
+      this.els.operatorSequenceState.textContent = sequence
+        ? `${sequence.noncommutingAdjacentPairs}/${sequence.adjacentPairCount}`
+        : "0/0";
+      this.els.operatorMaxOrderError.textContent = Number(sequence?.maxOrderError || 0).toFixed(3);
+      this.els.operatorSequenceState.title = sequence
+        ? `reverse da ${sequence.reverseAlphaError.toFixed(3)}, dz ${sequence.reverseHeightError.toFixed(3)}, mode changes ${sequence.reverseModeChanges}`
+        : "";
+    }
+
     applyCellVisualMode(mode) {
-      const visualMode = mode === "mechanism" ? "mechanism" : "abstract";
+      const visualMode = ["abstract", "paperRad", "calibratedRad", "mechanism"].includes(mode) ? mode : "abstract";
       this.state.view.cellVisualMode = visualMode;
       if (visualMode === "mechanism") {
         Object.assign(this.state.view, {
@@ -585,6 +880,30 @@
           actuatorsVisible: true,
           measurementsVisible: true,
           measurementMode: "all",
+        });
+      } else if (visualMode === "calibratedRad") {
+        this.state.view.explodedSelected = false;
+        Object.assign(this.state.view, {
+          gapsVisible: true,
+          stopsVisible: true,
+          pivotsVisible: true,
+          linkagesVisible: true,
+          fastenersVisible: false,
+          actuatorsVisible: true,
+          measurementsVisible: true,
+          measurementMode: "hardware",
+        });
+      } else if (visualMode === "paperRad") {
+        this.state.view.explodedSelected = false;
+        Object.assign(this.state.view, {
+          gapsVisible: true,
+          stopsVisible: true,
+          pivotsVisible: true,
+          linkagesVisible: true,
+          fastenersVisible: false,
+          actuatorsVisible: true,
+          measurementsVisible: true,
+          measurementMode: "backlash",
         });
       } else {
         this.state.view.explodedSelected = false;
@@ -609,8 +928,19 @@
       this.els.backlash.value = s.grid.backlash;
       this.els.coupling.value = s.grid.couplingGain;
       this.els.zCoupling.value = s.grid.zCouplingGain ?? 0.32;
+      this.els.pinRadius.value = s.grid.pinRadius ?? 0.18;
+      this.els.holeRadius.value = s.grid.holeRadius ?? 0.225;
+      this.els.paperSideLengthMm.value = s.grid.paperSideLengthMm ?? 35;
+      this.els.paperHoleToleranceMm.value = s.grid.paperHoleToleranceMm ?? 0.1;
+      const profile = typeof RAD.hardwareProfile === "function" ? RAD.hardwareProfile(s) : this.ensureHardwareProfile();
+      this.els.hardwareProfileName.value = profile.name || "paper-reference";
+      this.els.hardwareProfileSource.value = profile.source || "unspecified";
+      for (const [field, element] of this.hardwareProfileNumberInputs()) {
+        element.value = this.profileNumberInputValue(profile[field]);
+      }
       this.els.paintRadius.value = Math.max(0, Math.min(2, Number(s.view.paintRadius || 0)));
       this.els.cellVisualMode.value = s.view.cellVisualMode || "abstract";
+      this.els.simulationMode.value = s.view.simulationMode || "kinematic";
       this.els.overlayMode.value = s.view.overlayMode;
       this.els.showMembrane.checked = s.view.membraneVisible;
       this.els.showReference.checked = s.view.referenceVisible !== false;
@@ -651,6 +981,7 @@
       this.els.transitionMs.value = s.timeline.transitionMs || 900;
       this.els.smoothTimeline.checked = s.timeline.smooth !== false;
       this.els.keyframeName.value = s.timeline.keyframeName || "pose";
+      this.els.characterizationScope.value = s.experiment.characterizationScope || "single";
       const { r, c } = s.selection;
       const limits = RAD.commandLimits(s);
       this.els.alphaCommand.min = -limits.alphaContract;
@@ -680,6 +1011,27 @@
       this.els.paintMode.textContent = enabled ? "Paint Clicks On" : "Paint Clicks Off";
     }
 
+    renderModelProvenance() {
+      if (typeof RAD.modelProvenance !== "function" || !this.els.modelProvenanceList) return;
+      const summary = typeof RAD.provenanceSummary === "function" ? RAD.provenanceSummary() : {};
+      this.els.provenancePaper.textContent = `paper ${summary["paper-supported"] || 0}`;
+      this.els.provenanceAssumptions.textContent = `assumptions ${summary["implementation-assumption"] || 0}`;
+      this.els.provenanceDiagnostics.textContent = `diagnostics ${summary["simulator-diagnostic"] || 0}`;
+      this.els.provenanceGaps.textContent = `gaps ${summary["calibration-gap"] || 0}`;
+      this.els.modelProvenanceList.replaceChildren();
+      for (const item of RAD.modelProvenance()) {
+        const row = document.createElement("div");
+        row.className = `provenance-item provenance-${item.status}`;
+        row.title = `${item.source}: ${item.evidence} Limitation: ${item.limitation}`;
+        const label = document.createElement("span");
+        label.textContent = item.label;
+        const status = document.createElement("small");
+        status.textContent = item.status;
+        row.append(label, status);
+        this.els.modelProvenanceList.append(row);
+      }
+    }
+
     updateLabels(sim) {
       const s = this.state;
       const { r, c } = s.selection;
@@ -688,6 +1040,40 @@
       document.getElementById("backlashOut").textContent = Number(s.grid.backlash).toFixed(2);
       document.getElementById("couplingOut").textContent = Number(s.grid.couplingGain).toFixed(2);
       document.getElementById("zCouplingOut").textContent = Number(s.grid.zCouplingGain ?? 0.32).toFixed(2);
+      document.getElementById("pinRadiusOut").textContent = Number(s.grid.pinRadius ?? 0.18).toFixed(3);
+      document.getElementById("holeRadiusOut").textContent = Number(s.grid.holeRadius ?? 0.225).toFixed(3);
+      const calibration = RAD.paperRadCalibration(s);
+      document.getElementById("pinHoleClearanceOut").textContent = RAD.pinHoleClearance(s).toFixed(3);
+      document.getElementById("paperSideLengthMmOut").textContent = calibration.sideLengthMm.toFixed(1);
+      document.getElementById("paperHoleToleranceMmOut").textContent = calibration.fabricationHoleToleranceMm.toFixed(3);
+      document.getElementById("backlashMmOut").textContent = calibration.configuredBacklashMm.toFixed(3);
+      document.getElementById("pinHoleClearanceMmOut").textContent = calibration.pinHoleClearanceMm.toFixed(3);
+      document.getElementById("holeToleranceModelOut").textContent = calibration.fabricationHoleToleranceModel.toFixed(4);
+      if (typeof RAD.calibrationProfileSummary === "function") {
+        const profileSummary = RAD.calibrationProfileSummary(s);
+        document.getElementById("hardwareProfileOut").textContent = profileSummary.profile.name;
+        document.getElementById("hardwareCoverageOut").textContent = `${profileSummary.measuredCount}/${profileSummary.totalCount}`;
+        const labels = {
+          pinRadiusMm: "pin",
+          holeRadiusMm: "hole",
+          plateThicknessMm: "plate",
+          jointStackHeightMm: "stack",
+          bossRadiusMm: "boss",
+        };
+        document.getElementById("hardwareMissingOut").textContent =
+          profileSummary.missingFields.map((field) => labels[field] || field).join(", ") || "none";
+        if (typeof RAD.calibrationReadiness === "function") {
+          const readiness = RAD.calibrationReadiness(s);
+          document.getElementById("hardwareReadinessOut").textContent = readiness.level;
+          document.getElementById("hardwareSolverGapOut").textContent =
+            readiness.solverGaps.map((gap) => gap.split(" ")[0]).join(", ");
+        }
+        if (typeof RAD.calibrationMeasurementPlan === "function") {
+          const missingTasks = RAD.calibrationMeasurementPlan(s).filter((task) => task.status === "missing");
+          document.getElementById("hardwareMeasurementPlanOut").textContent =
+            missingTasks.slice(0, 3).map((task) => task.label.replace(/^Measure /, "")).join(", ") || "none";
+        }
+      }
       document.getElementById("alphaCommandOut").textContent = Number(this.els.alphaCommand.value).toFixed(2);
       document.getElementById("zCommandOut").textContent = Number(this.els.zCommand.value).toFixed(2);
       document.getElementById("targetAmpOut").textContent = Number(s.target.amplitude).toFixed(2);
@@ -710,6 +1096,7 @@
       document.getElementById("sequenceSummary").textContent = this.sequenceSummaryText();
       document.getElementById("sequenceAnalysisSummary").textContent = this.sequenceAnalysisText();
       document.getElementById("sequenceFrameDetail").textContent = this.sequenceFrameDetailText();
+      this.renderCharacterization();
       this.renderSequenceChart();
       document.getElementById("selectedCell").textContent = `row ${r}, col ${c}`;
       this.els.quickDockMini.textContent = `r${r} c${c} / a ${Number(this.els.alphaCommand.value).toFixed(2)} / z ${Number(this.els.zCommand.value).toFixed(2)}`;
@@ -746,11 +1133,321 @@
         document.getElementById("meanSensitivity").textContent = Number(s.inverse?.sensitivity?.meanGain || 0).toFixed(3);
         document.getElementById("jacobianColumns").textContent = String(s.inverse?.jacobian?.columnCount || 0);
         document.getElementById("meanReachability").textContent = Number(s.inverse?.jacobian?.meanCoverage || 0).toFixed(3);
+        document.getElementById("underTargetCells").textContent = String(s.inverse?.jacobian?.targetReachability?.underactuatedHeightCells || 0);
         document.getElementById("linearFitSteps").textContent = String(s.inverse?.linearSolution?.steps || 0);
         document.getElementById("linearFitError").textContent = Number(s.inverse?.linearSolution?.projectedError || 0).toFixed(3);
       }
       this.renderInversePlan();
+      this.updateOperatorInspector(this.lastOperatorDiagnostic);
       this.renderEvents();
+    }
+
+    runCharacterization() {
+      const scope = this.els.characterizationScope.value || "single";
+      this.state.experiment.characterizationScope = scope;
+      const result = RAD.characterizeLocalResponse(this.state, { scope, ...this.state.selection });
+      this.state.experiment.characterization = result;
+      const framework = this.currentFrameworkReportMetadata(scope);
+      this.state.experiment.frameworkLawCandidates = framework.operatorLawCandidates;
+      this.state.experiment.frameworkFormalizationTargets = framework.formalizationTargets;
+      this.state.view.overlayMode = "operatorInteraction";
+      RAD.recordEvent(this.state, {
+        type: "characterization",
+        scope: result.scope,
+        cells: result.regionCellCount,
+        activeSources: result.activeSources,
+        responseCells: result.responseCells,
+        superpositionError: result.superpositionError,
+        pairwisePairs: result.pairwiseEvaluatedPairs,
+        pairwiseNonadditive: result.pairwiseNonadditivePairs,
+        pairwiseMaxError: result.pairwiseMaxInteractionError,
+        pairwiseMaxDegree: result.pairwiseInteractionDegreeMax,
+        pairwiseDensity: result.pairwiseInteractionDensity,
+      });
+      this.syncControls();
+      this.onChange(this.state);
+    }
+
+    renderCharacterization() {
+      const result = this.state.experiment.characterization;
+      if (!result) {
+        document.getElementById("characterizationSummary").textContent = "No response run";
+        document.getElementById("characterizationDetail").textContent = "reach a0 z0";
+        document.getElementById("characterizationZSign").textContent = "z sign +0/-0";
+        document.getElementById("characterizationZExtrema").textContent = "z max +0.000/-0.000";
+        document.getElementById("characterizationSuperposition").textContent = "superposition 0.000";
+        document.getElementById("characterizationScale").textContent = "clearance 0.000 mm";
+        document.getElementById("characterizationPairwise").textContent = "pairs 0/0 nonadd 0";
+        document.getElementById("characterizationPairwiseMax").textContent = "pair max 0.000";
+        document.getElementById("characterizationHotspot").textContent = "hotspot none";
+        document.getElementById("characterizationRank").textContent = "rank a0 z0";
+        document.getElementById("characterizationUnderactuated").textContent = "under a0 z0";
+        document.getElementById("characterizationPhysical").textContent = "phys rms 0.000";
+        document.getElementById("characterizationPhysicalMax").textContent = "phys max 0.000";
+        document.getElementById("characterizationDecay").textContent = "decay a0.00 z0.00";
+        document.getElementById("characterizationDecayLength").textContent = "len a0.0 z0.0";
+        this.renderFrameworkLawCandidates();
+        this.renderFormalizationTargets();
+        this.renderCalibrationResults();
+        this.renderResponseAtlasSweep();
+        return;
+      }
+      const superposition = result.superpositionSkipped
+        ? `superposition skipped (${result.superpositionSources} sources)`
+        : `superposition ${Number(result.superpositionError || 0).toFixed(3)}`;
+      document.getElementById("characterizationSummary").textContent = `${result.scope}: ${result.activeSources}/${result.regionCellCount} active, ${result.responseCells} cells`;
+      document.getElementById("characterizationDetail").textContent = `reach a${result.alphaReachCells} z${result.zReachCells}, die ${result.alphaDieOff}/${result.zDieOff}`;
+      document.getElementById("characterizationZSign").textContent = `z sign +${result.positiveZReachCells || 0}/-${result.negativeZReachCells || 0}`;
+      document.getElementById("characterizationZExtrema").textContent = `z max +${Number(result.maxPositiveHeightDelta || 0).toFixed(3)}/-${Math.abs(Number(result.maxNegativeHeightDelta || 0)).toFixed(3)}`;
+      document.getElementById("characterizationSuperposition").textContent = superposition;
+      document.getElementById("characterizationScale").textContent = `clearance ${Number(result.pinHoleClearanceMm || 0).toFixed(3)} mm`;
+      document.getElementById("characterizationPairwise").textContent = `pairs ${result.pairwiseEvaluatedPairs || 0}/${result.pairwiseTotalPairs || 0} nonadd ${result.pairwiseNonadditivePairs || 0}${result.pairwiseTruncated ? " trunc" : ""}`;
+      document.getElementById("characterizationPairwiseMax").textContent = `pair max ${Number(result.pairwiseMaxInteractionError || 0).toFixed(3)} deg ${result.pairwiseInteractionDegreeMax || 0}`;
+      const hotspot = this.strongestInteractionHotspot(result);
+      document.getElementById("characterizationHotspot").textContent = hotspot ? `hotspot r${hotspot.r} c${hotspot.c} ${hotspot.value.toFixed(3)} d${hotspot.degree}` : "hotspot none";
+      document.getElementById("characterizationRank").textContent = `rank a${result.responseRankAlpha || 0} z${result.responseRankHeight || 0}`;
+      document.getElementById("characterizationUnderactuated").textContent = `under a${result.alphaUnderactuatedCells || 0} z${result.heightUnderactuatedCells || 0}`;
+      const physicalLabel = result.physicalPreviewAvailable
+        ? `phys rms ${Number(result.physicalHeightRmsError || 0).toFixed(3)}`
+        : "phys unavailable";
+      const physicalMaxLabel = result.physicalPreviewAvailable
+        ? `phys max ${Number(result.physicalHeightMaxError || 0).toFixed(3)}`
+        : "phys max --";
+      document.getElementById("characterizationPhysical").textContent = physicalLabel;
+      document.getElementById("characterizationPhysicalMax").textContent = physicalMaxLabel;
+      document.getElementById("characterizationDecay").textContent = `decay a${Number(result.alphaDecayRatio || 0).toFixed(2)} z${Number(result.zDecayRatio || 0).toFixed(2)}`;
+      document.getElementById("characterizationDecayLength").textContent = `len a${Number(result.alphaDecayLength || 0).toFixed(1)} z${Number(result.zDecayLength || 0).toFixed(1)}`;
+      this.renderFrameworkLawCandidates();
+      this.renderFormalizationTargets();
+      this.renderCalibrationResults();
+      this.renderResponseAtlasSweep();
+    }
+
+    currentFrameworkReportMetadata(scope) {
+      const empty = { operatorLawCandidates: null, formalizationTargets: null };
+      if (typeof RAD.programmableDiscontinuityReport !== "function") return empty;
+      try {
+        const report = RAD.programmableDiscontinuityReport(this.state, {
+          scope,
+          ...this.state.selection,
+          includeResponseMatrix: false,
+          includeFields: false,
+        });
+        return {
+          operatorLawCandidates: report.operatorLawCandidates || null,
+          formalizationTargets: report.formalizationTargets || null,
+        };
+      } catch {
+        return empty;
+      }
+    }
+
+    formatFrameworkLawEvidence(law) {
+      if (!law) return "";
+      const evidence = law.evidence || {};
+      if (law.id === "composition_nonadditivity") {
+        return ` err ${Number(evidence.maxSuperpositionError || 0).toFixed(3)}`;
+      }
+      if (law.id === "event_order_noncommutativity") {
+        return ` err ${Number(evidence.maxOrderError || 0).toFixed(3)}`;
+      }
+      if (law.id === "rank_limited_reachability") {
+        return ` rank a${evidence.alphaRank || 0} z${evidence.heightRank || 0}`;
+      }
+      if (law.id === "bounded_locality") {
+        return ` die a${evidence.alphaLocalityRadius || 0} z${evidence.zLocalityRadius || 0}`;
+      }
+      return "";
+    }
+
+    renderFrameworkLawCandidates() {
+      const candidates = this.state.experiment.frameworkLawCandidates;
+      if (!candidates || !Array.isArray(candidates.laws)) {
+        document.getElementById("frameworkLawSummary").textContent = "laws not run";
+        document.getElementById("frameworkLawDetail").textContent = "candidate --";
+        return;
+      }
+      const laws = candidates.laws;
+      const supported = laws.filter((law) => law.supportedByDiagnostic);
+      const preferred = [
+        "composition_nonadditivity",
+        "event_order_noncommutativity",
+        "rank_limited_reachability",
+        "bounded_locality",
+      ];
+      const primary =
+        preferred.map((id) => supported.find((law) => law.id === id)).find(Boolean) ||
+        supported[0] ||
+        laws[0];
+      const status = primary?.supportedByDiagnostic ? "supported" : "not supported";
+      const label = primary ? primary.id.replace(/_/g, " ") : "none";
+      document.getElementById("frameworkLawSummary").textContent = `laws ${supported.length}/${laws.length} supported`;
+      document.getElementById("frameworkLawDetail").textContent = `candidate ${label} ${status}${this.formatFrameworkLawEvidence(primary)}`;
+    }
+
+    renderFormalizationTargets() {
+      const manifest = this.state.experiment.frameworkFormalizationTargets;
+      if (!manifest || !Array.isArray(manifest.targets)) {
+        document.getElementById("formalizationSummary").textContent = "formal targets not run";
+        document.getElementById("formalizationDetail").textContent = "proof --";
+        return;
+      }
+      const targets = manifest.targets;
+      const ready = targets.filter((target) => target.readyForLean);
+      const tooling = manifest.tooling || {};
+      const status = tooling.status || "unknown";
+      const preferred = [
+        "dead_zone_zero_inside_backlash",
+        "dead_zone_piecewise_linear_outside_gap",
+        "lock_projection_idempotent",
+        "noncommutativity_witness_from_order_error",
+        "bounded_locality_witness",
+      ];
+      const primary =
+        preferred.map((id) => targets.find((target) => target.id === id)).find(Boolean) ||
+        targets[0];
+      const label = primary ? primary.id.replace(/_/g, " ") : "none";
+      const targetStatus = primary?.status || "unknown";
+      document.getElementById("formalizationSummary").textContent = `formal ${ready.length}/${targets.length} ready, Lean ${status}`;
+      document.getElementById("formalizationDetail").textContent = `proof ${label} ${targetStatus}`;
+    }
+
+    renderCalibrationResults() {
+      const summary = this.state.experiment.calibrationComparisonSummary;
+      if (!summary) {
+        document.getElementById("calibrationResultsSummary").textContent = "calibration results none";
+        document.getElementById("calibrationResultsError").textContent = "height rmse --";
+        return;
+      }
+      const measured = Number(summary.measuredCellCount || 0);
+      const missing = Number(summary.missingObservationCount || 0);
+      const stepCount = Number(summary.stepCount || 0);
+      const height = summary.heightRmseMean === null || summary.heightRmseMean === undefined ? "--" : Number(summary.heightRmseMean).toFixed(4);
+      const alpha = summary.alphaRmseMean === null || summary.alphaRmseMean === undefined ? "--" : Number(summary.alphaRmseMean).toFixed(4);
+      const heightBias = summary.meanSignedHeightError === null || summary.meanSignedHeightError === undefined ? "--" : Number(summary.meanSignedHeightError).toFixed(4);
+      const alphaBias = summary.meanSignedAlphaError === null || summary.meanSignedAlphaError === undefined ? "--" : Number(summary.meanSignedAlphaError).toFixed(4);
+      const max = summary.maxCombinedError === null || summary.maxCombinedError === undefined ? "--" : Number(summary.maxCombinedError).toFixed(4);
+      const heightFit = summary.fit?.height;
+      const alphaFit = summary.fit?.alpha;
+      const heightGain = heightFit?.suggestedGain === null || heightFit?.suggestedGain === undefined ? "--" : Number(heightFit.suggestedGain).toFixed(3);
+      const alphaGain = alphaFit?.suggestedGain === null || alphaFit?.suggestedGain === undefined ? "--" : Number(alphaFit.suggestedGain).toFixed(3);
+      const residualMax = summary.fitResidualMaxCombinedError === null || summary.fitResidualMaxCombinedError === undefined ? "--" : Number(summary.fitResidualMaxCombinedError).toFixed(4);
+      const cell = summary.worstCell ? ` cell r${summary.worstCell.row} c${summary.worstCell.col}` : "";
+      const worst = summary.worstStepId ? ` worst ${summary.worstStepId}` : "";
+      document.getElementById("calibrationResultsSummary").textContent = `cal results ${stepCount} steps, ${measured} cells, missing ${missing}, fit h ${heightGain} a ${alphaGain}`;
+      document.getElementById("calibrationResultsError").textContent = `h ${height}/${heightBias}, a ${alpha}/${alphaBias}, raw ${max}, resid ${residualMax}${cell}${worst}`;
+    }
+
+    runResponseAtlasSweep() {
+      if (typeof RAD.responseAtlasSweep !== "function") return;
+      const sweep = RAD.responseAtlasSweep(this.state, { ...this.state.selection });
+      this.state.experiment.responseAtlasSweep = sweep;
+      RAD.recordEvent(this.state, {
+        type: "response-atlas-sweep",
+        samples: sweep.summary.sampleCount,
+        maxNeighborResidual: sweep.summary.maxObservedNeighborZResidual,
+        maxSuperpositionError: sweep.summary.maxSuperpositionError,
+      });
+      this.renderResponseAtlasSweep();
+      this.syncControls();
+      this.onChange(this.state);
+    }
+
+    renderResponseAtlasSweep() {
+      const sweep = this.state.experiment.responseAtlasSweep;
+      if (!sweep) {
+        document.getElementById("sweepSummary").textContent = "sweep not run";
+        document.getElementById("sweepTrend").textContent = "neighbor z --";
+        return;
+      }
+      const summary = sweep.summary || {};
+      const trend = sweep.trends?.byPinHoleClearance || [];
+      const low = trend[0];
+      const high = trend[trend.length - 1];
+      const lowResidual = low ? Number(low.maxObservedNeighborZResidual || 0) : 0;
+      const highResidual = high ? Number(high.maxObservedNeighborZResidual || 0) : 0;
+      const drop = lowResidual > 1e-12 ? 100 * (1 - highResidual / lowResidual) : 0;
+      const dominant = sweep.sensitivity?.dominant;
+      const dominantLabel = dominant
+        ? `, sens ${dominant.parameter}/${dominant.metric} ${Number(dominant.slope || 0).toFixed(2)}`
+        : "";
+      const residualLaw = (sweep.operatorLawCandidates?.laws || []).find(
+        (law) => law.parameter === "pinHoleClearance" && law.metric === "maxObservedNeighborZResidual"
+      );
+      const lawLabel = residualLaw ? `, law ${residualLaw.parameter}/${residualLaw.monotonicity}` : "";
+      document.getElementById("sweepSummary").textContent = `sweep ${summary.sampleCount || 0} samples, reach a${summary.maxAlphaReach || 0} z${summary.maxZReach || 0}`;
+      document.getElementById("sweepTrend").textContent = `neighbor z ${Number(summary.maxObservedNeighborZResidual || 0).toFixed(3)}, clear drop ${drop.toFixed(0)}%, super ${Number(summary.maxSuperpositionError || 0).toFixed(3)}${dominantLabel}${lawLabel}`;
+    }
+
+    strongestInteractionHotspot(result) {
+      const map = result?.pairwiseInteractionMap;
+      if (!Array.isArray(map)) return null;
+      let best = null;
+      for (let r = 0; r < map.length; r += 1) {
+        const row = map[r] || [];
+        for (let c = 0; c < row.length; c += 1) {
+          const value = Math.abs(Number(row[c]) || 0);
+          const degree = Number(result?.pairwiseInteractionDegreeMap?.[r]?.[c]) || 0;
+          if (!best || value > best.value) best = { r, c, value, degree };
+        }
+      }
+      return best && best.value > 1e-12 ? best : null;
+    }
+
+    selectInteractionHotspot() {
+      const hotspot = this.strongestInteractionHotspot(this.state.experiment.characterization);
+      if (!hotspot) return;
+      this.state.selection = { r: hotspot.r, c: hotspot.c };
+      this.state.view.overlayMode = "operatorInteraction";
+      this.syncControls();
+      this.onChange(this.state);
+    }
+
+    calibrationHotspotRanking(residualMode) {
+      const summary = this.state.experiment.calibrationComparisonSummary;
+      const comparison = this.state.experiment.calibrationComparison;
+      const ranked = residualMode
+        ? summary?.fitResidualTopCells || comparison?.fitResidualField?.topCells
+        : summary?.topCells || comparison?.field?.topCells;
+      if (Array.isArray(ranked) && ranked.length) return ranked;
+      const fallback =
+        (residualMode
+          ? summary?.fitResidualWorstCell || comparison?.fitResidualField?.worstCell
+          : summary?.worstCell || comparison?.field?.worstCell) ||
+        summary?.worstCell ||
+        comparison?.field?.worstCell;
+      return fallback ? [fallback] : [];
+    }
+
+    selectCalibrationHotspot(step = 0) {
+      const residualMode = this.state.view.overlayMode === "calibrationResidual";
+      const ranking = this.calibrationHotspotRanking(residualMode);
+      if (!ranking.length) return;
+      let index = 0;
+      if (step !== 0 && this.state.selection) {
+        const currentIndex = ranking.findIndex((cell) => cell.row === this.state.selection.r && cell.col === this.state.selection.c);
+        index = currentIndex >= 0 ? (currentIndex + step + ranking.length) % ranking.length : 0;
+      }
+      const cell = ranking[index] || ranking[0];
+      if (!cell) return;
+      this.state.selection = { r: cell.row, c: cell.col };
+      this.state.view.overlayMode = residualMode ? "calibrationResidual" : "calibrationError";
+      this.syncControls();
+      this.onChange(this.state);
+    }
+
+    selectUnderactuatedTarget() {
+      if (!this.state.inverse?.jacobian?.targetReachability && typeof RAD.buildResponseJacobian === "function") {
+        RAD.buildResponseJacobian(this.state);
+      }
+      const report = this.state.inverse?.jacobian?.targetReachability || this.state.inverse?.linearSolution?.targetReachability;
+      const cell = report?.worstUnderactuatedCell;
+      if (!cell) return;
+      this.state.selection = { r: cell.row, c: cell.col };
+      this.state.view.overlayMode = "underactuated";
+      this.state.view.targetVisible = this.state.target.type !== "none";
+      this.syncControls();
+      this.onChange(this.state);
     }
 
     updateCouplingInspector(r, c) {
@@ -815,6 +1512,7 @@
       const linearCommands = this.state.inverse?.linearSolution?.commands || [];
       const sensitivityCandidates = this.state.inverse?.sensitivity?.candidates || [];
       const preview = this.state.inverse?.preview;
+      const validation = this.state.inverse?.physicalValidation;
       this.els.inverseStepPreview.max = commands.length;
       this.els.inverseStepPreview.value = preview?.type === "plan-step" ? preview.step : 0;
       document.getElementById("inverseStepPreviewOut").textContent = `${this.els.inverseStepPreview.value} / ${commands.length}`;
@@ -822,11 +1520,21 @@
         ? `${commands.length} actuators, error ${Number(plan.projectedError || 0).toFixed(3)}`
         : "No plan analyzed";
       document.getElementById("inversePlanDelta").textContent = `delta ${Number(plan?.totalImprovement || 0).toFixed(3)}`;
+      const reachability = this.state.inverse?.jacobian?.targetReachability || this.state.inverse?.linearSolution?.targetReachability;
+      document.getElementById("inverseReachabilitySummary").textContent = reachability
+        ? `under targets ${reachability.underactuatedHeightCells || 0} up ${reachability.positiveUnderactuatedHeightCells || 0} down ${reachability.negativeUnderactuatedHeightCells || 0}, rms ${Number(reachability.unreachableHeightRms || 0).toFixed(3)}`
+        : "under targets 0";
       document.getElementById("inversePreviewSummary").textContent = preview
         ? this.formatInversePreview(preview)
         : linearCommands.length
           ? `linear fit: ${linearCommands.length} actuators, err ${Number(this.state.inverse.linearSolution.projectedError || 0).toFixed(3)}`
           : "No actuator preview";
+      document.getElementById("inversePhysicalSummary").textContent = validation
+        ? `${validation.source} physical err ${Number(validation.physicalProjectedError || 0).toFixed(3)}, d ${Number(validation.physicalErrorDelta || 0).toFixed(3)}`
+        : "physical validation not run";
+      document.getElementById("inversePhysicalModel").textContent = validation
+        ? `model rms h${Number(validation.heightModelRms || 0).toFixed(3)} c${Number(validation.centerModelRms || 0).toFixed(3)}`
+        : "model delta 0.000";
       this.els.inversePlanHistory.innerHTML = "";
       for (const step of (plan?.history || []).slice(-6)) {
         const item = document.createElement("div");
@@ -886,6 +1594,213 @@
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
+    }
+
+    saveObj() {
+      const mesh = RAD.buildPaperRadMesh(this.state, { sim: RAD.simulateActive(this.state) });
+      const blob = new Blob([RAD.exportPaperRadMeshObj(mesh)], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "rad-sim-paper-rad.obj";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveCalibrationPlan() {
+      const payload =
+        typeof RAD.exportCalibrationMeasurementPlan === "function"
+          ? RAD.exportCalibrationMeasurementPlan(this.state)
+          : JSON.stringify({ schema: "rad-sim.calibration-plan.v1" }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "rad-sim-calibration-plan.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveExperimentProtocol() {
+      const payload =
+        typeof RAD.exportCalibrationExperimentProtocol === "function"
+          ? RAD.exportCalibrationExperimentProtocol(this.state)
+          : JSON.stringify({ schema: "rad-sim.calibration-experiment-protocol.v1" }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "rad-sim-calibration-experiment-protocol.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveResponseMatrix() {
+      const scope = this.els.characterizationScope.value || "single";
+      const payload =
+        typeof RAD.exportResponseMatrix === "function"
+          ? RAD.exportResponseMatrix(this.state, { scope, ...this.state.selection })
+          : JSON.stringify({ schema: "rad-sim.response-matrix.v1" }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `rad-sim-response-matrix-${scope}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveResponseAtlas() {
+      const payload =
+        typeof RAD.exportResponseAtlas === "function"
+          ? RAD.exportResponseAtlas(this.state, { ...this.state.selection })
+          : JSON.stringify({ schema: "rad-sim.response-atlas.v1" }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "rad-sim-response-atlas.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveResponseAtlasSweep() {
+      const payload =
+        typeof RAD.exportResponseAtlasSweep === "function"
+          ? RAD.exportResponseAtlasSweep(this.state, { ...this.state.selection })
+          : JSON.stringify({ schema: "rad-sim.response-atlas-sweep.v1" }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "rad-sim-response-atlas-sweep.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveProgrammableReport() {
+      const scope = this.els.characterizationScope.value || "single";
+      const payload =
+        typeof RAD.exportProgrammableDiscontinuityReport === "function"
+          ? RAD.exportProgrammableDiscontinuityReport(this.state, { scope, ...this.state.selection })
+          : JSON.stringify({ schema: "rad-sim.programmable-discontinuity-report.v1" }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `rad-sim-programmable-discontinuity-report-${scope}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveFormalizationTargets() {
+      const scope = this.els.characterizationScope.value || "single";
+      const payload =
+        typeof RAD.exportFormalizationTargetManifest === "function"
+          ? RAD.exportFormalizationTargetManifest(this.state, { scope, ...this.state.selection })
+          : JSON.stringify({ schema: "rad-sim.formalization-targets.v1" }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `rad-sim-formalization-targets-${scope}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveInverseReport() {
+      const payload =
+        typeof RAD.exportInverseDesignReport === "function"
+          ? RAD.exportInverseDesignReport(this.state)
+          : JSON.stringify({ schema: "rad-sim.inverse-design-report.v1" }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "rad-sim-inverse-design-report.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveResultsTemplate() {
+      const payload =
+        typeof RAD.exportCalibrationExperimentResultsTemplate === "function"
+          ? RAD.exportCalibrationExperimentResultsTemplate(this.state)
+          : JSON.stringify({ schema: "rad-sim.calibration-experiment-results.v1" }, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "rad-sim-calibration-results-template.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    saveComparisonReport() {
+      if (!this.state.experiment.calibrationComparison) {
+        window.alert("Load calibration results before saving a comparison report.");
+        return;
+      }
+      const payload =
+        typeof RAD.exportCalibrationComparisonReport === "function"
+          ? RAD.exportCalibrationComparisonReport(this.state)
+          : JSON.stringify(this.state.experiment.calibrationComparison, null, 2);
+      const blob = new Blob([payload], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "rad-sim-calibration-comparison-report.json";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    loadCalibrationResults() {
+      const file = this.els.calibrationResultsFileInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const results = JSON.parse(String(reader.result));
+          const comparison = RAD.compareCalibrationExperimentResults(this.state, results);
+          const summary =
+            typeof RAD.summarizeCalibrationComparison === "function"
+              ? RAD.summarizeCalibrationComparison(comparison)
+              : { stepCount: comparison.comparisons?.length || 0 };
+          this.state.experiment.calibrationResults = results;
+          this.state.experiment.calibrationComparison = comparison;
+          this.state.experiment.calibrationComparisonSummary = summary;
+          this.state.view.overlayMode = "calibrationError";
+          this.syncControls();
+          this.renderCalibrationResults();
+          this.onChange(this.state);
+        } catch (error) {
+          window.alert(error.message);
+        }
+      };
+      reader.readAsText(file);
+      this.els.calibrationResultsFileInput.value = "";
     }
 
     saveSequence() {
@@ -1220,9 +2135,14 @@
       if (event.type === "inverse-plan-analyzed") return `analyze: ${event.target}, ${event.actuators} cells`;
       if (event.type === "inverse-plan-applied") return `apply plan: ${event.target}, ${event.actuators} cells`;
       if (event.type === "sensitivity-analyzed") return `sensitivity: ${event.cells || 0} cells, mean ${Number(event.meanGain || 0).toFixed(3)}`;
-      if (event.type === "jacobian-built") return `jacobian: ${event.columns || 0} columns, reach ${Number(event.meanCoverage || 0).toFixed(3)}`;
-      if (event.type === "linear-fit-solved") return `linear solve: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}`;
+      if (event.type === "jacobian-built") return `jacobian: ${event.columns || 0} columns, reach ${Number(event.meanCoverage || 0).toFixed(3)}, under ${event.underactuatedTargets || 0}`;
+      if (event.type === "linear-fit-solved") return `linear solve: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}, under ${event.underactuatedTargets || 0}`;
       if (event.type === "linear-fit-applied") return `linear apply: ${event.actuators || 0} actuators, err ${Number(event.projectedError || 0).toFixed(3)}`;
+      if (event.type === "inverse-physical-validated") return `physical validate: ${event.source || "plan"}, err ${Number(event.physicalError || 0).toFixed(3)}, model ${Number(event.modelError || 0).toFixed(3)}`;
+      if (event.type === "characterization") return `characterize: ${event.scope}, ${event.responseCells || 0} cells, sup ${Number(event.superpositionError || 0).toFixed(3)}, pairs ${event.pairwiseNonadditive || 0}/${event.pairwisePairs || 0}, deg ${event.pairwiseMaxDegree || 0}`;
+      if (event.type === "operator-lock") return `event lock: r${event.r}, c${event.c} a ${Number(event.lockAlpha || 0).toFixed(3)}`;
+      if (event.type === "operator-release") return `event release: r${event.r}, c${event.c}`;
+      if (event.type === "operator-order-check") return `order check: r${event.r}, c${event.c} da ${Number(event.finalAlphaError || 0).toFixed(3)} dz ${Number(event.finalHeightError || 0).toFixed(3)} max ${Number(event.maxOrderError || 0).toFixed(3)}`;
       if (event.type === "inverse-preview-keyframe") return `preview keyframe: ${event.name || "plan preview"}, ${event.actuators || 0} cells`;
       if (event.type === "keyframe") return `keyframe: ${event.name || "pose"} (${event.index || 0})`;
       return event.name ? `${event.type}: ${event.name}` : event.type;

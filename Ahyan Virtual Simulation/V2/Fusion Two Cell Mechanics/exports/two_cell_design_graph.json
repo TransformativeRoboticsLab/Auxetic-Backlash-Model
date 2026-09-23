@@ -1,0 +1,2157 @@
+{
+  "schema_version": "rad.two_cell_fusion_export.v1",
+  "source": {
+    "design_name": "TRL RADs two cells v2",
+    "source_file": "TRL RADs two cells v2",
+    "export_timestamp": "2026-08-17T22:12:40.931301Z",
+    "notes": "CAD graph export. Validate roles, contact pairs, and pose samples before deriving final equations."
+  },
+  "units": {
+    "length": "mm",
+    "angle": "rad_internal"
+  },
+  "coordinate_frame": {
+    "origin": "Fusion root component origin unless overwritten",
+    "x_axis": "unset",
+    "y_axis": "unset",
+    "z_axis": "unset"
+  },
+  "parameters": [
+    {
+      "name": "d1",
+      "source": "all",
+      "owner": "",
+      "expression": "0.0 deg",
+      "value": 0.0,
+      "unit": "deg",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d2",
+      "source": "all",
+      "owner": "",
+      "expression": "0.00 mm",
+      "value": 0.0,
+      "unit": "mm",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d3",
+      "source": "all",
+      "owner": "",
+      "expression": "0.00 mm",
+      "value": 0.0,
+      "unit": "mm",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d4",
+      "source": "all",
+      "owner": "",
+      "expression": "5 mm",
+      "value": 0.5,
+      "unit": "mm",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d5",
+      "source": "all",
+      "owner": "",
+      "expression": "-5 deg",
+      "value": -0.08726646259971647,
+      "unit": "deg",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d6",
+      "source": "all",
+      "owner": "",
+      "expression": "5 deg",
+      "value": 0.08726646259971647,
+      "unit": "deg",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d7",
+      "source": "all",
+      "owner": "",
+      "expression": "0 deg",
+      "value": 0.0,
+      "unit": "deg",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d8",
+      "source": "all",
+      "owner": "",
+      "expression": "-5 deg",
+      "value": -0.08726646259971647,
+      "unit": "deg",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d9",
+      "source": "all",
+      "owner": "",
+      "expression": "5 deg",
+      "value": 0.08726646259971647,
+      "unit": "deg",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d10",
+      "source": "all",
+      "owner": "",
+      "expression": "0 deg",
+      "value": 0.0,
+      "unit": "deg",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d11",
+      "source": "all",
+      "owner": "",
+      "expression": "-5 deg",
+      "value": -0.08726646259971647,
+      "unit": "deg",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d12",
+      "source": "all",
+      "owner": "",
+      "expression": "5 deg",
+      "value": 0.08726646259971647,
+      "unit": "deg",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d13",
+      "source": "all",
+      "owner": "",
+      "expression": "0.00 deg",
+      "value": 0.0,
+      "unit": "deg",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d14",
+      "source": "all",
+      "owner": "",
+      "expression": "0.0 deg",
+      "value": 0.0,
+      "unit": "deg",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d15",
+      "source": "all",
+      "owner": "",
+      "expression": "0.00 mm",
+      "value": 0.0,
+      "unit": "mm",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d16",
+      "source": "all",
+      "owner": "",
+      "expression": "0.00 mm",
+      "value": 0.0,
+      "unit": "mm",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d17",
+      "source": "all",
+      "owner": "",
+      "expression": "0.00 mm",
+      "value": 0.0,
+      "unit": "mm",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d22",
+      "source": "all",
+      "owner": "",
+      "expression": "25.00 deg",
+      "value": 0.4363323129985824,
+      "unit": "deg",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d23",
+      "source": "all",
+      "owner": "",
+      "expression": "56 deg",
+      "value": 0.9773843811168246,
+      "unit": "deg",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d18",
+      "source": "all",
+      "owner": "",
+      "expression": "-90.0 deg",
+      "value": -1.5707963267948966,
+      "unit": "deg",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d19",
+      "source": "all",
+      "owner": "",
+      "expression": "0.00 mm",
+      "value": 0.0,
+      "unit": "mm",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d20",
+      "source": "all",
+      "owner": "",
+      "expression": "0.00 mm",
+      "value": 0.0,
+      "unit": "mm",
+      "comment": "",
+      "role": ""
+    },
+    {
+      "name": "d21",
+      "source": "all",
+      "owner": "",
+      "expression": "0.00 mm",
+      "value": 0.0,
+      "unit": "mm",
+      "comment": "",
+      "role": ""
+    }
+  ],
+  "occurrences": [
+    {
+      "name": "RADs free cell 4mm tall 3.4mm hole v3:1",
+      "full_path": "RADs unit cell v2:1+RADs free cell 4mm tall 3.4mm hole v3:1",
+      "component": "RADs free cell 4mm tall 3.4mm hole v3",
+      "role": "",
+      "transform": [
+        0.6794413042615148,
+        -0.7337298645028765,
+        5.654243090618026e-17,
+        1.0464851196690303e-32,
+        0.7337298645028765,
+        0.6794413042615148,
+        1.1604775110676698e-17,
+        5.810348267186315e-33,
+        -4.693203307055497e-17,
+        3.3602106630595246e-17,
+        1.0,
+        0.40000000000000013,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "bounding_box": {
+        "min": [
+          -2.8100908690879827,
+          -2.810090869087983,
+          0.39899999999999997
+        ],
+        "max": [
+          2.8100908690879836,
+          2.810090869087984,
+          0.8010000000000004
+        ]
+      },
+      "bodies": [
+        {
+          "name": "Body1",
+          "role": ""
+        }
+      ]
+    },
+    {
+      "name": "92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1",
+      "full_path": "RADs unit cell v2:1+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1",
+      "component": "92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1",
+      "role": "",
+      "transform": [
+        0.6657661469067184,
+        -0.7461604637294725,
+        2.7131344711991107e-16,
+        -3.793988727217577,
+        0.7461604637294716,
+        0.6657661469067193,
+        -3.2968839424837664e-17,
+        -1.0214186385623967,
+        -4.594228761224079e-16,
+        3.8983126530899054e-16,
+        0.9999999999999989,
+        2.772570088655179,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "bounding_box": {
+        "min": [
+          -4.218978637019071,
+          -1.4464085483638904,
+          1.75784413601326
+        ],
+        "max": [
+          -3.3689988174160828,
+          -0.5964287287609029,
+          3.7735700886551786
+        ]
+      },
+      "bodies": [
+        {
+          "name": "Body1",
+          "role": ""
+        }
+      ]
+    },
+    {
+      "name": "RADs unit cell v2:1",
+      "full_path": "RADs unit cell v2:1",
+      "component": "RADs unit cell v2",
+      "role": "",
+      "transform": [
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "bounding_box": {
+        "min": [
+          -4.21956667494774,
+          -2.810677704632273,
+          -0.001
+        ],
+        "max": [
+          2.8106777046322735,
+          2.810677704632274,
+          3.7745701332092283
+        ]
+      },
+      "bodies": [
+        {
+          "name": "Body1",
+          "role": ""
+        }
+      ]
+    },
+    {
+      "name": "RADs free cell 4mm tall 3.4mm hole v3:1",
+      "full_path": "RADs unit cell v2:2+RADs free cell 4mm tall 3.4mm hole v3:1",
+      "component": "RADs free cell 4mm tall 3.4mm hole v3",
+      "role": "",
+      "transform": [
+        0.7337298645028772,
+        0.679441304261517,
+        -2.5165441384528042e-17,
+        1.501316910616834,
+        -0.679441304261517,
+        0.7337298645028772,
+        -2.2609797074196488e-33,
+        3.8309092304134613,
+        1.846463589722482e-17,
+        1.7098440316620446e-17,
+        1.0000000000000002,
+        0.40000000000000013,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "bounding_box": {
+        "min": [
+          -1.3087739584711549,
+          1.0208183613254715,
+          0.3990000000000001
+        ],
+        "max": [
+          4.3114077797048225,
+          6.641000099501451,
+          0.8010000000000004
+        ]
+      },
+      "bodies": [
+        {
+          "name": "Body1",
+          "role": ""
+        }
+      ]
+    },
+    {
+      "name": "92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1",
+      "full_path": "RADs unit cell v2:2+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1",
+      "component": "92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1",
+      "role": "",
+      "transform": [
+        1.0000000000000036,
+        3.1918911957973147e-16,
+        3.9499516151718057e-16,
+        -4.656039323791051,
+        -6.938893903907261e-16,
+        1.0000000000000004,
+        5.243296601272619e-17,
+        0.43175833743672004,
+        -4.2480879607751005e-16,
+        1.4377585207747475e-18,
+        1.0,
+        2.0127976612277716,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "bounding_box": {
+        "min": [
+          -4.957039323791053,
+          0.1307583374367195,
+          0.9980717085858513
+        ],
+        "max": [
+          -4.355039323791049,
+          0.7327583374367206,
+          3.013797661227772
+        ]
+      },
+      "bodies": [
+        {
+          "name": "Body1",
+          "role": ""
+        }
+      ]
+    },
+    {
+      "name": "RADs unit cell v2:2",
+      "full_path": "RADs unit cell v2:2",
+      "component": "RADs unit cell v2",
+      "role": "",
+      "transform": [
+        1.0000000000000018,
+        -1.0824674490095276e-15,
+        -5.3385503235984725e-18,
+        1.501316910616834,
+        1.0824674490095276e-15,
+        1.0000000000000018,
+        -4.650355314799065e-18,
+        3.8309092304134613,
+        5.338550323598473e-18,
+        4.650355314799106e-18,
+        1.0,
+        4.386253489912256e-17,
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ],
+      "bounding_box": {
+        "min": [
+          -2.7182497643309156,
+          1.020231525781179,
+          -0.0009999999999999918
+        ],
+        "max": [
+          4.311994615249116,
+          6.641586935045742,
+          3.7745701332092283
+        ]
+      },
+      "bodies": [
+        {
+          "name": "Body1",
+          "role": ""
+        }
+      ]
+    }
+  ],
+  "rigid_groups": [],
+  "joints": [
+    {
+      "name": "Ball 1",
+      "kind": "joint",
+      "object_type": "adsk::fusion::Joint",
+      "joint_type": "adsk::fusion::BallJointMotion",
+      "occurrence_one": "RADs unit cell v2:1",
+      "occurrence_two": "RADs unit cell v2:2+RADs free cell 4mm tall 3.4mm hole v3:1",
+      "axis": [
+        0.0,
+        0.0,
+        -1.0
+      ],
+      "origin": [
+        1.5874999999999935,
+        1.5874999999999937,
+        0.4
+      ],
+      "limits": {
+        "jointType": 6,
+        "pitchValue": 0.0,
+        "pitchLimits": {
+          "isMinimumValueEnabled": true,
+          "isMaximumValueEnabled": true,
+          "minimumValue": -0.08726646259971647,
+          "maximumValue": 0.08726646259971647,
+          "restValue": 0.0
+        }
+      },
+      "role": "",
+      "geometry_one": {
+        "object_type": "adsk::fusion::JointGeometry",
+        "origin": [
+          1.5874999999999935,
+          1.5874999999999937,
+          0.4
+        ],
+        "primary_axis": [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "secondary_axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "third_axis": [
+          0.0,
+          -1.0,
+          0.0
+        ]
+      },
+      "geometry_two": {
+        "object_type": "adsk::fusion::JointGeometry",
+        "origin": [
+          1.5874999999999935,
+          1.5874999999999937,
+          0.8000000000000003
+        ],
+        "primary_axis": [
+          -3.0814879110195774e-33,
+          0.0,
+          -1.0000000000000002
+        ],
+        "secondary_axis": [
+          1.0,
+          2.512957965390093e-34,
+          3.0814879110195774e-33
+        ],
+        "third_axis": [
+          -2.5129579653900944e-34,
+          -1.0,
+          0.0
+        ]
+      },
+      "is_suppressed": true
+    },
+    {
+      "name": "Revolute 2",
+      "kind": "joint",
+      "object_type": "adsk::fusion::Joint",
+      "joint_type": "adsk::fusion::RevoluteJointMotion",
+      "occurrence_one": "RADs unit cell v2:2+RADs free cell 4mm tall 3.4mm hole v3:1",
+      "occurrence_two": "RADs unit cell v2:1",
+      "axis": [
+        3.0814879110195774e-33,
+        0.0,
+        1.0000000000000002
+      ],
+      "origin": [
+        1.5874999999999935,
+        1.5874999999999937,
+        0.4
+      ],
+      "limits": {
+        "jointType": 1,
+        "rotationAxis": 2,
+        "rotationValue": 0.747000919853573,
+        "rotationAxisVector": [
+          0.0,
+          0.0,
+          -1.0
+        ],
+        "rotationLimits": {
+          "isMinimumValueEnabled": true,
+          "isMaximumValueEnabled": true,
+          "minimumValue": 0.4363323129985824,
+          "maximumValue": 0.9773843811168246,
+          "restValue": 0.4363323129985824
+        }
+      },
+      "role": "",
+      "geometry_one": {
+        "object_type": "adsk::fusion::JointGeometry",
+        "origin": [
+          1.5874999999999935,
+          1.5874999999999937,
+          0.4
+        ],
+        "primary_axis": [
+          3.0814879110195774e-33,
+          0.0,
+          1.0000000000000002
+        ],
+        "secondary_axis": [
+          1.0,
+          2.512957965390093e-34,
+          3.0814879110195774e-33
+        ],
+        "third_axis": [
+          2.5129579653900944e-34,
+          1.0,
+          0.0
+        ]
+      },
+      "geometry_two": {
+        "object_type": "adsk::fusion::JointGeometry",
+        "origin": [
+          1.5874999999999935,
+          1.5874999999999937,
+          0.4
+        ],
+        "primary_axis": [
+          -0.0,
+          -0.0,
+          -1.0
+        ],
+        "secondary_axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "third_axis": [
+          0.0,
+          -1.0,
+          0.0
+        ]
+      },
+      "is_suppressed": false
+    },
+    {
+      "name": "Revolute 3",
+      "kind": "joint",
+      "object_type": "adsk::fusion::Joint",
+      "joint_type": "adsk::fusion::RevoluteJointMotion",
+      "occurrence_one": "RADs unit cell v2:2",
+      "occurrence_two": "RADs unit cell v2:1+RADs free cell 4mm tall 3.4mm hole v3:1",
+      "axis": [
+        -0.0,
+        -3.851859888774472e-34,
+        -1.0
+      ],
+      "origin": [
+        -0.08618308938316344,
+        2.2434092304134614,
+        0.40000000000000013
+      ],
+      "limits": {
+        "jointType": 1,
+        "rotationAxis": 2,
+        "rotationValue": 0.7470009198535706,
+        "rotationAxisVector": [
+          5.266214404523928e-17,
+          1.0808384582988667e-17,
+          1.0
+        ],
+        "rotationLimits": {
+          "isMinimumValueEnabled": false,
+          "isMaximumValueEnabled": false,
+          "minimumValue": 0.0,
+          "maximumValue": 0.0,
+          "restValue": 0.0
+        }
+      },
+      "role": "",
+      "geometry_one": {
+        "object_type": "adsk::fusion::JointGeometry",
+        "origin": [
+          -0.08618308938316344,
+          2.2434092304134614,
+          0.40000000000000013
+        ],
+        "primary_axis": [
+          -0.0,
+          -3.851859888774472e-34,
+          -1.0
+        ],
+        "secondary_axis": [
+          1.0,
+          2.8414861684190367e-35,
+          0.0
+        ],
+        "third_axis": [
+          -2.8414861684190725e-35,
+          -1.0,
+          3.851859888774472e-34
+        ]
+      },
+      "geometry_two": {
+        "object_type": "adsk::fusion::JointGeometry",
+        "origin": [
+          -0.0861830893831641,
+          2.243409230413464,
+          0.4
+        ],
+        "primary_axis": [
+          6.162975822039155e-33,
+          -6.162975822039155e-33,
+          1.0
+        ],
+        "secondary_axis": [
+          1.0,
+          5.551115123125783e-17,
+          0.0
+        ],
+        "third_axis": [
+          -5.551115123125783e-17,
+          1.0,
+          6.162975822039155e-33
+        ]
+      },
+      "is_suppressed": false
+    },
+    {
+      "name": "Revolute 1",
+      "kind": "joint",
+      "object_type": "adsk::fusion::Joint",
+      "joint_type": "adsk::fusion::RevoluteJointMotion",
+      "occurrence_one": "RADs unit cell v2:1+RADs free cell 4mm tall 3.4mm hole v3:1",
+      "occurrence_two": "RADs unit cell v2:1",
+      "axis": [
+        6.162975822039155e-33,
+        -6.162975822039155e-33,
+        1.0
+      ],
+      "origin": [
+        2.1064857618095708e-17,
+        4.323353833195462e-18,
+        0.8
+      ],
+      "limits": {
+        "jointType": 1,
+        "rotationAxis": 2,
+        "rotationValue": 0.823795406941326,
+        "rotationAxisVector": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "rotationLimits": {
+          "isMinimumValueEnabled": false,
+          "isMaximumValueEnabled": false,
+          "minimumValue": 0.0,
+          "maximumValue": 0.0,
+          "restValue": 0.0
+        }
+      },
+      "role": "",
+      "geometry_one": {
+        "object_type": "adsk::fusion::JointGeometry",
+        "origin": [
+          2.1064857618095708e-17,
+          4.323353833195462e-18,
+          0.8
+        ],
+        "primary_axis": [
+          6.162975822039155e-33,
+          -6.162975822039155e-33,
+          1.0
+        ],
+        "secondary_axis": [
+          1.0,
+          5.551115123125783e-17,
+          0.0
+        ],
+        "third_axis": [
+          -5.551115123125783e-17,
+          1.0,
+          6.162975822039155e-33
+        ]
+      },
+      "geometry_two": {
+        "object_type": "adsk::fusion::JointGeometry",
+        "origin": [
+          0.0,
+          0.0,
+          0.4
+        ],
+        "primary_axis": [
+          0.0,
+          0.0,
+          1.0
+        ],
+        "secondary_axis": [
+          1.0,
+          0.0,
+          0.0
+        ],
+        "third_axis": [
+          0.0,
+          1.0,
+          0.0
+        ]
+      },
+      "is_suppressed": false
+    },
+    {
+      "name": "Revolute 2",
+      "kind": "joint",
+      "object_type": "adsk::fusion::Joint",
+      "joint_type": "adsk::fusion::RevoluteJointMotion",
+      "occurrence_one": "RADs unit cell v2:1+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1",
+      "occurrence_two": "RADs unit cell v2:1+RADs free cell 4mm tall 3.4mm hole v3:1",
+      "axis": [
+        -2.1299243162484134e-32,
+        6.039615557071419e-17,
+        1.0
+      ],
+      "origin": [
+        -3.7939887272175765,
+        -1.0214186385623965,
+        3.7725700886551783
+      ],
+      "limits": {
+        "jointType": 1,
+        "rotationAxis": 2,
+        "rotationValue": 0.0,
+        "rotationAxisVector": [
+          -5.266214404523928e-17,
+          -1.0808384582988667e-17,
+          -1.0
+        ],
+        "rotationLimits": {
+          "isMinimumValueEnabled": false,
+          "isMaximumValueEnabled": false,
+          "minimumValue": 0.0,
+          "maximumValue": 0.0,
+          "restValue": 0.0
+        }
+      },
+      "role": "",
+      "geometry_one": {
+        "object_type": "adsk::fusion::JointGeometry",
+        "origin": [
+          -3.7939887272175765,
+          -1.0214186385623965,
+          3.7725700886551783
+        ],
+        "primary_axis": [
+          -2.1299243162484134e-32,
+          6.039615557071419e-17,
+          1.0
+        ],
+        "secondary_axis": [
+          1.0,
+          -5.551115123125793e-17,
+          0.0
+        ],
+        "third_axis": [
+          5.5511151231257765e-17,
+          1.0,
+          -6.039615557071419e-17
+        ]
+      },
+      "geometry_two": {
+        "object_type": "adsk::fusion::JointGeometry",
+        "origin": [
+          2.1064857618095708e-17,
+          4.323353833195462e-18,
+          0.8
+        ],
+        "primary_axis": [
+          -6.162975822039155e-33,
+          6.162975822039155e-33,
+          -1.0
+        ],
+        "secondary_axis": [
+          1.0,
+          5.551115123125783e-17,
+          0.0
+        ],
+        "third_axis": [
+          5.551115123125783e-17,
+          -1.0,
+          -6.162975822039155e-33
+        ]
+      },
+      "is_suppressed": true
+    },
+    {
+      "name": "Revolute 1",
+      "kind": "joint",
+      "object_type": "adsk::fusion::Joint",
+      "joint_type": "adsk::fusion::RevoluteJointMotion",
+      "occurrence_one": "RADs unit cell v2:2+RADs free cell 4mm tall 3.4mm hole v3:1",
+      "occurrence_two": "RADs unit cell v2:2",
+      "axis": [
+        3.0814879110195774e-33,
+        0.0,
+        1.0000000000000002
+      ],
+      "origin": [
+        1.5013169106168338,
+        3.83090923041346,
+        0.8000000000000003
+      ],
+      "limits": {
+        "jointType": 1,
+        "rotationAxis": 2,
+        "rotationValue": 5.5361843873260135,
+        "rotationAxisVector": [
+          -9.018587893457331e-18,
+          -3.150699646094746e-18,
+          1.0
+        ],
+        "rotationLimits": {
+          "isMinimumValueEnabled": false,
+          "isMaximumValueEnabled": false,
+          "minimumValue": 0.0,
+          "maximumValue": 0.0,
+          "restValue": 0.0
+        }
+      },
+      "role": "",
+      "geometry_one": {
+        "object_type": "adsk::fusion::JointGeometry",
+        "origin": [
+          1.5013169106168338,
+          3.83090923041346,
+          0.8000000000000003
+        ],
+        "primary_axis": [
+          3.0814879110195774e-33,
+          0.0,
+          1.0000000000000002
+        ],
+        "secondary_axis": [
+          1.0,
+          2.512957965390093e-34,
+          3.0814879110195774e-33
+        ],
+        "third_axis": [
+          2.5129579653900944e-34,
+          1.0,
+          0.0
+        ]
+      },
+      "geometry_two": {
+        "object_type": "adsk::fusion::JointGeometry",
+        "origin": [
+          1.5013169106168347,
+          3.83090923041346,
+          0.40000000000000013
+        ],
+        "primary_axis": [
+          0.0,
+          3.851859888774472e-34,
+          1.0
+        ],
+        "secondary_axis": [
+          1.0,
+          2.8414861684190367e-35,
+          0.0
+        ],
+        "third_axis": [
+          2.8414861684190725e-35,
+          1.0,
+          -3.851859888774472e-34
+        ]
+      },
+      "is_suppressed": false
+    },
+    {
+      "name": "Revolute 2",
+      "kind": "joint",
+      "object_type": "adsk::fusion::Joint",
+      "joint_type": "adsk::fusion::RevoluteJointMotion",
+      "occurrence_one": "RADs unit cell v2:2+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1",
+      "occurrence_two": "RADs unit cell v2:2+RADs free cell 4mm tall 3.4mm hole v3:1",
+      "axis": [
+        -3.429943933098535e-50,
+        6.039615557071419e-17,
+        1.0
+      ],
+      "origin": [
+        -4.656039323791051,
+        0.4317583374367201,
+        3.012797661227772
+      ],
+      "limits": {
+        "jointType": 1,
+        "rotationAxis": 2,
+        "rotationValue": 0.0,
+        "rotationAxisVector": [
+          2.2451664383340382e-17,
+          -2.2609797074196488e-33,
+          -1.0000000000000002
+        ],
+        "rotationLimits": {
+          "isMinimumValueEnabled": false,
+          "isMaximumValueEnabled": false,
+          "minimumValue": 0.0,
+          "maximumValue": 0.0,
+          "restValue": 0.0
+        }
+      },
+      "role": "",
+      "geometry_one": {
+        "object_type": "adsk::fusion::JointGeometry",
+        "origin": [
+          -4.656039323791051,
+          0.4317583374367201,
+          3.012797661227772
+        ],
+        "primary_axis": [
+          -3.429943933098535e-50,
+          6.039615557071419e-17,
+          1.0
+        ],
+        "secondary_axis": [
+          1.0,
+          2.2273985166639318e-32,
+          4.930380657631324e-32
+        ],
+        "third_axis": [
+          -5.67907659136122e-34,
+          1.0,
+          -6.039615557071419e-17
+        ]
+      },
+      "geometry_two": {
+        "object_type": "adsk::fusion::JointGeometry",
+        "origin": [
+          1.5013169106168338,
+          3.83090923041346,
+          0.8000000000000003
+        ],
+        "primary_axis": [
+          -3.0814879110195774e-33,
+          -0.0,
+          -1.0000000000000002
+        ],
+        "secondary_axis": [
+          1.0,
+          2.512957965390093e-34,
+          3.0814879110195774e-33
+        ],
+        "third_axis": [
+          -2.5129579653900944e-34,
+          -1.0,
+          0.0
+        ]
+      },
+      "is_suppressed": true
+    }
+  ],
+  "motion_links": [],
+  "tracked_points": [],
+  "pose_samples": [
+    {
+      "sample_id": 0,
+      "label": "current_pose",
+      "actuation": 0.0,
+      "cell_metrics": {
+        "left_alpha": null,
+        "right_alpha": null,
+        "left_theta": null,
+        "right_theta": null,
+        "left_center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "right_center": [
+          1.501316910616834,
+          3.8309092304134613,
+          4.386253489912256e-17
+        ],
+        "pitch": 4.114586005635456,
+        "inferred_cell_centers": [
+          {
+            "name": "RADs unit cell v2:1",
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "source": "top_level_occurrence_origin"
+          },
+          {
+            "name": "RADs unit cell v2:2",
+            "center": [
+              1.501316910616834,
+              3.8309092304134613,
+              4.386253489912256e-17
+            ],
+            "source": "top_level_occurrence_origin"
+          }
+        ]
+      },
+      "occurrence_transforms": {
+        "RADs unit cell v2:1+RADs free cell 4mm tall 3.4mm hole v3:1": [
+          0.6794413042615148,
+          -0.7337298645028765,
+          5.654243090618026e-17,
+          1.0464851196690303e-32,
+          0.7337298645028765,
+          0.6794413042615148,
+          1.1604775110676698e-17,
+          5.810348267186315e-33,
+          -4.693203307055497e-17,
+          3.3602106630595246e-17,
+          1.0,
+          0.40000000000000013,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:1+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1": [
+          0.6657661469067184,
+          -0.7461604637294725,
+          2.7131344711991107e-16,
+          -3.793988727217577,
+          0.7461604637294716,
+          0.6657661469067193,
+          -3.2968839424837664e-17,
+          -1.0214186385623967,
+          -4.594228761224079e-16,
+          3.8983126530899054e-16,
+          0.9999999999999989,
+          2.772570088655179,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:1": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2+RADs free cell 4mm tall 3.4mm hole v3:1": [
+          0.7337298645028772,
+          0.679441304261517,
+          -2.5165441384528042e-17,
+          1.501316910616834,
+          -0.679441304261517,
+          0.7337298645028772,
+          -2.2609797074196488e-33,
+          3.8309092304134613,
+          1.846463589722482e-17,
+          1.7098440316620446e-17,
+          1.0000000000000002,
+          0.40000000000000013,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1": [
+          1.0000000000000036,
+          3.1918911957973147e-16,
+          3.9499516151718057e-16,
+          -4.656039323791051,
+          -6.938893903907261e-16,
+          1.0000000000000004,
+          5.243296601272619e-17,
+          0.43175833743672004,
+          -4.2480879607751005e-16,
+          1.4377585207747475e-18,
+          1.0,
+          2.0127976612277716,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2": [
+          1.0000000000000018,
+          -1.0824674490095276e-15,
+          -5.3385503235984725e-18,
+          1.501316910616834,
+          1.0824674490095276e-15,
+          1.0000000000000018,
+          -4.650355314799065e-18,
+          3.8309092304134613,
+          5.338550323598473e-18,
+          4.650355314799106e-18,
+          1.0,
+          4.386253489912256e-17,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "tracked_points_world": {},
+      "interference": null
+    },
+    {
+      "sample_id": 1,
+      "label": "Revolute 2.rotationValue",
+      "actuation": 0.4363323129985824,
+      "cell_metrics": {
+        "left_alpha": null,
+        "right_alpha": null,
+        "left_theta": null,
+        "right_theta": null,
+        "left_center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "right_center": [
+          0.8196428785926739,
+          3.6971701024340295,
+          -7.643526835794982e-17
+        ],
+        "pitch": 3.786935596859252,
+        "inferred_cell_centers": [
+          {
+            "name": "RADs unit cell v2:1",
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "source": "top_level_occurrence_origin"
+          },
+          {
+            "name": "RADs unit cell v2:2",
+            "center": [
+              0.8196428785926739,
+              3.6971701024340295,
+              -7.643526835794982e-17
+            ],
+            "source": "top_level_occurrence_origin"
+          }
+        ]
+      },
+      "occurrence_transforms": {
+        "RADs unit cell v2:1+RADs free cell 4mm tall 3.4mm hole v3:1": [
+          0.4226182617406978,
+          -0.9063077870366494,
+          5.4889620682115166e-17,
+          0.0,
+          0.9063077870366494,
+          0.4226182617406978,
+          1.2746273428763615e-17,
+          0.0,
+          -3.4749402944468677e-17,
+          4.436008273155328e-17,
+          1.0,
+          0.4,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:1+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1": [
+          0.6657661469067184,
+          -0.7461604637294725,
+          2.7131344711991107e-16,
+          -3.793988727217577,
+          0.7461604637294716,
+          0.6657661469067193,
+          -3.2968839424837664e-17,
+          -1.0214186385623967,
+          -4.594228761224079e-16,
+          3.8983126530899054e-16,
+          0.9999999999999989,
+          2.772570088655179,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:1": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2+RADs free cell 4mm tall 3.4mm hole v3:1": [
+          0.9063077870366509,
+          0.42261826174069994,
+          -2.3960756423538575e-17,
+          0.8196428785926739,
+          -0.42261826174069994,
+          0.9063077870366509,
+          1.3022930645300744e-33,
+          3.6971701024340304,
+          2.1715820129941423e-17,
+          1.0126253229708134e-17,
+          1.0000000000000002,
+          0.4,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1": [
+          1.0000000000000036,
+          3.1918911957973147e-16,
+          3.9499516151718057e-16,
+          -4.656039323791051,
+          -6.938893903907261e-16,
+          1.0000000000000004,
+          5.243296601272619e-17,
+          0.43175833743672004,
+          -4.2480879607751005e-16,
+          1.4377585207747475e-18,
+          1.0,
+          2.0127976612277716,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2": [
+          1.0000000000000018,
+          -8.881784197001252e-16,
+          -7.078788397450587e-18,
+          0.8196428785926739,
+          8.881784197001252e-16,
+          1.0000000000000018,
+          -5.420206962889152e-18,
+          3.6971701024340295,
+          7.078788397450575e-18,
+          5.42020696288919e-18,
+          1.0,
+          -7.643526835794982e-17,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "tracked_points_world": {},
+      "interference": null
+    },
+    {
+      "sample_id": 2,
+      "label": "Revolute 2.rotationValue",
+      "actuation": 0.5715953300281429,
+      "cell_metrics": {
+        "left_alpha": null,
+        "right_alpha": null,
+        "left_theta": null,
+        "right_theta": null,
+        "left_center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "right_center": [
+          1.1130623007744447,
+          3.781861266873235,
+          -1.7666033481611498e-17
+        ],
+        "pitch": 3.942255994640801,
+        "inferred_cell_centers": [
+          {
+            "name": "RADs unit cell v2:1",
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "source": "top_level_occurrence_origin"
+          },
+          {
+            "name": "RADs unit cell v2:2",
+            "center": [
+              1.1130623007744447,
+              3.781861266873235,
+              -1.7666033481611498e-17
+            ],
+            "source": "top_level_occurrence_origin"
+          }
+        ]
+      },
+      "occurrence_transforms": {
+        "RADs unit cell v2:1+RADs free cell 4mm tall 3.4mm hole v3:1": [
+          0.5417082102827379,
+          -0.8405666034956841,
+          5.463085726654946e-17,
+          0.0,
+          0.8405666034956841,
+          0.5417082102827379,
+          -3.209301646609869e-18,
+          0.0,
+          -2.689635213139036e-17,
+          4.7659379189843574e-17,
+          1.0,
+          0.4,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:1+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1": [
+          0.6657661469067184,
+          -0.7461604637294725,
+          2.7131344711991107e-16,
+          -3.793988727217577,
+          0.7461604637294716,
+          0.6657661469067193,
+          -3.2968839424837664e-17,
+          -1.0214186385623967,
+          -4.594228761224079e-16,
+          3.8983126530899054e-16,
+          0.9999999999999989,
+          2.772570088655179,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:1": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2+RADs free cell 4mm tall 3.4mm hole v3:1": [
+          0.8405666034956851,
+          0.5417082102827402,
+          -2.373906768268311e-17,
+          1.1130623007744447,
+          -0.5417082102827402,
+          0.8405666034956851,
+          1.669267301286315e-33,
+          3.781861266873235,
+          1.9954267492187095e-17,
+          1.285964786816706e-17,
+          1.0000000000000002,
+          0.40000000000000013,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1": [
+          1.0000000000000036,
+          3.1918911957973147e-16,
+          3.9499516151718057e-16,
+          -4.656039323791051,
+          -6.938893903907261e-16,
+          1.0000000000000004,
+          5.243296601272619e-17,
+          0.43175833743672004,
+          -4.2480879607751005e-16,
+          1.4377585207747475e-18,
+          1.0,
+          2.0127976612277716,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2": [
+          1.0000000000000022,
+          -1.6930901125533637e-15,
+          -7.385649360101635e-18,
+          1.1130623007744447,
+          1.6930901125533637e-15,
+          1.0000000000000022,
+          2.2401396583924816e-18,
+          3.781861266873235,
+          7.385649360101617e-18,
+          -2.240139658392465e-18,
+          1.0,
+          -1.7666033481611498e-17,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "tracked_points_world": {},
+      "interference": null
+    },
+    {
+      "sample_id": 3,
+      "label": "Revolute 2.rotationValue",
+      "actuation": 0.747000919853573,
+      "cell_metrics": {
+        "left_alpha": null,
+        "right_alpha": null,
+        "left_theta": null,
+        "right_theta": null,
+        "left_center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "right_center": [
+          1.5013169106168343,
+          3.8309092304134613,
+          9.744289515468004e-17
+        ],
+        "pitch": 4.114586005635456,
+        "inferred_cell_centers": [
+          {
+            "name": "RADs unit cell v2:1",
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "source": "top_level_occurrence_origin"
+          },
+          {
+            "name": "RADs unit cell v2:2",
+            "center": [
+              1.5013169106168343,
+              3.8309092304134613,
+              9.744289515468004e-17
+            ],
+            "source": "top_level_occurrence_origin"
+          }
+        ]
+      },
+      "occurrence_transforms": {
+        "RADs unit cell v2:1+RADs free cell 4mm tall 3.4mm hole v3:1": [
+          0.6794413042615148,
+          -0.7337298645028766,
+          5.421366326918175e-17,
+          0.0,
+          0.7337298645028766,
+          0.6794413042615148,
+          -5.090834593092725e-18,
+          0.0,
+          -3.309970470421105e-17,
+          4.323710710041195e-17,
+          1.0,
+          0.4,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:1+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1": [
+          0.6657661469067184,
+          -0.7461604637294725,
+          2.7131344711991107e-16,
+          -3.793988727217577,
+          0.7461604637294716,
+          0.6657661469067193,
+          -3.2968839424837664e-17,
+          -1.0214186385623967,
+          -4.594228761224079e-16,
+          3.8983126530899054e-16,
+          0.9999999999999989,
+          2.772570088655179,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:1": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2+RADs free cell 4mm tall 3.4mm hole v3:1": [
+          0.7337298645028775,
+          0.6794413042615173,
+          -2.337841790318789e-17,
+          1.5013169106168343,
+          -0.6794413042615173,
+          0.7337298645028775,
+          -3.224180019039065e-33,
+          3.8309092304134618,
+          1.7153443400397645e-17,
+          1.5884262751712734e-17,
+          1.0000000000000002,
+          0.40000000000000024,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1": [
+          1.0000000000000036,
+          3.1918911957973147e-16,
+          3.9499516151718057e-16,
+          -4.656039323791051,
+          -6.938893903907261e-16,
+          1.0000000000000004,
+          5.243296601272619e-17,
+          0.43175833743672004,
+          -4.2480879607751005e-16,
+          1.4377585207747475e-18,
+          1.0,
+          2.0127976612277716,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2": [
+          1.0000000000000024,
+          -1.4432899320127035e-15,
+          -7.867890338707178e-18,
+          1.5013169106168343,
+          1.4432899320127035e-15,
+          1.0000000000000024,
+          2.7349244946403006e-18,
+          3.8309092304134613,
+          7.867890338707173e-18,
+          -2.7349244946402814e-18,
+          1.0,
+          9.744289515468004e-17,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "tracked_points_world": {},
+      "interference": null
+    },
+    {
+      "sample_id": 4,
+      "label": "Revolute 2.rotationValue",
+      "actuation": 0.842121364087264,
+      "cell_metrics": {
+        "left_alpha": null,
+        "right_alpha": null,
+        "left_theta": null,
+        "right_theta": null,
+        "left_center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "right_center": [
+          1.7167349263642542,
+          3.828841302391846,
+          -1.1020407228534996e-17
+        ],
+        "pitch": 4.196093960613915,
+        "inferred_cell_centers": [
+          {
+            "name": "RADs unit cell v2:1",
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "source": "top_level_occurrence_origin"
+          },
+          {
+            "name": "RADs unit cell v2:2",
+            "center": [
+              1.7167349263642542,
+              3.828841302391846,
+              -1.1020407228534996e-17
+            ],
+            "source": "top_level_occurrence_origin"
+          }
+        ]
+      },
+      "occurrence_transforms": {
+        "RADs unit cell v2:1+RADs free cell 4mm tall 3.4mm hole v3:1": [
+          0.7466381822853903,
+          -0.6652303546543608,
+          5.407481396580919e-17,
+          6.400555124439419e-33,
+          0.6652303546543608,
+          0.7466381822853903,
+          -3.470866836367129e-18,
+          -2.5516137693254442e-33,
+          -3.8065394830337946e-17,
+          3.8563689378003705e-17,
+          1.0,
+          0.4,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:1+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1": [
+          0.6657661469067184,
+          -0.7461604637294725,
+          2.7131344711991107e-16,
+          -3.793988727217577,
+          0.7461604637294716,
+          0.6657661469067193,
+          -3.2968839424837664e-17,
+          -1.0214186385623967,
+          -4.594228761224079e-16,
+          3.8983126530899054e-16,
+          0.9999999999999989,
+          2.772570088655179,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:1": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2+RADs free cell 4mm tall 3.4mm hole v3:1": [
+          0.6652303546543618,
+          0.7466381822853924,
+          -2.3270788304672417e-17,
+          1.7167349263642542,
+          -0.7466381822853924,
+          0.6652303546543618,
+          2.0498992959106814e-33,
+          3.828841302391846,
+          1.5480434757003758e-17,
+          1.737485908014873e-17,
+          1.0000000000000002,
+          0.4,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1": [
+          1.0000000000000036,
+          3.1918911957973147e-16,
+          3.9499516151718057e-16,
+          -4.656039323791051,
+          -6.938893903907261e-16,
+          1.0000000000000004,
+          5.243296601272619e-17,
+          0.43175833743672004,
+          -4.2480879607751005e-16,
+          1.4377585207747475e-18,
+          1.0,
+          2.0127976612277716,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2": [
+          1.0000000000000022,
+          -1.6375789613221059e-15,
+          -8.00938764805869e-18,
+          1.7167349263642542,
+          1.6375789613221059e-15,
+          1.0000000000000022,
+          1.4695057433866259e-18,
+          3.828841302391846,
+          8.009387648058686e-18,
+          -1.4695057433866045e-18,
+          1.0,
+          -1.1020407228534996e-17,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "tracked_points_world": {},
+      "interference": null
+    },
+    {
+      "sample_id": 5,
+      "label": "Revolute 2.rotationValue",
+      "actuation": 0.9773843811168246,
+      "cell_metrics": {
+        "left_alpha": null,
+        "right_alpha": null,
+        "left_theta": null,
+        "right_theta": null,
+        "left_center": [
+          0.0,
+          0.0,
+          0.0
+        ],
+        "right_center": [
+          2.015878412171309,
+          3.7913158806909255,
+          -7.683525232221286e-18
+        ],
+        "pitch": 4.29393081917228,
+        "inferred_cell_centers": [
+          {
+            "name": "RADs unit cell v2:1",
+            "center": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "source": "top_level_occurrence_origin"
+          },
+          {
+            "name": "RADs unit cell v2:2",
+            "center": [
+              2.015878412171309,
+              3.7913158806909255,
+              -7.683525232221286e-18
+            ],
+            "source": "top_level_occurrence_origin"
+          }
+        ]
+      },
+      "occurrence_transforms": {
+        "RADs unit cell v2:1+RADs free cell 4mm tall 3.4mm hole v3:1": [
+          0.8290375725550392,
+          -0.559192903470749,
+          5.378087260958117e-17,
+          0.0,
+          0.559192903470749,
+          0.8290375725550392,
+          -5.268652869926128e-18,
+          0.0,
+          -4.164017078242558e-17,
+          3.444179349166095e-17,
+          1.0,
+          0.4,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:1+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1": [
+          0.6657661469067184,
+          -0.7461604637294725,
+          2.7131344711991107e-16,
+          -3.793988727217577,
+          0.7461604637294716,
+          0.6657661469067193,
+          -3.2968839424837664e-17,
+          -1.0214186385623967,
+          -4.594228761224079e-16,
+          3.8983126530899054e-16,
+          0.9999999999999989,
+          2.772570088655179,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:1": [
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2+RADs free cell 4mm tall 3.4mm hole v3:1": [
+          0.5591929034707469,
+          0.829037572555042,
+          -2.3060960254050832e-17,
+          2.0158784121713094,
+          -0.829037572555042,
+          0.5591929034707469,
+          0.0,
+          3.791315880690925,
+          1.2895525321286164e-17,
+          1.9118402509806602e-17,
+          1.0000000000000002,
+          0.4,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1": [
+          1.0000000000000036,
+          3.1918911957973147e-16,
+          3.9499516151718057e-16,
+          -4.656039323791051,
+          -6.938893903907261e-16,
+          1.0000000000000004,
+          5.243296601272619e-17,
+          0.43175833743672004,
+          -4.2480879607751005e-16,
+          1.4377585207747475e-18,
+          1.0,
+          2.0127976612277716,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "RADs unit cell v2:2": [
+          1.0000000000000024,
+          1.6375789613221059e-15,
+          -8.279597963088221e-18,
+          2.015878412171309,
+          -1.6375789613221059e-15,
+          1.0000000000000024,
+          1.9985185916589893e-18,
+          3.7913158806909255,
+          8.279597963088235e-18,
+          -1.99851859165894e-18,
+          1.0,
+          -7.683525232221286e-18,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ]
+      },
+      "tracked_points_world": {},
+      "interference": null
+    }
+  ],
+  "contact_candidates": [
+    {
+      "one": {
+        "occurrence": "RADs unit cell v2:1+RADs free cell 4mm tall 3.4mm hole v3:1",
+        "body": "Body1",
+        "role_hint": "hole_candidate",
+        "cylindrical_faces": [],
+        "bounding_box": {}
+      },
+      "two": {
+        "occurrence": "RADs unit cell v2:1+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1",
+        "body": "Body1",
+        "role_hint": "pin_candidate",
+        "cylindrical_faces": [],
+        "bounding_box": {}
+      },
+      "reason": "name/cylindrical-face proximity candidate; validate in Fusion"
+    },
+    {
+      "one": {
+        "occurrence": "RADs unit cell v2:1+RADs free cell 4mm tall 3.4mm hole v3:1",
+        "body": "Body1",
+        "role_hint": "hole_candidate",
+        "cylindrical_faces": [],
+        "bounding_box": {}
+      },
+      "two": {
+        "occurrence": "RADs unit cell v2:2+RADs free cell 4mm tall 3.4mm hole v3:1",
+        "body": "Body1",
+        "role_hint": "hole_candidate",
+        "cylindrical_faces": [],
+        "bounding_box": {}
+      },
+      "reason": "name/cylindrical-face proximity candidate; validate in Fusion"
+    },
+    {
+      "one": {
+        "occurrence": "RADs unit cell v2:1+RADs free cell 4mm tall 3.4mm hole v3:1",
+        "body": "Body1",
+        "role_hint": "hole_candidate",
+        "cylindrical_faces": [],
+        "bounding_box": {}
+      },
+      "two": {
+        "occurrence": "RADs unit cell v2:2+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1",
+        "body": "Body1",
+        "role_hint": "pin_candidate",
+        "cylindrical_faces": [],
+        "bounding_box": {}
+      },
+      "reason": "name/cylindrical-face proximity candidate; validate in Fusion"
+    },
+    {
+      "one": {
+        "occurrence": "RADs unit cell v2:1+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1",
+        "body": "Body1",
+        "role_hint": "pin_candidate",
+        "cylindrical_faces": [],
+        "bounding_box": {}
+      },
+      "two": {
+        "occurrence": "RADs unit cell v2:2+RADs free cell 4mm tall 3.4mm hole v3:1",
+        "body": "Body1",
+        "role_hint": "hole_candidate",
+        "cylindrical_faces": [],
+        "bounding_box": {}
+      },
+      "reason": "name/cylindrical-face proximity candidate; validate in Fusion"
+    },
+    {
+      "one": {
+        "occurrence": "RADs unit cell v2:1+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1",
+        "body": "Body1",
+        "role_hint": "pin_candidate",
+        "cylindrical_faces": [],
+        "bounding_box": {}
+      },
+      "two": {
+        "occurrence": "RADs unit cell v2:2+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1",
+        "body": "Body1",
+        "role_hint": "pin_candidate",
+        "cylindrical_faces": [],
+        "bounding_box": {}
+      },
+      "reason": "name/cylindrical-face proximity candidate; validate in Fusion"
+    },
+    {
+      "one": {
+        "occurrence": "RADs unit cell v2:2+RADs free cell 4mm tall 3.4mm hole v3:1",
+        "body": "Body1",
+        "role_hint": "hole_candidate",
+        "cylindrical_faces": [],
+        "bounding_box": {}
+      },
+      "two": {
+        "occurrence": "RADs unit cell v2:2+92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw v1:1",
+        "body": "Body1",
+        "role_hint": "pin_candidate",
+        "cylindrical_faces": [],
+        "bounding_box": {}
+      },
+      "reason": "name/cylindrical-face proximity candidate; validate in Fusion"
+    }
+  ],
+  "pose_sampling": {
+    "sampled": true,
+    "source": "limited_joint_drive",
+    "joint": "Revolute 2",
+    "motion_type": "adsk::fusion::RevoluteJointMotion",
+    "value_attr": "rotationValue",
+    "unit": "rad",
+    "values": [
+      0.4363323129985824,
+      0.5715953300281429,
+      0.747000919853573,
+      0.842121364087264,
+      0.9773843811168246
+    ],
+    "candidate_limited_joints": [
+      {
+        "joint": "Revolute 2",
+        "motion_type": "adsk::fusion::RevoluteJointMotion",
+        "value_attr": "rotationValue",
+        "limits_attr": "rotationLimits",
+        "unit": "rad",
+        "minimum": 0.4363323129985824,
+        "maximum": 0.9773843811168246,
+        "current": 0.747000919853573
+      },
+      {
+        "joint": "Ball 1",
+        "motion_type": "adsk::fusion::BallJointMotion",
+        "value_attr": "pitchValue",
+        "limits_attr": "pitchLimits",
+        "unit": "rad_or_cm_by_motion",
+        "minimum": -0.08726646259971647,
+        "maximum": 0.08726646259971647,
+        "current": 0.0
+      }
+    ],
+    "restored_value": 0.747000919853573
+  },
+  "exports": {
+    "step_path": "C:\\Users\\ahyan\\OneDrive\\Documents\\TRL\\Ahyan Virtual Simulation\\Fusion Two Cell Mechanics\\exports\\two_cell.step",
+    "step_success": true
+  }
+}

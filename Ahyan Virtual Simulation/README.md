@@ -3,7 +3,12 @@
 This repository contains a first-pass 3D demonstration simulator for Reconfigurable
 Auxetic Devices (RADs) with backlash. The model is intentionally synthetic and
 dimensionless: it is meant to expose the backlash-coupled lattice mechanics before
-CAD calibration or target-surface inverse design.
+CAD calibration while target-surface inverse design is still experimental.
+Paper-supported formulas, prototype values, and current modeling assumptions are
+tracked in `docs/research_grounding.md`; use that note before changing RAD cell
+geometry or coupling laws. `model_provenance` in Python and
+`RAD.modelProvenance()` in the browser expose the same paper-supported,
+assumption, diagnostic, and calibration-gap classifications inside the simulator.
 
 ## Run
 
@@ -15,6 +20,83 @@ python -m rad_sim.interactive
 
 The interactive module opens an `ipywidgets` UI when run inside Jupyter. Outside
 Jupyter it falls back to a static Matplotlib demo.
+
+For numerical characterization of programmable discontinuities, the Python API
+also exposes `characterize_single_cell`, `characterize_pair`, and
+`characterize_cluster`. These helpers return response fields, vertical residuals,
+die-off distances, and pairwise superposition error from the same simulator used
+by the browser. `compare_physical_response`, `compare_physical_pair`, and
+`compare_physical_cluster` run the same commands through the 3D spring-hinge
+relaxation and report where physical center/height deltas deviate from the
+kinematic backlash prediction.
+For history-dependent programmable mechanics experiments, `local_actuation_event`,
+`lock_event`, `release_event`, `clear_actuation_event`, `apply_event_sequence`,
+`compare_event_order`, and `compare_sequence_order` model discontinuities as
+state-to-state operators. A lock event commits the cell's current alpha state,
+so lock/actuation ordering can be tested as a measurable noncommutative effect.
+The browser mirrors this operator layer through `web/operators.js`. The selected
+cell dock includes event lock, event release, and order-check controls; committed
+locks store `cells.lockAlpha` so a locked cell can hold the dilation reached
+before locking instead of always snapping back to the default state. Browser
+order checks now include both the two-event actuation/lock commutator and a
+three-event local sequence probe that reverses the sequence and swaps adjacent
+events, giving a measured `maxOrderError` for path dependence.
+`build_response_matrix` stacks those responses into alpha and height matrices for
+controllability checks and inverse-design experiments; the matrix can also be
+serialized as `rad-sim.response-matrix.v1` JSON for lab comparisons.
+`sweep_response_atlas_parameters` reruns the calibration atlas across selected
+backlash and pin-hole-clearance values, producing a
+`rad-sim.response-atlas-sweep.v1` artifact for comparing locality, residual
+vertical motion, operator interaction, and finite-difference parameter
+sensitivity, plus falsifiable monotonic operator-law candidates before bench
+calibration.
+`model_provenance` and `provenance_summary` return the current evidence ledger
+for solver features, separating paper-supported equations from assumptions,
+diagnostics, and missing calibration data.
+`RADHardwareProfile`, `config_with_hardware_profile`, and
+`hardware_profile_from_config` provide the first explicit bridge from normalized
+simulator controls to measured real-cell dimensions. They track which key
+hardware dimensions have been measured and which remain calibration gaps.
+`response_decay_profile` fits the shellwise maximum response versus Manhattan
+distance from active source cells, matching the browser Response Experiments
+decay readout for notebook-side locality studies.
+`characterize_pairwise_interactions` evaluates command pairs and builds
+alpha/height residual matrices plus per-cell hotspot and degree maps that
+identify which local operators are responsible for non-additive composition.
+`diagnose_programmable_discontinuity` packages the same response fields into an
+operator diagnostic: locality radius, reachable cells, response rank,
+underactuated cells, fitted decay ratio/length, pairwise interaction graph,
+superposition residual, and optional event-sequence order sensitivity. The
+dead-zone law and rotating-square kinematics are paper-supported; the
+superposition residual, fitted decay profile, pairwise interaction graph,
+sequence-order error, and framework law candidates are new diagnostics for
+detecting when composed operators stop behaving additively or commutatively
+because of backlash thresholds, locks, or saturation.
+`programmable_discontinuity_report` and
+`export_programmable_discontinuity_report_json` serialize that diagnostic as a
+`rad-sim.programmable-discontinuity-report.v1` artifact with explicit
+paper-supported assumptions, simulator-introduced diagnostics, locality,
+reachability, composition, response-matrix, pairwise, optional spring-hinge
+physical-validation, sequence-order fields, and a
+`rad-sim.formalization-targets.v1` theorem-target manifest for Lean-sized
+claims such as backlash dead-zone lemmas, lock idempotence, response-rank
+bounds, and noncommutativity witnesses. These are proof targets, not completed
+Lean proofs unless Lean/Lake are available and the premises are formalized.
+`formalization_target_manifest` and
+`export_formalization_target_manifest_json` export that proof-target manifest
+without the heavier response fields.
+`solve_inverse_design` uses that response matrix in a bounded damped least-squares
+fit from target alpha/height fields to candidate actuator commands. This is the
+first Python-backed inverse layer for surface-shaping studies; it is linearized
+around the unactuated baseline and should be treated as a command proposal, not
+as a calibrated nonlinear optimizer. Its result also carries unweighted alpha and
+height residual fields, reachable/underactuated masks, and command-saturation
+counts so poor target fits can be separated from mechanically unreachable or
+travel-limited regions.
+`validate_inverse_design_physical` runs a solved inverse command state through
+the 3D spring-hinge model and reports physical target residuals plus kinematic
+versus physical center/height disagreement. This is a validation layer for
+candidate commands, not a physical inverse optimizer yet.
 
 ## Browser UI
 
@@ -43,6 +125,100 @@ automatically enables the detailed display layers needed to inspect the
 normalized mechanism: hinge pins, pivot bosses, diagonal braces, linkage rods,
 fasteners, backlash stops, and active actuator markers. Switching back to
 `Cell abstraction` restores the cleaner topology diagram defaults.
+The `Paper RAD cell` display mode sits between those two views. It shows the
+paper-grounded rotating-square structure as two concentric square parts with
+four joints, pin bosses, and hole-clearance rings driven by the normalized
+pin/hole controls. It is still normalized geometry, but it reflects the RAD
+papers' stated unit-cell structure more directly than the general abstraction.
+The Python API mirrors that with `build_paper_rad_cell_geometry`, which returns
+a normalized single-cell description with two concentric square parts, four
+joints per part, lock sites, alpha/z actuator axes, backlash gap, and vertical
+free play. `build_paper_rad_lattice_geometry` lifts the same cell model across a
+full simulated lattice and records inter-cell connector spans, neighbor alpha
+jumps, height jumps, lock states, and actuator commands for pair, cluster, and
+full-lattice inspection. The embedded reference values come from the RAD
+preprint text: 35 mm prototype side length, normalized backlash `b = 0.1`, and
+target effective Poisson ratio `-0.4`; exact CAD thicknesses and tolerances
+remain configurable until measured from the physical parts.
+`calibrate_paper_rad_config` converts normalized model lengths into paper
+prototype millimeters. With the default reference, one model cell side maps to
+35 mm, the paper `b = 0.1` backlash maps to 3.5 mm, and the extracted 0.1 mm
+hole fabrication tolerance maps back into normalized model units. Current pin
+and hole radii are still configured estimates, but their clearance can now be
+reported in millimeters for comparison against measured parts.
+The browser Lattice panel exposes the same scale bridge through `Paper side mm`
+and `Hole tol mm` controls. Its live readouts report configured backlash,
+pin-hole free play, and tolerance in millimeters/model units so abstract
+simulator values can be compared against prototype measurements without
+changing the normalized solver. Browser JSON now also carries a
+`grid.hardwareProfile` record for measured dimensions such as pin radius, hole
+radius, plate thickness, joint stack height, and boss radius; the Lattice panel
+now includes a compact measured-profile editor, reports how many of those
+measurements are present, and lists which are still missing. `Apply Measured
+Dims` deliberately maps measured backlash, pin radius, and hole radius back into
+the normalized backlash/free-play controls; unfilled fields remain calibration
+gaps instead of silently changing the solver. The Display panel's `Calibrated
+RAD cell` mode uses the profile directly for visible plate thickness, pin/hole
+radii, and stack offset without requiring those values to alter the solver. It
+also switches the measurement readout to `Hardware profile`, which labels the
+selected cell with measured pin, hole, clearance, plate, and stack dimensions
+when available.
+`calibration_readiness` in Python and `RAD.calibrationReadiness()` in the browser
+classify the current profile as paper-scale, partial-measured,
+visual-calibrated, or mesh-calibrated, while separately listing the physical
+solver gaps that still require stiffness, actuator, friction/contact, and
+response measurements. `calibration_measurement_plan` and the browser `Save
+Calibration Plan` action turn those gaps into an ordered JSON checklist of the
+next geometry and solver measurements needed before treating a RAD cell as
+physically calibrated. `build_calibration_experiment_protocol` and the browser
+Response Experiments `Save Protocol` action generate a repeatable single-cell,
+pair-cell, cluster, and locked-cell test protocol for collecting those response
+measurements against the same simulator coordinates. The companion results
+template and comparison helpers accept optional measured alpha, height, center
+displacement, slip, and actuator-force values, then report error against the
+current simulator without treating the measurement set as a calibrated solver.
+`build_response_atlas` and `export_response_atlas_json` run the same protocol
+through the simulator as a compact `rad-sim.response-atlas.v1` artifact, with
+optional spring-hinge physical-preview metrics, so backlash and clearance
+settings can be compared before bench data exists. The browser `Save Atlas`
+action exports the same type of response atlas from the current 3D simulator
+state.
+The browser Response Experiments panel can export a fillable results template,
+load the completed JSON, and display compact measured-cell, missing-observation,
+alpha RMSE, height RMSE, maximum combined per-cell error, and worst-step readouts.
+Loading completed results also switches the Display panel to the `Calibration
+error` overlay, which colors the 3D lattice by the averaged per-cell alpha/height
+measurement disagreement. `Select Cal Error` moves the 3D selection to the cell
+with the largest imported measurement disagreement; when the `Calibration
+residual` overlay is active, the same button selects the post-fit residual
+hotspot instead. `Next Cal Error` cycles through the ranked raw or residual
+mismatch list, depending on the active overlay. This keeps mismatch inspection
+in the viewport without placing labels over the lattice. `Save Comparison` exports a
+JSON report containing the imported comparison, per-cell error field, worst-cell
+record, signed alpha/height bias, measured-versus-simulated gain/bias fit, and
+hardware/profile metadata for lab notes or GitHub review. The fit is diagnostic:
+it estimates whether measured alpha or height response needs a scale or offset
+correction, but it does not automatically mutate the solver. The Display panel's
+`Calibration residual` overlay colors the remaining per-cell error after that
+global gain/bias fit, making local mechanism mismatch easier to distinguish from
+uniform scale or offset error.
+For external inspection, `build_paper_rad_lattice_mesh` converts the normalized
+paper RAD lattice into extruded plate, pin, and connector mesh components, and
+`export_paper_rad_mesh_obj` serializes that mesh to OBJ text. This is meant for
+CAD-style review and downstream tooling; it is not yet a fabrication export.
+The browser OBJ export now records the active calibration profile in the header
+and uses measured profile defaults for plate thickness, pin radius, stack height,
+and connector width when available.
+The browser Persistence panel also has `Save OBJ`, which exports the current
+visible simulation state as a normalized paper-RAD OBJ mesh.
+The Display panel can switch the visible solver between `Kinematic` and
+`3D spring preview`. Kinematic mode shows the direct backlash propagation model;
+spring preview runs a lightweight browser relaxation over the cell-center graph,
+then recomputes height, slope, and link-strain diagnostics for a more physical
+inspection view without replacing the Python spring-hinge solver. The
+`Model disagreement` overlay uses that same spring preview to color cells by
+per-cell height disagreement from the kinematic prediction, so suspicious
+regions can be inspected directly in the 3D lattice.
 Saved `rad-sim.browser.v1` JSON includes both command inputs and derived cell
 state. `cells.commandAlpha`, `cells.commandZ`, and `cells.locked` remain the
 authoritative controls; `cells.alpha`, `cells.theta`, and `cells.z` are refreshed
@@ -54,6 +230,10 @@ receives the commanded height, and neighboring cells receive a backlash-gated,
 decaying fraction of that motion. The Lattice panel's `Z coupling` slider
 controls this residual spillover; setting it to zero recovers the earlier
 local-only vertical command behavior.
+The vertical dead-zone is now tied to normalized pin-hole free play: `hole radius
+- pin radius`. This follows the RAD papers' treatment of backlash as joint
+clearance and keeps the user-specified vertical residual assumption explicit
+until calibrated physical pin and hole dimensions are measured.
 The viewport has explicit `Iso`, `Top`, `Front`, and `Side` camera presets with
 `Z` treated as the vertical axis in both the scene math and the camera up vector,
 plus scene `X/Y/Z` labels for orientation. The top preset uses the positive `Y`
@@ -156,6 +336,34 @@ influence under the current backlash and coupling settings. Live badges below
 the inspector say whether alpha and z are still in the free backlash gap or have
 crossed into coupled neighbor transmission.
 
+The Response Experiments panel characterizes the current selected cell, selected
+pair, local cluster, or active lattice command set. It reports active command
+sources, total responding cells, alpha and z reach, alpha/z die-off, paper-scale
+pin-hole clearance, local response rank, underactuated cells, and a
+superposition residual that compares the combined response against the sum of
+isolated source responses. It also reports a bounded pairwise interaction scan
+that identifies how many source pairs create non-additive alpha/height residuals
+and the largest pairwise interaction error. Running the characterization switches
+the viewport to the Operator interaction overlay, which colors command-source
+cells by the strongest non-additive pair residual found in that scan; `Select
+Hotspot` moves selection to the strongest cell without adding labels over the
+lattice. The same readout reports max non-additive degree, counting how many
+non-additive pair edges touch the strongest cells. It also compares the same
+response against the browser 3D spring preview and reports height/center
+disagreement from the kinematic backlash prediction. The reported decay ratio
+and decay length come from a simulator-side log-linear fit to shellwise maximum
+response versus Manhattan distance from the active sources; this is a locality
+diagnostic, not a paper-derived material law. The panel also shows how many
+framework law candidates are currently supported by the diagnostic predicates
+and names the primary supported locality, reachability, composition, or
+event-order candidate. A companion formalization readout counts Lean-sized proof
+targets and shows whether the primary target is ready, blocked by missing Lean
+tooling, or waiting for calibrated premises. This is an early numerical probe for
+programmable-discontinuity behavior: nonzero residual indicates that backlash,
+locks, or saturation are making the local operators interact non-additively.
+The signed z readout separates upward and downward response cells and extrema so
+vertical push/pull commands can be checked independently.
+
 Actuator display can be filtered to the selected cell and accepted inverse-plan
 cells, inverse-plan cells only, or all active cells. This keeps dense patterns
 inspectable while preserving a full hardware view when needed.
@@ -226,13 +434,26 @@ Jacobian-based inverse design. The `Build Jacobian` button now materializes that
 next layer: it stores finite-difference height and dilation response columns for
 positive/negative z commands and contraction/expansion alpha commands, records
 per-cell reachability coverage, estimates a simple response conditioning ratio,
-and exposes a Reachability overlay. `Solve Linear Fit` uses those columns in a
-first greedy linearized residual projection and `Apply Linear Fit` commits the
-resulting clamped commands. These response columns are still computed from the
-current synthetic kinematic model rather than from a calibrated quasistatic
-mechanism. The next solver should replace the greedy projection with a proper
-nonlinear least-squares objective with actuator placement constraints, travel
-limits, and continuation from previous equilibria.
+and exposes a Reachability overlay. It also compares the current target residual
+against finite response columns, counts target cells with requested height motion
+outside the reachable set, and exposes an `Underactuated target` overlay plus
+`Select Under Target` for the worst unreachable target cell. The reachability
+diagnostic keeps separate upward and downward target counts so vertical
+push/pull requests are not hidden inside a single absolute-height score. The
+Python inverse report computes those signed masks from explicit positive and
+negative finite probes. `Solve Linear Fit` uses those columns in a first greedy
+linearized residual projection and `Apply Linear Fit` commits the resulting
+clamped commands. These response columns are still computed from the current
+synthetic kinematic model rather than from a calibrated quasistatic mechanism.
+`Validate Physical` checks the current linear fit or analyzed plan
+against the browser spring-preview relaxation and reports physical target error
+plus kinematic/physical center-height disagreement. `Save Inverse Report`
+exports a `rad-sim.inverse-design-report.v1` JSON artifact with the current
+target, commands, plan, Jacobian/reachability diagnostics, linear fit, and any
+physical validation. The next solver should
+replace the greedy projection with a proper nonlinear least-squares objective
+with actuator placement constraints, travel limits, and continuation from
+previous equilibria.
 
 The target surface panel includes a custom analytic expression mode for early
 inverse-design experiments. Expressions are evaluated on normalized coordinates
@@ -337,7 +558,149 @@ without requiring Playwright or a browser binary.
 
 - `simulate_kinematic`: rotating-square auxetic cells with dead-zone backlash
   coupling, angle/dilation mapping, and synthetic out-of-plane height.
+- `build_paper_rad_cell_geometry`: normalized single-cell RAD geometry with
+  two concentric square parts, four joints per part, pin/hole clearance,
+  lock sites, actuator axes, and paper reference metadata.
+- `calibrate_paper_rad_config`: paper-derived prototype scale conversion for
+  side length, normalized backlash, pin/hole clearance, and hole fabrication
+  tolerance in millimeters and normalized model units.
+- `build_paper_rad_lattice_geometry`: full-lattice paper RAD geometry records
+  derived from a `LatticeState` or `SimulationResult`, including inter-cell
+  connector spans and neighbor alpha/height jumps.
+- `build_paper_rad_lattice_mesh` / `export_paper_rad_mesh_obj`: normalized
+  CAD-style triangle mesh and OBJ export for paper RAD plates, pins, and
+  connectors.
 - `solve_spring_hinge`: reduced center-node spring-hinge quasistatic solver using
   SciPy optimization and penalty locks.
+- `solve_spring_hinge_3d`: out-of-plane spring-hinge relaxation over 3D center
+  nodes, so vertical actuation and pin-clearance residual height can participate
+  in the same axial/hinge/penalty energy model.
+- `local_actuation_event` / `lock_event` / `release_event` /
+  `compare_event_order` / `compare_sequence_order`: executable programmable-
+  discontinuity operators for sequence studies, lock invariance, locality
+  checks, adjacent-swap sensitivity, and event-order noncommutativity.
+- `diagnose_programmable_discontinuity`: Python operator diagnostic for locality,
+  reachable sets, response rank, underactuated regions, shellwise response decay,
+  pairwise interaction matrices/hotspot/degree maps, and additive versus
+  non-additive operator composition. When given an `event_sequence`, it also
+  reports reversal/adjacent-swap order sensitivity.
+- `programmable_discontinuity_report` /
+  `export_programmable_discontinuity_report_json`: versioned JSON-ready research
+  artifact for the programmable-discontinuity diagnostic, including the
+  paper-supported dead-zone and alpha-theta assumptions plus simulator
+  diagnostics for locality, reachability, nonadditivity, pairwise interactions,
+  event-order sensitivity, and optional `include_physical=True` spring-hinge
+  model-disagreement evidence. Reports include diagnostic law candidates for
+  locality, rank-limited reachability, non-additive composition, and event-order
+  noncommutativity, plus formalization targets that separate paper-supported
+  dead-zone lemmas from simulator-diagnostic witnesses.
+- `formalization_target_manifest` /
+  `export_formalization_target_manifest_json`: standalone Python export for the
+  `rad-sim.formalization-targets.v1` proof-target manifest embedded in the
+  framework report.
+- `characterize_pairwise_interactions`: Python pairwise command interaction graph
+  for identifying which actuation operators create non-additive residuals and
+  mapping each command cell's strongest pair residual and non-additive degree.
+- `response_decay_profile`: Python log-linear shell-max locality diagnostic that
+  mirrors the browser Response Experiments decay ratio/length readout.
+- `solve_inverse_design`: bounded damped least-squares inverse design using
+  finite response columns for alpha/height target fields, with residual fields,
+  reachable/underactuated masks, and command-saturation diagnostics.
+- `inverse_design_report` / `export_inverse_design_report_json`: Python inverse
+  design report artifact containing response-matrix diagnostics, residual fields,
+  reachability masks, commands, and optional physical validation.
+- `validate_inverse_design_physical`: spring-hinge validation of a solved inverse
+  command set, reporting physical target error and kinematic/physical model
+  disagreement before a command set is treated as mechanically credible.
+- `web/operators.js`: browser-side version of the event operators with committed
+  `lockAlpha` state, selected-cell order diagnostics, and
+  `compareSequenceOrder` adjacent-swap/reversal sensitivity checks in the
+  viewport dock.
+- `web/math.js` `paperRadCalibration`: browser-side paper scale conversion for
+  backlash, pin-hole clearance, and fabrication tolerance readouts.
+- `model_provenance` / `web/provenance.js`: shared evidence ledger that marks
+  formulas and simulator layers as paper-supported, assumptions, diagnostics, or
+  calibration gaps.
+- `RADHardwareProfile` / `web/math.js` `calibrationProfileSummary`: measured
+  hardware profile scaffolding that tracks pin, hole, plate, stack, and boss
+  dimensions before they are allowed to replace normalized model assumptions.
+  The browser editor saves those values in `grid.hardwareProfile` and only
+  applies measured backlash/radii to normalized controls on explicit command.
+- `calibration_readiness` / `web/math.js` `calibrationReadiness`: conservative
+  readiness gate for calibrated geometry versus still-uncalibrated physical
+  solver behavior.
+- `calibration_measurement_plan` / `web/math.js` `calibrationMeasurementPlan`:
+  ordered geometry and solver measurement tasks that show what must be measured
+  next before the visual CAD profile can become a calibrated physical model.
+- `build_calibration_experiment_protocol` / `web/analysis.js`
+  `calibrationExperimentProtocol`: repeatable single, pair, cluster, and lock
+  response protocol exports for matching simulator response fields against
+  physical bench measurements.
+- `build_response_atlas` / `export_response_atlas_json`: Python
+  `rad-sim.response-atlas.v1` artifact that summarizes simulator responses for
+  the calibration protocol's single, pair, cluster, and lock cases, including
+  observation-cell deltas, die-off, superposition residuals, and optional
+  spring-hinge model-disagreement metrics.
+- `sweep_response_atlas_parameters` / `export_response_atlas_sweep_json`:
+  Python `rad-sim.response-atlas-sweep.v1` artifact that compares atlas
+  summaries over backlash and pin-hole-clearance settings for locality,
+  residual vertical motion, non-additive operator interaction, and endpoint
+  finite-difference sensitivity studies, then records simulator-diagnostic
+  monotonic operator-law candidates.
+- `web/analysis.js` `responseAtlas` / `exportResponseAtlas`: browser-side
+  `rad-sim.response-atlas.v1` export behind `Save Atlas`, using the current
+  protocol, kinematic response fields, and browser spring-preview validation.
+- `web/analysis.js` `responseAtlasSweep` / `exportResponseAtlasSweep`:
+  browser-side `rad-sim.response-atlas-sweep.v1` export behind `Save Sweep`.
+  `Run Sweep` computes the same artifact into the Response Experiments readout
+  so backlash/clearance trends, dominant sensitivity, and the clearance law
+  candidate can be inspected without leaving the 3D UI.
+- `calibration_experiment_results_template` /
+  `compare_calibration_experiment_measurements` and the browser matching
+  helpers: fillable bench-results schema plus simulator-vs-measurement error
+  report for the calibration protocol. The browser can import a completed
+  results JSON and summarize the comparison in the Response Experiments panel.
+  `calibration_experiment_comparison_report` and the browser `Save Comparison`
+  action add per-cell raw/residual fields plus measured-vs-simulated gain and
+  bias diagnostics without mutating solver parameters. The report includes
+  ranked raw-error and post-fit residual cell lists so repeated local mismatch
+  candidates can be inspected after a bench run.
+- `web/renderer.js` `calibratedRad` mode and `web/mesh_export.js`
+  `calibratedMeshDimensions`: profile-aware visual/export layer that uses
+  measured dimensions for CAD-like inspection while keeping solver assumptions
+  explicit.
+- `web/analysis.js` `characterizeLocalResponse`: browser-side single, pair,
+  cluster, and active-lattice response experiment metrics with superposition
+  residuals, pairwise operator-interaction counts and hotspot maps, local
+  response rank, underactuated-cell counts, browser spring-preview disagreement
+  metrics, and log-linear locality/decay estimates for
+  programmable-discontinuity studies.
+- `web/analysis.js` `buildResponseMatrix` / `exportResponseMatrix`: browser-side
+  alpha and height response-matrix artifact for the selected single, pair,
+  cluster, or active-lattice actuator set.
+- `web/analysis.js` `programmableDiscontinuityReport` /
+  `exportProgrammableDiscontinuityReport`: browser-side
+  `rad-sim.programmable-discontinuity-report.v1` export behind `Save Framework
+  Report`, carrying the same paper-supported assumptions and simulator
+  diagnostics used by the Python framework report, plus diagnostic law
+  candidates, formalization-target metadata, and the browser spring-preview
+  physical-validation summary. `Save Formal Targets` exports only the
+  `rad-sim.formalization-targets.v1` manifest for proof planning.
+- `web/inverse.js` `validateInversePlanPhysical`: browser-side physical
+  validation of analyzed inverse plans and linear fits against spring-preview
+  relaxation, including physical target residual and model-disagreement metrics.
+- `web/inverse.js` `buildResponseJacobian`: browser-side target reachability and
+  underactuated-height diagnostics for finite response columns.
+- `web/inverse.js` `inverseDesignReport` / `exportInverseDesignReport`: browser
+  inverse-design report artifact for target, plan, Jacobian, linear fit, current
+  commands, reachability limits, and physical validation state.
+- `web/physics.js` `simulatePhysicalRelaxation`: browser spring-preview
+  relaxation that now also exposes per-cell `modelErrorHeight` and
+  `modelErrorCenter` fields against the kinematic state for model-disagreement
+  overlays.
+- `compare_physical_response` / `compare_physical_pair` /
+  `compare_physical_cluster`: single, pair, and cluster diagnostics that quantify
+  the deviation between kinematic backlash propagation and the 3D spring-hinge
+  physical response.
 - `plot_lattice`: four 3D panels showing the lattice, actuated surface,
   complex-plane displacement, and rotation-angle surface.

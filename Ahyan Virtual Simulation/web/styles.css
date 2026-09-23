@@ -456,6 +456,47 @@ body.show-all-metrics .advanced-metric {
   color: #667080;
 }
 
+.operator-panel {
+  margin-top: 10px;
+  padding: 8px;
+  border: 1px solid rgba(180, 190, 205, 0.75);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.76);
+}
+
+.quick-actuation-dock .operator-row {
+  margin-top: 0;
+}
+
+.operator-row button {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.operator-inspector {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr 1fr;
+  gap: 6px;
+  margin: 8px 0 0;
+}
+
+.operator-inspector div {
+  min-width: 0;
+}
+
+.operator-inspector dt {
+  color: var(--muted);
+  font-size: 0.64rem;
+}
+
+.operator-inspector dd {
+  margin: 1px 0 0;
+  color: #202936;
+  font-size: 0.74rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
 .quick-actuation-dock .button-row {
   gap: 6px;
   margin-top: 10px;
@@ -692,6 +733,7 @@ label {
 }
 
 label input[type="range"],
+label input[type="number"],
 label input[type="text"],
 label textarea,
 label select {
@@ -700,6 +742,7 @@ label select {
 }
 
 select,
+input[type="number"],
 input[type="text"],
 textarea {
   min-height: 36px;
@@ -718,6 +761,34 @@ textarea {
 output {
   color: var(--muted);
   font-variant-numeric: tabular-nums;
+}
+
+.help-text {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+.calibration-editor {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.calibration-editor label {
+  margin-top: 0;
+  font-size: 0.78rem;
+}
+
+.calibration-editor label:first-child,
+.calibration-editor label:nth-child(2) {
+  grid-column: 1 / -1;
+}
+
+.calibration-actions {
+  margin-top: 10px;
 }
 
 .toggle {
@@ -895,6 +966,48 @@ output {
 .candidate-row.is-previewed {
   border-color: var(--actuated);
   box-shadow: 0 0 0 1px var(--actuated);
+}
+
+.provenance-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.provenance-item {
+  display: grid;
+  gap: 2px;
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-left-width: 3px;
+  border-radius: 7px;
+  background: #f8fafc;
+}
+
+.provenance-item span {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.provenance-item small {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+.provenance-paper-supported {
+  border-left-color: #407f52;
+}
+
+.provenance-implementation-assumption {
+  border-left-color: #b07a2a;
+}
+
+.provenance-simulator-diagnostic {
+  border-left-color: #386fb4;
+}
+
+.provenance-calibration-gap {
+  border-left-color: #9a4b58;
 }
 
 @media (max-width: 1100px) {

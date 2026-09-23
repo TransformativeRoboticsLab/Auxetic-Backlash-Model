@@ -1,0 +1,69 @@
+{
+  "schema": "rad-sim.no-backlash-cell-dynamics.v1",
+  "units": "normalized_mm_like",
+  "coordinateFrame": {
+    "plane": "XY",
+    "verticalAxis": "Z",
+    "positiveRotation": "counterclockwise_about_Z"
+  },
+  "geometry": {
+    "cellWidthMm": 55.604331,
+    "nominalHoleDiameterMm": 3.4,
+    "bodyThicknessMm": 4.0,
+    "padRadiusMm": 4.9,
+    "hubRadiusMm": 4.6,
+    "armWidthMm": 5.4,
+    "siteRadiusMm": 22.1,
+    "sites": {
+      "east": [22.1, 0.0],
+      "north": [0.0, 22.1],
+      "west": [-22.1, 0.0],
+      "south": [0.0, -22.1]
+    }
+  },
+  "cell": {
+    "bodies": ["lower_cross", "upper_cross"],
+    "lowerZBand": [-4.0, 0.0],
+    "upperZBand": [0.0, 4.0],
+    "internalCenterAxis": "shared_revolute_axis",
+    "internalGapMm": 0.0
+  },
+  "noBacklashRow": {
+    "cells": ["A", "B", "C"],
+    "actuation": "single_uniform_rotation_q",
+    "defaultDriveRangeDeg": [26, 64],
+    "siteSelection": "fixed_not_user_selectable",
+    "constraints": [
+      {
+        "name": "AB_primary",
+        "first": ["A", "upper_cross", "east"],
+        "second": ["B", "lower_cross", "south"]
+      },
+      {
+        "name": "AB_second",
+        "first": ["B", "upper_cross", "south"],
+        "second": ["A", "lower_cross", "north"]
+      },
+      {
+        "name": "BC_primary",
+        "first": ["B", "lower_cross", "north"],
+        "second": ["C", "upper_cross", "west"]
+      },
+      {
+        "name": "BC_second",
+        "first": ["B", "upper_cross", "north"],
+        "second": ["C", "lower_cross", "south"]
+      }
+    ],
+    "displayFrame": {
+      "centerOfMassFixed": true,
+      "centerlineFixed": true,
+      "centerPositions": ["-v", "0", "+v"]
+    }
+  },
+  "validity": {
+    "pinResidualToleranceMm": 0.01,
+    "maxPenetrationToleranceMm": 0.0001,
+    "backlashEnabled": false
+  }
+}

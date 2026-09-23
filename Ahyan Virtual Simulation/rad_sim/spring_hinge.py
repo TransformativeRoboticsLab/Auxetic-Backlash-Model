@@ -63,6 +63,15 @@ def hinge_energy(
     return float(energy)
 
 
+def _vector(value: tuple[float, ...] | np.ndarray, dimensions: int) -> np.ndarray:
+    vector = np.asarray(value, dtype=float)
+    if vector.ndim != 1 or vector.size > dimensions:
+        raise ValueError(f"load vector must have at most {dimensions} components")
+    out = np.zeros(dimensions, dtype=float)
+    out[: vector.size] = vector
+    return out
+
+
 def solve_spring_hinge(
     config: LatticeConfig,
     state: LatticeState,
@@ -76,7 +85,9 @@ def solve_spring_hinge(
     edges = _edges(rows, cols)
     rest_lengths = np.array([np.linalg.norm(initial[i] - initial[j]) for i, j in edges])
     triples = _hinge_triples(rows, cols)
-    rest_angles = np.array([hinge_angle(initial[i], initial[j], initial[k]) for i, j, k in triples])
+    rest_angles = np.array(
+        [hinge_angle(initial[i], initial[j], initial[k]) for i, j, k in triples]
+    )
 
     fixed: set[int] = {r * cols + c for r, c in load_case.fixed_cells}
     prescribed = {
@@ -105,7 +116,9 @@ def solve_spring_hinge(
         value += hinge_energy(points, triples, rest_angles, load_case.hinge_stiffness)
         for idx, enabled in enumerate(penalty_mask):
             if enabled:
-                value += 0.5 * load_case.lock_stiffness * np.sum((points[idx] - target[idx]) ** 2)
+                value += 0.5 * load_case.lock_stiffness * np.sum(
+                    (points[idx] - target[idx]) ** 2
+                )
         for idx, f in force.items():
             value -= float(np.dot(f, points[idx] - initial[idx]))
         return float(value)
@@ -145,5 +158,99 @@ def solve_spring_hinge(
             "message": str(result.message),
             "energy": float(result.fun),
             "iterations": int(result.nit),
+        },
+    )
+
+
+def solve_spring_hinge_3d(
+    config: LatticeConfig,
+    state: LatticeState,
+    load_case: LoadCase | None = None,
+) -> SimulationResult:
+    load_case = load_case or LoadCase()
+    kin = simulate_kinematic(config, state)
+    rows, cols = config.rows, config.cols
+    initial = kin.original_centers_3d.reshape((-1, 3))
+    target = kin.deformed_centers_3d.reshape((-1, 3))
+    edges = _edges(rows, cols)
+    rest_lengths = np.array([np.linalg.norm(initial[i] - initial[j]) for i, j in edges])
+    triples = _hinge_triples(rows, cols)
+    rest_angles = np.array([hinge_angle(initial[i], initial[j], initial[k]) for i, j, k in triples])
+
+    fixed: set[int] = {r * cols + c for r, c in load_case.fixed_cells}
+    prescribed = {
+        r * cols + c: _vector(delta, 3)
+        for (r, c), delta in load_case.prescribed_displacements.items()
+    }
+    force = {
+        r * cols + c: _vector(value, 3)
+        for (r, c), value in load_case.external_forces.items()
+    }
+    normalized = state.normalized(config)
+    lock_mask = normalized.locked_mask.reshape(-1)
+    alpha_actuator_mask = np.abs(normalized.actuator_grid.reshape(-1)) > 1e-12
+    z_actuator_mask = np.abs(normalized.z_actuator_grid.reshape(-1)) > 1e-12
+    penalty_mask = lock_mask | alpha_actuator_mask | z_actuator_mask
+
+    def unpack(q: np.ndarray) -> np.ndarray:
+        points = q.reshape((-1, 3)).copy()
+        for idx in fixed:
+            points[idx] = initial[idx]
+        for idx, delta in prescribed.items():
+            points[idx] = initial[idx] + delta
+        return points
+
+    def objective(q: np.ndarray) -> float:
+        points = unpack(q)
+        value = spring_energy(points, edges, rest_lengths, load_case.axial_stiffness)
+        value += hinge_energy(points, triples, rest_angles, load_case.hinge_stiffness)
+        for idx, enabled in enumerate(penalty_mask):
+            if enabled:
+                value += 0.5 * load_case.lock_stiffness * np.sum((points[idx] - target[idx]) ** 2)
+        for idx, f in force.items():
+            value -= float(np.dot(f, points[idx] - initial[idx]))
+        return float(value)
+
+    q0 = target.reshape(-1)
+    result = minimize(
+        objective,
+        q0,
+        method="L-BFGS-B",
+        options={"maxiter": load_case.maxiter, "ftol": 1e-10},
+    )
+    points = unpack(result.x).reshape((rows, cols, 3))
+    centers = points[..., :2]
+    height = points[..., 2]
+    corners = cell_corners(config, centers, kin.alpha)
+    corners_3d = np.zeros((rows, cols, 5, 3), dtype=float)
+    corners_3d[..., :2] = corners
+    corners_3d[..., 2] = height[..., None]
+    target_error = points.reshape((-1, 3)) - target
+    return SimulationResult(
+        config=config,
+        state=kin.state,
+        alpha=kin.alpha,
+        theta_degrees=kin.theta_degrees,
+        original_centers=kin.original_centers,
+        deformed_centers=centers,
+        original_corners=kin.original_corners,
+        deformed_corners=corners,
+        original_centers_3d=kin.original_centers_3d,
+        deformed_centers_3d=points,
+        original_corners_3d=kin.original_corners_3d,
+        deformed_corners_3d=corners_3d,
+        complex_original=kin.complex_original,
+        complex_deformed=centers[..., 0] + 1j * centers[..., 1],
+        metadata={
+            "model": "spring_hinge_3d",
+            "success": bool(result.success),
+            "message": str(result.message),
+            "energy": float(result.fun),
+            "iterations": int(result.nit),
+            "height": height,
+            "kinematic_height": kin.metadata["height"],
+            "target_rms_error": float(np.sqrt(np.mean(target_error**2))),
+            "spring_edges": len(edges),
+            "hinge_triples": len(triples),
         },
     )

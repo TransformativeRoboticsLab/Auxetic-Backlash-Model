@@ -2,6 +2,12 @@
   "use strict";
 
   const RAD = (window.RAD = window.RAD || {});
+  const SWEEP_SENSITIVITY_METRICS = Object.freeze([
+    "meanAlphaReach",
+    "meanZReach",
+    "maxObservedNeighborZResidual",
+    "maxSuperpositionError",
+  ]);
 
   function sequenceFrames(state) {
     const initial = state.experiment.initialSnapshot || RAD.snapshotState(state);
@@ -109,6 +115,2093 @@
       }
     }
     return { row, col, value, abs };
+  }
+
+  function clampIndex(value, max) {
+    return Math.max(0, Math.min(max - 1, Number(value) || 0));
+  }
+
+  function cellKey(cell) {
+    return `${cell.r},${cell.c}`;
+  }
+
+  function characterizationCells(state, r, c, scope) {
+    const rows = state.grid.rows;
+    const cols = state.grid.cols;
+    const selected = { r: clampIndex(r, rows), c: clampIndex(c, cols) };
+    if (scope === "lattice") {
+      const active = [];
+      for (let rr = 0; rr < rows; rr += 1) {
+        for (let cc = 0; cc < cols; cc += 1) {
+          if (Math.abs(state.cells.commandAlpha?.[rr]?.[cc] || 0) > 1e-9 || Math.abs(state.cells.commandZ?.[rr]?.[cc] || 0) > 1e-9) {
+            active.push({ r: rr, c: cc });
+          }
+        }
+      }
+      return active.length ? active : [selected];
+    }
+    if (scope === "cluster") return RAD.brushCells(state, selected.r, selected.c, 1);
+    if (scope === "pair") {
+      const candidates = [
+        { r: selected.r, c: selected.c + 1 },
+        { r: selected.r, c: selected.c - 1 },
+        { r: selected.r + 1, c: selected.c },
+        { r: selected.r - 1, c: selected.c },
+      ].filter((cell) => cell.r >= 0 && cell.r < rows && cell.c >= 0 && cell.c < cols);
+      return [selected, candidates[0] || selected].filter((cell, index, cells) => cells.findIndex((other) => cellKey(other) === cellKey(cell)) === index);
+    }
+    return [selected];
+  }
+
+  function cloneForCharacterization(state) {
+    const temp = RAD.createState(state.grid.rows, state.grid.cols);
+    RAD.restoreSnapshot(temp, RAD.snapshotState(state));
+    return temp;
+  }
+
+  function scopedState(state, cells) {
+    const temp = cloneForCharacterization(state);
+    const keep = new Set(cells.map(cellKey));
+    for (let r = 0; r < temp.grid.rows; r += 1) {
+      for (let c = 0; c < temp.grid.cols; c += 1) {
+        if (!keep.has(`${r},${c}`)) {
+          temp.cells.commandAlpha[r][c] = 0;
+          temp.cells.commandZ[r][c] = 0;
+        }
+      }
+    }
+    return temp;
+  }
+
+  function finiteMax(field) {
+    let value = 0;
+    for (const row of field || []) {
+      for (const entry of row || []) {
+        if (Number.isFinite(entry)) value = Math.max(value, entry);
+      }
+    }
+    return value;
+  }
+
+  function localResponseStats(state, sim, baselineSim, sourceCells) {
+    const sourceSet = new Set(sourceCells.map(cellKey));
+    let responseCells = 0;
+    let alphaReachCells = 0;
+    let zReachCells = 0;
+    let positiveZReachCells = 0;
+    let negativeZReachCells = 0;
+    let maxAlphaDelta = 0;
+    let maxHeightDelta = 0;
+    let maxPositiveHeightDelta = 0;
+    let maxNegativeHeightDelta = 0;
+    let meanAbsAlphaDelta = 0;
+    let meanAbsHeightDelta = 0;
+    let activeSources = 0;
+    const totalCells = Math.max(1, state.grid.rows * state.grid.cols);
+    for (const cell of sourceCells) {
+      if (Math.abs(state.cells.commandAlpha?.[cell.r]?.[cell.c] || 0) > 1e-9 || Math.abs(state.cells.commandZ?.[cell.r]?.[cell.c] || 0) > 1e-9) {
+        activeSources += 1;
+      }
+    }
+    for (let r = 0; r < state.grid.rows; r += 1) {
+      for (let c = 0; c < state.grid.cols; c += 1) {
+        const alphaDelta = (sim.alpha?.[r]?.[c] || 0) - (baselineSim.alpha?.[r]?.[c] || 0);
+        const heightDelta = (sim.height?.[r]?.[c] || 0) - (baselineSim.height?.[r]?.[c] || 0);
+        const alphaAbs = Math.abs(alphaDelta);
+        const heightAbs = Math.abs(heightDelta);
+        const isSource = sourceSet.has(`${r},${c}`);
+        if (alphaAbs > 1e-8 || heightAbs > 1e-8) responseCells += 1;
+        if (!isSource && Math.abs(sim.influence?.[r]?.[c] || 0) > 1e-8) alphaReachCells += 1;
+        if (!isSource && Math.abs(sim.zResidual?.[r]?.[c] || 0) > 1e-8) zReachCells += 1;
+        if (heightDelta > 1e-8) positiveZReachCells += 1;
+        if (heightDelta < -1e-8) negativeZReachCells += 1;
+        maxAlphaDelta = Math.max(maxAlphaDelta, alphaAbs);
+        maxHeightDelta = Math.max(maxHeightDelta, heightAbs);
+        maxPositiveHeightDelta = Math.max(maxPositiveHeightDelta, heightDelta);
+        maxNegativeHeightDelta = Math.min(maxNegativeHeightDelta, heightDelta);
+        meanAbsAlphaDelta += alphaAbs;
+        meanAbsHeightDelta += heightAbs;
+      }
+    }
+    return {
+      activeSources,
+      responseCells,
+      alphaReachCells,
+      zReachCells,
+      positiveZReachCells,
+      negativeZReachCells,
+      maxAlphaDelta,
+      maxHeightDelta,
+      maxPositiveHeightDelta,
+      maxNegativeHeightDelta,
+      meanAbsAlphaDelta: meanAbsAlphaDelta / totalCells,
+      meanAbsHeightDelta: meanAbsHeightDelta / totalCells,
+      alphaDieOff: finiteMax(sim.dieOff),
+      zDieOff: finiteMax(sim.zDieOff),
+    };
+  }
+
+  function superpositionError(state, sourceCells, combinedSim, baselineSim) {
+    if (sourceCells.length <= 1) return { rms: 0, max: 0, alphaMax: 0, heightMax: 0, skipped: false, sourceCount: sourceCells.length };
+    const activeSources = sourceCells.filter((cell) => Math.abs(state.cells.commandAlpha?.[cell.r]?.[cell.c] || 0) > 1e-9 || Math.abs(state.cells.commandZ?.[cell.r]?.[cell.c] || 0) > 1e-9);
+    if (activeSources.length <= 1) return { rms: 0, max: 0, alphaMax: 0, heightMax: 0, skipped: false, sourceCount: activeSources.length };
+    if (activeSources.length > 16) return { rms: null, max: null, alphaMax: null, heightMax: null, skipped: true, sourceCount: activeSources.length };
+    const rows = state.grid.rows;
+    const cols = state.grid.cols;
+    const alphaSum = RAD.matrix(rows, cols, 0);
+    const heightSum = RAD.matrix(rows, cols, 0);
+    for (const source of activeSources) {
+      const singleState = scopedState(state, [source]);
+      const singleSim = RAD.simulate(singleState);
+      for (let r = 0; r < rows; r += 1) {
+        for (let c = 0; c < cols; c += 1) {
+          alphaSum[r][c] += (singleSim.alpha[r][c] || 0) - (baselineSim.alpha[r][c] || 0);
+          heightSum[r][c] += (singleSim.height[r][c] || 0) - (baselineSim.height[r][c] || 0);
+        }
+      }
+    }
+    let squared = 0;
+    let max = 0;
+    let alphaMax = 0;
+    let heightMax = 0;
+    for (let r = 0; r < rows; r += 1) {
+      for (let c = 0; c < cols; c += 1) {
+        const alphaResidual = (combinedSim.alpha[r][c] || 0) - (baselineSim.alpha[r][c] || 0) - alphaSum[r][c];
+        const heightResidual = (combinedSim.height[r][c] || 0) - (baselineSim.height[r][c] || 0) - heightSum[r][c];
+        squared += alphaResidual * alphaResidual + heightResidual * heightResidual;
+        alphaMax = Math.max(alphaMax, Math.abs(alphaResidual));
+        heightMax = Math.max(heightMax, Math.abs(heightResidual));
+        max = Math.max(max, alphaMax, heightMax);
+      }
+    }
+    return { rms: Math.sqrt(squared / Math.max(1, rows * cols * 2)), max, alphaMax, heightMax, skipped: false, sourceCount: activeSources.length };
+  }
+
+  function pairwiseInteractionGraph(state, sourceCells, baselineSim, tolerance = 1e-9, maxPairs = 64) {
+    const activeSources = sourceCells.filter((cell) => Math.abs(state.cells.commandAlpha?.[cell.r]?.[cell.c] || 0) > tolerance || Math.abs(state.cells.commandZ?.[cell.r]?.[cell.c] || 0) > tolerance);
+    const totalPairCount = (activeSources.length * (activeSources.length - 1)) / 2;
+    const alphaErrorMatrix = RAD.matrix(activeSources.length, activeSources.length, 0);
+    const heightErrorMatrix = RAD.matrix(activeSources.length, activeSources.length, 0);
+    const hotspotMap = RAD.matrix(state.grid.rows, state.grid.cols, 0);
+    const degreeMap = RAD.matrix(state.grid.rows, state.grid.cols, 0);
+    let hotspotMax = 0;
+    let degreeMax = 0;
+    const markHotspot = (source, value) => {
+      const r = source?.r;
+      const c = source?.c;
+      if (!hotspotMap[r] || hotspotMap[r][c] === undefined) return;
+      const strength = Math.abs(Number(value) || 0);
+      hotspotMap[r][c] = Math.max(hotspotMap[r][c], strength);
+      hotspotMax = Math.max(hotspotMax, hotspotMap[r][c]);
+    };
+    const markNonadditiveDegree = (...sources) => {
+      const seen = new Set();
+      for (const source of sources) {
+        const r = source?.r;
+        const c = source?.c;
+        const key = `${r},${c}`;
+        if (seen.has(key) || !degreeMap[r] || degreeMap[r][c] === undefined) continue;
+        seen.add(key);
+        degreeMap[r][c] += 1;
+        degreeMax = Math.max(degreeMax, degreeMap[r][c]);
+      }
+    };
+    if (activeSources.length < 2) {
+      return {
+        pairwiseInteractionModel: "pairwise superposition residual",
+        pairwiseTotalPairs: totalPairCount,
+        pairwiseEvaluatedPairs: 0,
+        pairwiseNonadditivePairs: 0,
+        pairwiseTruncated: false,
+        pairwiseMaxAlphaError: 0,
+        pairwiseMaxHeightError: 0,
+        pairwiseMaxInteractionError: 0,
+        pairwiseInteractions: [],
+        pairwiseAlphaErrorMatrix: alphaErrorMatrix,
+        pairwiseHeightErrorMatrix: heightErrorMatrix,
+        pairwiseInteractionMap: hotspotMap,
+        pairwiseInteractionMapMax: hotspotMax,
+        pairwiseInteractionDegreeMap: degreeMap,
+        pairwiseInteractionDegreeMax: degreeMax,
+        pairwiseInteractionDensity: 0,
+      };
+    }
+
+    const singles = activeSources.map((source) => {
+      const singleState = scopedState(state, [source]);
+      const singleSim = RAD.simulate(singleState);
+      return {
+        source,
+        alphaDelta: responseVector(singleSim, baselineSim, "alpha"),
+        heightDelta: responseVector(singleSim, baselineSim, "height"),
+      };
+    });
+    const interactions = [];
+    let evaluated = 0;
+    let nonadditive = 0;
+    let maxAlpha = 0;
+    let maxHeight = 0;
+    const limit = Math.max(0, Math.min(totalPairCount, Number(maxPairs) || 0));
+
+    for (let i = 0; i < activeSources.length; i += 1) {
+      for (let j = i + 1; j < activeSources.length; j += 1) {
+        if (evaluated >= limit) {
+          interactions.sort((a, b) => b.maxError - a.maxError);
+          return {
+            pairwiseInteractionModel: "pairwise superposition residual",
+            pairwiseTotalPairs: totalPairCount,
+            pairwiseEvaluatedPairs: evaluated,
+            pairwiseNonadditivePairs: nonadditive,
+            pairwiseTruncated: true,
+            pairwiseMaxAlphaError: maxAlpha,
+            pairwiseMaxHeightError: maxHeight,
+            pairwiseMaxInteractionError: Math.max(maxAlpha, maxHeight),
+            pairwiseInteractions: interactions.slice(0, 16),
+            pairwiseAlphaErrorMatrix: alphaErrorMatrix,
+            pairwiseHeightErrorMatrix: heightErrorMatrix,
+            pairwiseInteractionMap: hotspotMap,
+            pairwiseInteractionMapMax: hotspotMax,
+            pairwiseInteractionDegreeMap: degreeMap,
+            pairwiseInteractionDegreeMax: degreeMax,
+            pairwiseInteractionDensity: evaluated ? nonadditive / evaluated : 0,
+          };
+        }
+        const combinedState = scopedState(state, [activeSources[i], activeSources[j]]);
+        const combinedSim = RAD.simulate(combinedState);
+        const combinedAlpha = responseVector(combinedSim, baselineSim, "alpha");
+        const combinedHeight = responseVector(combinedSim, baselineSim, "height");
+        let alphaError = 0;
+        let heightError = 0;
+        for (let k = 0; k < combinedAlpha.length; k += 1) {
+          alphaError = Math.max(alphaError, Math.abs(combinedAlpha[k] - singles[i].alphaDelta[k] - singles[j].alphaDelta[k]));
+          heightError = Math.max(heightError, Math.abs(combinedHeight[k] - singles[i].heightDelta[k] - singles[j].heightDelta[k]));
+        }
+        const maxError = Math.max(alphaError, heightError);
+        alphaErrorMatrix[i][j] = alphaError;
+        alphaErrorMatrix[j][i] = alphaError;
+        heightErrorMatrix[i][j] = heightError;
+        heightErrorMatrix[j][i] = heightError;
+        maxAlpha = Math.max(maxAlpha, alphaError);
+        maxHeight = Math.max(maxHeight, heightError);
+        markHotspot(activeSources[i], maxError);
+        markHotspot(activeSources[j], maxError);
+        if (maxError > tolerance) {
+          nonadditive += 1;
+          markNonadditiveDegree(activeSources[i], activeSources[j]);
+        }
+        interactions.push({
+          firstIndex: i,
+          secondIndex: j,
+          first: activeSources[i],
+          second: activeSources[j],
+          manhattanDistance: Math.abs(activeSources[i].r - activeSources[j].r) + Math.abs(activeSources[i].c - activeSources[j].c),
+          alphaSuperpositionError: alphaError,
+          heightSuperpositionError: heightError,
+          maxError,
+          nonadditive: maxError > tolerance,
+        });
+        evaluated += 1;
+      }
+    }
+
+    interactions.sort((a, b) => b.maxError - a.maxError);
+    return {
+      pairwiseInteractionModel: "pairwise superposition residual",
+      pairwiseTotalPairs: totalPairCount,
+      pairwiseEvaluatedPairs: evaluated,
+      pairwiseNonadditivePairs: nonadditive,
+      pairwiseTruncated: false,
+      pairwiseMaxAlphaError: maxAlpha,
+      pairwiseMaxHeightError: maxHeight,
+      pairwiseMaxInteractionError: Math.max(maxAlpha, maxHeight),
+      pairwiseInteractions: interactions.slice(0, 16),
+      pairwiseAlphaErrorMatrix: alphaErrorMatrix,
+      pairwiseHeightErrorMatrix: heightErrorMatrix,
+      pairwiseInteractionMap: hotspotMap,
+      pairwiseInteractionMapMax: hotspotMax,
+      pairwiseInteractionDegreeMap: degreeMap,
+      pairwiseInteractionDegreeMax: degreeMax,
+      pairwiseInteractionDensity: evaluated ? nonadditive / evaluated : 0,
+    };
+  }
+
+  function responseVector(next, base, field) {
+    const values = [];
+    for (let r = 0; r < next[field].length; r += 1) {
+      for (let c = 0; c < next[field][r].length; c += 1) values.push((next[field][r][c] || 0) - (base[field][r][c] || 0));
+    }
+    return values;
+  }
+
+  function matrixRankFromColumns(columns, tolerance = 1e-9) {
+    if (!columns.length) return 0;
+    const rows = columns[0].length;
+    const matrix = Array.from({ length: rows }, (_, r) => columns.map((column) => Number(column[r]) || 0));
+    let rank = 0;
+    for (let col = 0; col < columns.length && rank < rows; col += 1) {
+      let pivot = rank;
+      for (let r = rank + 1; r < rows; r += 1) {
+        if (Math.abs(matrix[r][col]) > Math.abs(matrix[pivot][col])) pivot = r;
+      }
+      if (Math.abs(matrix[pivot][col]) <= tolerance) continue;
+      [matrix[rank], matrix[pivot]] = [matrix[pivot], matrix[rank]];
+      const scale = matrix[rank][col];
+      for (let c = col; c < columns.length; c += 1) matrix[rank][c] /= scale;
+      for (let r = 0; r < rows; r += 1) {
+        if (r === rank) continue;
+        const factor = matrix[r][col];
+        if (Math.abs(factor) <= tolerance) continue;
+        for (let c = col; c < columns.length; c += 1) matrix[r][c] -= factor * matrix[rank][c];
+      }
+      rank += 1;
+    }
+    return rank;
+  }
+
+  function countReachableFromColumns(columns, tolerance = 1e-9) {
+    if (!columns.length) return 0;
+    let count = 0;
+    for (let row = 0; row < columns[0].length; row += 1) {
+      if (columns.some((column) => Math.abs(column[row] || 0) > tolerance)) count += 1;
+    }
+    return count;
+  }
+
+  function responseMatrixDiagnostic(state, sourceCells, baselineSim, tolerance = 1e-9) {
+    const limits = RAD.commandLimits(state);
+    const stepAlpha = Math.min(0.12, limits.alphaContract);
+    const stepZ = Math.min(0.12, limits.z);
+    const alphaColumns = [];
+    const heightColumns = [];
+    let columnCount = 0;
+    for (const cell of sourceCells) {
+      if (state.cells.locked?.[cell.r]?.[cell.c]) continue;
+      if (stepAlpha > tolerance) {
+        const alphaState = scopedState(state, []);
+        alphaState.cells.commandAlpha[cell.r][cell.c] = -stepAlpha;
+        const alphaSim = RAD.simulate(alphaState);
+        alphaColumns.push(responseVector(alphaSim, baselineSim, "alpha"));
+        heightColumns.push(responseVector(alphaSim, baselineSim, "height"));
+        columnCount += 1;
+      }
+      if (stepZ > tolerance) {
+        const zState = scopedState(state, []);
+        zState.cells.commandZ[cell.r][cell.c] = stepZ;
+        const zSim = RAD.simulate(zState);
+        alphaColumns.push(responseVector(zSim, baselineSim, "alpha"));
+        heightColumns.push(responseVector(zSim, baselineSim, "height"));
+        columnCount += 1;
+      }
+    }
+    const totalCells = state.grid.rows * state.grid.cols;
+    const reachableAlphaCells = countReachableFromColumns(alphaColumns, tolerance);
+    const reachableHeightCells = countReachableFromColumns(heightColumns, tolerance);
+    return {
+      diagnosticColumnCount: columnCount,
+      responseRankAlpha: matrixRankFromColumns(alphaColumns, tolerance),
+      responseRankHeight: matrixRankFromColumns(heightColumns, tolerance),
+      reachableAlphaCells,
+      reachableHeightCells,
+      alphaUnderactuatedCells: Math.max(0, totalCells - reachableAlphaCells),
+      heightUnderactuatedCells: Math.max(0, totalCells - reachableHeightCells),
+    };
+  }
+
+  function matrixFromColumns(columns, rowCount) {
+    return Array.from({ length: rowCount }, (_, row) => columns.map((column) => Number(column[row]) || 0));
+  }
+
+  function responseMatrixCellOrder(rows, cols) {
+    const cells = [];
+    for (let r = 0; r < rows; r += 1) {
+      for (let c = 0; c < cols; c += 1) cells.push({ index: r * cols + c, row: r, col: c });
+    }
+    return cells;
+  }
+
+  function normalizeMatrixCell(state, cell) {
+    return {
+      r: clampIndex(cell?.r ?? cell?.row ?? 0, state.grid.rows),
+      c: clampIndex(cell?.c ?? cell?.col ?? 0, state.grid.cols),
+    };
+  }
+
+  function buildResponseMatrix(state, options = {}) {
+    const tolerance = Number(options.tolerance ?? 1e-9);
+    const includeAlpha = options.includeAlpha !== false;
+    const includeZ = options.includeZ !== false;
+    if (!includeAlpha && !includeZ) throw new Error("at least one command family must be included");
+    const scope = options.scope || state.experiment?.characterizationScope || "single";
+    const selected = {
+      r: clampIndex(options.r ?? state.selection?.r ?? 0, state.grid.rows),
+      c: clampIndex(options.c ?? state.selection?.c ?? 0, state.grid.cols),
+    };
+    const rawCells = options.actuatorCells || characterizationCells(state, selected.r, selected.c, scope);
+    const sourceCells = uniqueProtocolCells(rawCells.map((cell) => normalizeMatrixCell(state, cell)));
+    const limits = RAD.commandLimits(state);
+    const stepAlpha = Math.min(Math.abs(Number(options.alphaStep ?? 0.12)), limits.alphaContract);
+    const stepZ = Math.min(Math.abs(Number(options.zStep ?? 0.12)), limits.z);
+    const baselineState = scopedState(state, []);
+    const baselineSim = RAD.simulate(baselineState);
+    const alphaColumns = [];
+    const heightColumns = [];
+    const commands = [];
+    const pushColumn = (cell, family, commandAlpha, commandZ) => {
+      const nextState = scopedState(state, []);
+      nextState.cells.commandAlpha[cell.r][cell.c] = commandAlpha;
+      nextState.cells.commandZ[cell.r][cell.c] = commandZ;
+      const nextSim = RAD.simulate(nextState);
+      alphaColumns.push(responseVector(nextSim, baselineSim, "alpha"));
+      heightColumns.push(responseVector(nextSim, baselineSim, "height"));
+      commands.push({
+        index: commands.length,
+        row: cell.r,
+        col: cell.c,
+        family,
+        alpha: commandAlpha,
+        z: commandZ,
+        locked: Boolean(state.cells.locked?.[cell.r]?.[cell.c]),
+      });
+    };
+    for (const cell of sourceCells) {
+      if (includeAlpha && stepAlpha > tolerance) pushColumn(cell, "alpha", -stepAlpha, 0);
+      if (includeZ && stepZ > tolerance) pushColumn(cell, "z", 0, stepZ);
+    }
+    const totalCells = state.grid.rows * state.grid.cols;
+    const reachableAlphaCells = countReachableFromColumns(alphaColumns, tolerance);
+    const reachableHeightCells = countReachableFromColumns(heightColumns, tolerance);
+    return {
+      schema: "rad-sim.response-matrix.v1",
+      grid: { rows: state.grid.rows, cols: state.grid.cols },
+      source: {
+        scope,
+        selected,
+        actuatorCellCount: sourceCells.length,
+        alphaStep: -stepAlpha,
+        zStep: stepZ,
+      },
+      cellOrder: responseMatrixCellOrder(state.grid.rows, state.grid.cols),
+      commands,
+      alpha: matrixFromColumns(alphaColumns, totalCells),
+      height: matrixFromColumns(heightColumns, totalCells),
+      diagnostics: {
+        columnCount: commands.length,
+        alphaRank: matrixRankFromColumns(alphaColumns, tolerance),
+        heightRank: matrixRankFromColumns(heightColumns, tolerance),
+        reachableAlphaCells,
+        reachableHeightCells,
+        alphaUnderactuatedCells: Math.max(0, totalCells - reachableAlphaCells),
+        heightUnderactuatedCells: Math.max(0, totalCells - reachableHeightCells),
+        tolerance,
+      },
+    };
+  }
+
+  function exportResponseMatrix(state, options = {}) {
+    return JSON.stringify(buildResponseMatrix(state, options), null, 2);
+  }
+
+  function reportCell(cell) {
+    return { row: Number(cell.r ?? cell.row) || 0, col: Number(cell.c ?? cell.col) || 0 };
+  }
+
+  function activeReportCommands(state, sourceCells, tolerance = 1e-9) {
+    return sourceCells.map((cell, index) => ({
+      index,
+      row: cell.r,
+      col: cell.c,
+      alpha: Number(state.cells.commandAlpha?.[cell.r]?.[cell.c]) || 0,
+      z: Number(state.cells.commandZ?.[cell.r]?.[cell.c]) || 0,
+      locked: Boolean(state.cells.locked?.[cell.r]?.[cell.c]),
+      active:
+        Math.abs(Number(state.cells.commandAlpha?.[cell.r]?.[cell.c]) || 0) > tolerance ||
+        Math.abs(Number(state.cells.commandZ?.[cell.r]?.[cell.c]) || 0) > tolerance,
+    }));
+  }
+
+  function lockedReportCells(state) {
+    const cells = [];
+    for (let r = 0; r < state.grid.rows; r += 1) {
+      for (let c = 0; c < state.grid.cols; c += 1) {
+        if (state.cells.locked?.[r]?.[c]) cells.push({ row: r, col: c });
+      }
+    }
+    return cells;
+  }
+
+  function finiteMatrix(field) {
+    return (field || []).map((row) =>
+      (row || []).map((value) => (Number.isFinite(Number(value)) ? Number(value) : null))
+    );
+  }
+
+  function deltaMatrix(next, base, field) {
+    return (next?.[field] || []).map((row, r) =>
+      (row || []).map((value, c) => (Number(value) || 0) - (Number(base?.[field]?.[r]?.[c]) || 0))
+    );
+  }
+
+  function reportResponseFields(sim, baselineSim) {
+    return {
+      alphaDelta: deltaMatrix(sim, baselineSim, "alpha"),
+      heightDelta: deltaMatrix(sim, baselineSim, "height"),
+      actuatorInfluence: finiteMatrix(sim.influence),
+      zResidual: finiteMatrix(sim.zResidual),
+      alphaDieOff: finiteMatrix(sim.dieOff),
+      zDieOff: finiteMatrix(sim.zDieOff),
+    };
+  }
+
+  function reportPhysicalPreview(characterization) {
+    return {
+      schema: "rad-sim.browser-physical-preview.v1",
+      model: "browser-spring-preview",
+      physicalPreviewAvailable: Boolean(characterization.physicalPreviewAvailable),
+      physicalSuccess: Boolean(characterization.physicalPreviewSuccess),
+      heightRmsModelError: Number(characterization.physicalHeightRmsError) || 0,
+      heightMaxModelError: Number(characterization.physicalHeightMaxError) || 0,
+      centerRmsModelError: Number(characterization.physicalCenterRmsError) || 0,
+      centerMaxModelError: Number(characterization.physicalCenterMaxError) || 0,
+      iterations: Number(characterization.physicalPreviewIterations) || 0,
+      error: characterization.physicalPreviewError || null,
+      note: "Browser spring-preview validation is an interactive approximation; use Python spring_hinge_3d reports for the reference research artifact.",
+    };
+  }
+
+  function reportSequenceOrder(state, commands, tolerance = 1e-9) {
+    if (typeof RAD.compareSequenceOrder !== "function" || typeof RAD.localActuationEvent !== "function") {
+      return { eventSequence: [], sequenceOrder: null };
+    }
+    const primary = commands.find((command) => command.active);
+    if (!primary) {
+      return { eventSequence: [], sequenceOrder: null };
+    }
+    const cell = { r: primary.row, c: primary.col };
+    const alpha = primary.alpha;
+    const z = primary.z;
+    const eventSequence = [
+      RAD.localActuationEvent(cell, alpha, z),
+      RAD.lockEvent(cell),
+      RAD.clearActuationEvent(cell),
+    ];
+    const sequenceOrder = RAD.compareSequenceOrder(scopedState(state, []), eventSequence, tolerance);
+    return {
+      eventSequence: eventSequence.map((event, index) => ({
+        index,
+        kind: event.kind,
+        cell: event.cell ? reportCell(event.cell) : null,
+        alpha: Number(event.alpha) || 0,
+        z: Number(event.z) || 0,
+      })),
+      sequenceOrder,
+    };
+  }
+
+  function reportLawCandidate(id, operatorClass, property, statement, supported, evidence) {
+    return {
+      id,
+      operatorClass,
+      property,
+      statement,
+      supportedByDiagnostic: Boolean(supported),
+      status: "simulator-diagnostic",
+      evidence,
+    };
+  }
+
+  function frameworkOperatorLawCandidates(characterization, sequenceOrder, eventCount, totalCells, tolerance) {
+    const maxSuperpositionError = Math.max(
+      Number(characterization.alphaSuperpositionError) || 0,
+      Number(characterization.heightSuperpositionError) || 0,
+      Number(characterization.superpositionError) || 0
+    );
+    const localitySupported =
+      (Number(characterization.alphaDieOff) || 0) < totalCells &&
+      (Number(characterization.zDieOff) || 0) < totalCells;
+    const rankLimited =
+      (Number(characterization.alphaUnderactuatedCells) || 0) > 0 ||
+      (Number(characterization.heightUnderactuatedCells) || 0) > 0;
+    const laws = [
+      reportLawCandidate(
+        "bounded_locality",
+        "actuation and clearance operators",
+        "locality",
+        "The measured response is bounded by finite alpha and height die-off radii at the report tolerance.",
+        localitySupported,
+        {
+          alphaLocalityRadius: Number(characterization.alphaDieOff) || 0,
+          zLocalityRadius: Number(characterization.zDieOff) || 0,
+          alphaDecayRatio: Number(characterization.alphaDecayRatio) || 0,
+          zDecayRatio: Number(characterization.zDecayRatio) || 0,
+          tolerance,
+        }
+      ),
+      reportLawCandidate(
+        "rank_limited_reachability",
+        "finite actuator set",
+        "reachable set",
+        "The selected actuator operators span a finite response subspace; unreached cells mark underactuated regions for the current command basis.",
+        rankLimited,
+        {
+          alphaRank: Number(characterization.responseRankAlpha) || 0,
+          heightRank: Number(characterization.responseRankHeight) || 0,
+          reachableAlphaCells: Number(characterization.reachableAlphaCells) || 0,
+          reachableHeightCells: Number(characterization.reachableHeightCells) || 0,
+          alphaUnderactuatedCells: Number(characterization.alphaUnderactuatedCells) || 0,
+          heightUnderactuatedCells: Number(characterization.heightUnderactuatedCells) || 0,
+          totalCells,
+        }
+      ),
+      reportLawCandidate(
+        "composition_nonadditivity",
+        "actuation composition",
+        "nonadditivity",
+        "Operator composition is non-additive when the combined response exceeds the sum of individual responses by more than tolerance.",
+        maxSuperpositionError > tolerance,
+        {
+          alphaSuperpositionError: Number(characterization.alphaSuperpositionError) || 0,
+          heightSuperpositionError: Number(characterization.heightSuperpositionError) || 0,
+          maxSuperpositionError,
+          tolerance,
+        }
+      ),
+      reportLawCandidate(
+        "event_order_noncommutativity",
+        "lock and actuation sequence",
+        "noncommutativity",
+        "Lock, release, and actuation events are noncommutative when reversal or adjacent swaps change the final state by more than tolerance.",
+        Boolean(sequenceOrder?.orderSensitive),
+        {
+          eventCount,
+          noncommutingAdjacentPairs: Number(sequenceOrder?.noncommutingAdjacentPairs) || 0,
+          maxOrderError: Number(sequenceOrder?.maxOrderError) || 0,
+          tolerance,
+        }
+      ),
+    ];
+    return {
+      schema: "rad-sim.framework-law-candidates.v1",
+      method: "thresholded diagnostic predicates over locality, reachability, composition, and event-order metrics",
+      laws,
+    };
+  }
+
+  function formalizationTarget(id, statement, source, status, readyForLean, dependencies, evidence) {
+    return {
+      id,
+      statement,
+      source,
+      status,
+      readyForLean: Boolean(readyForLean),
+      dependencies,
+      evidence,
+    };
+  }
+
+  function frameworkFormalizationTargets(characterization, sequenceOrder, lockedCount, commandCount, tolerance) {
+    const orderSensitive = Boolean(sequenceOrder?.orderSensitive);
+    const targets = [
+      formalizationTarget(
+        "dead_zone_zero_inside_backlash",
+        "For b >= 0, f_b(x)=max(0,x-b)+min(x+b,0) equals 0 whenever -b <= x <= b.",
+        "paper-supported",
+        "pending-lean-tooling",
+        false,
+        ["real max/min lemmas", "nonnegative backlash premise"],
+        { formula: "f(x)=max(0,x-b)+min(x+b,0)" }
+      ),
+      formalizationTarget(
+        "dead_zone_piecewise_linear_outside_gap",
+        "For b >= 0, f_b(x)=x-b when x >= b and f_b(x)=x+b when x <= -b.",
+        "paper-supported",
+        "pending-lean-tooling",
+        false,
+        ["real max/min lemmas", "case split on backlash thresholds"],
+        { formula: "f(x)=max(0,x-b)+min(x+b,0)" }
+      ),
+      formalizationTarget(
+        "lock_projection_idempotent",
+        "Applying the same lock projection twice is equivalent to applying it once.",
+        "simulator-operator",
+        "pending-lean-tooling",
+        false,
+        ["finite grid state model", "lock projection definition"],
+        { lockedCellCount: lockedCount }
+      ),
+      formalizationTarget(
+        "finite_response_rank_bound",
+        "The rank of a finite response matrix is bounded by its command-column count.",
+        "linear-algebra-diagnostic",
+        "pending-lean-tooling",
+        false,
+        ["finite matrix rank theorem", "response matrix column count"],
+        {
+          alphaRank: Number(characterization.responseRankAlpha) || 0,
+          heightRank: Number(characterization.responseRankHeight) || 0,
+          commandCount,
+        }
+      ),
+      formalizationTarget(
+        "noncommutativity_witness_from_order_error",
+        "If sequence-order distance is greater than tolerance, the corresponding event compositions are not equal.",
+        "simulator-diagnostic",
+        orderSensitive ? "pending-lean-tooling" : "pending-numeric-witness",
+        false,
+        ["state distance definition", "event composition semantics"],
+        {
+          orderSensitive,
+          maxOrderError: Number(sequenceOrder?.maxOrderError) || 0,
+          tolerance,
+        }
+      ),
+      formalizationTarget(
+        "bounded_locality_witness",
+        "If all response magnitudes outside a reported die-off radius are below tolerance, the diagnostic has a finite locality witness.",
+        "simulator-diagnostic",
+        "requires-calibrated-premise",
+        false,
+        ["normed response field", "thresholded locality definition"],
+        {
+          alphaLocalityRadius: Number(characterization.alphaDieOff) || 0,
+          zLocalityRadius: Number(characterization.zDieOff) || 0,
+          tolerance,
+        }
+      ),
+    ];
+    return {
+      schema: "rad-sim.formalization-targets.v1",
+      method: "candidate theorem manifest; no Lean proof is emitted until Lean/Lake are available and the premises are first-principles enough to formalize",
+      tooling: {
+        engine: "Lean",
+        leanPath: null,
+        lakePath: null,
+        available: false,
+        status: "browser-cannot-inspect-path",
+      },
+      targets,
+    };
+  }
+
+  function programmableDiscontinuityReport(state, options = {}) {
+    const tolerance = Number(options.tolerance ?? 1e-9);
+    const includeFields = options.includeFields !== false;
+    const includeResponseMatrix = options.includeResponseMatrix !== false;
+    const scope = options.scope || state.experiment?.characterizationScope || "single";
+    const selected = {
+      r: clampIndex(options.r ?? state.selection?.r ?? 0, state.grid.rows),
+      c: clampIndex(options.c ?? state.selection?.c ?? 0, state.grid.cols),
+    };
+    const sourceCells = uniqueProtocolCells(
+      characterizationCells(state, selected.r, selected.c, scope).map((cell) => normalizeMatrixCell(state, cell))
+    );
+    const combinedState = scopedState(state, sourceCells);
+    const baselineState = scopedState(state, []);
+    const sim = RAD.simulate(combinedState);
+    const baselineSim = RAD.simulate(baselineState);
+    const characterization = characterizeLocalResponse(state, { scope, r: selected.r, c: selected.c });
+    const matrix = buildResponseMatrix(state, { scope, r: selected.r, c: selected.c, tolerance });
+    const commands = activeReportCommands(combinedState, sourceCells, tolerance);
+    const activeOperatorCount = commands.filter((command) => command.active).length;
+    const order = reportSequenceOrder(combinedState, commands, tolerance);
+    const calibration = RAD.paperRadCalibration(combinedState);
+    const responseMatrix = includeResponseMatrix
+      ? matrix
+      : {
+          schema: matrix.schema,
+          grid: matrix.grid,
+          source: matrix.source,
+          commands: matrix.commands,
+          diagnostics: matrix.diagnostics,
+        };
+    const report = {
+      schema: "rad-sim.programmable-discontinuity-report.v1",
+      savedAt: new Date().toISOString(),
+      grid: {
+        rows: state.grid.rows,
+        cols: state.grid.cols,
+        totalCells: state.grid.rows * state.grid.cols,
+      },
+      config: {
+        cellSize: state.grid.cellSize,
+        initialAlpha: state.grid.initialAlpha,
+        backlash: state.grid.backlash,
+        couplingGain: state.grid.couplingGain,
+        zCouplingGain: state.grid.zCouplingGain,
+        pinRadius: state.grid.pinRadius,
+        holeRadius: state.grid.holeRadius,
+        pinHoleClearance: RAD.pinHoleClearance(state),
+        backlashMm: calibration.configuredBacklashMm,
+        pinHoleClearanceMm: calibration.pinHoleClearanceMm,
+        alphaContractLimit: state.grid.alphaContractLimit,
+        alphaExpandLimit: state.grid.alphaExpandLimit,
+        zTravelLimit: state.grid.zTravelLimit,
+      },
+      operators: {
+        scope,
+        selected: reportCell(selected),
+        commands,
+        lockedCells: lockedReportCells(combinedState),
+        eventSequence: order.eventSequence,
+        activeOperatorCount,
+      },
+      paperSupportedAssumptions: [
+        {
+          name: "backlash dead-zone activation",
+          formula: "f(x)=max(0,x-b)+min(x+b,0)",
+          implementation: "RAD.backlashActivation",
+        },
+        {
+          name: "normalized backlash",
+          formula: "b_norm=b/L",
+          implementation: "state.grid.backlash is dimensionless in v1",
+        },
+        {
+          name: "rotating-square angle/dilation relation",
+          formula: "theta_degrees=70*alpha-60",
+          implementation: "RAD.alphaToTheta",
+        },
+      ],
+      simulatorDiagnostics: [
+        {
+          name: "response matrix reachability",
+          interpretation: "finite command columns approximate local reachable alpha/height directions",
+        },
+        {
+          name: "superposition residual",
+          interpretation: "nonzero residual marks non-additive operator composition caused by thresholds, locks, saturation, or coupling",
+        },
+        {
+          name: "shellwise locality fit",
+          interpretation: "log-linear shell maxima estimate die-off but are not a constitutive law",
+        },
+        {
+          name: "event-order sensitivity",
+          interpretation: "reversal and adjacent-swap differences test noncommutativity of lock and actuation operators",
+        },
+      ],
+      operatorLawCandidates: frameworkOperatorLawCandidates(
+        characterization,
+        order.sequenceOrder,
+        order.eventSequence.length,
+        state.grid.rows * state.grid.cols,
+        tolerance
+      ),
+      formalizationTargets: frameworkFormalizationTargets(
+        characterization,
+        order.sequenceOrder,
+        lockedReportCells(combinedState).length,
+        matrix.commands.length,
+        tolerance
+      ),
+      locality: {
+        alphaLocalityRadius: characterization.alphaDieOff,
+        zLocalityRadius: characterization.zDieOff,
+        alphaDecayRatio: characterization.alphaDecayRatio,
+        zDecayRatio: characterization.zDecayRatio,
+        alphaDecayLength: characterization.alphaDecayLength,
+        zDecayLength: characterization.zDecayLength,
+        decayProfile: {
+          model: characterization.decayModel,
+          alphaShells: characterization.alphaDecayShells,
+          zShells: characterization.zDecayShells,
+          alphaReach: characterization.alphaDecayReach,
+          zReach: characterization.zDecayReach,
+          alphaFirst: characterization.alphaDecayFirst,
+          zFirst: characterization.zDecayFirst,
+          alphaLast: characterization.alphaDecayLast,
+          zLast: characterization.zDecayLast,
+        },
+      },
+      reachability: {
+        reachableAlphaCells: characterization.reachableAlphaCells,
+        reachableHeightCells: characterization.reachableHeightCells,
+        alphaUnderactuatedCells: characterization.alphaUnderactuatedCells,
+        heightUnderactuatedCells: characterization.heightUnderactuatedCells,
+        alphaRank: characterization.responseRankAlpha,
+        heightRank: characterization.responseRankHeight,
+      },
+      composition: {
+        nonadditive: characterization.nonadditive,
+        alphaSuperpositionError: characterization.alphaSuperpositionError,
+        heightSuperpositionError: characterization.heightSuperpositionError,
+        superpositionRmsError: characterization.superpositionError,
+        orderSensitive: Boolean(order.sequenceOrder?.orderSensitive),
+        noncommutingAdjacentPairs: Number(order.sequenceOrder?.noncommutingAdjacentPairs) || 0,
+        maxOrderError: Number(order.sequenceOrder?.maxOrderError) || 0,
+        nonadditivePairCount: characterization.pairwiseNonadditivePairs,
+        maxPairwiseInteractionError: characterization.pairwiseMaxInteractionError,
+        maxPairwiseHotspotError: characterization.pairwiseInteractionMapMax,
+        maxPairwiseInteractionDegree: characterization.pairwiseInteractionDegreeMax,
+        pairwiseInteractionDensity: characterization.pairwiseInteractionDensity,
+        pairwiseInteractionsTruncated: characterization.pairwiseTruncated,
+      },
+      combinedResponse: {
+        scope,
+        selected: reportCell(selected),
+        cells: sourceCells.map(reportCell),
+        activeSources: characterization.activeSources,
+        responseCells: characterization.responseCells,
+        alphaReach: characterization.alphaReachCells,
+        zReach: characterization.zReachCells,
+        effectiveAlphaDieOff: characterization.alphaDieOff,
+        effectiveZDieOff: characterization.zDieOff,
+        maxAbsAlphaDelta: characterization.maxAlphaDelta,
+        maxAbsHeightDelta: characterization.maxHeightDelta,
+        meanAbsAlphaDelta: characterization.meanAbsAlphaDelta,
+        meanAbsHeightDelta: characterization.meanAbsHeightDelta,
+        positiveZReachCells: characterization.positiveZReachCells,
+        negativeZReachCells: characterization.negativeZReachCells,
+        maxPositiveHeightDelta: characterization.maxPositiveHeightDelta,
+        maxNegativeHeightDelta: characterization.maxNegativeHeightDelta,
+      },
+      responseMatrix,
+      pairwiseInteractions: {
+        model: characterization.pairwiseInteractionModel,
+        commandCount: activeOperatorCount,
+        totalPairCount: characterization.pairwiseTotalPairs,
+        evaluatedPairCount: characterization.pairwiseEvaluatedPairs,
+        nonadditivePairCount: characterization.pairwiseNonadditivePairs,
+        maxAlphaError: characterization.pairwiseMaxAlphaError,
+        maxHeightError: characterization.pairwiseMaxHeightError,
+        maxInteractionError: characterization.pairwiseMaxInteractionError,
+        maxHotspotError: characterization.pairwiseInteractionMapMax,
+        maxInteractionDegree: characterization.pairwiseInteractionDegreeMax,
+        interactionDensity: characterization.pairwiseInteractionDensity,
+        truncated: characterization.pairwiseTruncated,
+        interactions: characterization.pairwiseInteractions,
+      },
+      physicalValidation: reportPhysicalPreview(characterization),
+      sequenceOrder: order.sequenceOrder,
+      tolerance,
+    };
+    if (includeFields) {
+      report.combinedResponse.fields = reportResponseFields(sim, baselineSim);
+      report.pairwiseInteractions.fields = {
+        alphaErrorMatrix: characterization.pairwiseAlphaErrorMatrix,
+        heightErrorMatrix: characterization.pairwiseHeightErrorMatrix,
+        interactionHotspotMap: characterization.pairwiseInteractionMap,
+        interactionDegreeMap: characterization.pairwiseInteractionDegreeMap,
+      };
+    }
+    return report;
+  }
+
+  function exportProgrammableDiscontinuityReport(state, options = {}) {
+    return JSON.stringify(programmableDiscontinuityReport(state, options), null, 2);
+  }
+
+  function formalizationTargetManifest(state, options = {}) {
+    return programmableDiscontinuityReport(state, {
+      ...options,
+      includeResponseMatrix: false,
+      includeFields: false,
+    }).formalizationTargets;
+  }
+
+  function exportFormalizationTargetManifest(state, options = {}) {
+    return JSON.stringify(formalizationTargetManifest(state, options), null, 2);
+  }
+
+  function nearestSourceDistance(r, c, sourceCells) {
+    let best = Infinity;
+    for (const source of sourceCells) best = Math.min(best, Math.abs(r - source.r) + Math.abs(c - source.c));
+    return Number.isFinite(best) ? best : 0;
+  }
+
+  function fitShellDecay(shells, key, tolerance = 1e-8) {
+    const entries = shells
+      .filter((shell) => shell[key] > tolerance)
+      .sort((a, b) => a.distance - b.distance);
+    const first = entries[0]?.[key] || 0;
+    const last = entries.at(-1)?.[key] || 0;
+    const reach = entries.at(-1)?.distance || 0;
+    if (entries.length < 2) {
+      return { ratio: 0, length: 0, shells: entries.length, reach, first, last };
+    }
+    let sumX = 0;
+    let sumY = 0;
+    let sumXX = 0;
+    let sumXY = 0;
+    for (const entry of entries) {
+      const x = entry.distance;
+      const y = Math.log(Math.max(tolerance, entry[key]));
+      sumX += x;
+      sumY += y;
+      sumXX += x * x;
+      sumXY += x * y;
+    }
+    const n = entries.length;
+    const denom = n * sumXX - sumX * sumX;
+    const slope = Math.abs(denom) > tolerance ? (n * sumXY - sumX * sumY) / denom : 0;
+    const ratio = Math.exp(slope);
+    const length = slope < -tolerance ? -1 / slope : 0;
+    return { ratio, length, shells: entries.length, reach, first, last };
+  }
+
+  function responseDecayProfile(state, sim, baselineSim, sourceCells, tolerance = 1e-8) {
+    const shellMap = new Map();
+    for (let r = 0; r < state.grid.rows; r += 1) {
+      for (let c = 0; c < state.grid.cols; c += 1) {
+        const distance = nearestSourceDistance(r, c, sourceCells);
+        if (!shellMap.has(distance)) {
+          shellMap.set(distance, { distance, count: 0, alphaMax: 0, zMax: 0 });
+        }
+        const shell = shellMap.get(distance);
+        const alphaDelta = Math.abs((sim.alpha?.[r]?.[c] || 0) - (baselineSim.alpha?.[r]?.[c] || 0));
+        const zDelta = Math.abs((sim.height?.[r]?.[c] || 0) - (baselineSim.height?.[r]?.[c] || 0));
+        shell.alphaMax = Math.max(shell.alphaMax, alphaDelta);
+        shell.zMax = Math.max(shell.zMax, zDelta);
+        shell.count += 1;
+      }
+    }
+    const shells = Array.from(shellMap.values()).sort((a, b) => a.distance - b.distance);
+    const alpha = fitShellDecay(shells, "alphaMax", tolerance);
+    const z = fitShellDecay(shells, "zMax", tolerance);
+    return {
+      decayModel: "log-linear shell max",
+      alphaDecayRatio: alpha.ratio,
+      zDecayRatio: z.ratio,
+      alphaDecayLength: alpha.length,
+      zDecayLength: z.length,
+      alphaDecayShells: alpha.shells,
+      zDecayShells: z.shells,
+      alphaDecayReach: alpha.reach,
+      zDecayReach: z.reach,
+      alphaDecayFirst: alpha.first,
+      zDecayFirst: z.first,
+      alphaDecayLast: alpha.last,
+      zDecayLast: z.last,
+    };
+  }
+
+  function physicalPreviewComparison(state, baselineState, sim, baselineSim) {
+    const unavailable = {
+      physicalPreviewAvailable: false,
+      physicalPreviewSuccess: false,
+      physicalHeightRmsError: 0,
+      physicalHeightMaxError: 0,
+      physicalCenterRmsError: 0,
+      physicalCenterMaxError: 0,
+      physicalPreviewIterations: 0,
+    };
+    if (typeof RAD.simulatePhysicalRelaxation !== "function") return unavailable;
+    try {
+      const physicalBase = RAD.simulatePhysicalRelaxation(baselineState, { baseSim: baselineSim });
+      const physical = RAD.simulatePhysicalRelaxation(state, { baseSim: sim });
+      const rows = Math.min(state.grid.rows, baselineState.grid.rows);
+      const cols = Math.min(state.grid.cols, baselineState.grid.cols);
+      let heightSquared = 0;
+      let heightMax = 0;
+      let centerSquared = 0;
+      let centerMax = 0;
+      let heightCount = 0;
+      let centerCount = 0;
+      for (let r = 0; r < rows; r += 1) {
+        for (let c = 0; c < cols; c += 1) {
+          const kinematicHeightDelta = (sim.height?.[r]?.[c] || 0) - (baselineSim.height?.[r]?.[c] || 0);
+          const physicalHeightDelta = (physical.height?.[r]?.[c] || 0) - (physicalBase.height?.[r]?.[c] || 0);
+          const heightError = physicalHeightDelta - kinematicHeightDelta;
+          heightSquared += heightError * heightError;
+          heightMax = Math.max(heightMax, Math.abs(heightError));
+          heightCount += 1;
+
+          const kinematicPoint = sim.centers?.[r]?.[c];
+          const kinematicBasePoint = baselineSim.centers?.[r]?.[c];
+          const physicalPoint = physical.centers?.[r]?.[c];
+          const physicalBasePoint = physicalBase.centers?.[r]?.[c];
+          if (kinematicPoint && kinematicBasePoint && physicalPoint && physicalBasePoint) {
+            const dx = (physicalPoint.x - physicalBasePoint.x) - (kinematicPoint.x - kinematicBasePoint.x);
+            const dy = (physicalPoint.y - physicalBasePoint.y) - (kinematicPoint.y - kinematicBasePoint.y);
+            const dz = (physicalPoint.z - physicalBasePoint.z) - (kinematicPoint.z - kinematicBasePoint.z);
+            const centerError = Math.hypot(dx, dy, dz);
+            centerSquared += centerError * centerError;
+            centerMax = Math.max(centerMax, centerError);
+            centerCount += 1;
+          }
+        }
+      }
+      return {
+        physicalPreviewAvailable: true,
+        physicalPreviewSuccess: true,
+        physicalHeightRmsError: Math.sqrt(heightSquared / Math.max(1, heightCount)),
+        physicalHeightMaxError: heightMax,
+        physicalCenterRmsError: Math.sqrt(centerSquared / Math.max(1, centerCount)),
+        physicalCenterMaxError: centerMax,
+        physicalPreviewIterations: Number(physical.metrics?.physicalIterations || physicalBase.metrics?.physicalIterations || 0),
+      };
+    } catch (error) {
+      return {
+        ...unavailable,
+        physicalPreviewAvailable: true,
+        physicalPreviewError: error?.message || String(error),
+      };
+    }
+  }
+
+  function characterizeLocalResponse(state, options = {}) {
+    const scope = options.scope || state.experiment?.characterizationScope || "single";
+    const selected = {
+      r: clampIndex(options.r ?? state.selection?.r ?? 0, state.grid.rows),
+      c: clampIndex(options.c ?? state.selection?.c ?? 0, state.grid.cols),
+    };
+    const sourceCells = characterizationCells(state, selected.r, selected.c, scope);
+    const combinedState = scopedState(state, sourceCells);
+    const baselineState = scopedState(state, []);
+    const sim = RAD.simulate(combinedState);
+    const baselineSim = RAD.simulate(baselineState);
+    const stats = localResponseStats(combinedState, sim, baselineSim, sourceCells);
+    const interaction = superpositionError(combinedState, sourceCells, sim, baselineSim);
+    const pairwiseInteractions = pairwiseInteractionGraph(combinedState, sourceCells, baselineSim);
+    const matrixDiagnostic = responseMatrixDiagnostic(combinedState, sourceCells, baselineSim);
+    const decayProfile = responseDecayProfile(combinedState, sim, baselineSim, sourceCells);
+    const physicalComparison = physicalPreviewComparison(combinedState, baselineState, sim, baselineSim);
+    const calibration = RAD.paperRadCalibration(combinedState);
+    return {
+      scope,
+      selected,
+      cells: sourceCells,
+      regionCellCount: sourceCells.length,
+      ...stats,
+      ...matrixDiagnostic,
+      ...decayProfile,
+      ...physicalComparison,
+      superpositionError: interaction.rms,
+      maxSuperpositionError: interaction.max,
+      alphaSuperpositionError: interaction.alphaMax,
+      heightSuperpositionError: interaction.heightMax,
+      superpositionSkipped: interaction.skipped,
+      superpositionSources: interaction.sourceCount,
+      nonadditive: !interaction.skipped && (interaction.rms || 0) > 1e-9,
+      ...pairwiseInteractions,
+      backlash: Number(combinedState.grid.backlash) || 0,
+      zDeadZone: RAD.verticalDeadZone(combinedState),
+      pinHoleClearance: RAD.pinHoleClearance(combinedState),
+      backlashMm: calibration.configuredBacklashMm,
+      pinHoleClearanceMm: calibration.pinHoleClearanceMm,
+      model: combinedState.view.simulationMode || "kinematic",
+    };
+  }
+
+  const PROTOCOL_MEASUREMENT_FIELDS = Object.freeze([
+    "alpha_delta_grid",
+    "height_delta_grid",
+    "center_displacement_grid",
+    "actuator_command",
+    "lock_state",
+    "pin_hole_slip_mm",
+    "actuator_force_n",
+  ]);
+
+  function protocolCell(cell) {
+    return { row: cell.r, col: cell.c };
+  }
+
+  function protocolCommand(cell, alpha = 0, z = 0) {
+    return { row: cell.r, col: cell.c, alpha, z };
+  }
+
+  function uniqueProtocolCells(cells) {
+    const seen = new Set();
+    const unique = [];
+    for (const cell of cells) {
+      const key = cellKey(cell);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(cell);
+    }
+    return unique;
+  }
+
+  function calibrationExperimentProtocol(state, options = {}) {
+    const limits = typeof RAD.commandLimits === "function" ? RAD.commandLimits(state) : { alphaContract: 0.55, z: 0.8 };
+    const center = {
+      r: clampIndex(options.r ?? state.selection?.r ?? 0, state.grid.rows),
+      c: clampIndex(options.c ?? state.selection?.c ?? 0, state.grid.cols),
+    };
+    const pairCells = characterizationCells(state, center.r, center.c, "pair");
+    const clusterCells = characterizationCells(state, center.r, center.c, "cluster");
+    const primaryNeighbor = pairCells.find((cell) => cellKey(cell) !== cellKey(center)) || center;
+    const secondaryNeighbor =
+      clusterCells.find((cell) => cellKey(cell) !== cellKey(center) && cellKey(cell) !== cellKey(primaryNeighbor)) || primaryNeighbor;
+    const alphaStep = Number(options.alphaStep ?? -Math.min(0.25, limits.alphaContract || 0.25));
+    const alphaExpand = Math.abs(alphaStep) * 0.75;
+    const zStep = Number(options.zStep ?? Math.min(0.3, limits.z || 0.3));
+    const repeatCount = Math.max(1, Math.round(Number(options.repeatCount ?? 3)));
+    const observationPair = uniqueProtocolCells([center, primaryNeighbor]);
+    const observationCluster = uniqueProtocolCells([center, primaryNeighbor, secondaryNeighbor, ...clusterCells]);
+    const step = (id, scope, commands, observationCells, lockedCells, purpose, expectedResponse) => ({
+      id,
+      scope,
+      commands,
+      observationCells: observationCells.map(protocolCell),
+      lockedCells: lockedCells.map(protocolCell),
+      measurementFields: [...PROTOCOL_MEASUREMENT_FIELDS],
+      purpose,
+      expectedResponse,
+      repeatCount,
+    });
+    const steps = [
+      step(
+        "single_alpha_contract",
+        "single",
+        [protocolCommand(center, alphaStep, 0)],
+        [center],
+        [],
+        "Measure the local rotating-square dilation response to contraction.",
+        "Primary alpha change at the commanded cell with backlash-gated neighbor influence."
+      ),
+      step(
+        "single_alpha_expand",
+        "single",
+        [protocolCommand(center, alphaExpand, 0)],
+        [center],
+        [],
+        "Measure expansion-side travel and check for asymmetric backlash.",
+        "Positive alpha response at the commanded cell with smaller expansion command."
+      ),
+      step(
+        "single_z_lift",
+        "single",
+        [protocolCommand(center, 0, zStep)],
+        observationPair,
+        [],
+        "Measure direct vertical actuation and residual neighbor lift.",
+        "Commanded cell moves vertically; adjacent observation cell captures pin-hole residual coupling."
+      ),
+      step(
+        "pair_z_residual",
+        "pair",
+        [protocolCommand(center, 0, zStep)],
+        observationPair,
+        [],
+        "Quantify vertical die-off from one actuated cell into a neighboring cell.",
+        "Neighbor height response should decay with clearance, backlash, and graph distance."
+      ),
+      step(
+        "pair_superposition",
+        "pair",
+        [protocolCommand(center, alphaStep, 0.5 * zStep), protocolCommand(primaryNeighbor, alphaStep, 0.5 * zStep)],
+        observationPair,
+        [],
+        "Measure whether adjacent cell commands add linearly or interact through backlash.",
+        "Any deviation from summed single-cell responses identifies a programmable-discontinuity interaction."
+      ),
+      step(
+        "cluster_mixed_actuation",
+        "cluster",
+        [
+          protocolCommand(center, 0, zStep),
+          protocolCommand(primaryNeighbor, alphaStep, 0),
+          protocolCommand(secondaryNeighbor, 0.5 * alphaExpand, -0.5 * zStep),
+        ],
+        observationCluster,
+        [],
+        "Measure collective response of mixed horizontal and vertical actuation.",
+        "Cluster field should reveal multi-operator coupling, residual height spread, and reachable directions."
+      ),
+      step(
+        "locked_cell_control",
+        "lock",
+        [protocolCommand(center, alphaStep, zStep)],
+        observationPair,
+        [center],
+        "Verify lock enforcement against commanded alpha and vertical motion.",
+        "Locked cell should remain fixed while any neighbor residual exposes compliance leakage."
+      ),
+    ];
+    const profile = typeof RAD.hardwareProfile === "function" ? RAD.hardwareProfile(state) : { name: "paper-reference" };
+    return {
+      schema: "rad-sim.calibration-experiment-protocol.v1",
+      hardwareProfile: profile.name || "paper-reference",
+      readiness: typeof RAD.calibrationReadiness === "function" ? RAD.calibrationReadiness(state) : null,
+      measurementPlan: typeof RAD.calibrationMeasurementPlan === "function" ? RAD.calibrationMeasurementPlan(state) : [],
+      grid: { rows: state.grid.rows, cols: state.grid.cols },
+      centerCell: protocolCell(center),
+      measurementFields: [...PROTOCOL_MEASUREMENT_FIELDS],
+      notes: "Protocol defines repeatable simulator/bench measurements; it does not claim the current spring-hinge solver is calibrated.",
+      steps,
+    };
+  }
+
+  function exportCalibrationExperimentProtocol(state, options = {}) {
+    return JSON.stringify(calibrationExperimentProtocol(state, options), null, 2);
+  }
+
+  function protocolStepState(state, step, includeCommands = true) {
+    const temp = cloneForCharacterization(state);
+    for (let r = 0; r < temp.grid.rows; r += 1) {
+      for (let c = 0; c < temp.grid.cols; c += 1) {
+        temp.cells.commandAlpha[r][c] = 0;
+        temp.cells.commandZ[r][c] = 0;
+        temp.cells.locked[r][c] = false;
+      }
+    }
+    for (const locked of step.lockedCells || []) {
+      if (temp.cells.locked?.[locked.row]?.[locked.col] !== undefined) temp.cells.locked[locked.row][locked.col] = true;
+    }
+    if (includeCommands) {
+      for (const command of step.commands || []) {
+        if (temp.cells.commandAlpha?.[command.row]?.[command.col] === undefined) continue;
+        temp.cells.commandAlpha[command.row][command.col] += Number(command.alpha) || 0;
+        temp.cells.commandZ[command.row][command.col] += Number(command.z) || 0;
+      }
+    }
+    return temp;
+  }
+
+  function finiteOrNull(value) {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  }
+
+  function atlasObservationCells(sim, baseline, step) {
+    return (step.observationCells || []).map((cell) => {
+      const row = Number(cell.row) || 0;
+      const col = Number(cell.col) || 0;
+      return {
+        row,
+        col,
+        alphaDelta: (Number(sim.alpha?.[row]?.[col]) || 0) - (Number(baseline.alpha?.[row]?.[col]) || 0),
+        heightDelta: (Number(sim.height?.[row]?.[col]) || 0) - (Number(baseline.height?.[row]?.[col]) || 0),
+        zResidual: Number(sim.zResidual?.[row]?.[col]) || 0,
+        alphaDieOff: finiteOrNull(sim.dieOff?.[row]?.[col]),
+        zDieOff: finiteOrNull(sim.zDieOff?.[row]?.[col]),
+      };
+    });
+  }
+
+  function atlasScopeCounts(entries) {
+    return entries.reduce((counts, entry) => {
+      counts[entry.scope] = (counts[entry.scope] || 0) + 1;
+      return counts;
+    }, {});
+  }
+
+  function meanOrZero(values) {
+    const numeric = values.map(Number).filter(Number.isFinite);
+    if (!numeric.length) return 0;
+    return numeric.reduce((sum, value) => sum + value, 0) / numeric.length;
+  }
+
+  function uniqueParameterValues(values, fallback) {
+    const raw = Array.isArray(values) && values.length ? values : fallback;
+    const seen = new Set();
+    const out = [];
+    for (const value of raw) {
+      const numeric = Math.max(0, Number(value) || 0);
+      const key = numeric.toPrecision(12);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(numeric);
+    }
+    return out.length ? out : [0];
+  }
+
+  function defaultSweepValues(value, fallbackStep = 0.05) {
+    const current = Math.max(0, Number(value) || 0);
+    if (current <= 1e-9) return [0, fallbackStep, 2 * fallbackStep];
+    return [0.5 * current, current, 2 * current];
+  }
+
+  function stateWithSweepSettings(state, backlash, clearance) {
+    const temp = cloneForCharacterization(state);
+    const pinRadius = Math.max(0, Number(temp.grid.pinRadius ?? 0.18));
+    const pinHoleClearance = Math.max(0, Number(clearance) || 0);
+    temp.grid.backlash = Math.max(0, Number(backlash) || 0);
+    temp.grid.pinRadius = pinRadius;
+    temp.grid.holeRadius = Math.max(pinRadius, pinRadius + pinHoleClearance);
+    return temp;
+  }
+
+  function atlasSampleSummary(atlas) {
+    const entries = atlas.entries || [];
+    const observedZResiduals = [];
+    const neighborZResiduals = [];
+    for (const entry of entries) {
+      const commandCells = new Set((entry.commands || []).map((command) => `${command.row},${command.col}`));
+      for (const cell of entry.observationCells || []) {
+        const residual = Math.abs(Number(cell.zResidual) || 0);
+        observedZResiduals.push(residual);
+        if (!commandCells.has(`${cell.row},${cell.col}`)) neighborZResiduals.push(residual);
+      }
+    }
+    const physicalEntries = entries.filter((entry) => entry.physicalValidation?.physicalPreviewAvailable);
+    const physicalHeightErrors = physicalEntries.map((entry) => entry.physicalValidation?.heightRmsModelError);
+    return {
+      meanAlphaReach: meanOrZero(entries.map((entry) => entry.alphaReach)),
+      meanZReach: meanOrZero(entries.map((entry) => entry.zReach)),
+      maxAlphaReach: entries.reduce((max, entry) => Math.max(max, Number(entry.alphaReach) || 0), 0),
+      maxZReach: entries.reduce((max, entry) => Math.max(max, Number(entry.zReach) || 0), 0),
+      maxSuperpositionError: entries.reduce(
+        (max, entry) => Math.max(max, Number(entry.alphaSuperpositionError) || 0, Number(entry.heightSuperpositionError) || 0),
+        0
+      ),
+      maxObservedZResidual: observedZResiduals.reduce((max, value) => Math.max(max, value), 0),
+      maxObservedNeighborZResidual: neighborZResiduals.reduce((max, value) => Math.max(max, value), 0),
+      meanAbsAlphaDelta: meanOrZero(entries.map((entry) => entry.meanAbsAlphaDelta)),
+      meanAbsHeightDelta: meanOrZero(entries.map((entry) => entry.meanAbsHeightDelta)),
+      physicalSuccessRate: physicalEntries.length
+        ? physicalEntries.filter((entry) => entry.physicalValidation?.physicalSuccess).length / physicalEntries.length
+        : null,
+      meanPhysicalHeightRmsError: physicalEntries.length ? meanOrZero(physicalHeightErrors) : null,
+    };
+  }
+
+  function sweepTrend(samples, parameter) {
+    const buckets = new Map();
+    for (const sample of samples) {
+      const value = Number(sample.settings?.[parameter]) || 0;
+      const key = value.toPrecision(12);
+      if (!buckets.has(key)) buckets.set(key, { value, samples: [] });
+      buckets.get(key).samples.push(sample);
+    }
+    return Array.from(buckets.values())
+      .sort((a, b) => a.value - b.value)
+      .map((bucket) => ({
+        value: bucket.value,
+        sampleCount: bucket.samples.length,
+        meanAlphaReach: meanOrZero(bucket.samples.map((sample) => sample.summary.meanAlphaReach)),
+        meanZReach: meanOrZero(bucket.samples.map((sample) => sample.summary.meanZReach)),
+        maxObservedZResidual: bucket.samples.reduce((max, sample) => Math.max(max, sample.summary.maxObservedZResidual || 0), 0),
+        maxObservedNeighborZResidual: bucket.samples.reduce((max, sample) => Math.max(max, sample.summary.maxObservedNeighborZResidual || 0), 0),
+        maxSuperpositionError: bucket.samples.reduce((max, sample) => Math.max(max, sample.summary.maxSuperpositionError || 0), 0),
+      }));
+  }
+
+  function endpointSlope(trend, metric) {
+    if (!Array.isArray(trend) || trend.length < 2) return null;
+    const first = trend[0];
+    const last = trend[trend.length - 1];
+    const dx = (Number(last.value) || 0) - (Number(first.value) || 0);
+    if (Math.abs(dx) <= 1e-12) return null;
+    return ((Number(last[metric]) || 0) - (Number(first[metric]) || 0)) / dx;
+  }
+
+  function sweepSensitivityFromTrends(trends) {
+    const trendMap = {
+      backlash: trends.byBacklash || [],
+      pinHoleClearance: trends.byPinHoleClearance || [],
+    };
+    const metrics = {};
+    let dominant = null;
+    for (const [parameter, trend] of Object.entries(trendMap)) {
+      metrics[parameter] = {};
+      for (const metric of SWEEP_SENSITIVITY_METRICS) {
+        const slope = endpointSlope(trend, metric);
+        metrics[parameter][metric] = slope;
+        if (slope === null) continue;
+        const candidate = { parameter, metric, slope, absSlope: Math.abs(slope) };
+        if (!dominant || candidate.absSlope > dominant.absSlope) dominant = candidate;
+      }
+    }
+    return {
+      method: "endpoint finite difference over each parameter trend",
+      metrics,
+      dominant,
+    };
+  }
+
+  function trendMonotonicity(trend, metric, tolerance = 1e-12) {
+    if (!Array.isArray(trend) || trend.length < 2) return "insufficient";
+    let increases = 0;
+    let decreases = 0;
+    let flats = 0;
+    for (let i = 1; i < trend.length; i += 1) {
+      const delta = (Number(trend[i][metric]) || 0) - (Number(trend[i - 1][metric]) || 0);
+      if (Math.abs(delta) <= tolerance) flats += 1;
+      else if (delta > 0) increases += 1;
+      else decreases += 1;
+    }
+    if (increases && !decreases) return "increasing";
+    if (decreases && !increases) return "decreasing";
+    if (flats && !increases && !decreases) return "flat";
+    return "mixed";
+  }
+
+  function operatorLawStatement(parameter, metric, monotonicity) {
+    const parameterLabels = {
+      backlash: "backlash dead-zone width",
+      pinHoleClearance: "pin-hole clearance",
+    };
+    const metricLabels = {
+      meanAlphaReach: "mean dilation reach",
+      meanZReach: "mean vertical reach",
+      maxObservedNeighborZResidual: "neighbor vertical residual motion",
+      maxSuperpositionError: "non-additive superposition residual",
+    };
+    const parameterLabel = parameterLabels[parameter] || parameter;
+    const metricLabel = metricLabels[metric] || metric;
+    if (monotonicity === "increasing") {
+      return `Increasing ${parameterLabel} increases ${metricLabel} over the sampled simulator sweep.`;
+    }
+    if (monotonicity === "decreasing") {
+      return `Increasing ${parameterLabel} decreases ${metricLabel} over the sampled simulator sweep.`;
+    }
+    if (monotonicity === "flat") {
+      return `Changing ${parameterLabel} leaves ${metricLabel} approximately flat over the sampled simulator sweep.`;
+    }
+    if (monotonicity === "mixed") {
+      return `${parameterLabel} has a mixed sampled relationship with ${metricLabel}; no monotone candidate is supported.`;
+    }
+    return `${parameterLabel} has insufficient sampled data to propose a ${metricLabel} law candidate.`;
+  }
+
+  function sweepOperatorLawCandidates(trends, sensitivity) {
+    const trendMap = {
+      backlash: trends.byBacklash || [],
+      pinHoleClearance: trends.byPinHoleClearance || [],
+    };
+    const laws = [];
+    for (const [parameter, trend] of Object.entries(trendMap)) {
+      for (const metric of SWEEP_SENSITIVITY_METRICS) {
+        const monotonicity = trendMonotonicity(trend, metric);
+        laws.push({
+          parameter,
+          metric,
+          monotonicity,
+          slope: sensitivity?.metrics?.[parameter]?.[metric] ?? null,
+          supportedBySweep: ["increasing", "decreasing", "flat"].includes(monotonicity),
+          status: "simulator-diagnostic",
+          statement: operatorLawStatement(parameter, metric, monotonicity),
+        });
+      }
+    }
+    return {
+      schema: "rad-sim.operator-law-candidates.v1",
+      method: "adjacent monotonicity over sampled parameter trend plus endpoint sensitivity",
+      laws,
+    };
+  }
+
+  function atlasStepEntry(state, step, tolerance = 1e-9) {
+    const commandState = protocolStepState(state, step, true);
+    const baselineState = protocolStepState(state, step, false);
+    const sim = RAD.simulate(commandState);
+    const baseline = RAD.simulate(baselineState);
+    const sourceCells = uniqueProtocolCells(
+      (step.commands || []).map((command) => normalizeMatrixCell(state, { row: command.row, col: command.col }))
+    );
+    const stats = localResponseStats(commandState, sim, baseline, sourceCells);
+    const interaction = superpositionError(commandState, sourceCells, sim, baseline);
+    const physical = physicalPreviewComparison(commandState, baselineState, sim, baseline);
+    return {
+      stepId: step.id,
+      scope: step.scope,
+      purpose: step.purpose,
+      expectedResponse: step.expectedResponse,
+      commands: step.commands || [],
+      lockedCells: step.lockedCells || [],
+      observationCells: atlasObservationCells(sim, baseline, step),
+      alphaReach: stats.alphaReachCells,
+      zReach: stats.zReachCells,
+      effectiveAlphaDieOff: stats.alphaDieOff,
+      effectiveZDieOff: stats.zDieOff,
+      maxAbsAlphaDelta: stats.maxAlphaDelta,
+      maxAbsHeightDelta: stats.maxHeightDelta,
+      meanAbsAlphaDelta: stats.meanAbsAlphaDelta,
+      meanAbsHeightDelta: stats.meanAbsHeightDelta,
+      alphaSuperpositionError: interaction.alphaMax,
+      heightSuperpositionError: interaction.heightMax,
+      superpositionRmsError: interaction.rms,
+      physicalValidation: {
+        schema: "rad-sim.browser-physical-preview.v1",
+        model: "browser-spring-preview",
+        physicalPreviewAvailable: Boolean(physical.physicalPreviewAvailable),
+        physicalSuccess: Boolean(physical.physicalPreviewSuccess),
+        heightRmsModelError: Number(physical.physicalHeightRmsError) || 0,
+        centerRmsModelError: Number(physical.physicalCenterRmsError) || 0,
+        heightMaxModelError: Number(physical.physicalHeightMaxError) || 0,
+        centerMaxModelError: Number(physical.physicalCenterMaxError) || 0,
+        iterations: Number(physical.physicalPreviewIterations) || 0,
+        error: physical.physicalPreviewError || null,
+      },
+      tolerance,
+    };
+  }
+
+  function responseAtlas(state, options = {}) {
+    const tolerance = Number(options.tolerance ?? 1e-9);
+    const protocol = options.protocol || calibrationExperimentProtocol(state, options);
+    const entries = (protocol.steps || []).map((step) => atlasStepEntry(state, step, tolerance));
+    const maxSuperpositionError = entries.reduce(
+      (max, entry) => Math.max(max, entry.alphaSuperpositionError || 0, entry.heightSuperpositionError || 0),
+      0
+    );
+    const physicalEntries = entries.filter((entry) => entry.physicalValidation?.physicalPreviewAvailable);
+    return {
+      schema: "rad-sim.response-atlas.v1",
+      savedAt: new Date().toISOString(),
+      hardwareProfile: protocol.hardwareProfile,
+      grid: protocol.grid,
+      centerCell: protocol.centerCell,
+      notes: "Browser-generated single, pair, cluster, and lock response atlas for comparing simulator settings before bench data exists.",
+      summary: {
+        entryCount: entries.length,
+        scopeCounts: atlasScopeCounts(entries),
+        maxAlphaReach: entries.reduce((max, entry) => Math.max(max, entry.alphaReach || 0), 0),
+        maxZReach: entries.reduce((max, entry) => Math.max(max, entry.zReach || 0), 0),
+        maxSuperpositionError,
+        physicalEntryCount: physicalEntries.length,
+        physicalSuccessCount: physicalEntries.filter((entry) => entry.physicalValidation?.physicalSuccess).length,
+      },
+      assumptions: {
+        source: "Calibration protocol commands run through the browser simulator.",
+        physical: "Browser spring-preview validation is interactive model-disagreement evidence, not calibrated hardware truth.",
+      },
+      protocol,
+      entries,
+      tolerance,
+    };
+  }
+
+  function exportResponseAtlas(state, options = {}) {
+    return JSON.stringify(responseAtlas(state, options), null, 2);
+  }
+
+  function responseAtlasSweep(state, options = {}) {
+    const tolerance = Number(options.tolerance ?? 1e-9);
+    const currentClearance = typeof RAD.pinHoleClearance === "function"
+      ? RAD.pinHoleClearance(state)
+      : Math.max(0, Number(state.grid.holeRadius ?? 0.225) - Number(state.grid.pinRadius ?? 0.18));
+    const backlashValues = uniqueParameterValues(
+      options.backlashValues,
+      defaultSweepValues(state.grid.backlash, 0.05)
+    );
+    const clearanceValues = uniqueParameterValues(
+      options.clearanceValues,
+      defaultSweepValues(currentClearance, 0.04)
+    );
+    const samples = [];
+    for (const backlash of backlashValues) {
+      for (const clearance of clearanceValues) {
+        const sampleState = stateWithSweepSettings(state, backlash, clearance);
+        const atlas = responseAtlas(sampleState, { ...options, tolerance });
+        samples.push({
+          settings: {
+            backlash: sampleState.grid.backlash,
+            pinHoleClearance: Math.max(0, Number(sampleState.grid.holeRadius) - Number(sampleState.grid.pinRadius)),
+            pinRadius: sampleState.grid.pinRadius,
+            holeRadius: sampleState.grid.holeRadius,
+          },
+          summary: atlasSampleSummary(atlas),
+          atlas,
+        });
+      }
+    }
+    const trends = {
+      byBacklash: sweepTrend(samples, "backlash"),
+      byPinHoleClearance: sweepTrend(samples, "pinHoleClearance"),
+    };
+    const sensitivity = sweepSensitivityFromTrends(trends);
+    return {
+      schema: "rad-sim.response-atlas-sweep.v1",
+      savedAt: new Date().toISOString(),
+      grid: { rows: state.grid.rows, cols: state.grid.cols },
+      centerCell: {
+        row: clampIndex(options.r ?? state.selection?.r ?? 0, state.grid.rows),
+        col: clampIndex(options.c ?? state.selection?.c ?? 0, state.grid.cols),
+      },
+      physical: samples.some((sample) => sample.summary.physicalSuccessRate !== null),
+      parameters: {
+        backlashValues,
+        pinHoleClearanceValues: clearanceValues,
+      },
+      notes: "Browser-generated sweep for comparing how backlash and pin-hole clearance change locality, residual vertical motion, and operator interaction before calibrated bench data exists.",
+      summary: {
+        sampleCount: samples.length,
+        maxAlphaReach: samples.reduce((max, sample) => Math.max(max, sample.summary.maxAlphaReach || 0), 0),
+        maxZReach: samples.reduce((max, sample) => Math.max(max, sample.summary.maxZReach || 0), 0),
+        maxObservedZResidual: samples.reduce((max, sample) => Math.max(max, sample.summary.maxObservedZResidual || 0), 0),
+        maxObservedNeighborZResidual: samples.reduce((max, sample) => Math.max(max, sample.summary.maxObservedNeighborZResidual || 0), 0),
+        maxSuperpositionError: samples.reduce((max, sample) => Math.max(max, sample.summary.maxSuperpositionError || 0), 0),
+      },
+      trends,
+      sensitivity,
+      operatorLawCandidates: sweepOperatorLawCandidates(trends, sensitivity),
+      assumptions: {
+        source: "Each browser sample rebuilds the response atlas from the current calibration protocol commands.",
+        interpretation: "Backlash and clearance are treated as programmable-discontinuity dead-zone parameters; trend summaries are simulator diagnostics.",
+        physical: "Browser spring-preview metrics are model-disagreement diagnostics, not calibrated hardware validation.",
+      },
+      samples,
+      tolerance,
+    };
+  }
+
+  function exportResponseAtlasSweep(state, options = {}) {
+    return JSON.stringify(responseAtlasSweep(state, options), null, 2);
+  }
+
+  function calibrationExperimentResultsTemplate(state, options = {}) {
+    const protocol = options.protocol || calibrationExperimentProtocol(state, options);
+    const steps = [];
+    for (const step of protocol.steps || []) {
+      const repeats = Math.max(1, Math.round(Number(step.repeatCount) || 1));
+      for (let repeatIndex = 1; repeatIndex <= repeats; repeatIndex += 1) {
+        steps.push({
+          stepId: step.id,
+          repeatIndex,
+          cells: (step.observationCells || []).map((cell) => ({
+            row: cell.row,
+            col: cell.col,
+            alphaDelta: null,
+            heightDelta: null,
+            centerDelta: null,
+            pinHoleSlipMm: null,
+            actuatorForceN: null,
+          })),
+          notes: "Replace null fields with measured bench data.",
+        });
+      }
+    }
+    return {
+      schema: "rad-sim.calibration-experiment-results.v1",
+      protocolSchema: protocol.schema,
+      hardwareProfile: protocol.hardwareProfile,
+      notes: "Fill optional measured fields with real bench measurements.",
+      steps,
+    };
+  }
+
+  function exportCalibrationExperimentResultsTemplate(state, options = {}) {
+    return JSON.stringify(calibrationExperimentResultsTemplate(state, options), null, 2);
+  }
+
+  function numericOrNull(value) {
+    if (value === null || value === undefined || value === "") return null;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  }
+
+  function rmse(values) {
+    if (!values.length) return null;
+    const mean = values.reduce((sum, value) => sum + value * value, 0) / values.length;
+    return Math.sqrt(mean);
+  }
+
+  function meanOrNull(values) {
+    if (!values.length) return null;
+    return values.reduce((sum, value) => sum + value, 0) / values.length;
+  }
+
+  function calibrationLinearFit(pairs) {
+    const sampleCount = pairs.length;
+    if (!sampleCount) {
+      return {
+        sampleCount: 0,
+        gain: null,
+        bias: null,
+        suggestedGain: null,
+        suggestedBias: null,
+        gainIdentifiable: false,
+        rmsRawError: null,
+        rmsResidual: null,
+        meanPredicted: null,
+        meanMeasured: null,
+        predictedRange: null,
+        measuredRange: null,
+      };
+    }
+    const predicted = pairs.map((pair) => pair.predicted);
+    const measured = pairs.map((pair) => pair.measured);
+    const meanPredicted = meanOrNull(predicted);
+    const meanMeasured = meanOrNull(measured);
+    const variance = predicted.reduce((sum, value) => sum + (value - meanPredicted) ** 2, 0);
+    const covariance = pairs.reduce(
+      (sum, pair) => sum + (pair.predicted - meanPredicted) * (pair.measured - meanMeasured),
+      0
+    );
+    const gainIdentifiable = variance > 1e-12;
+    const gain = gainIdentifiable ? covariance / variance : null;
+    const suggestedGain = gainIdentifiable ? gain : 1;
+    const bias = gainIdentifiable
+      ? meanMeasured - gain * meanPredicted
+      : meanOrNull(pairs.map((pair) => pair.measured - pair.predicted));
+    const residuals = pairs.map((pair) => pair.measured - (suggestedGain * pair.predicted + bias));
+    const rawErrors = pairs.map((pair) => pair.measured - pair.predicted);
+    return {
+      sampleCount,
+      gain,
+      bias,
+      suggestedGain,
+      suggestedBias: bias,
+      gainIdentifiable,
+      rmsRawError: rmse(rawErrors),
+      rmsResidual: rmse(residuals),
+      meanPredicted,
+      meanMeasured,
+      predictedRange: [Math.min(...predicted), Math.max(...predicted)],
+      measuredRange: [Math.min(...measured), Math.max(...measured)],
+    };
+  }
+
+  function createCalibrationErrorField(state) {
+    const rows = state.grid.rows;
+    const cols = state.grid.cols;
+    return {
+      alphaError: RAD.matrix(rows, cols, 0),
+      heightError: RAD.matrix(rows, cols, 0),
+      combinedError: RAD.matrix(rows, cols, 0),
+      sampleCount: RAD.matrix(rows, cols, 0),
+      alphaSampleCount: RAD.matrix(rows, cols, 0),
+      heightSampleCount: RAD.matrix(rows, cols, 0),
+      maxAbsAlphaError: 0,
+      maxAbsHeightError: 0,
+      maxCombinedError: 0,
+      worstCell: null,
+      topCells: [],
+    };
+  }
+
+  function finalizeCalibrationErrorField(field) {
+    const topCells = [];
+    for (let r = 0; r < field.sampleCount.length; r += 1) {
+      for (let c = 0; c < field.sampleCount[r].length; c += 1) {
+        const alphaCount = field.alphaSampleCount[r][c];
+        const heightCount = field.heightSampleCount[r][c];
+        const alpha = alphaCount ? field.alphaError[r][c] / alphaCount : 0;
+        const height = heightCount ? field.heightError[r][c] / heightCount : 0;
+        const combined = Math.hypot(alpha, height);
+        field.alphaError[r][c] = alpha;
+        field.heightError[r][c] = height;
+        field.combinedError[r][c] = combined;
+        field.maxAbsAlphaError = Math.max(field.maxAbsAlphaError, Math.abs(alpha));
+        field.maxAbsHeightError = Math.max(field.maxAbsHeightError, Math.abs(height));
+        field.maxCombinedError = Math.max(field.maxCombinedError, combined);
+        if (
+          field.sampleCount[r][c] > 0 &&
+          (!field.worstCell || combined > field.worstCell.combinedError)
+        ) {
+          field.worstCell = {
+            row: r,
+            col: c,
+            alphaError: alpha,
+            heightError: height,
+            combinedError: combined,
+            sampleCount: field.sampleCount[r][c],
+            alphaSampleCount: alphaCount,
+            heightSampleCount: heightCount,
+          };
+        }
+        if (field.sampleCount[r][c] > 0) {
+          topCells.push({
+            row: r,
+            col: c,
+            alphaError: alpha,
+            heightError: height,
+            combinedError: combined,
+            sampleCount: field.sampleCount[r][c],
+            alphaSampleCount: alphaCount,
+            heightSampleCount: heightCount,
+          });
+        }
+      }
+    }
+    field.topCells = topCells
+      .sort((a, b) => b.combinedError - a.combinedError || a.row - b.row || a.col - b.col)
+      .slice(0, 12);
+    return field;
+  }
+
+  function calibrationFitResidualField(state, alphaPairs, heightPairs, fit) {
+    const field = createCalibrationErrorField(state);
+    const touched = new Map();
+    const alphaGain = Number.isFinite(fit?.alpha?.suggestedGain) ? fit.alpha.suggestedGain : 1;
+    const alphaBias = Number.isFinite(fit?.alpha?.suggestedBias) ? fit.alpha.suggestedBias : 0;
+    const heightGain = Number.isFinite(fit?.height?.suggestedGain) ? fit.height.suggestedGain : 1;
+    const heightBias = Number.isFinite(fit?.height?.suggestedBias) ? fit.height.suggestedBias : 0;
+    for (const pair of alphaPairs) {
+      const error = pair.measured - (alphaGain * pair.predicted + alphaBias);
+      field.alphaError[pair.row][pair.col] += error;
+      field.alphaSampleCount[pair.row][pair.col] += 1;
+      touched.set(`${pair.row},${pair.col}`, [pair.row, pair.col]);
+    }
+    for (const pair of heightPairs) {
+      const error = pair.measured - (heightGain * pair.predicted + heightBias);
+      field.heightError[pair.row][pair.col] += error;
+      field.heightSampleCount[pair.row][pair.col] += 1;
+      touched.set(`${pair.row},${pair.col}`, [pair.row, pair.col]);
+    }
+    for (const [row, col] of touched.values()) field.sampleCount[row][col] += 1;
+    return finalizeCalibrationErrorField(field);
+  }
+
+  function compareCalibrationExperimentResults(state, results, options = {}) {
+    const parsed = typeof results === "string" ? JSON.parse(results) : results;
+    if (parsed?.schema !== "rad-sim.calibration-experiment-results.v1") {
+      throw new Error("unsupported calibration experiment results schema");
+    }
+    const protocol = options.protocol || calibrationExperimentProtocol(state, options);
+    const stepsById = new Map((protocol.steps || []).map((step) => [step.id, step]));
+    const comparisons = [];
+    const field = createCalibrationErrorField(state);
+    const alphaPairs = [];
+    const heightPairs = [];
+    for (const measuredStep of parsed.steps || []) {
+      const step = stepsById.get(measuredStep.stepId);
+      if (!step) continue;
+      const commandState = protocolStepState(state, step, true);
+      const baselineState = protocolStepState(state, step, false);
+      const sim = RAD.simulate(commandState);
+      const baseline = RAD.simulate(baselineState);
+      const alphaErrors = [];
+      const heightErrors = [];
+      const centerErrors = [];
+      const slipValues = [];
+      const forceValues = [];
+      const observed = new Set();
+      for (const cell of measuredStep.cells || []) {
+        const row = Number(cell.row);
+        const col = Number(cell.col);
+        if (!Number.isInteger(row) || !Number.isInteger(col) || row < 0 || col < 0 || row >= state.grid.rows || col >= state.grid.cols) continue;
+        observed.add(`${row},${col}`);
+        const alpha = numericOrNull(cell.alphaDelta);
+        const height = numericOrNull(cell.heightDelta);
+        let measuredField = false;
+        if (alpha !== null) {
+          const predictedAlpha = (sim.alpha?.[row]?.[col] || 0) - (baseline.alpha?.[row]?.[col] || 0);
+          const alphaError = alpha - predictedAlpha;
+          alphaErrors.push(alphaError);
+          alphaPairs.push({ row, col, predicted: predictedAlpha, measured: alpha });
+          field.alphaError[row][col] += alphaError;
+          field.alphaSampleCount[row][col] += 1;
+          measuredField = true;
+        }
+        if (height !== null) {
+          const predictedHeight = (sim.height?.[row]?.[col] || 0) - (baseline.height?.[row]?.[col] || 0);
+          const heightError = height - predictedHeight;
+          heightErrors.push(heightError);
+          heightPairs.push({ row, col, predicted: predictedHeight, measured: height });
+          field.heightError[row][col] += heightError;
+          field.heightSampleCount[row][col] += 1;
+          measuredField = true;
+        }
+        if (measuredField) field.sampleCount[row][col] += 1;
+        if (Array.isArray(cell.centerDelta) && cell.centerDelta.length === 3) {
+          const current = sim.centers?.[row]?.[col] || { x: 0, y: 0, z: 0 };
+          const base = baseline.centers?.[row]?.[col] || { x: 0, y: 0, z: 0 };
+          centerErrors.push(
+            Math.hypot(
+              Number(cell.centerDelta[0]) - (current.x - base.x),
+              Number(cell.centerDelta[1]) - (current.y - base.y),
+              Number(cell.centerDelta[2]) - (current.z - base.z)
+            )
+          );
+        }
+        const slip = numericOrNull(cell.pinHoleSlipMm);
+        const force = numericOrNull(cell.actuatorForceN);
+        if (slip !== null) slipValues.push(slip);
+        if (force !== null) forceValues.push(force);
+      }
+      const missingObservationCount = (step.observationCells || []).filter((cell) => !observed.has(`${cell.row},${cell.col}`)).length;
+      comparisons.push({
+        stepId: measuredStep.stepId,
+        repeatIndex: Number(measuredStep.repeatIndex) || 1,
+        measuredCellCount: observed.size,
+        missingObservationCount,
+        alphaRmse: rmse(alphaErrors),
+        heightRmse: rmse(heightErrors),
+        centerRmse: rmse(centerErrors),
+        meanSignedAlphaError: meanOrNull(alphaErrors),
+        meanSignedHeightError: meanOrNull(heightErrors),
+        meanAbsAlphaError: meanOrNull(alphaErrors.map(Math.abs)),
+        meanAbsHeightError: meanOrNull(heightErrors.map(Math.abs)),
+        maxAbsHeightError: heightErrors.length ? Math.max(...heightErrors.map(Math.abs)) : null,
+        meanActuatorForceN: meanOrNull(forceValues),
+        meanPinHoleSlipMm: meanOrNull(slipValues),
+      });
+    }
+    const fit = {
+      alpha: calibrationLinearFit(alphaPairs),
+      height: calibrationLinearFit(heightPairs),
+    };
+    return {
+      schema: "rad-sim.calibration-experiment-comparison.v1",
+      comparisons,
+      field: finalizeCalibrationErrorField(field),
+      fit,
+      fitResidualField: calibrationFitResidualField(state, alphaPairs, heightPairs, fit),
+    };
+  }
+
+  function finiteAverage(values) {
+    const finite = values.filter((value) => Number.isFinite(value));
+    if (!finite.length) return null;
+    return finite.reduce((sum, value) => sum + value, 0) / finite.length;
+  }
+
+  function summarizeCalibrationComparison(comparison) {
+    const comparisons = comparison?.comparisons || [];
+    const heightErrors = comparisons.map((item) => item.heightRmse).filter(Number.isFinite);
+    const alphaErrors = comparisons.map((item) => item.alphaRmse).filter(Number.isFinite);
+    const centerErrors = comparisons.map((item) => item.centerRmse).filter(Number.isFinite);
+    const signedAlphaErrors = comparisons.map((item) => item.meanSignedAlphaError).filter(Number.isFinite);
+    const signedHeightErrors = comparisons.map((item) => item.meanSignedHeightError).filter(Number.isFinite);
+    const absAlphaErrors = comparisons.map((item) => item.meanAbsAlphaError).filter(Number.isFinite);
+    const absHeightErrors = comparisons.map((item) => item.meanAbsHeightError).filter(Number.isFinite);
+    const forceValues = comparisons.map((item) => item.meanActuatorForceN).filter(Number.isFinite);
+    const slipValues = comparisons.map((item) => item.meanPinHoleSlipMm).filter(Number.isFinite);
+    const field = comparison?.field || {};
+    const fitResidualField = comparison?.fitResidualField || {};
+    let worst = null;
+    for (const item of comparisons) {
+      const value = Number(item.maxAbsHeightError);
+      if (!Number.isFinite(value)) continue;
+      if (!worst || Math.abs(value) > Math.abs(worst.maxAbsHeightError)) worst = item;
+    }
+    return {
+      schema: "rad-sim.calibration-experiment-comparison-summary.v1",
+      stepCount: comparisons.length,
+      measuredCellCount: comparisons.reduce((sum, item) => sum + (Number(item.measuredCellCount) || 0), 0),
+      missingObservationCount: comparisons.reduce((sum, item) => sum + (Number(item.missingObservationCount) || 0), 0),
+      alphaRmseMean: finiteAverage(alphaErrors),
+      heightRmseMean: finiteAverage(heightErrors),
+      centerRmseMean: finiteAverage(centerErrors),
+      meanSignedAlphaError: finiteAverage(signedAlphaErrors),
+      meanSignedHeightError: finiteAverage(signedHeightErrors),
+      meanAbsAlphaError: finiteAverage(absAlphaErrors),
+      meanAbsHeightError: finiteAverage(absHeightErrors),
+      fit: comparison?.fit || null,
+      fitResidualMaxCombinedError: Number.isFinite(fitResidualField.maxCombinedError) ? fitResidualField.maxCombinedError : null,
+      fitResidualWorstCell: fitResidualField.worstCell || null,
+      topCells: Array.isArray(field.topCells) ? field.topCells : [],
+      fitResidualTopCells: Array.isArray(fitResidualField.topCells) ? fitResidualField.topCells : [],
+      maxAbsHeightError: worst ? Number(worst.maxAbsHeightError) : null,
+      maxAbsAlphaError: Number.isFinite(field.maxAbsAlphaError) ? field.maxAbsAlphaError : null,
+      maxCombinedError: Number.isFinite(field.maxCombinedError) ? field.maxCombinedError : null,
+      worstCell: field.worstCell || null,
+      worstStepId: worst?.stepId || null,
+      meanActuatorForceN: finiteAverage(forceValues),
+      meanPinHoleSlipMm: finiteAverage(slipValues),
+    };
+  }
+
+  function calibrationComparisonReport(state) {
+    const comparison = state.experiment?.calibrationComparison;
+    if (!comparison) throw new Error("no imported calibration comparison is available");
+    const summary = state.experiment?.calibrationComparisonSummary || summarizeCalibrationComparison(comparison);
+    return {
+      schema: "rad-sim.calibration-comparison-report.v1",
+      savedAt: new Date().toISOString(),
+      grid: {
+        rows: state.grid.rows,
+        cols: state.grid.cols,
+        cellSize: state.grid.cellSize,
+        backlash: state.grid.backlash,
+        couplingGain: state.grid.couplingGain,
+        zCouplingGain: state.grid.zCouplingGain,
+        pinRadius: state.grid.pinRadius,
+        holeRadius: state.grid.holeRadius,
+      },
+      hardwareProfile: state.grid.hardwareProfile?.name || null,
+      sourceResultsSchema: state.experiment?.calibrationResults?.schema || null,
+      summary,
+      comparison,
+    };
+  }
+
+  function exportCalibrationComparisonReport(state) {
+    return JSON.stringify(calibrationComparisonReport(state), null, 2);
   }
 
   function analyzeExperimentSequence(state) {
@@ -239,4 +2332,25 @@
   RAD.sequenceFrames = sequenceFrames;
   RAD.analyzeExperimentSequence = analyzeExperimentSequence;
   RAD.exportSequenceMetricsCsv = exportSequenceMetricsCsv;
+  RAD.characterizeLocalResponse = characterizeLocalResponse;
+  RAD.buildResponseMatrix = buildResponseMatrix;
+  RAD.exportResponseMatrix = exportResponseMatrix;
+  RAD.programmableDiscontinuityReport = programmableDiscontinuityReport;
+  RAD.exportProgrammableDiscontinuityReport = exportProgrammableDiscontinuityReport;
+  RAD.formalizationTargetManifest = formalizationTargetManifest;
+  RAD.exportFormalizationTargetManifest = exportFormalizationTargetManifest;
+  RAD.calibrationExperimentProtocol = calibrationExperimentProtocol;
+  RAD.exportCalibrationExperimentProtocol = exportCalibrationExperimentProtocol;
+  RAD.responseAtlas = responseAtlas;
+  RAD.exportResponseAtlas = exportResponseAtlas;
+  RAD.responseAtlasSweep = responseAtlasSweep;
+  RAD.exportResponseAtlasSweep = exportResponseAtlasSweep;
+  RAD.calibrationExperimentResultsTemplate = calibrationExperimentResultsTemplate;
+  RAD.exportCalibrationExperimentResultsTemplate = exportCalibrationExperimentResultsTemplate;
+  RAD.compareCalibrationExperimentResults = compareCalibrationExperimentResults;
+  RAD.summarizeCalibrationComparison = summarizeCalibrationComparison;
+  RAD.calibrationComparisonReport = calibrationComparisonReport;
+  RAD.exportCalibrationComparisonReport = exportCalibrationComparisonReport;
+  RAD.physicalPreviewComparison = physicalPreviewComparison;
+  RAD.responseDecayProfile = responseDecayProfile;
 })();

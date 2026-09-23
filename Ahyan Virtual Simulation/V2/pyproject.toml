@@ -1,0 +1,20 @@
+[project]
+name = "rad-sim"
+version = "0.1.0"
+description = "Synthetic normalized simulator for reconfigurable auxetic devices with backlash."
+requires-python = ">=3.10"
+dependencies = [
+  "numpy",
+  "scipy",
+  "matplotlib",
+  "networkx",
+  "ipywidgets",
+]
+
+[project.optional-dependencies]
+physics = [
+  "mujoco",
+]
+
+[tool.setuptools.packages.find]
+include = ["rad_sim*"]

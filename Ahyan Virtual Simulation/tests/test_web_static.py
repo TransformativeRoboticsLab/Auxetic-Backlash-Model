@@ -25,6 +25,24 @@ class WebStaticTests(unittest.TestCase):
             "RAD.applyPreset",
             "RAD.exportExperimentSequence",
             "RAD.importExperimentSequence",
+            "RAD.exportPaperRadMeshObj",
+            "RAD.simulateActive",
+            "RAD.compareEventOrder",
+            "RAD.compareSequenceOrder",
+            "RAD.paperRadCalibration",
+            "RAD.characterizeLocalResponse",
+            "RAD.physicalPreviewComparison",
+            "RAD.responseDecayProfile",
+            "alphaDecayRatio",
+            "zDecayRatio",
+            "alphaDecayLength",
+            "zDecayLength",
+            "physicalHeightRmsError",
+            "physicalHeightMaxError",
+            "physicalPreviewAvailable",
+            "modelErrorHeight",
+            "physicalMaxHeightDelta",
+            "physicalRmsCenterDelta",
             "localRefs",
             "validateLocalHttpEntry",
             "http.createServer",
@@ -42,7 +60,10 @@ class WebStaticTests(unittest.TestCase):
             "state.grid.backlash",
             "state.grid.couplingGain",
             "state.grid.zCouplingGain",
+            "state.grid.paperSideLengthMm",
+            "state.grid.paperHoleToleranceMm",
             "state.view.overlayMode",
+            "state.view.simulationMode",
             "state.view.membraneVisible",
             "state.experiment.presetName",
             "web module validation passed",
@@ -55,13 +76,20 @@ class WebStaticTests(unittest.TestCase):
         self.assertTrue((WEB / "vendor" / "three.min.js").exists())
         self.assertNotIn("cdn.jsdelivr.net", html)
         self.assertLess(html.index("three.min.js"), html.index("./renderer.js"))
+        self.assertLess(html.index("./math.js"), html.index("./operators.js"))
+        self.assertLess(html.index("./operators.js"), html.index("./inverse.js"))
         self.assertLess(html.index("./math.js"), html.index("./analysis.js"))
-        self.assertLess(html.index("./analysis.js"), html.index("./renderer.js"))
+        self.assertLess(html.index("./analysis.js"), html.index("./physics.js"))
+        self.assertLess(html.index("./physics.js"), html.index("./mesh_export.js"))
+        self.assertLess(html.index("./mesh_export.js"), html.index("./renderer.js"))
 
     def test_browser_modules_expose_expected_api(self):
         expected = {
             "state.js": ["RAD.createState", "RAD.serialize", "RAD.updateDerivedCells", "RAD.exportExperimentSequence", "RAD.importExperimentSequence", "RAD.deserialize"],
-            "analysis.js": ["RAD.analyzeExperimentSequence", "RAD.exportSequenceMetricsCsv", "RAD.sequenceFrames"],
+            "operators.js": ["RAD.localActuationEvent", "RAD.lockEvent", "RAD.applyEventSequence", "RAD.compareEventOrder", "RAD.compareSequenceOrder", "RAD.finiteDieOffRadius"],
+            "analysis.js": ["RAD.analyzeExperimentSequence", "RAD.exportSequenceMetricsCsv", "RAD.sequenceFrames", "RAD.characterizeLocalResponse", "RAD.physicalPreviewComparison", "RAD.responseDecayProfile"],
+            "physics.js": ["RAD.simulatePhysicalRelaxation", "RAD.simulateActive"],
+            "mesh_export.js": ["RAD.buildPaperRadMesh", "RAD.exportPaperRadMeshObj"],
             "math.js": [
                 "RAD.backlashActivation",
                 "RAD.alphaToTheta",
@@ -69,6 +97,9 @@ class WebStaticTests(unittest.TestCase):
                 "RAD.simulate",
                 "RAD.applyPreset",
                 "RAD.optimizeCommandsForTarget",
+                "RAD.paperRadCalibration",
+                "RAD.modelLengthToMm",
+                "RAD.mmToModelLength",
             ],
             "inverse.js": ["RAD.buildInverseDesignPlan", "RAD.applyInverseDesignPlan"],
             "renderer.js": ["RAD.RadRenderer"],
@@ -119,6 +150,28 @@ class WebStaticTests(unittest.TestCase):
         ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
         for symbol in ["toggleQuickDock", "quickDockMini", "syncQuickDock", "quickDockCollapsed", "is-collapsed"]:
             self.assertIn(symbol, ui_js)
+
+    def test_response_experiments_show_physical_preview_comparison(self):
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
+        analysis_js = (WEB / "analysis.js").read_text(encoding="utf-8")
+        for control_id in ["characterizationPhysical", "characterizationPhysicalMax", "characterizationDecay", "characterizationDecayLength"]:
+            self.assertIn(f'id="{control_id}"', html)
+        for symbol in [
+            "physicalPreviewAvailable",
+            "physicalHeightRmsError",
+            "physicalHeightMaxError",
+            "alphaDecayRatio",
+            "zDecayRatio",
+            "alphaDecayLength",
+            "zDecayLength",
+        ]:
+            self.assertIn(symbol, ui_js)
+            self.assertIn(symbol, analysis_js)
+        for label in ["phys rms", "phys max", "decay a", "len a"]:
+            self.assertIn(label, ui_js)
+        for symbol in ["responseDecayProfile", "log-linear shell max", "fitShellDecay", "nearestSourceDistance"]:
+            self.assertIn(symbol, analysis_js)
 
     def test_desktop_layout_keeps_lattice_visible_while_controls_scroll(self):
         css = (WEB / "styles.css").read_text(encoding="utf-8")
@@ -430,7 +483,7 @@ class WebStaticTests(unittest.TestCase):
         for control_id in ["overlayLegend", "overlayLegendTitle", "overlayLegendMin", "overlayLegendMax"]:
             self.assertIn(f'id="{control_id}"', html)
         app_js = (WEB / "app.js").read_text(encoding="utf-8")
-        for symbol in ["overlayLegendText", "updateOverlayLegend", "Target Error", "Reachability", "Cell State", "Z Residual"]:
+        for symbol in ["overlayLegendText", "updateOverlayLegend", "Target Error", "Reachability", "Cell State", "Z Residual", "Model Disagreement"]:
             self.assertIn(symbol, app_js)
         styles = (WEB / "styles.css").read_text(encoding="utf-8")
         for symbol in [".overlay-legend", ".legend-scale", ".legend-labels"]:
@@ -525,9 +578,13 @@ class WebStaticTests(unittest.TestCase):
     def test_error_and_travel_overlays_are_present(self):
         html = (WEB / "index.html").read_text(encoding="utf-8")
         self.assertIn('id="cellVisualMode"', html)
+        self.assertIn('id="simulationMode"', html)
         self.assertIn('value="abstract"', html)
+        self.assertIn('value="paperRad"', html)
+        self.assertIn('value="calibratedRad"', html)
         self.assertIn('value="mechanism"', html)
-        for option in ['value="zresidual"', 'value="error"', 'value="travel"', 'value="saturation"', 'value="strain"', 'value="displacement"', 'value="slope"', 'value="inverse"', 'value="sensitivity"', 'value="reachability"']:
+        self.assertIn('value="springPreview"', html)
+        for option in ['value="zresidual"', 'value="error"', 'value="travel"', 'value="saturation"', 'value="strain"', 'value="modelError"', 'value="displacement"', 'value="slope"', 'value="inverse"', 'value="sensitivity"', 'value="reachability"']:
             self.assertIn(option, html)
         for metric_id in ["recommendedActuators", "candidateActuators", "designScore", "projectedScore", "plannerSteps", "meanTravel", "maxSaturation", "saturatedActuators", "maxLinkStrain", "meanLinkStrain", "maxReferenceDisplacement", "maxSurfaceSlope", "meanSurfaceSlope", "signedTargetError", "targetErrorRange", "sensitivityCells", "meanSensitivity", "jacobianColumns", "meanReachability", "linearFitSteps", "linearFitError", "fps", "drawCalls", "triangles"]:
             self.assertIn(f'id="{metric_id}"', html)
@@ -542,6 +599,8 @@ class WebStaticTests(unittest.TestCase):
             self.assertIn(f'id="{control_id}"', html)
         state_js = (WEB / "state.js").read_text(encoding="utf-8")
         self.assertIn('cellVisualMode: "abstract"', state_js)
+        self.assertIn('simulationMode: "kinematic"', state_js)
+        self.assertIn("lockAlpha", state_js)
         for symbol in ["targetErrorVectorsVisible: true", "state.view.targetErrorVectorsVisible"]:
             self.assertIn(symbol, state_js)
         math_js = (WEB / "math.js").read_text(encoding="utf-8")
@@ -549,9 +608,10 @@ class WebStaticTests(unittest.TestCase):
             self.assertIn(symbol, math_js)
         ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
         self.assertIn("this.els.cellVisualMode.addEventListener", ui_js)
+        self.assertIn("this.els.simulationMode.addEventListener", ui_js)
         for symbol in [
             "applyCellVisualMode(mode)",
-            'mode === "mechanism" ? "mechanism" : "abstract"',
+            '["abstract", "paperRad", "calibratedRad", "mechanism"].includes(mode)',
             "this.state.view.explodedSelected = false",
             "stopsVisible: true",
             "pivotsVisible: true",
@@ -559,6 +619,8 @@ class WebStaticTests(unittest.TestCase):
             "fastenersVisible: true",
             "actuatorsVisible: true",
             "measurementMode: \"all\"",
+            "measurementMode: \"hardware\"",
+            "measurementMode: \"backlash\"",
             "stopsVisible: false",
             "pivotsVisible: false",
             "linkagesVisible: false",
@@ -569,9 +631,63 @@ class WebStaticTests(unittest.TestCase):
             self.assertIn(symbol, ui_js)
         for symbol in ["showTargetErrorVectors", "signedTargetError", "targetErrorRange", "meanSignedTargetError"]:
             self.assertIn(symbol, ui_js)
+        for symbol in ['this.state.view.overlayMode === "modelError"', 'this.state.view.simulationMode = "springPreview"']:
+            self.assertIn(symbol, ui_js)
         renderer_js = (WEB / "renderer.js").read_text(encoding="utf-8")
-        for symbol in ["targetErrorVectorsVisible", "renderErrorRods", "mean signed"]:
+        for symbol in ["targetErrorVectorsVisible", "renderErrorRods", "mean signed", 'mode === "modelError"', "modelErrorHeight", "modelErrorCenter", "physicalMaxHeightDelta"]:
             self.assertIn(symbol, renderer_js)
+
+    def test_browser_programmable_discontinuity_controls_are_present(self):
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        self.assertLess(html.index("./math.js"), html.index("./operators.js"))
+        self.assertLess(html.index("./operators.js"), html.index("./inverse.js"))
+        for control_id in [
+            "operatorCommitLock",
+            "operatorReleaseLock",
+            "operatorCheckOrder",
+            "operatorOrderState",
+            "operatorAlphaError",
+            "operatorHeightError",
+            "operatorSequenceState",
+            "operatorMaxOrderError",
+        ]:
+            self.assertIn(f'id="{control_id}"', html)
+
+        operators_js = (WEB / "operators.js").read_text(encoding="utf-8")
+        for symbol in [
+            "localActuationEvent",
+            "lockEvent",
+            "releaseEvent",
+            "clearActuationEvent",
+            "applyProgrammableEvent",
+            "applyEventSequence",
+            "compareEventOrder",
+            "compareSequenceOrder",
+            "stateDistance",
+            "noncommutingAdjacentPairs",
+            "maxOrderError",
+            "finiteDieOffRadius",
+            "lockAlphaCommutes",
+            "finalHeightError",
+        ]:
+            self.assertIn(symbol, operators_js)
+
+        ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
+        for symbol in [
+            "commitSelectedLockEvent",
+            "releaseSelectedLockEvent",
+            "checkSelectedEventOrder",
+            "selectedEventBaseline",
+            "updateOperatorInspector",
+            "RAD.applyProgrammableEvent",
+            "RAD.compareEventOrder",
+            "RAD.compareSequenceOrder",
+            "operatorSequenceState",
+            "operatorMaxOrderError",
+            "noncommutingAdjacentPairs",
+            "operator-order-check",
+        ]:
+            self.assertIn(symbol, ui_js)
 
     def test_surface_interpolation_controls_are_present(self):
         html = (WEB / "index.html").read_text(encoding="utf-8")
@@ -630,10 +746,27 @@ class WebStaticTests(unittest.TestCase):
         ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
         self.assertIn('id="zCoupling"', html)
         self.assertIn('id="zCouplingOut"', html)
-        for symbol in ["zCouplingGain: 0.32", "ensureGridSchema", "state.grid.zCouplingGain === undefined", "zCouplingGain"]:
+        for symbol in [
+            'id="pinRadius"',
+            'id="holeRadius"',
+            'id="pinHoleClearanceOut"',
+            'id="paperSideLengthMm"',
+            'id="paperHoleToleranceMm"',
+            'id="backlashMmOut"',
+            'id="pinHoleClearanceMmOut"',
+            'id="holeToleranceModelOut"',
+        ]:
+            self.assertIn(symbol, html)
+        for symbol in ["zCouplingGain: 0.32", "pinRadius: 0.18", "holeRadius: 0.225", "paperSideLengthMm: 35", "paperHoleToleranceMm: 0.1", "ensureGridSchema", "state.grid.zCouplingGain === undefined", "state.grid.paperSideLengthMm === undefined", "state.grid.paperHoleToleranceMm === undefined", "zCouplingGain"]:
             self.assertIn(symbol, state_js)
         for symbol in [
             "computeVerticalResidual",
+            "pinHoleClearance",
+            "paperRadReference",
+            "paperRadCalibration",
+            "modelLengthToMm",
+            "mmToModelLength",
+            "verticalDeadZone",
             "zResidual",
             "zDieOff",
             "const deadZone",
@@ -641,7 +774,7 @@ class WebStaticTests(unittest.TestCase):
             "height[r][c] = locked ? 0 : -0.65 * influence[r][c] + zResidual[r][c]",
         ]:
             self.assertIn(symbol, math_js)
-        for symbol in ["zCoupling: document.getElementById(\"zCoupling\")", "this.state.grid.zCouplingGain", "zCouplingOut"]:
+        for symbol in ["zCoupling: document.getElementById(\"zCoupling\")", "pinRadius: document.getElementById(\"pinRadius\")", "holeRadius: document.getElementById(\"holeRadius\")", "paperSideLengthMm: document.getElementById(\"paperSideLengthMm\")", "paperHoleToleranceMm: document.getElementById(\"paperHoleToleranceMm\")", "this.state.grid.zCouplingGain", "this.state.grid.pinRadius", "this.state.grid.holeRadius", "this.state.grid.paperSideLengthMm", "this.state.grid.paperHoleToleranceMm", "zCouplingOut", "pinHoleClearanceOut", "paperSideLengthMmOut", "paperHoleToleranceMmOut", "backlashMmOut", "pinHoleClearanceMmOut", "holeToleranceModelOut", "RAD.paperRadCalibration"]:
             self.assertIn(symbol, ui_js)
 
     def test_selected_influence_footprint_is_visible_and_toggleable(self):
@@ -784,12 +917,20 @@ class WebStaticTests(unittest.TestCase):
             "abstractDatum",
             "cellVisualMode",
             "abstractMode",
+            "paperRadMode",
             "record.abstract",
+            "record.paperRad",
             "Cell abstraction",
+            "Paper RAD cell",
+            "paperOuter",
+            "paperInner",
+            "paperClearance",
+            "pinVisualRadius",
+            "holeVisualRadius",
             "state.view.cellVisualMode || \"abstract\") !== \"abstract\"",
             "state.view.cellVisualMode || \"abstract\") === \"abstract\"",
         ]:
-            if symbol == "Cell abstraction":
+            if symbol in {"Cell abstraction", "Paper RAD cell"}:
                 self.assertIn(symbol, (WEB / "index.html").read_text(encoding="utf-8"))
             else:
                 self.assertIn(symbol, renderer_js)
@@ -818,6 +959,215 @@ class WebStaticTests(unittest.TestCase):
         styles = (WEB / "styles.css").read_text(encoding="utf-8")
         for symbol in [".sequence-chart", "cursor: crosshair", ".sequence-legend", ".legend-rms", ".legend-saturation", ".legend-delta"]:
             self.assertIn(symbol, styles)
+
+    def test_browser_local_response_characterization_is_present(self):
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        for control_id in [
+            "characterizationScope",
+            "runCharacterization",
+            "characterizationSummary",
+            "characterizationDetail",
+            "characterizationZSign",
+            "characterizationZExtrema",
+            "characterizationSuperposition",
+            "characterizationScale",
+            "characterizationRank",
+            "characterizationUnderactuated",
+            "frameworkLawSummary",
+            "frameworkLawDetail",
+            "formalizationSummary",
+            "formalizationDetail",
+            "saveProgrammableReport",
+            "saveFormalizationTargets",
+            "saveResponseAtlas",
+            "runResponseAtlasSweep",
+            "saveResponseAtlasSweep",
+            "sweepSummary",
+            "sweepTrend",
+        ]:
+            self.assertIn(f'id="{control_id}"', html)
+        for option in ['value="single"', 'value="pair"', 'value="cluster"', 'value="lattice"']:
+            self.assertIn(option, html)
+        state_js = (WEB / "state.js").read_text(encoding="utf-8")
+        for symbol in [
+            'characterizationScope: "single"',
+            "characterization: null",
+            "responseAtlasSweep: null",
+            "frameworkLawCandidates: null",
+            "frameworkFormalizationTargets: null",
+        ]:
+            self.assertIn(symbol, state_js)
+        analysis_js = (WEB / "analysis.js").read_text(encoding="utf-8")
+        for symbol in [
+            "function characterizeLocalResponse",
+            "characterizationCells",
+            "scopedState",
+            "superpositionError",
+            "responseMatrixDiagnostic",
+            "matrixRankFromColumns",
+            "countReachableFromColumns",
+            "activeSources",
+            "responseCells",
+            "alphaReachCells",
+            "zReachCells",
+            "positiveZReachCells",
+            "negativeZReachCells",
+            "maxPositiveHeightDelta",
+            "maxNegativeHeightDelta",
+            "responseRankAlpha",
+            "responseRankHeight",
+            "alphaUnderactuatedCells",
+            "heightUnderactuatedCells",
+            "pinHoleClearanceMm",
+            "programmableDiscontinuityReport",
+            "exportProgrammableDiscontinuityReport",
+            "formalizationTargetManifest",
+            "exportFormalizationTargetManifest",
+            "frameworkOperatorLawCandidates",
+            "frameworkFormalizationTargets",
+            "formalizationTarget",
+            "responseAtlas",
+            "exportResponseAtlas",
+            "responseAtlasSweep",
+            "exportResponseAtlasSweep",
+            "sweepSensitivityFromTrends",
+            "sweepOperatorLawCandidates",
+            "endpoint finite difference over each parameter trend",
+            "adjacent monotonicity over sampled parameter trend plus endpoint sensitivity",
+            "operatorLawCandidates",
+            "rad-sim.response-atlas.v1",
+            "rad-sim.response-atlas-sweep.v1",
+            "rad-sim.framework-law-candidates.v1",
+            "rad-sim.formalization-targets.v1",
+            "rad-sim.programmable-discontinuity-report.v1",
+            "rad-sim.browser-physical-preview.v1",
+            "dead_zone_zero_inside_backlash",
+            "noncommutativity_witness_from_order_error",
+            "browser-cannot-inspect-path",
+            "thresholded diagnostic predicates over locality, reachability, composition, and event-order metrics",
+            "composition_nonadditivity",
+            "event_order_noncommutativity",
+            "paperSupportedAssumptions",
+            "simulatorDiagnostics",
+            "reportPhysicalPreview",
+            "RAD.characterizeLocalResponse",
+        ]:
+            self.assertIn(symbol, analysis_js)
+        ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
+        for symbol in [
+            "characterizationScope: document.getElementById(\"characterizationScope\")",
+            "runCharacterization",
+            "renderCharacterization",
+            "this.state.experiment.characterizationScope",
+            "this.state.experiment.characterization = result",
+            "this.state.experiment.frameworkLawCandidates",
+            "this.state.experiment.frameworkFormalizationTargets",
+            'type: "characterization"',
+            "characterizationSummary",
+            "characterizationZSign",
+            "characterizationZExtrema",
+            "characterizationSuperposition",
+            "characterizationRank",
+            "characterizationUnderactuated",
+            "saveProgrammableReport",
+            "saveFormalizationTargets",
+            "saveResponseAtlas",
+            "runResponseAtlasSweep",
+            "saveResponseAtlasSweep",
+            "this.state.experiment.responseAtlasSweep = sweep",
+            "renderResponseAtlasSweep",
+            "renderFrameworkLawCandidates",
+            "renderFormalizationTargets",
+            "currentFrameworkReportMetadata",
+            "sweepSummary",
+            "sweepTrend",
+            "sensitivity?.dominant",
+            "operatorLawCandidates?.laws",
+            "law ",
+            "rad-sim-response-atlas",
+            "rad-sim-response-atlas-sweep",
+            "rad-sim-programmable-discontinuity-report",
+            "rad-sim-formalization-targets",
+            "characterize:",
+        ]:
+            self.assertIn(symbol, ui_js)
+        script = (ROOT / "tests" / "validate_web_modules.js").read_text(encoding="utf-8")
+        for symbol in [
+            "singleCharacterization",
+            "pairCharacterization",
+            "pair characterization should include at least the single-cell response footprint",
+            "pair characterization should report finite superposition residual",
+            "characterization should carry paper-scale clearance",
+            "pair characterization should report alpha response rank",
+            "pair characterization should report height response rank",
+            "pair characterization should report alpha underactuation",
+            "characterization should count upward z response cells",
+            "characterization should count downward z response cells",
+            "frameworkReport",
+            "framework report should count active command operators",
+            "framework report should include a composition law candidate",
+            "framework report should include an order law candidate",
+            "framework report should expose a noncommutativity formalization witness",
+            "analysis module should export formalization target manifests",
+            "framework report should include browser physical preview validation",
+            "browserAtlas",
+            "response atlas should include residual z observation cells",
+            "browserSweep",
+            "response atlas sweep should show clearance-gated neighbor residual trend",
+            "response atlas sweep should report negative clearance sensitivity",
+            "response atlas sweep should propose a clearance residual law",
+            "RAD.exportProgrammableDiscontinuityReport",
+        ]:
+            self.assertIn(symbol, script)
+
+    def test_browser_obj_export_controls_are_present(self):
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        self.assertIn('id="saveObj"', html)
+        self.assertLess(html.index("./analysis.js"), html.index("./physics.js"))
+        self.assertLess(html.index("./physics.js"), html.index("./mesh_export.js"))
+        self.assertLess(html.index("./mesh_export.js"), html.index("./renderer.js"))
+        mesh_js = (WEB / "mesh_export.js").read_text(encoding="utf-8")
+        for symbol in [
+            "buildPaperRadMesh",
+            "exportPaperRadMeshObj",
+            "outer_plate",
+            "inner_plate",
+            "connector",
+            "pinSegments",
+            "RAD.buildPaperRadMesh",
+            "RAD.exportPaperRadMeshObj",
+        ]:
+            self.assertIn(symbol, mesh_js)
+        ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
+        for symbol in ["saveObj", "rad-sim-paper-rad.obj", "RAD.buildPaperRadMesh", "RAD.simulateActive", "RAD.exportPaperRadMeshObj"]:
+            self.assertIn(symbol, ui_js)
+
+    def test_browser_physical_preview_mode_is_present(self):
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        self.assertIn('id="simulationMode"', html)
+        self.assertIn('value="springPreview"', html)
+        self.assertLess(html.index("./analysis.js"), html.index("./physics.js"))
+        self.assertLess(html.index("./physics.js"), html.index("./mesh_export.js"))
+
+        state_js = (WEB / "state.js").read_text(encoding="utf-8")
+        self.assertIn('simulationMode: "kinematic"', state_js)
+
+        physics_js = (WEB / "physics.js").read_text(encoding="utf-8")
+        for symbol in [
+            "simulatePhysicalRelaxation",
+            "simulateActive",
+            "spring-preview",
+            "physicalRmsHeightDelta",
+            "recomputeLinkStrain",
+            "recomputeSlope",
+            "RAD.simulatePhysicalRelaxation",
+            "RAD.simulateActive",
+        ]:
+            self.assertIn(symbol, physics_js)
+
+        app_js = (WEB / "app.js").read_text(encoding="utf-8")
+        for symbol in ["RAD.simulateActive", "Model: spring preview"]:
+            self.assertIn(symbol, app_js)
 
     def test_sequence_analysis_module_exports_csv_metrics(self):
         analysis_js = (WEB / "analysis.js").read_text(encoding="utf-8")
@@ -857,20 +1207,21 @@ class WebStaticTests(unittest.TestCase):
 
     def test_inverse_response_jacobian_is_present(self):
         html = (WEB / "index.html").read_text(encoding="utf-8")
-        for control_id in ["buildJacobian", "solveLinearFit", "applyLinearFit", "jacobianColumns", "meanReachability", "linearFitSteps", "linearFitError"]:
+        for control_id in ["buildJacobian", "selectUnderactuatedTarget", "solveLinearFit", "applyLinearFit", "saveInverseReport", "jacobianColumns", "meanReachability", "underTargetCells", "linearFitSteps", "linearFitError", "inverseReachabilitySummary"]:
             self.assertIn(f'id="{control_id}"', html)
         self.assertIn('value="reachability"', html)
+        self.assertIn('value="underactuated"', html)
         state_js = (WEB / "state.js").read_text(encoding="utf-8")
-        for symbol in ["jacobian:", "linearSolution:", "coverageMap", "columnCount", "meanCoverage", "conditionEstimate", "predictedError", "projectedError"]:
+        for symbol in ["jacobian:", "linearSolution:", "coverageMap", "columnCount", "meanCoverage", "conditionEstimate", "targetReachability", "predictedError", "projectedError"]:
             self.assertIn(symbol, state_js)
         inverse_js = (WEB / "inverse.js").read_text(encoding="utf-8")
-        for symbol in ["buildResponseJacobian", "solveLinearizedTargetFit", "applyLinearizedTargetFit", "linearized-jacobian-greedy-fit", "finite-difference-response-jacobian", "flattenDelta", "targetResidualVector", "heightDelta", "alphaDelta", "targetAlignment", "conditionEstimate", "commandZ", "commandAlpha", "z+", "z-", "alpha-", "alpha+", "RAD.buildResponseJacobian"]:
+        for symbol in ["buildResponseJacobian", "solveLinearizedTargetFit", "applyLinearizedTargetFit", "inverseDesignReport", "exportInverseDesignReport", "rad-sim.inverse-design-report.v1", "linearized-jacobian-greedy-fit", "finite-difference-response-jacobian", "finite-response-height-reachability", "sign-compatible finite-response-height-reachability", "targetReachabilityReport", "positiveHeightReachableMap", "negativeHeightReachableMap", "positiveUnderactuatedHeightCells", "negativeUnderactuatedHeightCells", "upwardTargetHeightCells", "downwardTargetHeightCells", "underactuatedHeightCells", "worstUnderactuatedCell", "flattenDelta", "targetResidualVector", "heightDelta", "alphaDelta", "targetAlignment", "conditionEstimate", "commandZ", "commandAlpha", "z+", "z-", "alpha-", "alpha+", "RAD.buildResponseJacobian"]:
             self.assertIn(symbol, inverse_js)
         ui_js = (WEB / "ui.js").read_text(encoding="utf-8")
-        for symbol in ["buildJacobian", "solveLinearFit", "applyLinearFit", "jacobian-built", "linear-fit-solved", "linear-fit-applied", "jacobianColumns", "meanReachability", "linearFitSteps", "linearFitError", 'this.state.view.overlayMode = "reachability"']:
+        for symbol in ["buildJacobian", "selectUnderactuatedTarget", "solveLinearFit", "applyLinearFit", "saveInverseReport", "jacobian-built", "linear-fit-solved", "linear-fit-applied", "jacobianColumns", "meanReachability", "underTargetCells", "linearFitSteps", "linearFitError", "positiveUnderactuatedHeightCells", "negativeUnderactuatedHeightCells", '"underactuated" : "reachability"']:
             self.assertIn(symbol, ui_js)
         renderer_js = (WEB / "renderer.js").read_text(encoding="utf-8")
-        for symbol in ['mode === "reachability"', "reachabilityStrength", "state.inverse?.jacobian", "linearSolution", "coverageMap", "maxCoverage"]:
+        for symbol in ['mode === "reachability"', 'mode === "underactuated"', "reachabilityStrength", "underactuatedStrength", "state.inverse?.jacobian", "linearSolution", "coverageMap", "maxCoverage", "underactuatedHeightMap"]:
             self.assertIn(symbol, renderer_js)
 
     def test_inverse_sensitivity_analysis_is_present(self):
@@ -936,7 +1287,7 @@ class WebStaticTests(unittest.TestCase):
         html = (WEB / "index.html").read_text(encoding="utf-8")
         self.assertIn('id="measurementMode"', html)
         self.assertIn('id="showMeasurementLabels"', html)
-        for option in ['value="all"', 'value="alpha"', 'value="theta"', 'value="height"', 'value="backlash"']:
+        for option in ['value="all"', 'value="alpha"', 'value="theta"', 'value="height"', 'value="backlash"', 'value="hardware"']:
             self.assertIn(option, html)
         state_js = (WEB / "state.js").read_text(encoding="utf-8")
         self.assertIn('measurementMode: "alpha"', state_js)
@@ -945,7 +1296,7 @@ class WebStaticTests(unittest.TestCase):
         self.assertIn("this.els.measurementMode.addEventListener", ui_js)
         self.assertIn("showMeasurementLabels", ui_js)
         renderer_js = (WEB / "renderer.js").read_text(encoding="utf-8")
-        for symbol in ["measurementLabel", "measurementRingRadius", "renderThetaGuide", "renderBacklashGuide", "gapLine"]:
+        for symbol in ["measurementLabel", "measurementRingRadius", "renderThetaGuide", "renderBacklashGuide", "gapLine", 'mode === "hardware"', "calibrationProfileSummary", "pinHoleClearanceMm"]:
             self.assertIn(symbol, renderer_js)
 
     def test_renderer_uses_persistent_surface_meshes(self):

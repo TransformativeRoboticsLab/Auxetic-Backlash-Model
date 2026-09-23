@@ -91,6 +91,9 @@
         abstractEdge: new T.LineBasicMaterial({ color: 0x172330, transparent: true, opacity: 0.88 }),
         abstractGuide: new T.MeshBasicMaterial({ color: 0x172330, transparent: true, opacity: 0.68 }),
         abstractDatum: new T.MeshBasicMaterial({ color: 0x5d6b78, transparent: true, opacity: 0.32 }),
+        paperOuter: new T.MeshStandardMaterial({ color: 0xcbd8e3, roughness: 0.48, metalness: 0.06, transparent: true, opacity: 0.74 }),
+        paperInner: new T.MeshStandardMaterial({ color: 0x14799d, roughness: 0.42, metalness: 0.08, transparent: true, opacity: 0.88 }),
+        paperClearance: new T.MeshBasicMaterial({ color: 0xe6b64a, transparent: true, opacity: 0.7 }),
         hinge: new T.MeshStandardMaterial({ color: 0x222b36, roughness: 0.32, metalness: 0.35 }),
         brace: new T.MeshStandardMaterial({ color: 0x314152, roughness: 0.38, metalness: 0.22 }),
         linkage: new T.MeshStandardMaterial({ color: 0x253545, roughness: 0.34, metalness: 0.28 }),
@@ -153,6 +156,8 @@
         abstractCorner: new T.CylinderGeometry(0.045, 0.045, 0.05, 16),
         abstractGuide: new T.BoxGeometry(1, 0.018, 0.018),
         abstractDatum: new T.BoxGeometry(1, 0.01, 0.01),
+        paperPin: new T.CylinderGeometry(1, 1, 0.055, 20),
+        paperClearanceRing: new T.TorusGeometry(1, 0.045, 8, 30),
         screwHead,
         screwSlot: new T.BoxGeometry(0.04, 0.006, 0.006),
         hinge,
@@ -522,15 +527,34 @@
         else if (mode === "travel") t = (Math.abs(state.cells.commandAlpha[r][c]) + Math.abs(state.cells.commandZ[r][c])) / 1.55;
         else if (mode === "saturation") t = sim.saturation?.[r]?.[c] || RAD.commandSaturation(state, state.cells.commandAlpha[r][c], state.cells.commandZ[r][c]);
         else if (mode === "strain") t = this.localLinkStrainStrength(sim, r, c);
+        else if (mode === "modelError") t = Math.abs(sim.modelErrorHeight?.[r]?.[c] || 0) / Math.max(1e-9, sim.metrics?.physicalMaxHeightDelta || 1);
         else if (mode === "displacement") t = (sim.displacement?.[r]?.[c] || 0) / Math.max(1e-9, sim.metrics?.maxReferenceDisplacement || 1);
         else if (mode === "slope") t = (sim.slope?.magnitude?.[r]?.[c] || 0) / Math.max(1e-9, sim.metrics?.maxSurfaceSlope || 1);
         else if (mode === "inverse") t = this.inversePlanStrength(state, r, c);
         else if (mode === "sensitivity") t = this.sensitivityStrength(state, r, c);
         else if (mode === "reachability") t = this.reachabilityStrength(state, r, c);
+        else if (mode === "underactuated") t = this.underactuatedStrength(state, r, c);
+        else if (mode === "operatorInteraction") t = this.operatorInteractionStrength(state, r, c);
+        else if (mode === "calibrationError") t = this.calibrationErrorStrength(state, r, c);
+        else if (mode === "calibrationResidual") t = this.calibrationErrorStrength(state, r, c, "fitResidualField");
         else t = (sim.alpha[r][c] - state.grid.alphaMin) / (state.grid.alphaMax - state.grid.alphaMin);
         return this.overlayMaterial(mode, t);
       }
       return this.materials.plate;
+    }
+
+    operatorInteractionStrength(state, r, c) {
+      const characterization = state.experiment?.characterization;
+      const value = Math.abs(characterization?.pairwiseInteractionMap?.[r]?.[c] || 0);
+      const scale = Math.max(1e-9, characterization?.pairwiseInteractionMapMax || characterization?.pairwiseMaxInteractionError || 0);
+      return value / scale;
+    }
+
+    calibrationErrorStrength(state, r, c, fieldName = "field") {
+      const field = state.experiment?.calibrationComparison?.[fieldName];
+      const value = Number(field?.combinedError?.[r]?.[c]) || 0;
+      const scale = Math.max(1e-9, Number(field?.maxCombinedError) || 0);
+      return Math.abs(value) / scale;
     }
 
     sensitivityStrength(state, r, c) {
@@ -544,6 +568,13 @@
       const jacobian = state.inverse?.jacobian;
       const value = jacobian?.coverageMap?.[r]?.[c] || 0;
       const scale = Math.max(1e-9, jacobian?.maxCoverage || 0);
+      return value / scale;
+    }
+
+    underactuatedStrength(state, r, c) {
+      const report = state.inverse?.jacobian?.targetReachability || state.inverse?.linearSolution?.targetReachability;
+      const value = report?.underactuatedHeightMap?.[r]?.[c] || 0;
+      const scale = Math.max(1e-9, report?.maxUnreachableHeightResidual || 0);
       return value / scale;
     }
 
@@ -609,6 +640,29 @@
         position[1] + (position[1] / length) * amount,
         z + amount * 0.55,
       ];
+    }
+
+    calibratedVisualDimensions(state, cellSize) {
+      const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+      const modelFromMm = (value, fallback) => {
+        if (value === null || value === undefined || typeof RAD.mmToModelLength !== "function") return fallback;
+        return RAD.mmToModelLength(state, value);
+      };
+      const summary = typeof RAD.calibrationProfileSummary === "function" ? RAD.calibrationProfileSummary(state) : null;
+      const profile = summary?.profile || {};
+      const pinRadius = summary?.pinRadiusModel ?? Number(state.grid.pinRadius ?? 0.18) * cellSize * 0.32;
+      const holeRadius = summary?.holeRadiusModel ?? Number(state.grid.holeRadius ?? 0.225) * cellSize * 0.32;
+      const plateThickness = modelFromMm(profile.plateThicknessMm, 0.045 * cellSize);
+      const stackHeight = modelFromMm(profile.jointStackHeightMm, 0.075 * cellSize);
+      const bossRadius = modelFromMm(profile.bossRadiusMm, 0.058 * cellSize);
+      const clampedPinRadius = clamp(pinRadius, 0.02 * cellSize, 0.24 * cellSize);
+      return {
+        pinRadius: clampedPinRadius,
+        holeRadius: clamp(holeRadius, Math.max(0.026 * cellSize, clampedPinRadius + 0.006 * cellSize), 0.28 * cellSize),
+        plateThickness: clamp(plateThickness, 0.018 * cellSize, 0.18 * cellSize),
+        stackHeight: clamp(stackHeight, 0.055 * cellSize, 0.25 * cellSize),
+        bossRadius: clamp(bossRadius, 0.04 * cellSize, 0.2 * cellSize),
+      };
     }
 
     renderState(state, sim) {
@@ -732,7 +786,7 @@
         for (let c = 0; c < cols; c += 1) {
           const group = new T.Group();
           group.userData = { r, c };
-          const record = { group, plates: [], plateHardware: [], hinges: [], links: [], pivotBosses: [], braces: [], abstract: null, gap: null, stops: [], actuator: null };
+          const record = { group, plates: [], plateHardware: [], hinges: [], links: [], pivotBosses: [], braces: [], abstract: null, paperRad: null, gap: null, stops: [], actuator: null };
           for (let i = 0; i < 4; i += 1) {
             const plate = new T.Mesh(plateGeometry, this.materials.plate);
             plate.castShadow = true;
@@ -800,6 +854,41 @@
           }
           group.add(abstract);
           record.abstract = { group: abstract, outer, inner, outerEdge, innerEdge, guideX, guideY, datumX, datumY, corners };
+
+          const paperRad = new T.Group();
+          const paperOuter = new T.Mesh(this.geometries.abstractBody, this.materials.paperOuter);
+          const paperInner = new T.Mesh(this.geometries.abstractInner, this.materials.paperInner);
+          const paperOuterEdge = new T.LineSegments(new T.EdgesGeometry(this.geometries.abstractBody, 15), this.materials.abstractEdge);
+          const paperInnerEdge = new T.LineSegments(new T.EdgesGeometry(this.geometries.abstractInner, 15), this.materials.abstractEdge);
+          const paperDatumX = new T.Mesh(this.geometries.abstractDatum, this.materials.abstractDatum);
+          const paperDatumY = new T.Mesh(this.geometries.abstractDatum, this.materials.abstractDatum);
+          const paperPins = [];
+          const paperClearanceRings = [];
+          paperOuter.userData = { r, c, selectable: true };
+          paperOuter.castShadow = true;
+          paperOuter.receiveShadow = true;
+          paperInner.castShadow = true;
+          paperInner.receiveShadow = true;
+          paperInner.position.z = 0.075;
+          paperOuterEdge.position.z = 0.035;
+          paperInnerEdge.position.z = 0.115;
+          paperDatumX.position.z = 0.135;
+          paperDatumY.position.z = 0.135;
+          paperDatumY.rotation.z = Math.PI / 2;
+          paperRad.add(paperOuter, paperInner, paperOuterEdge, paperInnerEdge, paperDatumX, paperDatumY);
+          this.selectables.push(paperOuter);
+          for (let i = 0; i < 4; i += 1) {
+            const pin = new T.Mesh(this.geometries.paperPin, this.materials.hinge);
+            const clearanceRing = new T.Mesh(this.geometries.paperClearanceRing, this.materials.paperClearance);
+            pin.rotation.x = Math.PI / 2;
+            clearanceRing.position.z = 0.165;
+            pin.castShadow = true;
+            paperRad.add(clearanceRing, pin);
+            paperPins.push(pin);
+            paperClearanceRings.push(clearanceRing);
+          }
+          group.add(paperRad);
+          record.paperRad = { group: paperRad, outer: paperOuter, inner: paperInner, outerEdge: paperOuterEdge, innerEdge: paperInnerEdge, datumX: paperDatumX, datumY: paperDatumY, pins: paperPins, clearanceRings: paperClearanceRings };
           this.cellRoot.add(group);
 
           const gapGeometry = new T.TorusGeometry(1, 0.006, 6, 48);
@@ -928,6 +1017,7 @@
       this.clearGroup(this.paintBrushPreviewRoot);
       const state = this.targetState;
       const { rows, cols, cellSize } = state.grid;
+      const calibratedDims = this.calibratedVisualDimensions(state, cellSize);
       for (let r = 0; r < rows; r += 1) {
         for (let c = 0; c < cols; c += 1) {
           const record = this.cellGroups.get(`${r},${c}`);
@@ -946,20 +1036,25 @@
           record.group.visible = cellVisible;
           record.group.position.set(center.x, center.y, center.z);
           const material = this.overlayColor(state, sim, r, c);
-          const abstractMode = (state.view.cellVisualMode || "abstract") === "abstract";
+          const visualMode = state.view.cellVisualMode || "abstract";
+          const abstractMode = visualMode === "abstract";
+          const paperRadMode = visualMode === "paperRad";
+          const calibratedRadMode = visualMode === "calibratedRad";
+          const mechanismMode = visualMode === "mechanism";
           record.abstract.group.visible = abstractMode;
+          record.paperRad.group.visible = paperRadMode || calibratedRadMode;
           for (let i = 0; i < 4; i += 1) {
             const [px, py] = positions[i];
             const [ex, ey, ez] = explodedPositions[i];
             const plate = record.plates[i];
-            plate.visible = !abstractMode;
+            plate.visible = mechanismMode;
             plate.material = material;
             plate.position.set(ex, ey, ez);
             plate.rotation.z = theta;
-            for (const part of record.plateHardware) part.visible = !abstractMode && state.view.fastenersVisible !== false;
-            record.hinges[i].visible = !abstractMode;
+            for (const part of record.plateHardware) part.visible = mechanismMode && state.view.fastenersVisible !== false;
+            record.hinges[i].visible = mechanismMode;
             record.hinges[i].position.set(ex, ey, 0.08 + ez + explodeAmount * 0.35);
-            record.pivotBosses[i].visible = !abstractMode && state.view.pivotsVisible !== false;
+            record.pivotBosses[i].visible = mechanismMode && state.view.pivotsVisible !== false;
             record.pivotBosses[i].position.set(ex, ey, 0.13 + ez + explodeAmount * 0.45);
             record.pivotBosses[i].scale.setScalar(0.85 + Math.max(0, state.grid.backlash) * 0.65);
           }
@@ -967,13 +1062,13 @@
             const a = explodedPositions[i];
             const b = explodedPositions[(i + 1) % explodedPositions.length];
             const link = record.links[i];
-            link.visible = !abstractMode;
+            link.visible = mechanismMode;
             link.position.set((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2 - 0.02);
             link.scale.x = Math.hypot(a[0] - b[0], a[1] - b[1]);
             link.rotation.z = Math.atan2(b[1] - a[1], b[0] - a[0]);
           }
           this.updateDiagonalBraces(record, state, explodedPositions, explodeAmount);
-          for (const brace of record.braces) brace.visible = !abstractMode && state.view.pivotsVisible !== false;
+          for (const brace of record.braces) brace.visible = mechanismMode && state.view.pivotsVisible !== false;
           const outerSize = Math.max(0.42, radius * 2 + state.grid.backlash * 0.45);
           const innerSize = Math.max(0.18, radius * 1.16);
           record.abstract.outer.material = material;
@@ -993,6 +1088,41 @@
             const [px, py] = positions[i];
             record.abstract.corners[i].position.set(px, py, 0.13);
             record.abstract.corners[i].scale.setScalar(0.9 + state.grid.backlash * 0.9);
+          }
+          const paperOuterSize = Math.max(0.44, radius * 2.05 + state.grid.backlash * 0.5);
+          const paperInnerSize = Math.max(0.22, radius * 1.18);
+          const pinVisualRadius = calibratedRadMode
+            ? calibratedDims.pinRadius
+            : Math.max(0.028, Math.min(0.14, Number(state.grid.pinRadius ?? 0.18) * cellSize * 0.32));
+          const holeVisualRadius = calibratedRadMode
+            ? calibratedDims.holeRadius
+            : Math.max(pinVisualRadius + 0.006, Math.min(0.17, Number(state.grid.holeRadius ?? 0.225) * cellSize * 0.32));
+          const outerPlateZScale = calibratedRadMode ? calibratedDims.plateThickness / 0.045 : 1;
+          const innerPlateZScale = calibratedRadMode ? calibratedDims.plateThickness / 0.065 : 1;
+          const paperInnerZ = calibratedRadMode ? calibratedDims.stackHeight : 0.075;
+          const paperEdgeZ = calibratedRadMode ? calibratedDims.plateThickness * 0.55 : 0.035;
+          const paperInnerEdgeZ = paperInnerZ + (calibratedRadMode ? calibratedDims.plateThickness * 0.55 : 0.04);
+          const paperDatumZ = paperInnerEdgeZ + 0.02;
+          record.paperRad.outer.material = material;
+          record.paperRad.outer.scale.set(paperOuterSize, paperOuterSize, outerPlateZScale);
+          record.paperRad.inner.scale.set(paperInnerSize, paperInnerSize, innerPlateZScale);
+          record.paperRad.inner.position.z = paperInnerZ;
+          record.paperRad.inner.rotation.z = theta;
+          record.paperRad.outerEdge.position.z = paperEdgeZ;
+          record.paperRad.outerEdge.scale.set(paperOuterSize, paperOuterSize, outerPlateZScale);
+          record.paperRad.innerEdge.position.z = paperInnerEdgeZ;
+          record.paperRad.innerEdge.scale.set(paperInnerSize, paperInnerSize, innerPlateZScale);
+          record.paperRad.innerEdge.rotation.z = theta;
+          record.paperRad.datumX.position.z = paperDatumZ;
+          record.paperRad.datumY.position.z = paperDatumZ;
+          record.paperRad.datumX.scale.set(paperOuterSize * 0.92, 1, 1);
+          record.paperRad.datumY.scale.set(paperOuterSize * 0.92, 1, 1);
+          for (let i = 0; i < record.paperRad.pins.length; i += 1) {
+            const [px, py] = positions[i];
+            record.paperRad.pins[i].position.set(px, py, paperDatumZ + 0.015);
+            record.paperRad.pins[i].scale.set(pinVisualRadius, pinVisualRadius, calibratedRadMode ? Math.max(0.75, calibratedDims.stackHeight / 0.075) : 1);
+            record.paperRad.clearanceRings[i].position.set(px, py, paperDatumZ + 0.035);
+            record.paperRad.clearanceRings[i].scale.set(holeVisualRadius, holeVisualRadius, holeVisualRadius);
           }
           record.gap.visible = cellVisible && state.view.gapsVisible;
           record.gap.position.set(center.x, center.y, center.z + 0.11 + explodeAmount * 0.75);
@@ -1709,7 +1839,7 @@
       ring.userData.disposeGeometry = true;
       this.measurementRoot.add(ring);
       if (measurementMode === "theta" || measurementMode === "all") this.renderThetaGuide(state, sim, r, c, center);
-      if (measurementMode === "backlash" || measurementMode === "all") this.renderBacklashGuide(state, sim, r, c, center);
+      if (measurementMode === "backlash" || measurementMode === "hardware" || measurementMode === "all") this.renderBacklashGuide(state, sim, r, c, center);
       if (measurementMode === "height" || measurementMode === "alpha" || measurementMode === "all") this.renderActuatorTravelGuide(state, sim, r, c, center);
       const xAxis = new T.Line(
         new T.BufferGeometry().setFromPoints([
@@ -1823,8 +1953,24 @@
       if (mode === "height") {
         return `z ${height.toFixed(3)}\ncmd z ${state.cells.commandZ[r][c].toFixed(2)}\nz residual ${zResidual.toFixed(3)}\ntarget ${sim.target[r][c].toFixed(3)}\nresidual ${residual.toFixed(3)}\nmean signed ${sim.metrics.meanSignedTargetError.toFixed(3)}`;
       }
+      if (mode === "modelError") {
+        const heightError = sim.modelErrorHeight?.[r]?.[c] || 0;
+        const centerError = sim.modelErrorCenter?.[r]?.[c] || 0;
+        return `model error z ${heightError.toFixed(3)}\ncenter shift ${centerError.toFixed(3)}\nrms z ${Number(sim.metrics?.physicalRmsHeightDelta || 0).toFixed(3)}\nmax z ${Number(sim.metrics?.physicalMaxHeightDelta || 0).toFixed(3)}\nmodel ${sim.metrics?.model || "kinematic"}`;
+      }
       if (mode === "backlash") {
         return `backlash b ${backlash.toFixed(3)}\ninfluence ${influence.toFixed(3)}\ndie-off ${Number.isFinite(sim.dieOff[r][c]) ? sim.dieOff[r][c] : "locked"}\ndead-zone +/-${backlash.toFixed(2)}`;
+      }
+      if (mode === "hardware") {
+        const summary = typeof RAD.calibrationProfileSummary === "function" ? RAD.calibrationProfileSummary(state) : null;
+        const profile = summary?.profile || {};
+        const clearanceMm = summary?.pinHoleClearanceMm;
+        const pinMm = profile.pinRadiusMm ?? null;
+        const holeMm = profile.holeRadiusMm ?? null;
+        const thicknessMm = profile.plateThicknessMm ?? null;
+        const stackMm = profile.jointStackHeightMm ?? null;
+        const fmtMm = (value) => (value === null || value === undefined ? "--" : `${Number(value).toFixed(2)} mm`);
+        return `profile ${profile.name || "paper-reference"}\npin ${fmtMm(pinMm)}  hole ${fmtMm(holeMm)}\nclearance ${fmtMm(clearanceMm)}\nplate ${fmtMm(thicknessMm)}  stack ${fmtMm(stackMm)}\ncoverage ${summary?.measuredCount || 0}/${summary?.totalCount || 5}`;
       }
       return `alpha ${alpha.toFixed(3)}  theta ${theta.toFixed(1)}\nz ${height.toFixed(3)}  z residual ${zResidual.toFixed(3)}\nnormal tilt ${normalTilt.toFixed(1)}  residual ${residual.toFixed(3)}\ninfluence ${influence.toFixed(3)}  link strain ${linkStrain.toFixed(3)}\ncmd a ${state.cells.commandAlpha[r][c].toFixed(2)}  cmd z ${state.cells.commandZ[r][c].toFixed(2)}\nb ${backlash.toFixed(2)}  ref disp ${referenceDisplacement.toFixed(3)}`;
     }
@@ -1832,6 +1978,11 @@
     measurementRingRadius(state, sim, r, c, mode) {
       if (mode === "alpha") return 0.32 + Math.sqrt(Math.max(0.01, sim.alpha[r][c])) * 0.18;
       if (mode === "backlash") return 0.45 + state.grid.backlash * 0.55;
+      if (mode === "hardware") {
+        const summary = typeof RAD.calibrationProfileSummary === "function" ? RAD.calibrationProfileSummary(state) : null;
+        const hole = summary?.holeRadiusModel ?? Number(state.grid.holeRadius ?? 0.225) * Number(state.grid.cellSize || 1) * 0.32;
+        return 0.45 + Math.max(0.02, hole) * 1.6;
+      }
       return 0.48;
     }
 

@@ -41,6 +41,262 @@
     return Math.max(alphaSat, zSat);
   }
 
+  function pinHoleClearance(state) {
+    const pinRadius = Math.max(0, Number(state.grid.pinRadius ?? 0.18));
+    const holeRadius = Math.max(pinRadius, Number(state.grid.holeRadius ?? 0.225));
+    return Math.max(0, holeRadius - pinRadius);
+  }
+
+  const HARDWARE_PROFILE_DIMENSIONS = Object.freeze([
+    "pinRadiusMm",
+    "holeRadiusMm",
+    "plateThicknessMm",
+    "jointStackHeightMm",
+    "bossRadiusMm",
+  ]);
+  const CALIBRATION_VISUAL_FIELDS = Object.freeze([
+    "pinRadiusMm",
+    "holeRadiusMm",
+    "plateThicknessMm",
+    "jointStackHeightMm",
+  ]);
+  const CALIBRATION_MESH_FIELDS = HARDWARE_PROFILE_DIMENSIONS;
+  const CALIBRATION_SOLVER_GAPS = Object.freeze([
+    "measured axial and hinge stiffness",
+    "actuator force/stroke calibration",
+    "friction and contact characterization",
+    "measured single, pair, and cluster response data",
+  ]);
+  const CALIBRATION_FIELD_LABELS = Object.freeze({
+    pinRadiusMm: "hinge pin radius",
+    holeRadiusMm: "mating hole radius",
+    plateThicknessMm: "plate thickness",
+    jointStackHeightMm: "joint stack height",
+    bossRadiusMm: "pivot boss radius",
+  });
+  const CALIBRATION_SOLVER_TASKS = Object.freeze([
+    {
+      id: "solver_axial_hinge_stiffness",
+      label: "Measure axial and hinge stiffness",
+      notes: "Run isolated bar and hinge displacement tests before fitting spring-hinge constants.",
+    },
+    {
+      id: "solver_actuator_force_stroke",
+      label: "Measure actuator force and stroke",
+      notes: "Record commanded stroke, realized travel, and force limits for the installed linear actuators.",
+    },
+    {
+      id: "solver_friction_contact",
+      label: "Characterize friction and contact",
+      notes: "Measure pin-hole slip, contact onset, and hysteresis under repeated actuation.",
+    },
+    {
+      id: "solver_response_data",
+      label: "Measure single, pair, and cluster response",
+      notes: "Capture alpha and vertical displacement fields for one cell, adjacent pairs, and small clusters.",
+    },
+  ]);
+
+  function nonNegativeNumberOrNull(value) {
+    if (value === null || value === undefined || value === "") return null;
+    const numeric = Number(value);
+    return Number.isFinite(numeric) && numeric >= 0 ? numeric : null;
+  }
+
+  function hardwareProfile(state) {
+    const raw = state.grid.hardwareProfile || {};
+    const sideLengthMm = Math.max(1e-9, Number(raw.sideLengthMm ?? state.grid.paperSideLengthMm ?? 35));
+    const fabricationHoleToleranceMm = Math.max(0, Number(raw.fabricationHoleToleranceMm ?? state.grid.paperHoleToleranceMm ?? 0.1));
+    const pinRadiusMm = nonNegativeNumberOrNull(raw.pinRadiusMm);
+    let holeRadiusMm = nonNegativeNumberOrNull(raw.holeRadiusMm);
+    if (pinRadiusMm !== null && holeRadiusMm !== null && holeRadiusMm < pinRadiusMm) holeRadiusMm = pinRadiusMm;
+    return {
+      name: String(raw.name || "paper-reference"),
+      source: String(raw.source || "RAD preprint defaults"),
+      sideLengthMm,
+      fabricationHoleToleranceMm,
+      backlashMm: nonNegativeNumberOrNull(raw.backlashMm),
+      pinRadiusMm,
+      holeRadiusMm,
+      plateThicknessMm: nonNegativeNumberOrNull(raw.plateThicknessMm),
+      jointStackHeightMm: nonNegativeNumberOrNull(raw.jointStackHeightMm),
+      bossRadiusMm: nonNegativeNumberOrNull(raw.bossRadiusMm),
+      notes: String(raw.notes || ""),
+    };
+  }
+
+  function hardwareMeasuredFields(profile) {
+    const p = profile || {};
+    return HARDWARE_PROFILE_DIMENSIONS.filter((field) => p[field] !== null && p[field] !== undefined);
+  }
+
+  function hardwareMissingFields(profile) {
+    const p = profile || {};
+    return HARDWARE_PROFILE_DIMENSIONS.filter((field) => p[field] === null || p[field] === undefined);
+  }
+
+  function calibrationProfileSummary(state) {
+    const profile = hardwareProfile(state);
+    const measuredFields = hardwareMeasuredFields(profile);
+    const missingFields = hardwareMissingFields(profile);
+    const modelScale = Math.max(1e-9, Number(state.grid.cellSize || 1)) / profile.sideLengthMm;
+    const pinHoleClearanceMm =
+      profile.pinRadiusMm !== null && profile.holeRadiusMm !== null ? profile.holeRadiusMm - profile.pinRadiusMm : null;
+    return {
+      profile,
+      measuredFields,
+      missingFields,
+      measuredCount: measuredFields.length,
+      totalCount: HARDWARE_PROFILE_DIMENSIONS.length,
+      coverageRatio: measuredFields.length / HARDWARE_PROFILE_DIMENSIONS.length,
+      pinHoleClearanceMm,
+      pinRadiusModel: profile.pinRadiusMm === null ? null : profile.pinRadiusMm * modelScale,
+      holeRadiusModel: profile.holeRadiusMm === null ? null : profile.holeRadiusMm * modelScale,
+      backlashModel: profile.backlashMm === null ? null : profile.backlashMm / profile.sideLengthMm,
+    };
+  }
+
+  function calibrationReadiness(state) {
+    const summary = calibrationProfileSummary(state);
+    const hasValue = (field) => summary.profile[field] !== null && summary.profile[field] !== undefined;
+    const visualMissingFields = CALIBRATION_VISUAL_FIELDS.filter((field) => !hasValue(field));
+    const meshMissingFields = CALIBRATION_MESH_FIELDS.filter((field) => !hasValue(field));
+    const visualReady = visualMissingFields.length === 0;
+    const meshReady = meshMissingFields.length === 0;
+    let level = "paper-scale";
+    if (meshReady) level = "mesh-calibrated";
+    else if (visualReady) level = "visual-calibrated";
+    else if (summary.measuredCount > 0) level = "partial-measured";
+    const summaryText = meshReady
+      ? "mesh-calibrated geometry; solver still needs physical response calibration"
+      : visualReady
+        ? "visual-calibrated geometry; mesh export still has missing dimensions"
+        : summary.measuredCount > 0
+          ? "partial measured geometry; solver still needs geometry and response calibration"
+          : "paper-scale defaults only; solver still lacks measured hardware geometry";
+    return {
+      profileName: summary.profile.name,
+      level,
+      measuredFields: summary.measuredFields,
+      missingFields: summary.missingFields,
+      visualMissingFields,
+      meshMissingFields,
+      solverGaps: [...CALIBRATION_SOLVER_GAPS],
+      coverageRatio: summary.coverageRatio,
+      visualReady,
+      meshReady,
+      solverReady: false,
+      summary: summaryText,
+    };
+  }
+
+  function calibrationMeasurementPlan(state) {
+    const profile = hardwareProfile(state);
+    const tasks = [];
+    for (const [index, field] of HARDWARE_PROFILE_DIMENSIONS.entries()) {
+      const measured = profile[field] !== null && profile[field] !== undefined;
+      const label = CALIBRATION_FIELD_LABELS[field] || field;
+      tasks.push({
+        id: `geometry_${field}`,
+        label: `Measure ${label}`,
+        category: "geometry",
+        status: measured ? "done" : "missing",
+        priority: measured ? 101 + index : 1 + index,
+        evidenceField: field,
+        notes: measured
+          ? "Available in the active hardware profile."
+          : "Required for real-cell visual/export geometry before solver calibration.",
+      });
+    }
+    for (const [index, task] of CALIBRATION_SOLVER_TASKS.entries()) {
+      tasks.push({
+        id: task.id,
+        label: task.label,
+        category: "solver",
+        status: "missing",
+        priority: 51 + index,
+        evidenceField: null,
+        notes: task.notes,
+      });
+    }
+    return tasks.sort((a, b) => {
+      if (a.status !== b.status) return a.status === "done" ? 1 : -1;
+      if (a.priority !== b.priority) return a.priority - b.priority;
+      return a.id.localeCompare(b.id);
+    });
+  }
+
+  function exportCalibrationMeasurementPlan(state) {
+    return JSON.stringify(
+      {
+        schema: "rad-sim.calibration-plan.v1",
+        profile: hardwareProfile(state),
+        readiness: calibrationReadiness(state),
+        tasks: calibrationMeasurementPlan(state),
+      },
+      null,
+      2
+    );
+  }
+
+  function applyHardwareProfileToGrid(state) {
+    const summary = calibrationProfileSummary(state);
+    const profile = summary.profile;
+    state.grid.hardwareProfile = profile;
+    state.grid.paperSideLengthMm = profile.sideLengthMm;
+    state.grid.paperHoleToleranceMm = profile.fabricationHoleToleranceMm;
+    if (summary.backlashModel !== null) state.grid.backlash = summary.backlashModel;
+    if (summary.pinRadiusModel !== null) state.grid.pinRadius = summary.pinRadiusModel;
+    if (summary.holeRadiusModel !== null) state.grid.holeRadius = Math.max(summary.holeRadiusModel, state.grid.pinRadius);
+    return summary;
+  }
+
+  function paperRadReference(state) {
+    const profile = state.grid.hardwareProfile || {};
+    const sideLengthMm = Math.max(1e-9, Number(profile.sideLengthMm ?? state.grid.paperSideLengthMm ?? 35));
+    const normalizedBacklash = 0.1;
+    const fabricationHoleToleranceMm = Math.max(0, Number(profile.fabricationHoleToleranceMm ?? state.grid.paperHoleToleranceMm ?? 0.1));
+    return {
+      sideLengthMm,
+      normalizedBacklash,
+      poissonRatio: -0.4,
+      fabricationHoleToleranceMm,
+      referenceBacklashMm: normalizedBacklash * sideLengthMm,
+      concentricParts: 2,
+      jointsPerPart: 4,
+    };
+  }
+
+  function modelLengthToMm(state, value) {
+    const reference = paperRadReference(state);
+    const cellSize = Math.max(1e-9, Number(state.grid.cellSize || 1));
+    return (Number(value) || 0) * reference.sideLengthMm / cellSize;
+  }
+
+  function mmToModelLength(state, valueMm) {
+    const reference = paperRadReference(state);
+    const cellSize = Math.max(1e-9, Number(state.grid.cellSize || 1));
+    return (Number(valueMm) || 0) * cellSize / reference.sideLengthMm;
+  }
+
+  function paperRadCalibration(state) {
+    const reference = paperRadReference(state);
+    const backlashGap = (Number(state.grid.backlash) || 0) * (Number(state.grid.cellSize) || 1);
+    return {
+      ...reference,
+      mmPerModelUnit: reference.sideLengthMm / Math.max(1e-9, Number(state.grid.cellSize || 1)),
+      configuredBacklashMm: modelLengthToMm(state, backlashGap),
+      pinRadiusMm: modelLengthToMm(state, Number(state.grid.pinRadius ?? 0.18)),
+      holeRadiusMm: modelLengthToMm(state, Number(state.grid.holeRadius ?? 0.225)),
+      pinHoleClearanceMm: modelLengthToMm(state, pinHoleClearance(state)),
+      fabricationHoleToleranceModel: mmToModelLength(state, reference.fabricationHoleToleranceMm),
+    };
+  }
+
+  function verticalDeadZone(state) {
+    return Math.min(commandLimits(state).z, pinHoleClearance(state));
+  }
+
   function clampAllCommands(state) {
     const { rows, cols } = state.grid;
     for (let r = 0; r < rows; r += 1) {
@@ -230,11 +486,11 @@
   }
 
   function computeVerticalResidual(state) {
-    const { rows, cols, backlash } = state.grid;
+    const { rows, cols } = state.grid;
     const zCouplingGain = Math.max(0, Math.min(1, Number(state.grid.zCouplingGain ?? 0.32)));
     const zResidual = RAD.matrix(rows, cols, 0);
     const zDieOff = RAD.matrix(rows, cols, Infinity);
-    const deadZone = Math.max(0, Math.min(commandLimits(state).z * 0.18, Number(backlash || 0) * 0.45));
+    const deadZone = verticalDeadZone(state);
     for (let sr = 0; sr < rows; sr += 1) {
       for (let sc = 0; sc < cols; sc += 1) {
         const source = state.cells.commandZ[sr][sc];
@@ -284,7 +540,7 @@
   function selectedCellFootprint(state, r, c) {
     const { backlash, couplingGain } = state.grid;
     const zCouplingGain = Math.max(0, Math.min(1, Number(state.grid.zCouplingGain ?? 0.32)));
-    const zDeadZone = Math.max(0, Math.min(commandLimits(state).z * 0.18, Number(backlash || 0) * 0.45));
+    const zDeadZone = verticalDeadZone(state);
     const alpha = propagateSingleSource(state, [r, c, state.cells.commandAlpha[r][c]], backlash, couplingGain);
     const z = propagateSingleSource(state, [r, c, state.cells.commandZ[r][c]], zDeadZone, zCouplingGain);
     return {
@@ -298,7 +554,7 @@
   function selectedCellCouplingMetrics(state, r, c) {
     const { backlash, couplingGain } = state.grid;
     const zCouplingGain = Math.max(0, Math.min(1, Number(state.grid.zCouplingGain ?? 0.32)));
-    const zDeadZone = Math.max(0, Math.min(commandLimits(state).z * 0.18, Number(backlash || 0) * 0.45));
+    const zDeadZone = verticalDeadZone(state);
     const alphaCommand = Number(state.cells.commandAlpha[r][c]) || 0;
     const zCommand = Number(state.cells.commandZ[r][c]) || 0;
     const alphaNeighborSignal = backlashActivation(alphaCommand, backlash) * couplingGain;
@@ -440,7 +696,8 @@
       for (let c = 0; c < cols; c += 1) {
         const locked = state.cells.locked[r][c];
         const rawAlpha = initialAlpha + influence[r][c];
-        alpha[r][c] = locked ? initialAlpha : Math.max(alphaMin, Math.min(alphaMax, rawAlpha));
+        const lockAlpha = Number(state.cells.lockAlpha?.[r]?.[c]) || initialAlpha;
+        alpha[r][c] = locked ? Math.max(alphaMin, Math.min(alphaMax, lockAlpha)) : Math.max(alphaMin, Math.min(alphaMax, rawAlpha));
         theta[r][c] = alphaToTheta(alpha[r][c]);
         height[r][c] = locked ? 0 : -0.65 * influence[r][c] + zResidual[r][c];
         targetError[r][c] = height[r][c] - target[r][c];
@@ -702,6 +959,24 @@
   RAD.clampCommandZ = clampCommandZ;
   RAD.clampCommandAlpha = clampCommandAlpha;
   RAD.commandSaturation = commandSaturation;
+  RAD.pinHoleClearance = pinHoleClearance;
+  RAD.HARDWARE_PROFILE_DIMENSIONS = HARDWARE_PROFILE_DIMENSIONS;
+  RAD.CALIBRATION_VISUAL_FIELDS = CALIBRATION_VISUAL_FIELDS;
+  RAD.CALIBRATION_MESH_FIELDS = CALIBRATION_MESH_FIELDS;
+  RAD.CALIBRATION_SOLVER_GAPS = CALIBRATION_SOLVER_GAPS;
+  RAD.hardwareProfile = hardwareProfile;
+  RAD.hardwareMeasuredFields = hardwareMeasuredFields;
+  RAD.hardwareMissingFields = hardwareMissingFields;
+  RAD.calibrationProfileSummary = calibrationProfileSummary;
+  RAD.calibrationReadiness = calibrationReadiness;
+  RAD.calibrationMeasurementPlan = calibrationMeasurementPlan;
+  RAD.exportCalibrationMeasurementPlan = exportCalibrationMeasurementPlan;
+  RAD.applyHardwareProfileToGrid = applyHardwareProfileToGrid;
+  RAD.paperRadReference = paperRadReference;
+  RAD.modelLengthToMm = modelLengthToMm;
+  RAD.mmToModelLength = mmToModelLength;
+  RAD.paperRadCalibration = paperRadCalibration;
+  RAD.verticalDeadZone = verticalDeadZone;
   RAD.clampAllCommands = clampAllCommands;
   RAD.computeLinkStrain = computeLinkStrain;
   RAD.referenceCenter = referenceCenter;
