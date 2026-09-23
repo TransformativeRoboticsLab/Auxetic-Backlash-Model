@@ -1,0 +1,313 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "RAD Two Cell Fusion Export",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "source",
+    "units",
+    "parameters",
+    "occurrences",
+    "joints",
+    "tracked_points",
+    "pose_samples"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "design_name",
+        "source_file",
+        "export_timestamp"
+      ],
+      "properties": {
+        "design_name": {
+          "type": "string"
+        },
+        "source_file": {
+          "type": "string"
+        },
+        "export_timestamp": {
+          "type": "string"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "units": {
+      "type": "object",
+      "required": [
+        "length",
+        "angle"
+      ],
+      "properties": {
+        "length": {
+          "type": "string"
+        },
+        "angle": {
+          "type": "string"
+        }
+      }
+    },
+    "coordinate_frame": {
+      "type": "object",
+      "properties": {
+        "origin": {
+          "type": "string"
+        },
+        "x_axis": {
+          "type": "string"
+        },
+        "y_axis": {
+          "type": "string"
+        },
+        "z_axis": {
+          "type": "string"
+        }
+      }
+    },
+    "parameters": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "expression",
+          "value"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "expression": {
+            "type": "string"
+          },
+          "value": {
+            "type": "number"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "occurrences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "component",
+          "transform"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "full_path": {
+            "type": "string"
+          },
+          "component": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "transform": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 16,
+            "maxItems": 16
+          },
+          "bodies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "role"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "role": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "joints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "joint_type",
+          "occurrence_one",
+          "occurrence_two"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "joint_type": {
+            "type": "string"
+          },
+          "occurrence_one": {
+            "type": "string"
+          },
+          "occurrence_two": {
+            "type": "string"
+          },
+          "axis": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "origin": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          },
+          "limits": {
+            "type": "object"
+          },
+          "role": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "tracked_points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "owner",
+          "role",
+          "local_position"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "owner": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "local_position": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "minItems": 3,
+            "maxItems": 3
+          }
+        }
+      }
+    },
+    "pose_samples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "sample_id",
+          "actuation",
+          "cell_metrics",
+          "occurrence_transforms"
+        ],
+        "properties": {
+          "sample_id": {
+            "type": "integer"
+          },
+          "actuation": {
+            "type": "number"
+          },
+          "cell_metrics": {
+            "type": "object",
+            "properties": {
+              "left_alpha": {
+                "type": "number"
+              },
+              "right_alpha": {
+                "type": "number"
+              },
+              "left_theta": {
+                "type": "number"
+              },
+              "right_theta": {
+                "type": "number"
+              },
+              "left_center": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "right_center": {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 3,
+                "maxItems": 3
+              },
+              "pitch": {
+                "type": "number"
+              }
+            }
+          },
+          "occurrence_transforms": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 16,
+              "maxItems": 16
+            }
+          },
+          "tracked_points_world": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 3,
+              "maxItems": 3
+            }
+          },
+          "interference": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

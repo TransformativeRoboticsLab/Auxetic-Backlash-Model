@@ -1,0 +1,52 @@
+{
+  "schema": "rad-sim.cad-rad-cell-reference.v1",
+  "source": "Autodesk A360 public share https://a360.co/4bMlzip",
+  "sourceAccess": {
+    "checkedAt": "2026-08-12",
+    "shortUrl": "https://a360.co/4bMlzip",
+    "resolvedViewerUrl": "https://northeastern1283.autodesk360.com/shares/public/SH90d2dQT28d5b6028112e6651b2f6c1b518",
+    "directSolverExportAvailableFromHtml": false,
+    "requiredSolverExports": [
+      "STEP/STP assembly with separated moving bodies",
+      "OBJ/STL mesh with body labels",
+      "pin axes and hole contact surfaces"
+    ]
+  },
+  "localFiles": {
+    "fusionArchive": "assets/cad/RADs_unit_cell.f3d",
+    "preview": "assets/cad/RADs_unit_cell_preview.png",
+    "derivedLayout": "outputs/two_cell_bench_packet/cad_rad_cell_layout.json"
+  },
+  "units": "mm",
+  "boundingBoxMm": {
+    "widthX": 55.604331129396634,
+    "widthY": 55.60433117189373,
+    "heightZ": 19.99999621152464
+  },
+  "nominalHoleDiameterMm": 3.4,
+  "fusionManifestLabels": {
+    "archiveDisplayName": "RADs unit cell",
+    "linkedCellDisplayName": "RADs free cell 4mm tall 3.4mm hole"
+  },
+  "fragmentNotes": [
+    {
+      "id": 0,
+      "name": "RADs free cell 4mm tall 3.4mm hole body",
+      "zMin": 3.9999988079071045,
+      "zMax": 8.000000953674316
+    },
+    {
+      "id": 1,
+      "name": "cell lower body",
+      "zMin": 0.0,
+      "zMax": 4.0
+    },
+    {
+      "id": 2,
+      "name": "18-8 stainless screw",
+      "zMin": -9.999998092651367,
+      "zMax": 9.999998092651367
+    }
+  ],
+  "simulationStatus": "CAD reference plus dimension-consistent layout; not yet a segmented rigid-body contact mesh."
+}
