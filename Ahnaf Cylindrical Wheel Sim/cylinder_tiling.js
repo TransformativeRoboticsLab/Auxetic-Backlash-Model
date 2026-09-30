@@ -1224,12 +1224,15 @@
     return { pose, moved, discontinuous, bind };
   }
 
-  function realizePose(n, m, spacing, requested) {
+  // `hold`: the commands conflict (see computeCellAlphas), so the
+  // mechanism stalls where it is instead of creeping toward a pose that
+  // can't exist.
+  function realizePose(n, m, spacing, requested, hold = false) {
     const enforce = constraintsEnabledInput.checked;
     const withCollisions = enforce || collisionEnabledInput.checked;
     const topoKey = [n, m, spacing, aSiteInput.value, bSiteInput.value].join("|");
     const key = `${topoKey}|${enforce}|${withCollisions}`;
-    const requestSig = gridSignature(requested);
+    const requestSig = `${gridSignature(requested)}|${hold}`;
     if (
       lastSolve &&
       !snapPosePending &&
@@ -1246,6 +1249,9 @@
       pose = buildPose(n, m, spacing, requested, withCollisions);
       status = !enforce ? "off" : pose.report.clear ? "free" : "start-collides";
       snapPosePending = false;
+    } else if (hold) {
+      pose = acceptedPose.pose;
+      status = "conflict";
     } else {
       let current = acceptedPose.pose;
       const reached = () => current.grid.every((row, r) => row.every((v, i) => Math.abs(v - requested[r][i]) < 1e-9));
@@ -1387,7 +1393,10 @@
   // `bounds` (optional [lo, hi]): the reachable range. An actuator or lock
   // commanded past it physically stops at its edge, so it only drags its
   // neighbors that far. Returned values for fixed cells stay the raw
-  // commands (for display); free cells are the coupled result.
+  // commands (for display); free cells are the coupled result. `conflict`
+  // is true when fixed cells ask for more twist difference than the bolts
+  // between them can span - an actuator and a lock fighting - so no pose
+  // satisfies both.
   function computeCellAlphas(n, m, baselineAlpha, bounds = null) {
     const limits = jointCouplingLimits();
     const base = twistSine(baselineAlpha);
@@ -1412,7 +1421,7 @@
           if (row > 0) bound(s[row - 1][i], limits.axial);
           if (row + 1 < m) bound(s[row + 1][i], limits.axial);
           // Fixed cells too far apart for the pins to span: split the
-          // difference; the solver will then hold at a binding pin.
+          // difference (flagged as a conflict below).
           const next = lo > hi ? (lo + hi) / 2 : clamp(base, lo, hi);
           change = Math.max(change, Math.abs(next - s[row][i]));
           s[row][i] = next;
@@ -1420,7 +1429,20 @@
       }
       if (change < 1e-12) break;
     }
-    return s.map((row, r) => row.map((v, i) => (isFixedCell(r, i) ? cellRoles[r][i].alpha : alphaFromTwistSine(v))));
+    let conflict = false;
+    const check = (a, b, limit) => {
+      if (Math.abs(a - b) > limit + 1e-9) conflict = true;
+    };
+    for (let row = 0; row < m; row += 1) {
+      for (let i = 0; i < n; i += 1) {
+        if (n > 1) check(s[row][i], s[row][(i + 1) % n], limits.ring);
+        if (row + 1 < m) check(s[row][i], s[row + 1][i], limits.axial);
+      }
+    }
+    return {
+      alphas: s.map((row, r) => row.map((v, i) => (isFixedCell(r, i) ? cellRoles[r][i].alpha : alphaFromTwistSine(v)))),
+      conflict,
+    };
   }
 
   // Largest distance any bolted pad pair sits off its common pin axis, in
@@ -1773,7 +1795,7 @@
     // drag their neighbors; clamping never widens the difference between
     // neighbors, so the bolted-pin limits still hold.
     const bounds = constraintsEnabledInput.checked ? reachableBounds(envelope, baselineAlpha) : null;
-    const cellAlphas = computeCellAlphas(n, m, baselineAlpha, bounds);
+    const { alphas: cellAlphas, conflict } = computeCellAlphas(n, m, baselineAlpha, bounds);
     lastCellAlphas = cellAlphas;
     lastCellRolesSnapshot = cellRoles;
     let driveLimited = false;
@@ -1786,7 +1808,7 @@
       })
     );
     const requestedTheta = targetAlphas.map((row) => row.map((a) => degToRad(cellThetaDeg(a))));
-    const solve = realizePose(n, m, spacing, requestedTheta);
+    const solve = realizePose(n, m, spacing, requestedTheta, conflict && constraintsEnabledInput.checked);
     const rings = solve.pose.rings;
     const thetaPerRow = solve.pose.grid;
     const realizedAlphas = thetaPerRow.map((row) => row.map(thetaToAlpha));
@@ -1911,6 +1933,7 @@
       held: "held at contact (would fuse through)",
       discontinuous: "held (step would jump discontinuously)",
       bind: "held - a bolted pin would bind",
+      conflict: "held - fixed cells conflict (bolts can't span their difference)",
       "start-collides": "start pose overlaps - can only move out",
       limited: "drive limited to the reachable range",
     };
@@ -1920,7 +1943,12 @@
     constraintStateMetric.classList.toggle("status-ok", status === "free" || status === "moving");
     constraintStateMetric.classList.toggle(
       "status-blocked",
-      status === "held" || status === "discontinuous" || status === "bind" || status === "start-collides" || status === "limited"
+      status === "held" ||
+        status === "discontinuous" ||
+        status === "bind" ||
+        status === "conflict" ||
+        status === "start-collides" ||
+        status === "limited"
     );
     let meanRealized = 0;
     let maxLag = 0;
@@ -1936,12 +1964,14 @@
       ? envelope.map(([lo, hi]) => (lo === hi ? lo.toFixed(2) : `${lo.toFixed(2)} - ${hi.toFixed(2)}`)).join(", ")
       : "none";
     updateReachRuler(envelope, backlash, meanRealized, constraintsEnabledInput.checked);
-    const stoppedAtContact = status === "held" || status === "discontinuous" || status === "bind";
+    const stoppedAtContact = status === "held" || status === "discontinuous" || status === "bind" || status === "conflict";
     driveRealizedMetric.textContent =
       status === "limited"
         ? `${meanRealized.toFixed(2)} - command ${alphaCommand.toFixed(2)} is out of reach`
         : stoppedAtContact
-          ? `${meanRealized.toFixed(2)} - ${status === "bind" ? "a bolted pin would bind" : "stopped at contact"}`
+          ? `${meanRealized.toFixed(2)} - ${
+              status === "bind" ? "a bolted pin would bind" : status === "conflict" ? "fixed cells conflict" : "stopped at contact"
+            }`
           : status === "moving"
             ? `${meanRealized.toFixed(2)} - moving`
             : meanRealized.toFixed(2);

@@ -120,7 +120,13 @@ python -m http.server 8000
   pulls the far side to 1.53 with a 3.0 mm pin, 1.40 with a 2.3 mm pin. (The
   limits keep 10% of the clearance in hand for small geometric extras.) The
   solver also refuses any step that would push a bolted pad pair further off
-  its pin than the clearance ("a bolted pin would bind"). Earlier versions
+  its pin than the clearance ("a bolted pin would bind"). An actuator or
+  lock commanded past the reachable range stops at its edge and only drags
+  its neighbors that far. If fixed cells ask for more twist difference than
+  the bolts between them can span (e.g. a lock at 1.17 next to an actuator
+  at 1.80), no pose satisfies both: the mechanism stalls where it is and
+  reports "fixed cells conflict" instead of creeping toward an impossible
+  target. Earlier versions
   coupled cells through the paper's abstract backlash slider (0.10 alpha,
   ~7 deg), which let neighbors differ far more than a bolted joint can and
   visibly split the second pin's holes; that slider now only sets the
