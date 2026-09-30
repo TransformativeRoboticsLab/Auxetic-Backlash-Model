@@ -585,6 +585,30 @@
               );
             });
           }
+
+          // The wheel's two open axial ends (the bottom row's south pads,
+          // the top row's north pads) have no neighbor to bolt to, so the
+          // loop above never draws a pin there. Everywhere else, that pin
+          // mesh happens to sit right over the small overlap between a
+          // pad's face and its own hole placeholder (not a boolean cut, so
+          // the two are never quite flush) and hides it; at the open ends
+          // nothing covers it, which is what was flickering. A short plug
+          // through just that one pad - same look as a capped bolt end -
+          // covers it the same way.
+          if (pinnedRows) {
+            // Each end check is independent (not row===0 vs row===m-1
+            // exclusively), so a single-row wheel (m===1, both ends free
+            // on the same row) still gets both plugs.
+            const openSites = [];
+            if (row === 0) openSites.push("south");
+            if (row === m - 1) openSites.push("north");
+            openSites.forEach((site) => {
+              ["upper", "lower"].forEach((layer) => {
+                const pad = padWorld(rings[row], i, layer, site);
+                placePin(count++, pad.x, pad.y, pad.z, frame.normal.x, frame.normal.y, 0, CAD.bodyThicknessMm * 1.4, radius);
+              });
+            });
+          }
         }
       }
     }

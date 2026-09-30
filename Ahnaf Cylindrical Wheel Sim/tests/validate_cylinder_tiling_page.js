@@ -398,10 +398,18 @@ async function checkViewport(browser, name, viewport) {
 
   // Physical pins (pin-sized backlash, concept from Ahyan's two-cell V2):
   // one per hub, two per circumferential joint (opposite sites pin both
-  // pad pairs) and two per axial joint (north/south, likewise) =
-  // n*m + 2*n*m + 2*n*(m-1) = 30 + 60 + 40 at the n=10, m=3 default.
+  // pad pairs), two per axial joint (north/south, likewise), and two
+  // cosmetic end plugs per cell on each of the wheel's two open axial ends
+  // (nothing to bolt to there, so nothing would otherwise cover the gap
+  // between a pad and its own hole placeholder) =
+  // n*m + 2*n*m + 2*n*(m-1) + 2*2*n = 30 + 60 + 40 + 40 at the n=10, m=3
+  // default.
   const pinsDefault = await page.evaluate(() => window.__cylinderTilingDebug.getPinInfo());
-  assert.strictEqual(pinsDefault.visibleCount, 130, `${name} should render one pin per hub and two per circumferential and axial joint`);
+  assert.strictEqual(
+    pinsDefault.visibleCount,
+    170,
+    `${name} should render one pin per hub, two per circumferential and axial joint, and two end plugs per cell per open axial end`
+  );
   assert.ok(Math.abs(pinsDefault.renderedRadius - 1.5) < 1e-6, `${name} default 3.0 mm pin should render at 1.5 mm radius`);
   // dphi = asin(radial clearance / arm length) = asin(0.2 / 22.451) = 0.51 deg.
   assert.ok(Math.abs(pinsDefault.deltaPhiDeg - 0.5104) < 0.001, `${name} pin in-plane dead zone should be asin(b/L) (got ${pinsDefault.deltaPhiDeg})`);
