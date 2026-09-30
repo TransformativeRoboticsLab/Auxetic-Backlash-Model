@@ -290,14 +290,16 @@ python -m http.server 8000
   (reported, not resolved by tilting the cells).
 - Small twists are out of reach: below about 20.5 deg each joint has four
   pads near one spot on two layers, and neighbors' same-layer pads overlap
-  (they touch exactly when 2L*sin(theta/2) = 2 x 4.0 mm). The paper's
-  reference state alpha = 1 (theta = 10 deg) falls in that band - but
-  Jacob's CAD shows the real part drawn with its two crosses 36.9 deg apart
-  (one on the diagonals, the other at 8.1 deg), well inside the reachable
-  window. So the angle law's theta is probably not the geometric twist
-  between the crosses (if the CAD is the alpha = 1 pose, it is offset by
-  ~27 deg); this model uses theta as the geometric twist. To confirm with
-  Jacob: which alpha the CAD pose is, and how theta is measured.
+  (they touch exactly when 2L*sin(theta/2) = 2 x 4.0 mm, i.e.
+  theta_min = 2*asin(padR/L)). This is a real hardware limit, not a model
+  artifact: the angle law's theta is the geometric twist between the two
+  crosses (confirmed by Jacob, 2026-10-01), and the paper's alpha = 1
+  (theta = 10 deg) overlaps with the current parts - "our physical system
+  cannot achieve that", though a tighter mechanism could. With these parts
+  reaching 10 deg would take pads of radius ~2.0 mm (same arms), arms of
+  ~46 mm (same pads), or a layer stacking that puts the clashing pads on
+  different layers. Jacob's CAD poses sit inside the reachable window
+  (two-cell assembly 39.8 deg, unit cell ~53 deg).
 - Collisions are checked between near neighbors only (ring neighbors one
   and two over, and the three nearest cells in the next row), and
   penetration is sampled rather than solved exactly, so very shallow
