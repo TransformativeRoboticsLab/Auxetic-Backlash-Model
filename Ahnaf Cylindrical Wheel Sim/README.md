@@ -137,17 +137,24 @@ python -m http.server 8000
   the ring's actual geometry (`getRingGeometry`), not against the
   orientation code's own inputs - an earlier version passed every
   self-consistency check while rendering cells rotated like spokes.
-- **Cylinder stacking**: `m` rings are repeated along the axle (`z`) axis at
-  a configurable pitch. Rows are still a set spacing apart rather than
-  pinned and solved - see Known limitations. A cell's north pads and the
-  south pads of the cell above it are the axial joint (drawn with pins).
+- **Cylinder stacking**: `m` rings are stacked along the axle (`z`). By
+  default the rows are pinned together like the cells in a ring: a cell's
+  north pads meet the south pads of the cell above, so the row spacing is
+  set by the pins - `2L*cos(theta/2)` for a uniform ring (42.6 mm at the
+  default) - and changes as the cells twist. Unchecking "Pin rows together"
+  hands the spacing to the axial pitch slider instead; the rows are then
+  separate rings with nothing joining them (no axial pins, and a large pitch
+  simply leaves them floating apart). Rows at different twists can't have
+  their north/south pads meet exactly - each pad sits `L*sin(theta/2)` off
+  its hub along the ring - so e.g. the Barrel preset leaves ~6 mm for its
+  axial joints to absorb, shown in the axial pin readout.
 - **Pin alignment**: the circumferential readout is how far each joint's
   paired pad centers sit off a common pin axis (the bisector of the two
   cells' normals), read from the actual pad positions. It is ~0: their only
   separation is along the pin, by the stacked plates (`4 mm * cos(bend/2)`).
-  A test checks this from the rendered meshes. The axial readout is the gap
-  between a cell's north pad and the south pad of the cell above:
-  `axialPitch - 2L*cos(theta/2)`-ish, 5.8 mm at the default pitch.
+  A test checks this from the rendered meshes. The axial readout is the same
+  measure for a cell's north pads against the south pads of the cell above:
+  ~0 for pinned rows sharing one twist, the real gap for unpinned rows.
 - **Collisions ("no fusing through other solids")**: every cross is modeled
   at its real 4 mm thickness as a hub disc, four pad discs and four
   half-arms, each extruded along the cell's own normal in its actual 3D
@@ -163,17 +170,27 @@ python -m http.server 8000
   default), the pose never jumps to a command. It walks from the last valid
   pose toward the command in 1 deg steps of cell twist, collision-checking
   each step; a step that would overlap, or make any cell jump more than
-  4 mm or turn more than 5 deg (Ahyan's V2 thresholds), is refused, and the
-  pose settles at the contact point found by bisection ("held at contact").
-  Leaving an already-overlapping pose is allowed as long as the overlap
-  doesn't grow. Loading a file or Reset All jumps straight to the new setup.
-  The panel shows the constraint state, the realized alpha against the
-  command, and the collision-free range of one shared alpha. At the
-  defaults (n = 10, pitch 50 mm) that is effective alpha 1.22-1.75 plus a
-  separate 0.40-0.49 window across a colliding band that the pose can't
-  cross; below ~1.22 neighbors' same-layer pads clash, above ~1.75 arms do.
-  The default alpha is 1.4 (effective 1.30) so the page opens in a valid
-  pose; the earlier 1.3 (effective 1.20) overlapped by ~0.5 mm.
+  4 mm or turn more than 5 deg (Ahyan's V2 thresholds), is refused. When a
+  whole-structure step is refused, each row and then (in rows whose cells
+  want different things) each cell tries on its own, shrinking the step
+  down to 1/8 deg, so parts that can move keep moving and blocked parts
+  creep up to their contact point and hold there ("held at contact"). Only
+  rows a move touches are re-checked. Leaving an already-overlapping pose is
+  allowed as long as the overlap doesn't grow. Loading a file or Reset All
+  jumps straight to the new setup.
+- **Reachable range and the drive limit**: the collision-free range of one
+  shared alpha is swept per setting. At the defaults that is effective alpha
+  1.22-1.75 (plus a separate 0.40-0.49 window no slider command can reach);
+  below ~1.22 - which includes every negative theta - neighbors'
+  same-layer pads clash at the joints, above ~1.75 arms do. Like Ahyan's V2
+  clamping its drive to the nearest feasible value, the shared drive is
+  limited to that range, 0.02 inside its edges, so a command past it doesn't
+  jam the whole structure against its stops: the Drive panel says the
+  command is out of reach and where the pose actually is, and a green strip
+  under the slider shows the reachable commands with a hollow marker at the
+  realized pose. Individual cell commands aren't limited this way; they
+  hold at contact instead. The default alpha is 1.4 (effective 1.30) so the
+  page opens in a valid pose.
 - **Backlash tilt check**: with radially facing cells, each joint bolt points
   radially, so the bend between neighboring cells is a tilt of two plates on
   one bolt. The limit comes from the exact pin-in-hole contact relation
@@ -238,17 +255,19 @@ python -m http.server 8000
 
 - The double-pin closure only arises for opposite attachment sites
   (east/west, north/south); other site pairs get a single pin per joint.
-- Axial (row-to-row) spacing is a set pitch, not solved from the pin
-  geometry: the north/south pads of stacked cells sit 5.8 mm apart along the
-  axle at the default pitch rather than concentric, and their exemption
-  from the collision check assumes they are the axial joint.
+- Pinned row spacing is the average over a row's cells, and rows stay
+  vertical; rows at different twists leave their north/south pads offset
+  (reported, not resolved by tilting the cells).
+- Negative theta is out of reach in this model: at small twists (about
+  -25 to +25 deg) each joint has four pads in the same spot on two layers,
+  so same-layer pads overlap. The paper's reference state alpha = 1
+  (theta = 10 deg) falls in that band, which suggests the model's layer
+  stacking at a joint, or its theta convention, doesn't match the real
+  parts yet - to confirm against the CAD model.
 - Collisions are checked between near neighbors only (ring neighbors one
   and two over, and the three nearest cells in the next row), and
   penetration is sampled rather than solved exactly, so very shallow
   overlaps between samples can be missed (~0.05 mm tolerance).
-- The constraint solver interpolates every cell toward the command together;
-  when one part of the structure hits contact, the whole pose holds there,
-  rather than letting unconstrained cells keep moving.
 - Per-cell actuation is a discrete backlash-gated relaxation, not a force/
   energy equilibrium solve - it's a reasonable discrete analogue of the
   paper's coupling law, not a calibrated mechanics model.

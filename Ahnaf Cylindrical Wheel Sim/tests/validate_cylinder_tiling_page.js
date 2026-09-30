@@ -115,8 +115,11 @@ async function checkViewport(browser, name, viewport) {
   assert.ok(defaultDiameter > 0, `${name} default diameter should be positive`);
   const turnDeg = Number(defaults.turn.replace(/ ?deg$/, ""));
   assert.ok(Math.abs(turnDeg - 36) <= 0.1, `${name} turn angle for n=10 should be 36 deg (360/10)`);
+  // Rows are pinned by default, so the row spacing is set by the pins:
+  // 2L*cos(theta/2) = 2*22.1*cos(15.5 deg) = 42.6 mm at theta = 31 deg.
   const defaultHeight = mmValue(defaults.height);
-  assert.ok(Math.abs(defaultHeight - 2 * 50) <= 0.5, `${name} default assembly height should be (m-1)*axialPitch`);
+  const pinnedPitch = 2 * 22.1 * Math.cos(((70 * 1.3 - 60) * Math.PI) / 360);
+  assert.ok(Math.abs(defaultHeight - 2 * pinnedPitch) <= 0.2, `${name} default assembly height should be (m-1) pinned row pitches (got ${defaultHeight})`);
 
   // Radial cell orientation: each cell's thickness-axis normal (read via the
   // debug hook, which reports the cell group's local-Z direction in world
@@ -252,15 +255,50 @@ async function checkViewport(browser, name, viewport) {
   assert.ok(jointGeometry.worstLateral < 1e-6, `${name} pinned pads should share one pin axis (off by ${jointGeometry.worstLateral} mm)`);
   assert.ok(jointGeometry.worstAlong < 1e-6, `${name} pinned pads should be spaced only by the stacked plates along the pin (off by ${jointGeometry.worstAlong} mm)`);
 
-  // The pin-alignment readout agrees (~0), and the axial gap matches the
-  // geometric constant: axial pitch minus the two half-cells' site reach
-  // (50 - 2*22.1 = 5.8mm), since every row shares one diameter here.
+  // The pin-alignment readout agrees (~0), and with rows pinned (default)
+  // a cell's north pads meet the south pads of the cell above too.
   const pinAlignmentDefault = await page.evaluate(() => window.__cylinderTilingDebug.getPinAlignment());
   assert.ok(pinAlignmentDefault.maxCircumferential < 1e-6, `${name} pin-offset readout should be ~0 (got ${pinAlignmentDefault.maxCircumferential})`);
-  assert.ok(
-    Math.abs(pinAlignmentDefault.maxAxial - 5.8) < 0.5,
-    `${name} default axial pin gap should match axialPitch - 2*siteRadius = 5.8mm (got ${pinAlignmentDefault.maxAxial})`
-  );
+  assert.ok(pinAlignmentDefault.maxAxial < 1e-6, `${name} pinned rows' north/south pads should meet (got ${pinAlignmentDefault.maxAxial})`);
+
+  // Unpinning the rows hands the spacing to the axial pitch slider: rows
+  // become separate rings (no axial pins), and a large pitch opens a real
+  // gap between them - the pads 70 - 42.6 = 27.4 mm apart along the axle.
+  const setPinRows = (on) =>
+    page.evaluate((value) => {
+      const input = document.getElementById("pinRows");
+      input.checked = value;
+      input.dispatchEvent(new Event("change", { bubbles: true }));
+    }, on);
+  await setPinRows(false);
+  await page.evaluate(() => {
+    const input = document.getElementById("axialPitch");
+    input.value = "70";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await page.waitForTimeout(200);
+  const unpinned = await page.evaluate(() => ({
+    disabled: document.getElementById("axialPitch").disabled,
+    height: document.getElementById("heightMetric").textContent,
+    gap: window.__cylinderTilingDebug.getPinAlignment().maxAxial,
+    pins: window.__cylinderTilingDebug.getPinInfo().visibleCount,
+  }));
+  assert.strictEqual(unpinned.disabled, false, `${name} the pitch slider should be usable once rows are unpinned`);
+  assert.ok(Math.abs(mmValue(unpinned.height) - 140) < 0.2, `${name} unpinned height should follow the set pitch (got ${unpinned.height})`);
+  assert.ok(Math.abs(unpinned.gap - (70 - pinnedPitch)) < 0.1, `${name} unpinned rows should show their real gap (got ${unpinned.gap})`);
+  assert.strictEqual(unpinned.pins, 90, `${name} unpinned rows should have no axial pins (30 hub + 60 ring-joint pins)`);
+  await page.evaluate(() => {
+    const input = document.getElementById("axialPitch");
+    input.value = input.defaultValue;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await setPinRows(true);
+  await page.waitForTimeout(200);
+  const repinned = await page.evaluate(() => ({
+    disabled: document.getElementById("axialPitch").disabled,
+    gap: window.__cylinderTilingDebug.getPinAlignment().maxAxial,
+  }));
+  assert.ok(repinned.disabled && repinned.gap < 1e-6, `${name} re-pinning should rejoin the rows`);
   const circumferentialPinText = await page.evaluate(() => document.getElementById("circumferentialPinMetric").textContent);
   assert.ok(circumferentialPinText.endsWith("mm"), `${name} circumferential pin gap readout should be in mm`);
 
@@ -307,18 +345,26 @@ async function checkViewport(browser, name, viewport) {
   assert.ok(window1, `${name} collision-free range should contain the default effective alpha 1.30 (got ${JSON.stringify(atDefault.envelope)})`);
   assert.ok(window1[0] > 1.2, `${name} effective alpha 1.20 should overlap neighbors (window starts at ${window1[0]})`);
 
+  // Driving the shared alpha past the window limits the drive to just
+  // inside the window's edge (0.02 margin from contact), so the rest of the
+  // structure isn't jammed against its stops.
   await driveAlpha("2.0");
   const drivenUp = await readConstraint();
-  assert.strictEqual(drivenUp.state, "held", `${name} driving past the window should hold at contact (got ${drivenUp.state})`);
-  assert.ok(drivenUp.collision.clear, `${name} a held pose must not overlap`);
-  assert.ok(Math.abs(drivenUp.realizedMean - window1[1]) < 0.03, `${name} should hold at the window's upper edge ${window1[1]} (got ${drivenUp.realizedMean})`);
+  assert.strictEqual(drivenUp.state, "limited", `${name} driving past the window should be limited (got ${drivenUp.state})`);
+  assert.ok(drivenUp.collision.clear, `${name} a limited pose must not overlap`);
+  assert.ok(
+    Math.abs(drivenUp.realizedMean - (window1[1] - 0.02)) < 0.005,
+    `${name} should stop just inside the window's upper edge ${window1[1]} (got ${drivenUp.realizedMean})`
+  );
+  const driveText = await page.evaluate(() => document.getElementById("driveRealizedMetric").textContent);
+  assert.ok(driveText.includes("out of reach"), `${name} the Drive panel should say the command is out of reach (got "${driveText}")`);
 
   await driveAlpha("0.4");
   const drivenDown = await readConstraint();
   assert.ok(drivenDown.collision.clear, `${name} driving down must not overlap either`);
   assert.ok(
-    Math.abs(drivenDown.realizedMean - window1[0]) < 0.03,
-    `${name} should stop at the window's lower edge ${window1[0]}, not jump to the other clear range (got ${drivenDown.realizedMean})`
+    Math.abs(drivenDown.realizedMean - (window1[0] + 0.02)) < 0.005,
+    `${name} should stop just inside the window's lower edge ${window1[0]}, not jump to the other clear range (got ${drivenDown.realizedMean})`
   );
 
   // With constraints off, the pose follows the command straight into overlap.
@@ -338,7 +384,10 @@ async function checkViewport(browser, name, viewport) {
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
   await page.waitForTimeout(150);
-  assert.strictEqual((await readConstraint()).state, "start-collides", `${name} re-enabling on an overlapping pose should say so`);
+  // Re-enabling limits the out-of-reach command back into the window.
+  const reenabled = await readConstraint();
+  assert.strictEqual(reenabled.state, "limited", `${name} re-enabling with the command out of reach should limit it (got ${reenabled.state})`);
+  assert.ok(reenabled.collision.clear, `${name} re-enabling should leave an overlap-free pose`);
   await driveAlpha(defaults.alpha);
   const recovered = await readConstraint();
   assert.strictEqual(recovered.state, "free", `${name} moving back to the default should leave the overlap (got ${recovered.state})`);
@@ -426,9 +475,20 @@ async function checkViewport(browser, name, viewport) {
   });
   const pinAlignmentBarrel = await page.evaluate(() => window.__cylinderTilingDebug.getPinAlignment());
   assert.ok(pinAlignmentBarrel.maxAxialBend > 0, `${name} Barrel rows at different diameters should need some axial tilt`);
+  // Pinned rows at different twists can't have their north/south pads meet
+  // exactly: each pad sits L*sin(theta/2) off its hub along the ring, so
+  // rows at alpha 1.24 and 1.73 leave 22.1*(sin 30.6 - sin 13.4) = 6.1 mm
+  // for the axial joint to absorb - and nothing more than that (a regression
+  // once left unaligned rows 43 mm apart).
+  const barrelRows = await page.evaluate(() => window.__cylinderTilingDebug.getRealizedAlphas().map((row) => row[0]));
+  const offsetFor = (a) => 22.1 * Math.sin(((70 * a - 60) * Math.PI) / 360);
+  let expectedAxialOffset = 0;
+  for (let row = 0; row + 1 < barrelRows.length; row += 1) {
+    expectedAxialOffset = Math.max(expectedAxialOffset, Math.abs(offsetFor(barrelRows[row]) - offsetFor(barrelRows[row + 1])));
+  }
   assert.ok(
-    pinAlignmentBarrel.maxAxial >= pinAlignmentDefault.maxAxial && pinAlignmentBarrel.maxAxial < pinAlignmentDefault.maxAxial + 5,
-    `${name} Barrel axial pin gap should be the design gap plus only the real radius change (default ${pinAlignmentDefault.maxAxial}, barrel ${pinAlignmentBarrel.maxAxial})`
+    Math.abs(pinAlignmentBarrel.maxAxial - expectedAxialOffset) < 1,
+    `${name} Barrel axial pad offset should come only from the rows' different twists (expected ~${expectedAxialOffset.toFixed(2)}, got ${pinAlignmentBarrel.maxAxial})`
   );
   await page.evaluate(() => document.getElementById("clearRolesBtn").click());
   await page.waitForTimeout(150);
@@ -571,6 +631,14 @@ async function checkViewport(browser, name, viewport) {
     Math.abs(mmValue(afterActuation.diameter) - mmValue(beforeActuation.diameter)) > 0.1,
     `${name} actuating one cell should resize its ring (${beforeActuation.diameter} -> ${afterActuation.diameter})`
   );
+  // One cell can't twist all the way to 2.0 while its neighbors sit near
+  // 1.3: it stops where its pads would hit theirs, with nothing overlapping.
+  const actuatedContact = await page.evaluate(() => ({
+    state: window.__cylinderTilingDebug.getConstraintState(),
+    clear: window.__cylinderTilingDebug.getCollisionReport().clear,
+  }));
+  assert.strictEqual(actuatedContact.state, "held", `${name} an over-commanded actuator should be held at contact (got ${actuatedContact.state})`);
+  assert.ok(actuatedContact.clear, `${name} a held actuator must not overlap its neighbors`);
 
   // Read the full per-cell alpha grid through the debug hook (window.__cylinderTilingDebug,
   // exposed specifically because guessing screen coordinates to click a

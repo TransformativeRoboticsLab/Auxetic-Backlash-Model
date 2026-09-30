@@ -41,15 +41,21 @@
             <div id="deadzoneBand" class="deadzone-band"></div>
             <div id="deadzoneMarker" class="deadzone-marker"></div>
           </div>
+          <div class="reach-ruler" aria-hidden="true">
+            <div id="reachBands"></div>
+            <div id="realizedMarker" class="realized-marker"></div>
+          </div>
           <p class="hint">
             Yellow band = backlash dead zone (dragging alpha here does nothing); the dot is the current commanded
-            alpha.
+            alpha. Green = alpha the ring can reach without parts passing through each other; the hollow marker is
+            where the pose actually is. Past the green, the pose stops at contact - commanding further does nothing.
           </p>
           <label class="toggle"><input id="animate" type="checkbox" /> Animate drive</label>
           <dl>
             <div><dt>commanded alpha</dt><dd id="alphaCommandMetric">1.40</dd></div>
             <div><dt>effective alpha</dt><dd id="alphaEffectiveMetric">1.30</dd></div>
             <div><dt>theta (70*alpha-60)</dt><dd id="thetaMetric">31.0 deg</dd></div>
+            <div><dt>realized (effective)</dt><dd id="driveRealizedMetric">-</dd></div>
             <div><dt>coupling state</dt><dd id="deadzoneState" class="status-ok">engaged</dd></div>
           </dl>
         </details>
@@ -136,10 +142,16 @@
             Rows along axis (m) <output id="rowCountOut">3</output>
             <input id="rowCount" type="range" min="1" max="6" step="1" value="3" />
           </label>
+          <label class="toggle"><input id="pinRows" type="checkbox" checked /> Pin rows together (spacing set by the pins)</label>
           <label>
-            Axial pitch <output id="axialPitchOut">50 mm</output>
-            <input id="axialPitch" type="range" min="30" max="70" step="1" value="50" />
+            Axial pitch <output id="axialPitchOut">set by the pins</output>
+            <input id="axialPitch" type="range" min="30" max="70" step="1" value="50" disabled />
           </label>
+          <p class="hint">
+            Pinned rows are joined like the cells in a ring: a cell's north pads meet the south pads of the cell above,
+            so the spacing follows the twist (2L&middot;cos(theta/2), ~43 mm at the default). Unpin to set a pitch by
+            hand; the rows are then separate rings with nothing joining them.
+          </p>
           <dl>
             <div><dt>total cells</dt><dd id="totalCellsMetric">30</dd></div>
             <div><dt>assembly height</dt><dd id="heightMetric">100.0 mm</dd></div>

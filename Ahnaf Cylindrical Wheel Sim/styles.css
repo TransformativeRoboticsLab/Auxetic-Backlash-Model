@@ -246,6 +246,34 @@ input[type="range"] {
   opacity: 0.55;
 }
 
+.reach-ruler {
+  position: relative;
+  height: 6px;
+  margin-top: 4px;
+  background: #e8b4b4;
+  border-radius: 3px;
+}
+
+.reach-band {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: #3fae6a;
+  border-radius: 3px;
+}
+
+.realized-marker {
+  position: absolute;
+  top: -4px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--text);
+  border-radius: 50%;
+  background: var(--panel);
+  transform: translateX(-50%);
+  box-sizing: border-box;
+}
+
 .deadzone-marker {
   position: absolute;
   top: -3px;
