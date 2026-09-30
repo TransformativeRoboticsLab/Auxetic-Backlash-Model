@@ -728,8 +728,11 @@
   }
 
   function addArm(parent, rotationZ, material) {
+    // A hair thinner than the pads and hub it runs into, so their faces
+    // fully cover its ends; at equal thickness the bar's outline showed
+    // faintly through the round parts.
     const arm = new THREE.Mesh(
-      new THREE.BoxGeometry(CAD.siteRadiusMm * 2, CAD.armWidthMm, CAD.bodyThicknessMm),
+      new THREE.BoxGeometry(CAD.siteRadiusMm * 2, CAD.armWidthMm, CAD.bodyThicknessMm - 0.3),
       material
     );
     arm.rotation.z = rotationZ;
@@ -1047,9 +1050,25 @@
     return sum / lower.centers.length;
   }
 
+  // Lowest point of a ring relative to its base height: the lowest pad
+  // center of any cell, either layer, minus the pad radius.
+  function ringLowestOffset(ring) {
+    let lowest = Infinity;
+    for (let i = 0; i < ring.centers.length; i += 1) {
+      [ring.crossRotLower[i], ring.crossRotUpper[i]].forEach((rotation) => {
+        Object.values(SITE_VECTORS).forEach((site) => {
+          lowest = Math.min(lowest, ring.hubZ[i] + rotate2(site, rotation).y);
+        });
+      });
+    }
+    return lowest - CAD.padRadiusMm;
+  }
+
   function assignRowHeights(rings, spacing) {
     if (!rings.length) return;
-    rings[0].baseZ = 0;
+    // Cells stand upright around the cylinder, reaching ~L below their hub,
+    // so lift the wheel until its lowest point rests on the floor (z = 0).
+    rings[0].baseZ = -ringLowestOffset(rings[0]);
     for (let row = 1; row < rings.length; row += 1) {
       rings[row].baseZ = rings[row - 1].baseZ + (spacing === null ? pinnedRowPitch(rings[row - 1], rings[row]) : spacing);
     }
@@ -1773,7 +1792,7 @@
     measurementLine.visible = showMeasurements;
     measurementTickA.visible = showMeasurements;
     measurementTickB.visible = showMeasurements;
-    if (showMeasurements) updateMeasurementLine(rings[0], 0);
+    if (showMeasurements) updateMeasurementLine(rings[0], rings[0].baseZ);
 
     for (let row = 0; row < m; row += 1) {
       for (let i = 0; i < n; i += 1) {
@@ -1838,7 +1857,7 @@
     radiusMetric.textContent = `${rings[0].radius.toFixed(1)} mm`;
     closureMetric.textContent = `${rings[0].closureResidual.toFixed(4)} mm`;
     totalCellsMetric.textContent = String(n * m);
-    heightMetric.textContent = `${rings[m - 1].baseZ.toFixed(1)} mm`;
+    heightMetric.textContent = `${(rings[m - 1].baseZ - rings[0].baseZ).toFixed(1)} mm`;
 
     let minDiameter = Infinity;
     let maxDiameter = -Infinity;
