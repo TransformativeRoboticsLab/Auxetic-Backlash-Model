@@ -103,14 +103,15 @@
   const heatmapEnabledInput = document.getElementById("heatmapEnabled");
   const showMeasurementsInput = document.getElementById("showMeasurements");
 
+  // Measured from Jacob's "RADs unit cell.stl": two 4-arm crosses, each a
+  // 4 mm plate (0-4 and 4-8 mm), joined at the hub by a countersunk M3 bolt.
   const CAD = Object.freeze({
-    cellWidthMm: 55.604331,
     nominalHoleDiameterMm: 3.4,
     bodyThicknessMm: 4.0,
-    padRadiusMm: 4.9,
-    hubRadiusMm: 4.6,
-    armWidthMm: 5.4,
-    siteRadiusMm: 22.1,
+    padRadiusMm: 4.0,
+    hubRadiusMm: 6.375,
+    armWidthMm: 2.5,
+    siteRadiusMm: 22.451,
   });
 
   // Max tilt of one plate (thickness t) on a pin (diameter d) in a hole

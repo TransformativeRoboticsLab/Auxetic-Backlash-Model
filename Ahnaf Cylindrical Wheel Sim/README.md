@@ -30,11 +30,15 @@ the RAD tooling:
 - `vendor/three.min.js`: the same vendored Three.js build (a local copy, not
   a shared reference), so this page works offline with no build step, the
   same way the other RAD pages do.
-- The RAD cell's real CAD dimensions (`cellWidthMm`, `siteRadiusMm`, arm/pad/
-  hole sizes) and the paper-supported `theta = 70*alpha - 60` angle law
-  documented in `../Ahyan Virtual Simulation/docs/research_grounding.md`, so
-  a ring built here is dimensionally comparable to the row/one-cell
-  primitives there rather than using different made-up numbers.
+- The paper-supported `theta = 70*alpha - 60` angle law documented in
+  `../Ahyan Virtual Simulation/docs/research_grounding.md`.
+
+The cell dimensions come from Jacob's CAD of the real part ("RADs unit
+cell.stl", measured directly): two 4-arm crosses, each a 4 mm plate (0-4 and
+4-8 mm), joined at the hub by a countersunk M3 bolt (3.0 mm major diameter,
+confirming the default pin); hole-to-hub distance L = 22.451 mm, pad radius
+4.0 mm, hole 3.4 mm, hub radius 6.375 mm, arm width 2.5 mm. (Earlier versions
+used 22.1 / 4.9 / 4.6 / 5.4 mm from Ahyan's research-grounding numbers.)
 
 From Ahyan's V2 two-cell attachment (`V2/web/two-cell-attachment/`, read
 only - nothing in that folder is modified), this project also borrows two
@@ -75,7 +79,7 @@ python -m http.server 8000
   lower cross at `-theta/2`, upper at `+theta/2` about the cell's normal -
   which puts its two circumferential joint pins (upper east -> next cell,
   lower west <- previous cell) level with each other, a chord
-  `p = 2L*cos(theta/2)` apart (`L = 22.1 mm`). Twisting only the upper cross
+  `p = 2L*cos(theta/2)` apart (`L = 22.451 mm`). Twisting only the upper cross
   tilts that chord by `theta/2`, which on a cylinder sends the row off
   axially and left pinned pads ~10 mm apart. The pins are the vertices of a
   polygon inscribed in a circle about the axle; each cell lies flat on one
@@ -126,10 +130,11 @@ python -m http.server 8000
   chord), the widest row gets the lowest alpha. With rows bolted together,
   adjacent rows can only differ by what the pins allow, so the profile is
   scaled down to the largest the pins permit: at the snug default 3.0 mm
-  pin that is under 1 mm of bulge (e.g. Barrel 126.0 / 126.8 / 126.0 mm) - a
+  pin that is under 1 mm of bulge (e.g. Barrel 128.1 / 128.9 / 128.1 mm) - a
   real consequence of double-bolted rows, not a display limit. A thinner pin
-  allows more, and unpinned rows (separate rings) allow the full window
-  (Barrel ~117 / 132 / 117 mm).
+  allows more, and unpinned rows (separate rings) allow the full window if
+  they have room - Barrel 115.9 / 135.7 / 115.9 mm at a 60 mm pitch; at
+  50 mm the rows' pads meet partway and the move holds early.
 - **Target Diameter fit**: diameter isn't monotonic in alpha over the full
   slider range (the pin chord is longest at zero twist, alpha ~0.86), so
   "Fit Alpha" exhaustively evaluates every alpha the slider can reach and
@@ -153,7 +158,7 @@ python -m http.server 8000
 - **Cylinder stacking**: `m` rings are stacked along the axle (`z`). By
   default the rows are pinned together like the cells in a ring: a cell's
   north pads meet the south pads of the cell above, so the row spacing is
-  set by the pins - `2L*cos(theta/2)` for a uniform ring (42.6 mm at the
+  set by the pins - `2L*cos(theta/2)` for a uniform ring (43.3 mm at the
   default) - and changes as the cells twist. Unchecking "Pin rows together"
   hands the spacing to the axial pitch slider instead; the rows are then
   separate rings with nothing joining them (no axial pins, and a large pitch
@@ -193,9 +198,10 @@ python -m http.server 8000
   jumps straight to the new setup.
 - **Reachable range and the drive limit**: the collision-free range of one
   shared alpha is swept per setting. At the defaults that is effective alpha
-  1.22-1.75 (plus a separate 0.40-0.49 window no slider command can reach);
-  below ~1.22 - which includes every negative theta - neighbors'
-  same-layer pads clash at the joints, above ~1.75 arms do. Like Ahyan's V2
+  1.15-1.82 (theta 20.5-67 deg), plus a separate 0.40-0.56 window no
+  slider command can reach; below ~1.15 - which includes every negative
+  theta - neighbors' same-layer pads clash at the joints, above ~1.82 parts
+  of neighboring cells do. Like Ahyan's V2
   clamping its drive to the nearest feasible value, the shared drive is
   limited to that range, 0.02 inside its edges, so a command past it doesn't
   jam the whole structure against its stops: the Drive panel says the
@@ -222,7 +228,7 @@ python -m http.server 8000
   fills the hole allows no tilt at all.
 - **Physical pins**: a pin-diameter control (Backlash panel) sizes a pin in
   each 3.4 mm hole, following Ahyan's V2 pin-sized backlash. It reports the
-  radial clearance `b`, `b/L` (L = 22.1 mm arm), the in-plane dead zone
+  radial clearance `b`, `b/L` (L = 22.451 mm arm), the in-plane dead zone
   `dphi = asin(b/L)` and that same dead zone expressed in alpha (`dphi/70`,
   from the angle law), and renders pins through every hub and through both
   pad pairs of every circumferential and axial joint (hideable).
@@ -271,12 +277,16 @@ python -m http.server 8000
 - Pinned row spacing is the average over a row's cells, and rows stay
   vertical; rows at different twists leave their north/south pads offset
   (reported, not resolved by tilting the cells).
-- Negative theta is out of reach in this model: at small twists (about
-  -25 to +25 deg) each joint has four pads in the same spot on two layers,
-  so same-layer pads overlap. The paper's reference state alpha = 1
-  (theta = 10 deg) falls in that band, which suggests the model's layer
-  stacking at a joint, or its theta convention, doesn't match the real
-  parts yet - to confirm against the CAD model.
+- Small twists are out of reach: below about 20.5 deg each joint has four
+  pads near one spot on two layers, and neighbors' same-layer pads overlap
+  (they touch exactly when 2L*sin(theta/2) = 2 x 4.0 mm). The paper's
+  reference state alpha = 1 (theta = 10 deg) falls in that band - but
+  Jacob's CAD shows the real part drawn with its two crosses 36.9 deg apart
+  (one on the diagonals, the other at 8.1 deg), well inside the reachable
+  window. So the angle law's theta is probably not the geometric twist
+  between the crosses (if the CAD is the alpha = 1 pose, it is offset by
+  ~27 deg); this model uses theta as the geometric twist. To confirm with
+  Jacob: which alpha the CAD pose is, and how theta is measured.
 - Collisions are checked between near neighbors only (ring neighbors one
   and two over, and the three nearest cells in the next row), and
   penetration is sampled rather than solved exactly, so very shallow

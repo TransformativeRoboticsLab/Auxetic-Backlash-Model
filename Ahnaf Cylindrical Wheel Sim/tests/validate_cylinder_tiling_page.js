@@ -116,9 +116,10 @@ async function checkViewport(browser, name, viewport) {
   const turnDeg = Number(defaults.turn.replace(/ ?deg$/, ""));
   assert.ok(Math.abs(turnDeg - 36) <= 0.1, `${name} turn angle for n=10 should be 36 deg (360/10)`);
   // Rows are pinned by default, so the row spacing is set by the pins:
-  // 2L*cos(theta/2) = 2*22.1*cos(15.5 deg) = 42.6 mm at theta = 31 deg.
+  // 2L*cos(theta/2) = 2*22.451*cos(15.5 deg) = 43.3 mm at theta = 31 deg
+  // (L from Jacob's RADs unit cell STL).
   const defaultHeight = mmValue(defaults.height);
-  const pinnedPitch = 2 * 22.1 * Math.cos(((70 * 1.3 - 60) * Math.PI) / 360);
+  const pinnedPitch = 2 * 22.451 * Math.cos(((70 * 1.3 - 60) * Math.PI) / 360);
   assert.ok(Math.abs(defaultHeight - 2 * pinnedPitch) <= 0.2, `${name} default assembly height should be (m-1) pinned row pitches (got ${defaultHeight})`);
 
   // Radial cell orientation: each cell's thickness-axis normal (read via the
@@ -343,7 +344,9 @@ async function checkViewport(browser, name, viewport) {
   assert.ok(atDefault.collision.clear, `${name} default pose should be collision-free`);
   const window1 = atDefault.envelope.find(([lo, hi]) => 1.3 >= lo && 1.3 <= hi);
   assert.ok(window1, `${name} collision-free range should contain the default effective alpha 1.30 (got ${JSON.stringify(atDefault.envelope)})`);
-  assert.ok(window1[0] > 1.2, `${name} effective alpha 1.20 should overlap neighbors (window starts at ${window1[0]})`);
+  // The window's lower edge is where neighbors' 4 mm pads touch at a joint:
+  // 2L*sin(theta/2) = 2*4.0 -> theta = 20.5 deg -> effective alpha ~1.15.
+  assert.ok(Math.abs(window1[0] - 1.15) <= 0.01, `${name} window should start where neighboring pads touch, ~1.15 (got ${window1[0]})`);
 
   // Driving the shared alpha past the window limits the drive to just
   // inside the window's edge (0.02 margin from contact), so the rest of the
@@ -373,11 +376,11 @@ async function checkViewport(browser, name, viewport) {
     input.checked = false;
     input.dispatchEvent(new Event("change", { bubbles: true }));
   });
-  await driveAlpha("1.3");
+  await driveAlpha("1.15");
   const unconstrained = await readConstraint();
   assert.strictEqual(unconstrained.state, "off", `${name} constraint state should read off`);
-  assert.ok(Math.abs(unconstrained.realizedMean - 1.2) < 1e-6, `${name} unconstrained pose should follow the command exactly`);
-  assert.ok(!unconstrained.collision.clear, `${name} effective alpha 1.20 should be reported as overlapping`);
+  assert.ok(Math.abs(unconstrained.realizedMean - 1.05) < 1e-6, `${name} unconstrained pose should follow the command exactly`);
+  assert.ok(!unconstrained.collision.clear, `${name} effective alpha 1.05 should be reported as overlapping`);
   await page.evaluate(() => {
     const input = document.getElementById("constraintsEnabled");
     input.checked = true;
@@ -400,8 +403,8 @@ async function checkViewport(browser, name, viewport) {
   const pinsDefault = await page.evaluate(() => window.__cylinderTilingDebug.getPinInfo());
   assert.strictEqual(pinsDefault.visibleCount, 130, `${name} should render one pin per hub and two per circumferential and axial joint`);
   assert.ok(Math.abs(pinsDefault.renderedRadius - 1.5) < 1e-6, `${name} default 3.0 mm pin should render at 1.5 mm radius`);
-  // dphi = asin(radial clearance / arm length) = asin(0.2 / 22.1) = 0.52 deg.
-  assert.ok(Math.abs(pinsDefault.deltaPhiDeg - 0.5185) < 0.001, `${name} pin in-plane dead zone should be asin(b/L) (got ${pinsDefault.deltaPhiDeg})`);
+  // dphi = asin(radial clearance / arm length) = asin(0.2 / 22.451) = 0.51 deg.
+  assert.ok(Math.abs(pinsDefault.deltaPhiDeg - 0.5104) < 0.001, `${name} pin in-plane dead zone should be asin(b/L) (got ${pinsDefault.deltaPhiDeg})`);
 
   // A thinner pin has more clearance: bigger dead zone, bigger tilt limit,
   // fewer cells needed to close a ring through backlash alone.
@@ -477,11 +480,11 @@ async function checkViewport(browser, name, viewport) {
   assert.ok(pinAlignmentBarrel.maxAxialBend > 0, `${name} Barrel rows at different diameters should need some axial tilt`);
   // Pinned rows at different twists can't have their north/south pads meet
   // exactly: each pad sits L*sin(theta/2) off its hub along the ring, so
-  // rows at alpha 1.24 and 1.73 leave 22.1*(sin 30.6 - sin 13.4) = 6.1 mm
+  // rows at alpha 1.24 and 1.73 leave L*|sin(t1/2) - sin(t2/2)|
   // for the axial joint to absorb - and nothing more than that (a regression
   // once left unaligned rows 43 mm apart).
   const barrelRows = await page.evaluate(() => window.__cylinderTilingDebug.getRealizedAlphas().map((row) => row[0]));
-  const offsetFor = (a) => 22.1 * Math.sin(((70 * a - 60) * Math.PI) / 360);
+  const offsetFor = (a) => 22.451 * Math.sin(((70 * a - 60) * Math.PI) / 360);
   let expectedAxialOffset = 0;
   for (let row = 0; row + 1 < barrelRows.length; row += 1) {
     expectedAxialOffset = Math.max(expectedAxialOffset, Math.abs(offsetFor(barrelRows[row]) - offsetFor(barrelRows[row + 1])));
@@ -953,17 +956,23 @@ async function checkViewport(browser, name, viewport) {
     document.getElementById("targetDiameter").value = "125";
     document.getElementById("targetDiameter").dispatchEvent(new Event("input", { bubbles: true }));
   });
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => window.__cylinderTilingDebug.getConstraintState() !== "moving", null, { timeout: 5000 });
   const afterDragOnly = await readMetrics(page);
+  const dragAchieved = await page.evaluate(() => document.getElementById("achievedDiameterMetric").textContent);
   assert.notStrictEqual(afterDragOnly.alpha, alphaBeforeDrag, `${name} dragging Target Diameter alone (no button click) should already change alpha`);
-  assert.strictEqual(mmValue(afterDragOnly.diameter).toFixed(1), "125.0", `${name} dragging Target Diameter alone should already re-render the ring at the new target`);
+  assert.ok(Math.abs(mmValue(dragAchieved) - 125) < 1, `${name} the fit should land within 1 mm of a reachable 125 mm target (got ${dragAchieved})`);
+  assert.strictEqual(
+    mmValue(afterDragOnly.diameter).toFixed(1),
+    mmValue(dragAchieved).toFixed(1),
+    `${name} dragging Target Diameter alone should already re-render the ring at the fitted diameter`
+  );
 
   await page.evaluate(() => {
     document.getElementById("targetDiameter").value = "140";
     document.getElementById("targetDiameter").dispatchEvent(new Event("input", { bubbles: true }));
   });
   await page.click("#fitDiameterBtn");
-  await page.waitForTimeout(150);
+  await page.waitForFunction(() => window.__cylinderTilingDebug.getConstraintState() !== "moving", null, { timeout: 5000 });
   const fitResult = await readMetrics(page);
   const fitAchieved = await page.evaluate(() => document.getElementById("achievedDiameterMetric").textContent);
   assert.ok(fitAchieved.endsWith("mm"), `${name} fit should report an achieved diameter`);
