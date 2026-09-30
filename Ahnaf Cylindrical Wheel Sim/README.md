@@ -36,6 +36,16 @@ the RAD tooling:
   a ring built here is dimensionally comparable to the row/one-cell
   primitives there rather than using different made-up numbers.
 
+From Ahyan's V2 two-cell attachment (`V2/web/two-cell-attachment/`, read
+only - nothing in that folder is modified), this project also borrows one
+modeling concept: sizing backlash from a physical pin in the hole (pin
+radius -> radial clearance `b` -> `b/L` -> in-plane dead zone
+`dphi = asin(b/L)`) and rendering those pins in the joints. The
+implementation here is separate and extends it to 3D: the same pin also
+drives the out-of-plane joint tilt limit (Jacob's pin-in-hole contact
+relation), and pins are placed on the cylinder along each joint's radial
+axis.
+
 Everything else - the ring-closure math, cylinder stacking, backlash
 coupling/propagation, per-cell actuation, collision checking, cell picking,
 timeline, target-diameter fitting, and the UI - is new work, not adapted
@@ -148,14 +158,26 @@ python -m http.server 8000
   `d + t*sin(theta) = D*cos(theta)`, i.e.
   `theta_max = acos(d / sqrt(D^2 + t^2)) - atan(t / D)` (~= `b/t` for
   `b = D - d << t`), doubled for two plates on a floating bolt. With the CAD
-  hole `D = 3.4 mm`, plate `t = 4.0 mm` and an *assumed* M3 bolt
-  `d = 3.0 mm` (not measured - confirm against the real parts), the joint
-  limit is ~11.03 deg. Circumferential joints bend `360/n` deg (36 deg at
+  hole `D = 3.4 mm`, plate `t = 4.0 mm` and the pin diameter `d` from the
+  Backlash panel (default 3.0 mm, an *assumed* M3 bolt - not measured,
+  confirm against the real parts), the joint limit is ~11.03 deg. Circumferential joints bend `360/n` deg (36 deg at
   `n = 10`), so a ring needs at least 33 cells to close through backlash
   alone; fewer means the hardware must take up the bend some other way
   (linkage pieces, or a dedicated hinge cell). Axial joints are checked
   against the profile slope between rows of different radius. Each is shown
-  as within/exceeds backlash, alongside the minimum cell count.
+  as within/exceeds backlash, alongside the minimum cell count. A thinner pin
+  raises the limit (a 2.44 mm pin gives ~25 deg and 15 cells); a pin that
+  fills the hole allows no tilt at all.
+- **Physical pins**: a pin-diameter control (Backlash panel) sizes a pin in
+  each 3.4 mm hole, following Ahyan's V2 pin-sized backlash. It reports the
+  radial clearance `b`, `b/L` (L = 22.1 mm arm), the in-plane dead zone
+  `dphi = asin(b/L)` and that same dead zone expressed in alpha (`dphi/70`,
+  from the angle law), and renders pins through every hub and every
+  circumferential and axial joint along the local radial axis (hideable).
+  The paper's design-space "normalized gap" slider is kept separate: it is
+  the backlash the coupling model uses, while the pin is the hardware - the
+  readouts show how far apart the two are (the default 0.10 gap is much
+  larger than a 3.0 mm pin's ~0.007 in alpha).
 - **Selection tools**: click a cell to inspect it (row/index, center,
   rotations, current alpha, role), then Frame Cell (recenter the camera on
   it), Isolate Cell (hide everything else), or edit its role/alpha directly

@@ -76,6 +76,24 @@
           <dl>
             <div><dt>alpha dead zone</dt><dd id="deadzoneRangeMetric">0.90 - 1.10</dd></div>
           </dl>
+
+          <p class="hint">
+            <strong>Physical pin:</strong> the gap above is the paper's design-space backlash. The pin below is the real
+            joint hardware: its clearance in the 3.4 mm hole sets the physical in-plane dead zone
+            (<code>&Delta;&phi; = asin(b/L)</code>, radial clearance b over arm length L = 22.1 mm) and the out-of-plane
+            tilt limit used by the backlash tilt check. Pin-sized backlash follows Ahyan's two-cell attachment V2.
+          </p>
+          <label>
+            Pin diameter <output id="pinDiameterOut">3.00 mm</output>
+            <input id="pinDiameter" type="range" min="1.2" max="3.4" step="0.02" value="3.0" />
+          </label>
+          <label class="toggle"><input id="showPins" type="checkbox" checked /> Show pins</label>
+          <dl>
+            <div><dt>radial clearance b</dt><dd id="pinClearanceMetric">-</dd></div>
+            <div><dt>b/L (physical)</dt><dd id="pinBOverLMetric">-</dd></div>
+            <div><dt>in-plane dead zone &Delta;&phi;</dt><dd id="pinDeltaPhiMetric">-</dd></div>
+            <div><dt>same dead zone in alpha</dt><dd id="pinAlphaDeadzoneMetric">-</dd></div>
+          </dl>
         </details>
 
         <details class="panel-section" open>
@@ -226,8 +244,9 @@
             <strong>Backlash tilt check:</strong> with cells facing radially, each joint bolt points radially, so the bend
             between neighboring cells is a tilt of the two plates on that bolt. The limit uses the exact pin-in-hole
             contact relation, theta_max = acos(d / sqrt(D&sup2; + t&sup2;)) - atan(t / D), with D = 3.4 mm hole,
-            t = 4.0 mm plate, and an assumed M3 bolt (d = 3.0 mm), doubled for two plates on one floating bolt. A joint
-            that exceeds it can't be reached through backlash alone; it needs more cells per ring or an extra hinge.
+            t = 4.0 mm plate, and d = the pin diameter set in the Backlash panel (default 3.0 mm, an M3 bolt - not
+            measured), doubled for two plates on one floating bolt. A joint that exceeds it can't be reached through
+            backlash alone; it needs more cells per ring or an extra hinge.
           </p>
           <dl>
             <div><dt>joint tilt limit (backlash)</dt><dd id="jointTiltLimitMetric">-</dd></div>

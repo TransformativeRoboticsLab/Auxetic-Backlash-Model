@@ -43,6 +43,13 @@
   const circumferentialBendMetric = document.getElementById("circumferentialBendMetric");
   const axialBendMetric = document.getElementById("axialBendMetric");
   const minCellsClosureMetric = document.getElementById("minCellsClosureMetric");
+  const pinDiameterInput = document.getElementById("pinDiameter");
+  const pinDiameterOut = document.getElementById("pinDiameterOut");
+  const showPinsInput = document.getElementById("showPins");
+  const pinClearanceMetric = document.getElementById("pinClearanceMetric");
+  const pinBOverLMetric = document.getElementById("pinBOverLMetric");
+  const pinDeltaPhiMetric = document.getElementById("pinDeltaPhiMetric");
+  const pinAlphaDeadzoneMetric = document.getElementById("pinAlphaDeadzoneMetric");
   const selectedCellStatus = document.getElementById("selectedCellStatus");
   const selectedIndexMetric = document.getElementById("selectedIndexMetric");
   const selectedCenterMetric = document.getElementById("selectedCenterMetric");
@@ -96,9 +103,6 @@
     hubRadiusMm: 4.6,
     armWidthMm: 5.4,
     siteRadiusMm: 22.1,
-    // Assumed M3 bolt as the joint pin (the hardware photos show bolts
-    // through the pads); not measured - confirm against the real parts.
-    pinDiameterMm: 3.0,
   });
 
   // Max tilt of one plate (thickness t) on a pin (diameter d) in a hole
@@ -108,10 +112,30 @@
   function pinTiltLimitRad(d, D, t) {
     return Math.acos(d / Math.sqrt(D * D + t * t)) - Math.atan(t / D);
   }
+  // Pin sized as a fraction of the hole, with backlash derived from the
+  // clearance - concept from Ahyan's two-cell attachment V2 (pin radius
+  // ratio -> radial clearance b -> b/L -> dphi = asin(b/L)). Default 3.0 mm
+  // is an assumed M3 bolt (hardware photos show bolts through the pads);
+  // not measured - confirm against the real parts.
+  function pinDiameterMm() {
+    const value = Number(pinDiameterInput.value);
+    return clamp(Number.isFinite(value) ? value : 3.0, Number(pinDiameterInput.min), CAD.nominalHoleDiameterMm);
+  }
+
+  function pinRadialClearanceMm() {
+    return Math.max(0, (CAD.nominalHoleDiameterMm - pinDiameterMm()) / 2);
+  }
+
+  // In-plane angular dead zone of one arm swinging about its neighbor's pin.
+  function pinDeltaPhiRad() {
+    return Math.asin(clamp(pinRadialClearanceMm() / CAD.siteRadiusMm, 0, 1));
+  }
+
   // A joint is two plates (one per cell) on one floating bolt, so their
   // relative tilt limit is the sum of each plate's own limit.
-  const JOINT_TILT_LIMIT_RAD =
-    2 * pinTiltLimitRad(CAD.pinDiameterMm, CAD.nominalHoleDiameterMm, CAD.bodyThicknessMm);
+  function jointTiltLimitRad() {
+    return 2 * Math.max(0, pinTiltLimitRad(pinDiameterMm(), CAD.nominalHoleDiameterMm, CAD.bodyThicknessMm));
+  }
 
   const SITE_VECTORS = Object.freeze({
     east: new THREE.Vector2(CAD.siteRadiusMm, 0),
@@ -403,6 +427,83 @@
   // chosen to minimize it. Axial gaps are exactly zero unless rows differ
   // in diameter (differential dilation/barrel/cone shapes), in which case
   // they honestly reflect that the rows no longer stack as a true cylinder.
+  // Physical pins (idea from Ahyan's two-cell attachment V2: a solid pin in
+  // each hole, radius from the pin control, hideable). One through each
+  // cell's hub joining its two layers, one at each circumferential joint and
+  // one at each axial joint, each along the local radial direction (the
+  // bolt axis for radially facing cells). Joint pins sit midway between the
+  // two cells' lower-layer pads, the same pads the pin-gap readout uses.
+  const pinMaterial = new THREE.MeshStandardMaterial({ color: 0x1f2933, roughness: 0.36, metalness: 0.35 });
+  const pinGeometry = new THREE.CylinderGeometry(1, 1, 1, 20);
+  const pinMeshes = [];
+  const PIN_UP = new THREE.Vector3(0, 1, 0);
+  const pinAxisScratch = new THREE.Vector3();
+
+  function placePin(index, x, y, z, axisX, axisY, axisZ, length, radius) {
+    while (pinMeshes.length <= index) {
+      const mesh = new THREE.Mesh(pinGeometry, pinMaterial);
+      mesh.castShadow = true;
+      scene.add(mesh);
+      pinMeshes.push(mesh);
+    }
+    const pin = pinMeshes[index];
+    pinAxisScratch.set(axisX, axisY, axisZ).normalize();
+    pin.quaternion.setFromUnitVectors(PIN_UP, pinAxisScratch);
+    pin.position.set(x, y, z);
+    pin.scale.set(radius, length, radius);
+    pin.visible = true;
+  }
+
+  function updatePins(n, m, rings, cellFramesByRow, axialPitch) {
+    let count = 0;
+    if (showPinsInput.checked && !isolateActive) {
+      const radius = pinDiameterMm() / 2;
+      const siteRadius = CAD.siteRadiusMm;
+      for (let row = 0; row < m; row += 1) {
+        const z = row * axialPitch;
+        for (let i = 0; i < n; i += 1) {
+          const frame = cellFramesByRow[row][i];
+          const center = rings[row].centers[i];
+          placePin(count++, center.x, center.y, z, frame.normal.x, frame.normal.y, 0, CAD.bodyThicknessMm * 2.55, radius);
+
+          const next = (i + 1) % n;
+          const frameB = cellFramesByRow[row][next];
+          const east = center.clone().addScaledVector(frame.tangent, siteRadius);
+          const west = rings[row].centers[next].clone().addScaledVector(frameB.tangent, -siteRadius);
+          placePin(
+            count++,
+            (east.x + west.x) / 2,
+            (east.y + west.y) / 2,
+            z,
+            frame.normal.x + frameB.normal.x,
+            frame.normal.y + frameB.normal.y,
+            0,
+            CAD.bodyThicknessMm * 2.95,
+            radius
+          );
+
+          if (row + 1 < m) {
+            const above = rings[row + 1].centers[i];
+            const frameUp = cellFramesByRow[row + 1][i];
+            placePin(
+              count++,
+              (center.x + above.x) / 2,
+              (center.y + above.y) / 2,
+              z + axialPitch / 2,
+              frame.normal.x + frameUp.normal.x,
+              frame.normal.y + frameUp.normal.y,
+              0,
+              CAD.bodyThicknessMm * 2.95,
+              radius
+            );
+          }
+        }
+      }
+    }
+    for (let index = count; index < pinMeshes.length; index += 1) pinMeshes[index].visible = false;
+    lastPinCount = count;
+  }
+
   function computePinAlignment(n, m, rings, cellFramesByRow, axialPitch) {
     const siteRadius = CAD.siteRadiusMm;
     let maxCircumferential = 0;
@@ -445,15 +546,17 @@
         jointsChecked += 1;
       }
     }
+    const tiltLimit = jointTiltLimitRad();
     return {
       maxCircumferential,
       maxAxial,
       maxCircumferentialBend,
       maxAxialBend,
-      tiltLimit: JOINT_TILT_LIMIT_RAD,
-      circumferentialOk: maxCircumferentialBend <= JOINT_TILT_LIMIT_RAD,
-      axialOk: maxAxialBend <= JOINT_TILT_LIMIT_RAD,
-      minCellsForBacklashClosure: Math.ceil((2 * Math.PI) / JOINT_TILT_LIMIT_RAD),
+      tiltLimit,
+      circumferentialOk: maxCircumferentialBend <= tiltLimit + 1e-9,
+      axialOk: maxAxialBend <= tiltLimit + 1e-9,
+      // Infinity when the pin fills the hole (no clearance to tilt in).
+      minCellsForBacklashClosure: tiltLimit > 1e-9 ? Math.ceil((2 * Math.PI) / tiltLimit) : Infinity,
       jointsChecked,
     };
   }
@@ -949,6 +1052,7 @@
   let lastCellRolesSnapshot = null;
   let lastRingsSnapshot = null;
   let lastPinAlignment = null;
+  let lastPinCount = 0;
 
   function updateCamera() {
     const r = cameraState.radius;
@@ -1147,7 +1251,19 @@
     };
     setBendStatus(circumferentialBendMetric, pinAlignment.maxCircumferentialBend, pinAlignment.circumferentialOk);
     setBendStatus(axialBendMetric, pinAlignment.maxAxialBend, pinAlignment.axialOk);
-    minCellsClosureMetric.textContent = String(pinAlignment.minCellsForBacklashClosure);
+    minCellsClosureMetric.textContent = Number.isFinite(pinAlignment.minCellsForBacklashClosure)
+      ? String(pinAlignment.minCellsForBacklashClosure)
+      : "none (pin fills hole)";
+
+    const pinClearance = pinRadialClearanceMm();
+    const deltaPhi = pinDeltaPhiRad();
+    pinDiameterOut.textContent = `${pinDiameterMm().toFixed(2)} mm`;
+    pinClearanceMetric.textContent = `${pinClearance.toFixed(3)} mm`;
+    pinBOverLMetric.textContent = (pinClearance / CAD.siteRadiusMm).toFixed(4);
+    pinDeltaPhiMetric.textContent = `${radToDeg(deltaPhi).toFixed(2)} deg`;
+    // theta = 70*alpha - 60, so one degree of cell rotation is 1/70 alpha.
+    pinAlphaDeadzoneMetric.textContent = `+/- ${(radToDeg(deltaPhi) / 70).toFixed(4)}`;
+    updatePins(n, m, rings, cellFramesByRow, axialPitch);
 
     if (selected && selected.row < m && selected.i < n) {
       const row = selected.row;
@@ -1324,13 +1440,13 @@
     // .defaultValue/.defaultChecked reflect each input's original HTML
     // attribute, so this always matches what's actually declared in
     // index.html rather than a second, driftable copy of the same numbers.
-    [alphaInput, backlashInput, ringCountInput, rowCountInput, axialPitchInput, targetDiameterInput].forEach((input) => {
+    [alphaInput, backlashInput, ringCountInput, rowCountInput, axialPitchInput, targetDiameterInput, pinDiameterInput].forEach((input) => {
       input.value = input.defaultValue;
     });
     [aSiteInput, bSiteInput].forEach((select) => {
       select.value = Array.from(select.options).find((option) => option.defaultSelected).value;
     });
-    [animateInput, collisionEnabledInput, heatmapEnabledInput].forEach((input) => {
+    [animateInput, collisionEnabledInput, heatmapEnabledInput, showPinsInput].forEach((input) => {
       input.checked = input.defaultChecked;
     });
     clearAllRoles();
@@ -1502,6 +1618,8 @@
     collisionEnabledInput,
     heatmapEnabledInput,
     showMeasurementsInput,
+    pinDiameterInput,
+    showPinsInput,
   ].forEach((input) => {
     input.addEventListener("input", () => updateMechanism());
     input.addEventListener("change", () => updateMechanism());
@@ -1514,6 +1632,7 @@
       format: SAVE_FORMAT,
       alpha: Number(alphaInput.value),
       backlash: Number(backlashInput.value),
+      pinDiameter: Number(pinDiameterInput.value),
       ringCount: Number(ringCountInput.value),
       rowCount: Number(rowCountInput.value),
       axialPitch: Number(axialPitchInput.value),
@@ -1527,6 +1646,9 @@
     if (!state || typeof state !== "object") return;
     if (Number.isFinite(state.alpha)) alphaInput.value = String(clamp(state.alpha, ALPHA_MIN, ALPHA_MAX));
     if (Number.isFinite(state.backlash)) backlashInput.value = String(clamp(state.backlash, Number(backlashInput.min), Number(backlashInput.max)));
+    if (Number.isFinite(state.pinDiameter)) {
+      pinDiameterInput.value = String(clamp(state.pinDiameter, Number(pinDiameterInput.min), Number(pinDiameterInput.max)));
+    }
     if (Number.isFinite(state.ringCount)) ringCountInput.value = String(clamp(Math.round(state.ringCount), RING_COUNT_MIN, RING_COUNT_MAX));
     if (Number.isFinite(state.rowCount)) rowCountInput.value = String(clamp(Math.round(state.rowCount), ROW_COUNT_MIN, ROW_COUNT_MAX));
     if (Number.isFinite(state.axialPitch)) axialPitchInput.value = String(clamp(state.axialPitch, Number(axialPitchInput.min), Number(axialPitchInput.max)));
@@ -1787,6 +1909,12 @@
       return { x: normal.x, y: normal.y, z: normal.z };
     },
     getPinAlignment: () => lastPinAlignment,
+    getPinInfo: () => ({
+      visibleCount: lastPinCount,
+      renderedRadius: pinMeshes.find((pin) => pin.visible)?.scale.x ?? null,
+      diameterMm: pinDiameterMm(),
+      deltaPhiDeg: radToDeg(pinDeltaPhiRad()),
+    }),
     // Client-space point over the visible cell hub nearest the camera, so
     // tests can click a real cell instead of guessing (the ring is hollow
     // and centered on the axle, so the canvas center looks into empty space).

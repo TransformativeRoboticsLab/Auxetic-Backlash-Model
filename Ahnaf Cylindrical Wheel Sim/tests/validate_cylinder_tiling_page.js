@@ -245,6 +245,63 @@ async function checkViewport(browser, name, viewport) {
   const bendText = await page.evaluate(() => document.getElementById("circumferentialBendMetric").textContent);
   assert.ok(bendText.includes("exceeds backlash"), `${name} circumferential bend readout should flag exceeding backlash (got "${bendText}")`);
 
+  // Physical pins (pin-sized backlash, concept from Ahyan's two-cell V2):
+  // one per hub, one per circumferential joint, one per axial joint =
+  // n*m + n*m + n*(m-1) = 30 + 30 + 20 at the n=10, m=3 default.
+  const pinsDefault = await page.evaluate(() => window.__cylinderTilingDebug.getPinInfo());
+  assert.strictEqual(pinsDefault.visibleCount, 80, `${name} should render one pin per hub and per joint`);
+  assert.ok(Math.abs(pinsDefault.renderedRadius - 1.5) < 1e-6, `${name} default 3.0 mm pin should render at 1.5 mm radius`);
+  // dphi = asin(radial clearance / arm length) = asin(0.2 / 22.1) = 0.52 deg.
+  assert.ok(Math.abs(pinsDefault.deltaPhiDeg - 0.5185) < 0.001, `${name} pin in-plane dead zone should be asin(b/L) (got ${pinsDefault.deltaPhiDeg})`);
+
+  // A thinner pin has more clearance: bigger dead zone, bigger tilt limit,
+  // fewer cells needed to close a ring through backlash alone.
+  const setPinDiameter = (value) =>
+    page.evaluate((v) => {
+      const input = document.getElementById("pinDiameter");
+      input.value = v;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }, value);
+  await setPinDiameter("2.44");
+  await page.waitForTimeout(100);
+  const thinPin = await page.evaluate(() => ({
+    pins: window.__cylinderTilingDebug.getPinInfo(),
+    alignment: window.__cylinderTilingDebug.getPinAlignment(),
+  }));
+  assert.ok(thinPin.pins.deltaPhiDeg > pinsDefault.deltaPhiDeg, `${name} thinner pin should widen the in-plane dead zone`);
+  assert.ok(thinPin.alignment.tiltLimit > pinAlignmentDefault.tiltLimit, `${name} thinner pin should raise the joint tilt limit`);
+  assert.ok(
+    thinPin.alignment.minCellsForBacklashClosure < pinAlignmentDefault.minCellsForBacklashClosure,
+    `${name} thinner pin should need fewer cells per ring for backlash-only closure`
+  );
+
+  // A pin that fills the hole leaves no clearance: no tilt allowance, and
+  // the minimum-cells readout says so instead of dividing by zero.
+  await setPinDiameter("3.4");
+  await page.waitForTimeout(100);
+  const fullPin = await page.evaluate(() => ({
+    alignment: window.__cylinderTilingDebug.getPinAlignment(),
+    text: document.getElementById("minCellsClosureMetric").textContent,
+  }));
+  assert.ok(fullPin.alignment.tiltLimit < 1e-9, `${name} a hole-filling pin should allow no tilt`);
+  assert.ok(fullPin.text.includes("none"), `${name} min-cells readout should explain a hole-filling pin (got "${fullPin.text}")`);
+  await setPinDiameter("3.0");
+
+  await page.evaluate(() => {
+    const input = document.getElementById("showPins");
+    input.checked = false;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await page.waitForTimeout(100);
+  const pinsHidden = await page.evaluate(() => window.__cylinderTilingDebug.getPinInfo());
+  assert.strictEqual(pinsHidden.visibleCount, 0, `${name} Show pins off should hide every pin`);
+  await page.evaluate(() => {
+    const input = document.getElementById("showPins");
+    input.checked = true;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await page.waitForTimeout(100);
+
   // Under differential dilation rows sit at different diameters, but they
   // must stay coaxial on the axle with each column stacked at one angle
   // (axial bolts force that). A regression here once left rows shifted
@@ -604,6 +661,8 @@ async function checkViewport(browser, name, viewport) {
   await page.evaluate(() => {
     document.getElementById("alpha").value = "1.7";
     document.getElementById("alpha").dispatchEvent(new Event("input", { bubbles: true }));
+    document.getElementById("pinDiameter").value = "2.6";
+    document.getElementById("pinDiameter").dispatchEvent(new Event("input", { bubbles: true }));
   });
   await page.click("#saveJsonBtn");
   const download = await downloadPromise;
@@ -612,6 +671,7 @@ async function checkViewport(browser, name, viewport) {
   const saved = require(savedPath);
   assert.strictEqual(saved.format, "rad-cylinder-tiling.v1", `${name} saved JSON should carry the expected format tag`);
   assert.strictEqual(saved.alpha, 1.7, `${name} saved JSON should capture the current alpha`);
+  assert.strictEqual(saved.pinDiameter, 2.6, `${name} saved JSON should capture the pin diameter`);
   assert.ok(Array.isArray(saved.cellRoles), `${name} saved JSON should include per-cell roles`);
   const savedLockedCount = saved.cellRoles.flat().filter((c) => c && c.role === "locked").length;
   assert.strictEqual(savedLockedCount, 1, `${name} saved JSON should capture the locked cell`);
@@ -619,6 +679,8 @@ async function checkViewport(browser, name, viewport) {
   await page.evaluate(() => {
     document.getElementById("alpha").value = "0.4";
     document.getElementById("alpha").dispatchEvent(new Event("input", { bubbles: true }));
+    document.getElementById("pinDiameter").value = "3.2";
+    document.getElementById("pinDiameter").dispatchEvent(new Event("input", { bubbles: true }));
     document.getElementById("clearRolesBtn").click();
   });
   await page.waitForTimeout(100);
@@ -629,6 +691,8 @@ async function checkViewport(browser, name, viewport) {
   assert.strictEqual(afterLoadRoles.lockedCount, "1", `${name} loading the saved JSON should restore the locked cell`);
   const loadedAlpha = await page.evaluate(() => document.getElementById("alpha").value);
   assert.strictEqual(loadedAlpha, "1.7", `${name} loading the saved JSON should restore alpha=1.7`);
+  const loadedPin = await page.evaluate(() => document.getElementById("pinDiameter").value);
+  assert.strictEqual(Number(loadedPin), 2.6, `${name} loading the saved JSON should restore the pin diameter`);
 
   // Target Diameter: fitting should set an alpha whose *actual rendered*
   // diameter (not just the fit tool's own estimate) matches the achieved
