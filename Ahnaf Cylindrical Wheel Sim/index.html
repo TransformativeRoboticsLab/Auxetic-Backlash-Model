@@ -84,8 +84,9 @@
           </dl>
 
           <p class="hint">
-            <strong>Physical pin:</strong> the gap above is the paper's design-space backlash. The pin below is the real
-            joint hardware: its clearance in the 3.4 mm hole sets the physical in-plane dead zone
+            <strong>Physical pin:</strong> the gap above is the paper's design-space backlash; it now only sets the Drive's
+            dead zone. The pin below is the real joint hardware: its clearance in the 3.4 mm hole sets how much
+            neighboring cells can twist differently (the cell-to-cell coupling), the physical in-plane dead zone
             (<code>&Delta;&phi; = asin(b/L)</code>, radial clearance b over arm length L = 22.1 mm) and the out-of-plane
             tilt limit used by the backlash tilt check. Pin-sized backlash follows Ahyan's two-cell attachment V2.
           </p>
@@ -182,10 +183,10 @@
         <details class="panel-section" open>
           <summary>Per-Cell Actuation &amp; Differential Dilation</summary>
           <p class="hint">
-            Every cell defaults to "free": its alpha relaxes toward its neighbors' alpha through the same
-            backlash-gated coupling law as Drive, so actuating or locking one cell tugs nearby free cells by a
-            die-off distance instead of every cell being an independent input - matching the paper's coupling
-            model rather than a plain per-cell slider bank.
+            Both stacked pad pairs of every joint are bolted, so neighboring cells can only twist differently by
+            what the pins' hole clearance allows (D - d: 0.4 mm for a 3.0 mm pin, about 1&deg; of twist). Every cell
+            defaults to "free" and settles as close to the Drive as those limits allow, so actuating or locking one
+            cell drags its neighbors with it, fading with distance - the pin size sets the die-off.
           </p>
           <dl>
             <div><dt>actuator cells</dt><dd id="actuatorCountMetric">0</dd></div>
@@ -223,7 +224,9 @@
 
           <p class="hint">
             <strong>Shape presets:</strong> instantly command a differential alpha pattern across every row to
-            demonstrate a non-uniform wheel shape, rather than the whole structure dilating uniformly.
+            demonstrate a non-uniform wheel shape, rather than the whole structure dilating uniformly. With rows
+            bolted together, the profile is scaled to the most the pins allow - small with a snug pin; a thinner pin
+            (Backlash panel) or unpinned rows allow more.
           </p>
           <div class="button-row">
             <button id="presetBarrelBtn" type="button">Barrel (bulge middle)</button>

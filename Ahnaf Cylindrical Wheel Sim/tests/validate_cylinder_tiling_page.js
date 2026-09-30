@@ -631,14 +631,18 @@ async function checkViewport(browser, name, viewport) {
     Math.abs(mmValue(afterActuation.diameter) - mmValue(beforeActuation.diameter)) > 0.1,
     `${name} actuating one cell should resize its ring (${beforeActuation.diameter} -> ${afterActuation.diameter})`
   );
-  // One cell can't twist all the way to 2.0 while its neighbors sit near
-  // 1.3: it stops where its pads would hit theirs, with nothing overlapping.
+  // Both pad pairs of every joint are bolted, so the actuated cell drags
+  // the whole ring toward 2.0 - past the reachable range, so every target
+  // is limited to just inside it, with nothing overlapping or binding.
+  await page.waitForFunction(() => window.__cylinderTilingDebug.getConstraintState() !== "moving", null, { timeout: 5000 });
   const actuatedContact = await page.evaluate(() => ({
     state: window.__cylinderTilingDebug.getConstraintState(),
     clear: window.__cylinderTilingDebug.getCollisionReport().clear,
+    bind: window.__cylinderTilingDebug.getPinAlignment().maxCircumferential,
   }));
-  assert.strictEqual(actuatedContact.state, "held", `${name} an over-commanded actuator should be held at contact (got ${actuatedContact.state})`);
-  assert.ok(actuatedContact.clear, `${name} a held actuator must not overlap its neighbors`);
+  assert.strictEqual(actuatedContact.state, "limited", `${name} an actuator commanded past reach should be limited (got ${actuatedContact.state})`);
+  assert.ok(actuatedContact.clear, `${name} a limited actuator must not overlap its neighbors`);
+  assert.ok(actuatedContact.bind <= 0.4 + 1e-3, `${name} bolted pins must stay within their 0.4 mm clearance (got ${actuatedContact.bind})`);
 
   // Read the full per-cell alpha grid through the debug hook (window.__cylinderTilingDebug,
   // exposed specifically because guessing screen coordinates to click a
@@ -777,15 +781,17 @@ async function checkViewport(browser, name, viewport) {
   await page.waitForTimeout(150);
 
   // Shape presets: each should command a different alpha per row and, with
-  // constraints on, actually reach it (the presets pick alphas inside the
-  // collision-free window) - producing the named profile in the realized
-  // ring diameters, not just in the commands.
+  // constraints on, actually reach it - producing the named profile in the
+  // realized ring diameters. Rows are bolted to each other (both pad pairs),
+  // so adjacent rows can only differ by what the pins' clearance allows:
+  // with the snug default 3.0 mm pin the profile is small (~1 mm), and a
+  // thinner pin allows a bigger one.
   const presetShape = async (buttonId) => {
     await page.evaluate((id) => {
       document.getElementById("clearRolesBtn").click();
       document.getElementById(id).click();
     }, buttonId);
-    await page.waitForTimeout(400);
+    await page.waitForFunction(() => window.__cylinderTilingDebug.getConstraintState() !== "moving", null, { timeout: 5000 });
     return page.evaluate(() => {
       const debugHook = window.__cylinderTilingDebug;
       const rows = debugHook.getCellAlphas().length;
@@ -794,7 +800,12 @@ async function checkViewport(browser, name, viewport) {
         const ring = debugHook.getRingGeometry(row);
         diameters.push((2 * ring.centers.reduce((sum, c) => sum + Math.hypot(c.x, c.y), 0)) / ring.centers.length);
       }
-      return { diameters, state: debugHook.getConstraintState(), clear: debugHook.getCollisionReport().clear };
+      return {
+        diameters,
+        state: debugHook.getConstraintState(),
+        clear: debugHook.getCollisionReport().clear,
+        axialPinOffset: debugHook.getPinAlignment().maxAxial,
+      };
     });
   };
   const barrel = await presetShape("presetBarrelBtn");
@@ -803,14 +814,15 @@ async function checkViewport(browser, name, viewport) {
   const lastRow = barrel.diameters.length - 1;
   assert.strictEqual(barrel.state, "free", `${name} Barrel preset should be reachable under constraints (got ${barrel.state})`);
   assert.ok(barrel.clear, `${name} Barrel pose should be collision-free`);
+  assert.ok(barrel.axialPinOffset <= 0.4 + 1e-3, `${name} Barrel rows must stay within the 0.4 mm pin clearance (got ${barrel.axialPinOffset})`);
   assert.ok(
-    barrel.diameters[midRow] > barrel.diameters[0] + 5 && barrel.diameters[midRow] > barrel.diameters[lastRow] + 5,
+    barrel.diameters[midRow] > barrel.diameters[0] + 0.3 && barrel.diameters[midRow] > barrel.diameters[lastRow] + 0.3,
     `${name} Barrel should bulge the middle row (diameters ${JSON.stringify(barrel.diameters)})`
   );
   const saddle = await presetShape("presetSaddleBtn");
   assert.strictEqual(saddle.state, "free", `${name} Saddle preset should be reachable under constraints (got ${saddle.state})`);
   assert.ok(
-    saddle.diameters[midRow] < saddle.diameters[0] - 5 && saddle.diameters[midRow] < saddle.diameters[lastRow] - 5,
+    saddle.diameters[midRow] < saddle.diameters[0] - 0.3 && saddle.diameters[midRow] < saddle.diameters[lastRow] - 0.3,
     `${name} Saddle should pinch the middle row (diameters ${JSON.stringify(saddle.diameters)})`
   );
   const cone = await presetShape("presetConeBtn");
@@ -819,6 +831,23 @@ async function checkViewport(browser, name, viewport) {
     cone.diameters.every((d, row) => row === 0 || d > cone.diameters[row - 1]),
     `${name} Cone should widen row by row (diameters ${JSON.stringify(cone.diameters)})`
   );
+  // A looser (thinner) pin lets bolted rows differ more: bigger barrel.
+  await page.evaluate(() => {
+    const input = document.getElementById("pinDiameter");
+    input.value = "2.3";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const looseBarrel = await presetShape("presetBarrelBtn");
+  const bulge = (shape) => shape.diameters[midRow] - (shape.diameters[0] + shape.diameters[lastRow]) / 2;
+  assert.ok(
+    bulge(looseBarrel) > 2 * bulge(barrel),
+    `${name} a 2.3 mm pin should allow a much bigger barrel than 3.0 mm (bulge ${bulge(looseBarrel)} vs ${bulge(barrel)})`
+  );
+  await page.evaluate(() => {
+    const input = document.getElementById("pinDiameter");
+    input.value = input.defaultValue;
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
 
   await page.click("#clearRolesBtn");
   await page.waitForTimeout(300);

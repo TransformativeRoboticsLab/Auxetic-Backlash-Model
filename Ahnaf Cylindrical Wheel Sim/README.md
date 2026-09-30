@@ -92,18 +92,26 @@ python -m http.server 8000
 - **Drive**: the paper-supported dilation factor `alpha`, converted to the
   cell rotation `theta = 70*alpha - 60`, with a bidirectional backlash
   dead-zone (`f(x) = max(0, x-b) + min(x+b, 0)`) applied around `alpha = 1`.
-- **Per-cell actuation and coupling propagation**: every cell is "free"
-  (its alpha relaxes toward its neighbors' through the same backlash-gated
-  `reluDeadzone` law Drive uses), an "actuator" (a directly commanded
-  alpha), or "locked" (frozen at whatever alpha it had when locked). This
-  is a discrete relaxation over the ring/cylinder's actual neighbor graph
-  (circumferential + axial neighbors), not an independent slider per cell -
-  actuating one cell tugs nearby free cells by a die-off distance, matching
-  the paper's coupling model. With no actuators/locks this reduces exactly
-  to the uniform-ring behavior. Each of the `m` rows solves its own ring
-  from that row's own per-cell alphas, so rows can end up at different
-  diameters (barrel/cone profiles) instead of always stacking as a true
-  cylinder.
+- **Per-cell actuation and coupling through bolted joints**: every cell is
+  "free", an "actuator" (a directly commanded alpha), or "locked" (frozen at
+  whatever alpha it had when locked). Both stacked pad pairs of every joint
+  are bolted, and the second pin's two holes slide apart when neighbors
+  twist differently: by `2L*|sin(t_i/2) - sin(t_j/2)|` around a ring and
+  `L*|...|` between pinned rows. A bolt allows at most the hole clearance
+  `D - d` (0.4 mm for a 3.0 mm pin, about 1 deg of twist between neighbors).
+  So free cells settle as close to the shared drive as those limits allow:
+  actuating one cell drags its neighbors, fading with distance, and the pin
+  size sets the die-off - e.g. one cell commanded to 1.60 in a 1.30 ring
+  pulls the far side to 1.53 with a 3.0 mm pin, 1.40 with a 2.3 mm pin. (The
+  limits keep 10% of the clearance in hand for small geometric extras.) The
+  solver also refuses any step that would push a bolted pad pair further off
+  its pin than the clearance ("a bolted pin would bind"). Earlier versions
+  coupled cells through the paper's abstract backlash slider (0.10 alpha,
+  ~7 deg), which let neighbors differ far more than a bolted joint can and
+  visibly split the second pin's holes; that slider now only sets the
+  drive's dead zone. With no actuators/locks this reduces exactly to the
+  uniform-ring behavior. Each of the `m` rows solves its own ring from that
+  row's own per-cell alphas.
 - **Differential dilation (batch selection + shape presets)**: the whole
   structure does not have to dilate uniformly. Shift-click any number of
   cells in the 3D view to build a batch selection (shown with a green ring
@@ -115,8 +123,13 @@ python -m http.server 8000
   one click. They pick alphas inside the current collision-free window so
   the constraint solver can actually reach them, and since the ring gets
   *smaller* as alpha rises in that window (more twist shortens the pin
-  chord), the widest row gets the lowest alpha. At the defaults: Barrel
-  117 / 132 / 117 mm, Cone 117 -> 126 -> 132 mm, Saddle 132 / 117 / 132 mm.
+  chord), the widest row gets the lowest alpha. With rows bolted together,
+  adjacent rows can only differ by what the pins allow, so the profile is
+  scaled down to the largest the pins permit: at the snug default 3.0 mm
+  pin that is under 1 mm of bulge (e.g. Barrel 126.0 / 126.8 / 126.0 mm) - a
+  real consequence of double-bolted rows, not a display limit. A thinner pin
+  allows more, and unpinned rows (separate rings) allow the full window
+  (Barrel ~117 / 132 / 117 mm).
 - **Target Diameter fit**: diameter isn't monotonic in alpha over the full
   slider range (the pin chord is longest at zero twist, alpha ~0.86), so
   "Fit Alpha" exhaustively evaluates every alpha the slider can reach and
@@ -268,9 +281,12 @@ python -m http.server 8000
   and two over, and the three nearest cells in the next row), and
   penetration is sampled rather than solved exactly, so very shallow
   overlaps between samples can be missed (~0.05 mm tolerance).
-- Per-cell actuation is a discrete backlash-gated relaxation, not a force/
-  energy equilibrium solve - it's a reasonable discrete analogue of the
-  paper's coupling law, not a calibrated mechanics model.
+- Coupling is kinematic: free cells take the pose closest to the drive that
+  the bolt clearances allow, not a force/energy equilibrium - real parts
+  have friction and compliance on top of the clearance.
+- Any cell commanded past the reachable range is limited to just inside it
+  before solving (like the drive), so an over-commanded actuator reports
+  "limited" rather than pressing against contact.
 - Timeline playback jumps between keyframes rather than interpolating
   between them.
 - No Jacobian sensitivity analysis or gradient-based inverse design (the

@@ -646,21 +646,28 @@
     }
     for (let row = 0; row < m - 1; row += 1) {
       for (let i = 0; i < n; i += 1) {
-        // A cell's north pads against the south pads of the cell above:
-        // ~0 when rows are pinned and share a diameter; with a set
-        // (unpinned) pitch it is the gap between the rows.
-        [
-          ["upper", "lower"],
-          ["lower", "upper"],
-        ].forEach(([layerA, layerB]) => {
-          const lateral = padPairOffAxis(
-            padWorld(rings[row], i, layerA, "north"),
-            padWorld(rings[row + 1], i, layerB, "south"),
-            rings[row].normals[i],
-            rings[row + 1].normals[i]
-          );
-          maxAxial = Math.max(maxAxial, lateral);
-        });
+        // A cell's north pads against the south pads of the cell above.
+        // Pinned rows: the pads' offset from the two cells' twist
+        // difference, L*|sin(t1/2) - sin(t2/2)| (the same measure the bind
+        // check uses - see pinBindMm). Unpinned rows: the real gap.
+        if (pinRowsInput.checked) {
+          const thetaHere = rings[row].crossRotUpper[i] - rings[row].crossRotLower[i];
+          const thetaAbove = rings[row + 1].crossRotUpper[i] - rings[row + 1].crossRotLower[i];
+          maxAxial = Math.max(maxAxial, CAD.siteRadiusMm * Math.abs(Math.sin(thetaHere / 2) - Math.sin(thetaAbove / 2)));
+        } else {
+          [
+            ["upper", "lower"],
+            ["lower", "upper"],
+          ].forEach(([layerA, layerB]) => {
+            const lateral = padPairOffAxis(
+              padWorld(rings[row], i, layerA, "north"),
+              padWorld(rings[row + 1], i, layerB, "south"),
+              rings[row].normals[i],
+              rings[row + 1].normals[i]
+            );
+            maxAxial = Math.max(maxAxial, lateral);
+          });
+        }
         // Cells stay axis-aligned, so a change in radius between rows has to
         // be taken up as tilt at the axial joint: the profile's slope angle.
         const radiusNorth = rings[row].centers[i].length();
@@ -1095,54 +1102,106 @@
   // keep moving while blocked parts hold at contact. Moves shrink from one
   // step to 1/8 step so a blocked part creeps up to its contact point.
   // Only rows a move touches are re-checked for collisions.
-  const STEP_SCALES = [1, 0.5, 0.25, 0.125];
 
+  // Move the selected cells part of the way to their targets, all by the
+  // same fraction of the way in s = sin(theta/2), sized so no cell turns
+  // more than maxStep. The bolted-pin limits are linear in s, so if the
+  // start and the target both respect them, every step in between does too.
   function advanceGrid(grid, target, maxStep, onlyRow = null, onlyCell = null) {
+    const selectedCell = (r, i) => (onlyRow === null || r === onlyRow) && (onlyCell === null || i === onlyCell);
+    let maxDelta = 0;
+    grid.forEach((row, r) =>
+      row.forEach((v, i) => {
+        if (selectedCell(r, i)) maxDelta = Math.max(maxDelta, Math.abs(target[r][i] - v));
+      })
+    );
+    if (maxDelta < 1e-12) return grid;
+    const f = Math.min(1, maxStep / maxDelta);
     return grid.map((row, r) =>
       row.map((v, i) => {
-        if ((onlyRow !== null && r !== onlyRow) || (onlyCell !== null && i !== onlyCell)) return v;
-        const delta = target[r][i] - v;
-        return Math.abs(delta) <= maxStep ? target[r][i] : v + Math.sign(delta) * maxStep;
+        if (!selectedCell(r, i)) return v;
+        if (f >= 1) return target[r][i];
+        const s0 = Math.sin(v / 2);
+        const s1 = Math.sin(target[r][i] / 2);
+        return 2 * Math.asin(clamp(s0 + f * (s1 - s0), -1, 1));
       })
     );
   }
 
   function constrainedStep(n, m, spacing, start, target) {
     const pinned = spacing === null;
+    const clearance = jointCouplingLimits().clearance;
     let pose = start;
     let moved = false;
     let discontinuous = false;
+    let bind = false;
     // Try `grid` from the current pose, checking only `regionRows` (null =
-    // all). Allowed if continuous and it doesn't add overlap in that region
-    // (leaving an already-overlapping pose is fine if overlap doesn't grow).
-    const attempt = (grid, regionRows) => {
+    // all). Allowed if continuous, if no bolted pad pair ends up further off
+    // its pin than the hole clearance allows (or, if it already is, no
+    // further), and if it doesn't add overlap in that region (leaving an
+    // already-overlapping pose is fine if overlap doesn't grow).
+    const bindBefore = pinBindMm(pose.rings, n, m, pinned);
+    const penetrationBefore = new Map();
+    const check = (grid, regionRows) => {
       const candidate = buildPose(n, m, spacing, grid, true, regionRows);
       if (!stepIsContinuous(pose, candidate)) {
         discontinuous = true;
-        return false;
+        return null;
       }
-      const before = regionRows ? checkCollisions(pose.rings, n, m, pinned, regionRows).maxPenetration : pose.report.maxPenetration;
-      if (candidate.report.maxPenetration > Math.max(COLLISION_TOLERANCE_MM, before + 1e-6)) return false;
-      pose = regionRows ? buildPose(n, m, spacing, grid, true) : candidate;
+      if (pinBindMm(candidate.rings, n, m, pinned) > Math.max(clearance + 1e-3, bindBefore + 1e-6)) {
+        bind = true;
+        return null;
+      }
+      const key = regionRows ? regionRows.join(",") : "all";
+      if (!penetrationBefore.has(key)) {
+        penetrationBefore.set(
+          key,
+          regionRows ? checkCollisions(pose.rings, n, m, pinned, regionRows).maxPenetration : pose.report.maxPenetration
+        );
+      }
+      if (candidate.report.maxPenetration > Math.max(COLLISION_TOLERANCE_MM, penetrationBefore.get(key) + 1e-6)) return null;
+      return candidate;
+    };
+    // Take the full step if allowed; otherwise bisect for the largest
+    // allowed part of it (down to 1/32), so a blocked part moves straight to
+    // its contact point instead of creeping there.
+    const move = (onlyRow, onlyCell, region) => {
+      const gridAt = (fraction) => advanceGrid(pose.grid, target, CONSTRAINT_STEP_RAD * fraction, onlyRow, onlyCell);
+      let best = check(gridAt(1), region);
+      if (!best) {
+        let lo = 0;
+        let hi = 1;
+        for (let iter = 0; iter < 5; iter += 1) {
+          const mid = (lo + hi) / 2;
+          const candidate = check(gridAt(mid), region);
+          if (candidate) {
+            best = candidate;
+            lo = mid;
+          } else {
+            hi = mid;
+          }
+        }
+      }
+      if (!best) return false;
+      pose = region ? buildPose(n, m, spacing, best.grid, true) : best;
+      penetrationBefore.clear();
       moved = true;
       return true;
     };
-    const tryScaled = (onlyRow, onlyCell, region) =>
-      STEP_SCALES.some((scale) => attempt(advanceGrid(pose.grid, target, CONSTRAINT_STEP_RAD * scale, onlyRow, onlyCell), region));
 
-    if (attempt(advanceGrid(pose.grid, target, CONSTRAINT_STEP_RAD), null)) return { pose, moved, discontinuous };
+    if (move(null, null, null)) return { pose, moved, discontinuous, bind };
     for (let r = 0; r < m; r += 1) {
       if (pose.grid[r].every((v, i) => Math.abs(v - target[r][i]) < 1e-9)) continue;
       const region = [r - 1, r, r + 1].filter((x) => x >= 0 && x < m);
-      if (tryScaled(r, null, region)) continue;
+      if (move(r, null, region)) continue;
       // A row with one shared command holds as a unit; only rows whose
       // cells want different things get split up cell by cell.
       if (target[r].every((v) => Math.abs(v - target[r][0]) < 1e-9)) continue;
       for (let i = 0; i < n; i += 1) {
-        if (Math.abs(pose.grid[r][i] - target[r][i]) >= 1e-9) tryScaled(r, i, region);
+        if (Math.abs(pose.grid[r][i] - target[r][i]) >= 1e-9) move(r, i, region);
       }
     }
-    return { pose, moved, discontinuous };
+    return { pose, moved, discontinuous, bind };
   }
 
   function realizePose(n, m, spacing, requested) {
@@ -1179,7 +1238,7 @@
         const result = constrainedStep(n, m, spacing, current, requested);
         current = result.pose;
         if (!result.moved) {
-          status = result.discontinuous ? "discontinuous" : "held";
+          status = result.discontinuous ? "discontinuous" : result.bind ? "bind" : "held";
           break;
         }
         steps += 1;
@@ -1233,35 +1292,31 @@
     return ranges.find(([lo, hi]) => alpha >= lo - 1e-9 && alpha <= hi + 1e-9) || null;
   }
 
-  // Limit a shared effective alpha to the collision-free range the pose is
-  // in now (so it never jumps to a separate range), or, before there is a
-  // pose, the range nearest the command. Keeps REACH_MARGIN from each edge.
+  // The alpha bounds commands are limited to: the collision-free range the
+  // pose is in now (so nothing ever jumps to a separate range), or, before
+  // there is a pose, the range nearest `alpha`, with REACH_MARGIN kept from
+  // each edge. Null when there is no range.
   const REACH_MARGIN = 0.02;
-  function limitToReachable(alpha, ranges) {
-    if (!ranges.length) return alpha;
+  function reachableBounds(ranges, alpha) {
+    if (!ranges.length) return null;
     const realized = lastRealizedAlphas ? lastRealizedAlphas.flat() : [];
     const current = realized.length ? realized.reduce((a, b) => a + b, 0) / realized.length : null;
     const distance = (range, a) => (a < range[0] ? range[0] - a : a > range[1] ? a - range[1] : 0);
     const nearest = (a) => ranges.reduce((best, r) => (distance(r, a) < distance(best, a) ? r : best), ranges[0]);
     const range = current === null ? nearest(alpha) : nearest(current);
-    const lo = range[1] - range[0] > 2 * REACH_MARGIN ? range[0] + REACH_MARGIN : (range[0] + range[1]) / 2;
-    const hi = range[1] - range[0] > 2 * REACH_MARGIN ? range[1] - REACH_MARGIN : (range[0] + range[1]) / 2;
-    return clamp(alpha, lo, hi);
+    if (range[1] - range[0] > 2 * REACH_MARGIN) return [range[0] + REACH_MARGIN, range[1] - REACH_MARGIN];
+    const middle = (range[0] + range[1]) / 2;
+    return [middle, middle];
   }
 
   function thetaToAlpha(theta) {
     return (radToDeg(theta) + 60) / 70;
   }
 
-  // --- Per-cell actuation: each cell is "free" (tracks a backlash-gated
-  // relaxation toward its neighbors' alpha), "actuator" (a directly
-  // commanded alpha), or "locked" (frozen at whatever alpha it had when
-  // locked). This is the discrete analogue of the paper's coupling law
-  // (docs/research_grounding.md) applied over the ring/cylinder's actual
-  // neighbor graph (circumferential + axial) instead of only around a
-  // single global reference - actuating one cell should tug its neighbors
-  // by die-off distance, gated by the same backlash gap, rather than every
-  // cell being an independent free input.
+  // --- Per-cell actuation: each cell is "free" (follows the drive as far
+  // as its bolted joints allow - see computeCellAlphas), "actuator" (a
+  // directly commanded alpha), or "locked" (frozen at whatever alpha it had
+  // when locked).
   let cellRoles = [];
   let rolesN = -1;
   let rolesM = -1;
@@ -1282,31 +1337,99 @@
     return cellRoles[row][i].role !== "free";
   }
 
-  const PROPAGATION_ITERATIONS = 24;
+  // Coupling through double-bolted joints. With both stacked pad pairs of a
+  // joint bolted, the second pin's two holes slide apart by
+  // 2L*|s_i - s_j| (s = sin(theta/2)) when neighbors around a ring twist
+  // differently, and by L*|s_i - s_j| between pinned rows; the most a bolt
+  // allows is the hole clearance D - d. So neighbors' s may differ by at
+  // most (D - d)/(2L) around a ring and (D - d)/L between pinned rows.
+  // Actuators and locked cells are fixed; every free cell settles as close
+  // to the shared drive as those limits allow - so an actuated cell drags
+  // its neighbors, and the pin clearance sets how fast that dies off.
+  // The coupling keeps 10% of the clearance in hand: the ideal offsets above
+  // ignore small extra shifts (e.g. rows at different twists also sit at
+  // slightly different angles around the axle), which the solver's
+  // geometric bind check does count.
+  const COUPLING_HEADROOM = 0.9;
+  function jointCouplingLimits() {
+    const clearance = Math.max(0, CAD.nominalHoleDiameterMm - pinDiameterMm());
+    const usable = clearance * COUPLING_HEADROOM;
+    return {
+      clearance,
+      ring: hasSecondJointPin() ? usable / (2 * CAD.siteRadiusMm) : Infinity,
+      axial: pinRowsInput.checked ? usable / CAD.siteRadiusMm : Infinity,
+    };
+  }
 
-  function computeCellAlphas(n, m, baselineAlpha, backlash) {
-    let alphas = [];
-    for (let row = 0; row < m; row += 1) alphas.push(new Array(n).fill(baselineAlpha));
+  const twistSine = (alpha) => Math.sin(degToRad(cellThetaDeg(alpha)) / 2);
+  const alphaFromTwistSine = (s) => thetaToAlpha(2 * Math.asin(clamp(s, -1, 1)));
+
+  function computeCellAlphas(n, m, baselineAlpha) {
+    const limits = jointCouplingLimits();
+    const base = twistSine(baselineAlpha);
+    const s = [];
     for (let row = 0; row < m; row += 1) {
-      for (let i = 0; i < n; i += 1) {
-        if (isFixedCell(row, i)) alphas[row][i] = cellRoles[row][i].alpha;
-      }
+      s.push(Array.from({ length: n }, (_, i) => (isFixedCell(row, i) ? twistSine(cellRoles[row][i].alpha) : base)));
     }
-    for (let iter = 0; iter < PROPAGATION_ITERATIONS; iter += 1) {
-      const next = alphas.map((r) => r.slice());
+    for (let iter = 0; iter < 400; iter += 1) {
+      let change = 0;
       for (let row = 0; row < m; row += 1) {
         for (let i = 0; i < n; i += 1) {
           if (isFixedCell(row, i)) continue;
-          const neighbors = [alphas[row][(i - 1 + n) % n], alphas[row][(i + 1) % n]];
-          if (row > 0) neighbors.push(alphas[row - 1][i]);
-          if (row < m - 1) neighbors.push(alphas[row + 1][i]);
-          const avg = neighbors.reduce((a, b) => a + b, 0) / neighbors.length;
-          next[row][i] = alphas[row][i] + reluDeadzone(avg - alphas[row][i], backlash);
+          let lo = -Infinity;
+          let hi = Infinity;
+          const bound = (value, limit) => {
+            lo = Math.max(lo, value - limit);
+            hi = Math.min(hi, value + limit);
+          };
+          bound(s[row][(i - 1 + n) % n], limits.ring);
+          bound(s[row][(i + 1) % n], limits.ring);
+          if (row > 0) bound(s[row - 1][i], limits.axial);
+          if (row + 1 < m) bound(s[row + 1][i], limits.axial);
+          // Fixed cells too far apart for the pins to span: split the
+          // difference; the solver will then hold at a binding pin.
+          const next = lo > hi ? (lo + hi) / 2 : clamp(base, lo, hi);
+          change = Math.max(change, Math.abs(next - s[row][i]));
+          s[row][i] = next;
         }
       }
-      alphas = next;
+      if (change < 1e-12) break;
     }
-    return alphas;
+    return s.map((row, r) => row.map((v, i) => (isFixedCell(r, i) ? cellRoles[r][i].alpha : alphaFromTwistSine(v))));
+  }
+
+  // Largest distance any bolted pad pair sits off its common pin axis, in
+  // mm (first pins are exact by construction; second pins and axial pins
+  // open up when neighbors twist differently). Around a ring this is read
+  // from the actual pad positions. Between pinned rows it uses the pads'
+  // offset from the twist difference, L*|sin(t1/2) - sin(t2/2)|: rows are
+  // solved as separate rings anchored at cell 0, so unevenly twisted rows
+  // also drift apart by angle further round - an artifact of solving rows
+  // separately that jointly bolted rows wouldn't have.
+  function pinBindMm(rings, n, m, pinnedRows) {
+    let worst = 0;
+    const aSite = aSiteInput.value;
+    const bSite = bSiteInput.value;
+    const layers = jointPinLayers();
+    for (let row = 0; row < m; row += 1) {
+      const ring = rings[row];
+      for (let i = 0; i < n; i += 1) {
+        const next = (i + 1) % n;
+        layers.forEach(([layerA, layerB]) => {
+          worst = Math.max(
+            worst,
+            padPairOffAxis(padWorld(ring, i, layerA, aSite), padWorld(ring, next, layerB, bSite), ring.normals[i], ring.normals[next])
+          );
+        });
+        if (pinnedRows && row + 1 < m) {
+          const above = rings[row + 1];
+          const thetaHere = ring.crossRotUpper[i] - ring.crossRotLower[i];
+          const thetaAbove = above.crossRotUpper[i] - above.crossRotLower[i];
+          worst = Math.max(worst, CAD.siteRadiusMm * Math.abs(Math.sin(thetaHere / 2) - Math.sin(thetaAbove / 2)));
+        }
+      }
+    }
+    return worst;
   }
 
   function cellThetaDeg(alphaValue) {
@@ -1552,6 +1675,7 @@
   let lastRealizedAlphas = null;
   let lastConstraintStatus = "off";
   let lastEnvelope = [];
+  let lastPresetScale = 1;
 
   function updateCamera() {
     const r = cameraState.radius;
@@ -1615,19 +1739,27 @@
     }
     ensureRoles(n, m);
 
-    // With constraints on, the shared drive can't go past the reachable
-    // range - like Ahyan's V2 clamping the drive to the nearest feasible
-    // value - with a small margin kept from contact so the rest of the
-    // structure isn't jammed against its stops.
     const envelope = uniformAlphaEnvelope(n, m, spacing);
     lastEnvelope = envelope;
-    const drivenBaseline = constraintsEnabledInput.checked ? limitToReachable(baselineAlpha, envelope) : baselineAlpha;
-    const driveLimited = Math.abs(drivenBaseline - baselineAlpha) > 1e-9;
-
-    const cellAlphas = computeCellAlphas(n, m, drivenBaseline, backlash);
+    const cellAlphas = computeCellAlphas(n, m, baselineAlpha);
     lastCellAlphas = cellAlphas;
     lastCellRolesSnapshot = cellRoles;
-    const requestedTheta = cellAlphas.map((row) => row.map((a) => degToRad(cellThetaDeg(a))));
+    // With constraints on, no cell is asked to go past the reachable range
+    // - like Ahyan's V2 clamping its drive to the nearest feasible value -
+    // keeping a small margin from contact, so a command past it doesn't jam
+    // the structure against its stops. Clamping never widens the difference
+    // between neighbors, so the bolted-pin limits still hold.
+    let driveLimited = false;
+    const bounds = constraintsEnabledInput.checked ? reachableBounds(envelope, baselineAlpha) : null;
+    const targetAlphas = cellAlphas.map((row) =>
+      row.map((a) => {
+        if (!bounds) return a;
+        const limited = clamp(a, bounds[0], bounds[1]);
+        if (Math.abs(limited - a) > 1e-9) driveLimited = true;
+        return limited;
+      })
+    );
+    const requestedTheta = targetAlphas.map((row) => row.map((a) => degToRad(cellThetaDeg(a))));
     const solve = realizePose(n, m, spacing, requestedTheta);
     const rings = solve.pose.rings;
     const thetaPerRow = solve.pose.grid;
@@ -1752,6 +1884,7 @@
       moving: "moving toward the command",
       held: "held at contact (would fuse through)",
       discontinuous: "held (step would jump discontinuously)",
+      bind: "held - a bolted pin would bind",
       "start-collides": "start pose overlaps - can only move out",
       limited: "drive limited to the reachable range",
     };
@@ -1761,7 +1894,7 @@
     constraintStateMetric.classList.toggle("status-ok", status === "free" || status === "moving");
     constraintStateMetric.classList.toggle(
       "status-blocked",
-      status === "held" || status === "discontinuous" || status === "start-collides" || status === "limited"
+      status === "held" || status === "discontinuous" || status === "bind" || status === "start-collides" || status === "limited"
     );
     let meanRealized = 0;
     let maxLag = 0;
@@ -1777,12 +1910,12 @@
       ? envelope.map(([lo, hi]) => (lo === hi ? lo.toFixed(2) : `${lo.toFixed(2)} - ${hi.toFixed(2)}`)).join(", ")
       : "none";
     updateReachRuler(envelope, backlash, meanRealized, constraintsEnabledInput.checked);
-    const stoppedAtContact = status === "held" || status === "discontinuous";
+    const stoppedAtContact = status === "held" || status === "discontinuous" || status === "bind";
     driveRealizedMetric.textContent =
       status === "limited"
         ? `${meanRealized.toFixed(2)} - command ${alphaCommand.toFixed(2)} is out of reach`
         : stoppedAtContact
-          ? `${meanRealized.toFixed(2)} - stopped at contact`
+          ? `${meanRealized.toFixed(2)} - ${status === "bind" ? "a bolted pin would bind" : "stopped at contact"}`
           : status === "moving"
             ? `${meanRealized.toFixed(2)} - moving`
             : meanRealized.toFixed(2);
@@ -2122,12 +2255,26 @@
       }
     }
     const m = cellRoles.length;
+    const rowAlphas = Array.from({ length: m }, (_, row) => clamp(hi - clamp(rowWidthFn(row, m), 0, 1) * (hi - lo), ALPHA_MIN, ALPHA_MAX));
+    // Pinned rows are bolted to each other, so adjacent rows can only differ
+    // by what the axial pins' clearance allows: shrink the profile's
+    // amplitude (about its middle) to the largest the pins permit.
+    const axialLimit = jointCouplingLimits().axial;
+    let scale = 1;
+    if (Number.isFinite(axialLimit)) {
+      const s = rowAlphas.map(twistSine);
+      let steepest = 0;
+      for (let row = 0; row + 1 < m; row += 1) steepest = Math.max(steepest, Math.abs(s[row + 1] - s[row]));
+      if (steepest > 0.95 * axialLimit) {
+        scale = (0.95 * axialLimit) / steepest;
+        const middle = (Math.max(...s) + Math.min(...s)) / 2;
+        s.forEach((v, row) => (rowAlphas[row] = alphaFromTwistSine(middle + (v - middle) * scale)));
+      }
+    }
+    lastPresetScale = scale;
     for (let row = 0; row < m; row += 1) {
-      const n = cellRoles[row].length;
-      const width = clamp(rowWidthFn(row, m), 0, 1);
-      const alpha = Math.round(clamp(hi - width * (hi - lo), ALPHA_MIN, ALPHA_MAX) * 100) / 100;
-      for (let i = 0; i < n; i += 1) {
-        cellRoles[row][i] = { role: "actuator", alpha };
+      for (let i = 0; i < cellRoles[row].length; i += 1) {
+        cellRoles[row][i] = { role: "actuator", alpha: rowAlphas[row] };
       }
     }
     updateMechanism();
