@@ -222,6 +222,19 @@
             <div><dt>circumferential pin gap (max)</dt><dd id="circumferentialPinMetric">0.000 mm</dd></div>
             <div><dt>axial pin gap (max)</dt><dd id="axialPinMetric">0.000 mm</dd></div>
           </dl>
+          <p class="hint">
+            <strong>Backlash tilt check:</strong> with cells facing radially, each joint bolt points radially, so the bend
+            between neighboring cells is a tilt of the two plates on that bolt. The limit uses the exact pin-in-hole
+            contact relation, theta_max = acos(d / sqrt(D&sup2; + t&sup2;)) - atan(t / D), with D = 3.4 mm hole,
+            t = 4.0 mm plate, and an assumed M3 bolt (d = 3.0 mm), doubled for two plates on one floating bolt. A joint
+            that exceeds it can't be reached through backlash alone; it needs more cells per ring or an extra hinge.
+          </p>
+          <dl>
+            <div><dt>joint tilt limit (backlash)</dt><dd id="jointTiltLimitMetric">-</dd></div>
+            <div><dt>circumferential joint bend (max)</dt><dd id="circumferentialBendMetric">-</dd></div>
+            <div><dt>axial joint bend (max)</dt><dd id="axialBendMetric">-</dd></div>
+            <div><dt>min cells/ring to close by backlash</dt><dd id="minCellsClosureMetric">-</dd></div>
+          </dl>
         </details>
 
         <details class="panel-section" open>

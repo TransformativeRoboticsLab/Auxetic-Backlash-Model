@@ -232,16 +232,46 @@ async function checkViewport(browser, name, viewport) {
   const circumferentialPinText = await page.evaluate(() => document.getElementById("circumferentialPinMetric").textContent);
   assert.ok(circumferentialPinText.endsWith("mm"), `${name} circumferential pin gap readout should be in mm`);
 
-  // Under differential dilation (Barrel preset), rows end up at different
-  // diameters, so the axial pin gap should grow well past the uniform-row
-  // baseline - it's honestly reporting that rows no longer stack as a true
-  // cylinder, the same way ring closure residual reports per-cell mismatch.
+  // Backlash tilt check (exact pin-in-hole contact: theta_max =
+  // acos(d/sqrt(D^2+t^2)) - atan(t/D), D=3.4, t=4.0, assumed d=3.0, doubled
+  // for two plates on one floating bolt ~= 11.03deg). With radially facing
+  // cells each circumferential joint bends 360/n = 36deg at n=10, which
+  // backlash alone can't reach; the minimum ring is ceil(360/11.03) = 33.
+  assert.ok(Math.abs((pinAlignmentDefault.tiltLimit * 180) / Math.PI - 11.03) < 0.05, `${name} joint tilt limit should be ~11.03deg`);
+  assert.ok(Math.abs((pinAlignmentDefault.maxCircumferentialBend * 180) / Math.PI - 36) < 0.1, `${name} n=10 joints should each bend 36deg`);
+  assert.strictEqual(pinAlignmentDefault.circumferentialOk, false, `${name} a 36deg joint bend should exceed the backlash tilt limit`);
+  assert.strictEqual(pinAlignmentDefault.axialOk, true, `${name} uniform rows need no axial tilt`);
+  assert.strictEqual(pinAlignmentDefault.minCellsForBacklashClosure, 33, `${name} minimum cells per ring for backlash-only closure`);
+  const bendText = await page.evaluate(() => document.getElementById("circumferentialBendMetric").textContent);
+  assert.ok(bendText.includes("exceeds backlash"), `${name} circumferential bend readout should flag exceeding backlash (got "${bendText}")`);
+
+  // Under differential dilation rows sit at different diameters, but they
+  // must stay coaxial on the axle with each column stacked at one angle
+  // (axial bolts force that). A regression here once left rows shifted
+  // sideways and twisted relative to each other, inflating the axial gap.
   await page.evaluate(() => document.getElementById("presetBarrelBtn").click());
   await page.waitForTimeout(150);
+  const barrelGeometry = await page.evaluate(() => {
+    const debugHook = window.__cylinderTilingDebug;
+    const rows = debugHook.getCellAlphas().length;
+    const out = [];
+    for (let row = 0; row < rows; row += 1) {
+      const ring = debugHook.getRingGeometry(row);
+      const n = ring.centers.length;
+      const mean = ring.centers.reduce((acc, c) => ({ x: acc.x + c.x / n, y: acc.y + c.y / n }), { x: 0, y: 0 });
+      out.push({ meanOffset: Math.hypot(mean.x, mean.y), cell0Angle: Math.atan2(ring.centers[0].y, ring.centers[0].x) });
+    }
+    return out;
+  });
+  barrelGeometry.forEach(({ meanOffset, cell0Angle }, row) => {
+    assert.ok(meanOffset < 1e-6, `${name} Barrel row ${row} should be centered on the axle (offset ${meanOffset})`);
+    assert.ok(Math.abs(cell0Angle) < 1e-6, `${name} Barrel row ${row} cell 0 should sit at polar angle 0 (got ${cell0Angle})`);
+  });
   const pinAlignmentBarrel = await page.evaluate(() => window.__cylinderTilingDebug.getPinAlignment());
+  assert.ok(pinAlignmentBarrel.maxAxialBend > 0, `${name} Barrel rows at different diameters should need some axial tilt`);
   assert.ok(
-    pinAlignmentBarrel.maxAxial > pinAlignmentDefault.maxAxial + 5,
-    `${name} Barrel preset should noticeably increase the axial pin gap (default ${pinAlignmentDefault.maxAxial}, barrel ${pinAlignmentBarrel.maxAxial})`
+    pinAlignmentBarrel.maxAxial >= pinAlignmentDefault.maxAxial && pinAlignmentBarrel.maxAxial < pinAlignmentDefault.maxAxial + 5,
+    `${name} Barrel axial pin gap should be the design gap plus only the real radius change (default ${pinAlignmentDefault.maxAxial}, barrel ${pinAlignmentBarrel.maxAxial})`
   );
   await page.evaluate(() => document.getElementById("clearRolesBtn").click());
   await page.waitForTimeout(150);
@@ -276,20 +306,31 @@ async function checkViewport(browser, name, viewport) {
   }, defaults);
   await page.waitForTimeout(50);
 
-  // Cell selection: click near the center of the viewport (where a cell should be under the default iso view).
-  const selection = await page.evaluate(() => {
-    const rect = document.querySelector("#threeMount canvas").getBoundingClientRect();
-    return { x: rect.left + rect.width * 0.5, y: rect.top + rect.height * 0.5 };
-  });
-  await page.mouse.click(selection.x, selection.y);
+  // Cell selection: click over the hub of the row-0 cell nearest the camera
+  // (the ring is hollow and centered on the axle, so the canvas center looks
+  // into empty space). Row 0 because the closure/diameter readouts below
+  // report row 0, and rows solve independently.
+  // Recomputed per click: Frame Cell below moves the camera, so a point
+  // captured once would go stale.
+  async function row0CellPoint() {
+    const point = await page.evaluate(() => window.__cylinderTilingDebug.getNearestCellClientPoint(0));
+    assert.ok(point, `${name} some row-0 cell should be on screen to click`);
+    return point;
+  }
+  async function clickRow0Cell() {
+    const point = await row0CellPoint();
+    await page.mouse.click(point.x, point.y);
+  }
+  await clickRow0Cell();
   await page.waitForTimeout(100);
   async function shiftClickSelection() {
     // Locator.click's modifiers option reliably holds Shift for the whole
     // click across viewports; page.keyboard.down/up around page.mouse.click
     // was found to silently drop the modifier on the mobile viewport size.
+    const point = await row0CellPoint();
     const box = await page.locator("#threeMount canvas").boundingBox();
     await page.locator("#threeMount canvas").click({
-      position: { x: box.width * 0.5, y: box.height * 0.5 },
+      position: { x: point.x - box.x, y: point.y - box.y },
       modifiers: ["Shift"],
     });
   }
@@ -442,7 +483,7 @@ async function checkViewport(browser, name, viewport) {
   // apply a role/alpha to every selected cell at once - the "select
   // individual cells to expand/contract independently" workflow, distinct
   // from actuating one cell at a time.
-  await page.mouse.click(selection.x, selection.y);
+  await clickRow0Cell();
   await page.waitForTimeout(100);
   const batchTargetCell = await page.evaluate(() => window.__cylinderTilingDebug.getSelected());
   assert.ok(batchTargetCell, `${name} a cell should be selectable at the known screen point for batch testing`);
@@ -513,7 +554,7 @@ async function checkViewport(browser, name, viewport) {
 
   // Re-actuate once more so the JSON save/load round-trip below has
   // non-trivial per-cell state to carry through.
-  await page.mouse.click(selection.x, selection.y);
+  await clickRow0Cell();
   await page.waitForTimeout(100);
   await page.evaluate(() => {
     const roleSelect = document.getElementById("cellRoleSelect");
@@ -729,7 +770,7 @@ async function checkViewport(browser, name, viewport) {
     document.getElementById("ringCount").dispatchEvent(new Event("input", { bubbles: true }));
   });
   await page.waitForTimeout(100);
-  await page.mouse.click(selection.x, selection.y);
+  await clickRow0Cell();
   await page.waitForTimeout(100);
   await page.evaluate(() => {
     const roleSelect = document.getElementById("cellRoleSelect");

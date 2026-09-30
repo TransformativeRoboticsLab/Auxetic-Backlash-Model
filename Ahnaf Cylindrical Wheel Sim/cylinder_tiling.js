@@ -39,6 +39,10 @@
   const pairsCheckedMetric = document.getElementById("pairsCheckedMetric");
   const circumferentialPinMetric = document.getElementById("circumferentialPinMetric");
   const axialPinMetric = document.getElementById("axialPinMetric");
+  const jointTiltLimitMetric = document.getElementById("jointTiltLimitMetric");
+  const circumferentialBendMetric = document.getElementById("circumferentialBendMetric");
+  const axialBendMetric = document.getElementById("axialBendMetric");
+  const minCellsClosureMetric = document.getElementById("minCellsClosureMetric");
   const selectedCellStatus = document.getElementById("selectedCellStatus");
   const selectedIndexMetric = document.getElementById("selectedIndexMetric");
   const selectedCenterMetric = document.getElementById("selectedCenterMetric");
@@ -92,7 +96,22 @@
     hubRadiusMm: 4.6,
     armWidthMm: 5.4,
     siteRadiusMm: 22.1,
+    // Assumed M3 bolt as the joint pin (the hardware photos show bolts
+    // through the pads); not measured - confirm against the real parts.
+    pinDiameterMm: 3.0,
   });
+
+  // Max tilt of one plate (thickness t) on a pin (diameter d) in a hole
+  // (diameter D), exact contact form from the pin/backlash one-pager:
+  // d + t*sin(theta) = D*cos(theta)  =>  theta = acos(d/sqrt(D^2+t^2)) - atan(t/D).
+  // ~= b/t for b = D - d << t.
+  function pinTiltLimitRad(d, D, t) {
+    return Math.acos(d / Math.sqrt(D * D + t * t)) - Math.atan(t / D);
+  }
+  // A joint is two plates (one per cell) on one floating bolt, so their
+  // relative tilt limit is the sum of each plate's own limit.
+  const JOINT_TILT_LIMIT_RAD =
+    2 * pinTiltLimitRad(CAD.pinDiameterMm, CAD.nominalHoleDiameterMm, CAD.bodyThicknessMm);
 
   const SITE_VECTORS = Object.freeze({
     east: new THREE.Vector2(CAD.siteRadiusMm, 0),
@@ -388,9 +407,10 @@
     const siteRadius = CAD.siteRadiusMm;
     let maxCircumferential = 0;
     let maxAxial = 0;
+    let maxCircumferentialBend = 0;
+    let maxAxialBend = 0;
     let jointsChecked = 0;
     for (let row = 0; row < m; row += 1) {
-      const z = row * axialPitch;
       for (let i = 0; i < n; i += 1) {
         const next = (i + 1) % n;
         const frameA = cellFramesByRow[row][i];
@@ -398,6 +418,11 @@
         const eastPad = rings[row].centers[i].clone().addScaledVector(frameA.tangent, siteRadius);
         const westPad = rings[row].centers[next].clone().addScaledVector(frameB.tangent, -siteRadius);
         maxCircumferential = Math.max(maxCircumferential, eastPad.distanceTo(westPad));
+        // With radially oriented cells the joint bolt is radial, so the
+        // angle between neighbors' normals is a tilt of the plates on that
+        // bolt - the quantity the backlash tilt limit bounds.
+        const bend = Math.acos(clamp(frameA.normal.dot(frameB.normal), -1, 1));
+        maxCircumferentialBend = Math.max(maxCircumferentialBend, bend);
         jointsChecked += 1;
       }
     }
@@ -411,10 +436,26 @@
         const dy = centerNorth.y - centerSouth.y;
         const dz = zNorth - zSouth;
         maxAxial = Math.max(maxAxial, Math.sqrt(dx * dx + dy * dy + dz * dz));
+        // Cells stay axis-aligned, so a change in radius between rows has to
+        // be taken up as tilt at the axial joint: the profile's slope angle.
+        const radiusNorth = centerNorth.distanceTo(rings[row].centroid);
+        const radiusSouth = centerSouth.distanceTo(rings[row + 1].centroid);
+        const bend = Math.atan2(Math.abs(radiusSouth - radiusNorth), axialPitch);
+        maxAxialBend = Math.max(maxAxialBend, bend);
         jointsChecked += 1;
       }
     }
-    return { maxCircumferential, maxAxial, jointsChecked };
+    return {
+      maxCircumferential,
+      maxAxial,
+      maxCircumferentialBend,
+      maxAxialBend,
+      tiltLimit: JOINT_TILT_LIMIT_RAD,
+      circumferentialOk: maxCircumferentialBend <= JOINT_TILT_LIMIT_RAD,
+      axialOk: maxAxialBend <= JOINT_TILT_LIMIT_RAD,
+      minCellsForBacklashClosure: Math.ceil((2 * Math.PI) / JOINT_TILT_LIMIT_RAD),
+      jointsChecked,
+    };
   }
 
   function cylinderZ(radius, depth, material, segments = 48) {
@@ -597,7 +638,20 @@
         closureResidual = nextCenter.distanceTo(centers[0]);
       }
     }
-    const centroid = centers.reduce((acc, c) => acc.add(c), new THREE.Vector2(0, 0)).multiplyScalar(1 / n);
+    // The walk starts cell 0 at the origin, so rings of different diameter
+    // would otherwise have different centers and rows wouldn't share an
+    // axle. Re-center every ring on the axle (z axis) so rows stay coaxial.
+    const walkCentroid = centers.reduce((acc, c) => acc.add(c), new THREE.Vector2(0, 0)).multiplyScalar(1 / n);
+    centers.forEach((c) => c.sub(walkCentroid));
+    // The walk's angular phase also depends on theta (heading leads the
+    // polar angle by a theta-dependent amount), so rows at different alpha
+    // would come out twisted relative to each other. Axial bolts force
+    // stacked cells to the same angle, so rigidly rotate the ring (positions
+    // and headings together) to put cell 0 at polar angle 0 in every row.
+    const phase = -Math.atan2(centers[0].y, centers[0].x);
+    centers.forEach((c) => c.rotateAround(new THREE.Vector2(0, 0), phase));
+    for (let i = 0; i < bottomRot.length; i += 1) bottomRot[i] += phase;
+    const centroid = new THREE.Vector2(0, 0);
     let radius = 0;
     centers.forEach((c) => {
       radius += c.distanceTo(centroid);
@@ -1085,6 +1139,15 @@
     lastPinAlignment = pinAlignment;
     circumferentialPinMetric.textContent = `${pinAlignment.maxCircumferential.toFixed(3)} mm`;
     axialPinMetric.textContent = `${pinAlignment.maxAxial.toFixed(3)} mm`;
+    jointTiltLimitMetric.textContent = `${radToDeg(pinAlignment.tiltLimit).toFixed(2)} deg`;
+    const setBendStatus = (element, bend, ok) => {
+      element.textContent = `${radToDeg(bend).toFixed(1)} deg - ${ok ? "within backlash" : "exceeds backlash"}`;
+      element.classList.toggle("status-ok", ok);
+      element.classList.toggle("status-blocked", !ok);
+    };
+    setBendStatus(circumferentialBendMetric, pinAlignment.maxCircumferentialBend, pinAlignment.circumferentialOk);
+    setBendStatus(axialBendMetric, pinAlignment.maxAxialBend, pinAlignment.axialOk);
+    minCellsClosureMetric.textContent = String(pinAlignment.minCellsForBacklashClosure);
 
     if (selected && selected.row < m && selected.i < n) {
       const row = selected.row;
@@ -1724,6 +1787,31 @@
       return { x: normal.x, y: normal.y, z: normal.z };
     },
     getPinAlignment: () => lastPinAlignment,
+    // Client-space point over the visible cell hub nearest the camera, so
+    // tests can click a real cell instead of guessing (the ring is hollow
+    // and centered on the axle, so the canvas center looks into empty space).
+    getNearestCellClientPoint: (onlyRow) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      let best = null;
+      cellPool.forEach((cell, index) => {
+        if (!cell.group.visible) return;
+        if (onlyRow !== undefined && Math.floor(index / poolN) !== onlyRow) return;
+        const world = cell.group.position.clone();
+        const dist = world.distanceTo(camera.position);
+        const ndc = world.clone().project(camera);
+        if (Math.abs(ndc.x) > 1 || Math.abs(ndc.y) > 1 || ndc.z > 1) return;
+        if (!best || dist < best.dist) {
+          best = {
+            dist,
+            x: rect.left + ((ndc.x + 1) / 2) * rect.width,
+            y: rect.top + ((1 - ndc.y) / 2) * rect.height,
+            row: Math.floor(index / poolN),
+            i: index % poolN,
+          };
+        }
+      });
+      return best;
+    },
     getRingGeometry: (row) => {
       // Exposes each ring's actual center positions and centroid so tests
       // can verify cell orientation against the ring's true geometric

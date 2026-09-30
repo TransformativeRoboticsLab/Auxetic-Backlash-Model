@@ -119,7 +119,13 @@ python -m http.server 8000
   faces changed, matching the assembled-hardware photos.
 - **Cylinder stacking**: `m` rings are repeated along the axle (`z`) axis at
   a configurable pitch. Axial row-to-row attachment is currently a rigid
-  copy, not a solved joint - see Known limitations.
+  copy, not a solved joint - see Known limitations. Every ring is
+  re-centered on the axle and rotated so cell 0 sits at polar angle 0, so
+  rows stay coaxial and each column stacks at one angle even when rows have
+  different alphas (axial bolts force that). Without this, the ring walk
+  (which starts cell 0 at the origin, with a theta-dependent angular phase)
+  left rows of different diameter shifted sideways and twisted relative to
+  each other.
 - **Material Restriction**: neighbor-only clearance checking (circumferential
   and axial neighbors only, not every cell pair) using the same disk/capsule
   primitive distance math as the row primitive.
@@ -133,8 +139,23 @@ python -m http.server 8000
   neighbors at once, so a small residual is expected and reported honestly,
   the same way ring closure residual is. The axial gap is exactly the
   geometric constant `axialPitch - 2*siteRadius` when every row shares one
-  diameter, and grows honestly once differential dilation gives rows
-  different diameters (rows no longer stack as a true cylinder).
+  diameter, and grows by the real radius change once differential dilation
+  gives rows different diameters. This measure doesn't model which layer
+  (upper/lower cross) meets which at a joint, so it carries no pass/fail.
+- **Backlash tilt check**: with radially facing cells, each joint bolt points
+  radially, so the bend between neighboring cells is a tilt of two plates on
+  one bolt. The limit comes from the exact pin-in-hole contact relation
+  `d + t*sin(theta) = D*cos(theta)`, i.e.
+  `theta_max = acos(d / sqrt(D^2 + t^2)) - atan(t / D)` (~= `b/t` for
+  `b = D - d << t`), doubled for two plates on a floating bolt. With the CAD
+  hole `D = 3.4 mm`, plate `t = 4.0 mm` and an *assumed* M3 bolt
+  `d = 3.0 mm` (not measured - confirm against the real parts), the joint
+  limit is ~11.03 deg. Circumferential joints bend `360/n` deg (36 deg at
+  `n = 10`), so a ring needs at least 33 cells to close through backlash
+  alone; fewer means the hardware must take up the bend some other way
+  (linkage pieces, or a dedicated hinge cell). Axial joints are checked
+  against the profile slope between rows of different radius. Each is shown
+  as within/exceeds backlash, alongside the minimum cell count.
 - **Selection tools**: click a cell to inspect it (row/index, center,
   rotations, current alpha, role), then Frame Cell (recenter the camera on
   it), Isolate Cell (hide everything else), or edit its role/alpha directly
