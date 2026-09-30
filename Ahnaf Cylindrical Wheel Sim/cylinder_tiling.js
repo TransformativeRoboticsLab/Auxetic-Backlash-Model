@@ -183,7 +183,14 @@
   }
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 1600);
+  // near/far set tight to what the camera can actually reach (it never gets
+  // closer than 60 mm to its orbit target - see the wheel handler below) so
+  // the depth buffer keeps precision at distance. The old 0.1-1600 range
+  // (a 16000:1 ratio) left almost no precision for anything toward the back
+  // of the model, which z-fought/flickered - most visibly between each
+  // pin and the hole placeholder cylinder it sits inside, since they're
+  // concentric and only 0.2 mm apart in radius by default.
+  const camera = new THREE.PerspectiveCamera(42, 1, 5, 1200);
   camera.up.set(0, 0, 1);
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
