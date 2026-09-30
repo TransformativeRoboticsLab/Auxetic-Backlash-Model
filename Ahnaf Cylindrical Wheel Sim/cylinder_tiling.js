@@ -694,6 +694,24 @@
     return mesh;
   }
 
+  // Selection / batch / role markers: flat rings lying on a cell's outer
+  // face around its hub, so the hub pin passes through the ring's middle.
+  // Concentric radii keep all three readable on one cell at once.
+  function faceRingMarker(radius, material) {
+    const mesh = new THREE.Mesh(new THREE.TorusGeometry(radius, 0.9, 10, 40), material);
+    mesh.renderOrder = 2;
+    return mesh;
+  }
+
+  const MARKER_Z_AXIS = new THREE.Vector3(0, 0, 1);
+  const markerNormalScratch = new THREE.Vector3();
+  function placeFaceMarker(mesh, center, z, normal) {
+    const offset = CAD.bodyThicknessMm + 0.9;
+    markerNormalScratch.set(normal.x, normal.y, 0).normalize();
+    mesh.position.set(center.x + normal.x * offset, center.y + normal.y * offset, z);
+    mesh.quaternion.setFromUnitVectors(MARKER_Z_AXIS, markerNormalScratch);
+  }
+
   function addEdges(parent, mesh) {
     const edges = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry, 24), sharedMaterials.edge);
     edges.position.copy(mesh.position);
@@ -795,11 +813,11 @@
         cell.bottomMaterial = mats.bottom;
         cell.baseRow = row;
         scene.add(cell.group);
-        const roleMarker = cylinderZ(2.6, CAD.bodyThicknessMm * 2.6, sharedMaterials.actuatorMarker, 20);
+        const roleMarker = faceRingMarker(8.8, sharedMaterials.actuatorMarker);
         roleMarker.visible = false;
         scene.add(roleMarker);
         cell.roleMarker = roleMarker;
-        const batchMarker = cylinderZ(4.4, CAD.bodyThicknessMm * 3.6, sharedMaterials.batchMarker, 24);
+        const batchMarker = faceRingMarker(7.4, sharedMaterials.batchMarker);
         batchMarker.visible = false;
         scene.add(batchMarker);
         cell.batchMarker = batchMarker;
@@ -1470,7 +1488,7 @@
   fill.position.set(-90, 100, 90);
   scene.add(fill);
 
-  const selectionMarker = cylinderZ(3.2, CAD.bodyThicknessMm * 3.2, new THREE.MeshStandardMaterial({ color: 0xffd54a, emissive: 0x7a5c00, roughness: 0.3 }), 32);
+  const selectionMarker = faceRingMarker(6.2, new THREE.MeshStandardMaterial({ color: 0xffd54a, emissive: 0x7a5c00, roughness: 0.3 }));
   selectionMarker.visible = false;
   scene.add(selectionMarker);
 
@@ -1645,11 +1663,11 @@
         } else {
           cell.roleMarker.visible = true;
           cell.roleMarker.material = role === "actuator" ? sharedMaterials.actuatorMarker : sharedMaterials.lockedMarker;
-          cell.roleMarker.position.set(center.x, center.y, z);
+          placeFaceMarker(cell.roleMarker, center, z, frame.normal);
         }
         if (multiSelected.has(cellKey(row, i))) {
           cell.batchMarker.visible = true;
-          cell.batchMarker.position.set(center.x, center.y, z - 0.01);
+          placeFaceMarker(cell.batchMarker, center, z, frame.normal);
         } else {
           cell.batchMarker.visible = false;
         }
@@ -1802,7 +1820,7 @@
       const center = rings[row].centers[i];
       const z = rings[row].baseZ + rings[row].hubZ[i];
       selectionMarker.visible = true;
-      selectionMarker.position.set(center.x, center.y, z + 0.01);
+      placeFaceMarker(selectionMarker, center, z, rings[row].normals[i]);
       selectedWorld.set(center.x, center.y, z);
       selectedCellStatus.textContent = `row ${row}, cell ${i}`;
       selectedCellStatus.classList.add("status-ok");
