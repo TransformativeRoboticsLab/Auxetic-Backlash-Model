@@ -40,6 +40,17 @@ confirming the default pin); hole-to-hub distance L = 22.451 mm, pad radius
 4.0 mm, hole 3.4 mm, hub radius 6.375 mm, arm width 2.5 mm. (Earlier versions
 used 22.1 / 4.9 / 4.6 / 5.4 mm from Ahyan's research-grounding numbers.)
 
+The joint model is checked against Jacob's two-cell assembly ("TRL RADs two
+cells"): of the two cells' eight pads, exactly two pairs coincide - cell A's
+lower pad under cell B's upper pad, and cell A's upper pad over cell B's
+lower pad - i.e. two bolts per joint, the double-pin closure modeled here.
+The two bolts sit symmetrically about the midpoint between the hubs, on the
+line perpendicular to the hub-to-hub line, as in the model. Hub distance
+42.22 mm = `2L*cos(theta/2)` and bolt spacing 15.27 mm = `2L*sin(theta/2)`
+both give theta = 39.8 deg, so the model's geometric theta is the one the
+CAD is built on. Every assembled pose in the CAD sits inside the model's
+collision-free range (two-cell assembly 39.8 deg, unit cell ~53 deg).
+
 From Ahyan's V2 two-cell attachment (`V2/web/two-cell-attachment/`, read
 only - nothing in that folder is modified), this project also borrows two
 modeling concepts, reimplemented here in 3D:
