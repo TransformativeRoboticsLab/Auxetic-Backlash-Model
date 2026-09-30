@@ -43,6 +43,10 @@
   const circumferentialBendMetric = document.getElementById("circumferentialBendMetric");
   const axialBendMetric = document.getElementById("axialBendMetric");
   const minCellsClosureMetric = document.getElementById("minCellsClosureMetric");
+  const constraintsEnabledInput = document.getElementById("constraintsEnabled");
+  const constraintStateMetric = document.getElementById("constraintStateMetric");
+  const realizedAlphaMetric = document.getElementById("realizedAlphaMetric");
+  const feasibleRangeMetric = document.getElementById("feasibleRangeMetric");
   const pinDiameterInput = document.getElementById("pinDiameter");
   const pinDiameterOut = document.getElementById("pinDiameterOut");
   const showPinsInput = document.getElementById("showPins");
@@ -248,169 +252,222 @@
     return (value * 180) / Math.PI;
   }
 
-  // --- Material clearance / collision (adapted from two_cell_attachment.js's
-  // disk/capsule primitive checker, generalized to arbitrary neighbor pairs
-  // instead of three hardcoded named cells). ---
-  const BODY_EPSILON_MM = 1e-4;
+  // --- 3D material collision ("no fusing through other solids") ---
+  // Each cross is modeled at its real thickness as a union of flat parts:
+  // the hub disc, four pad discs and four half-arms (hub -> pad), each a 2D
+  // shape (disc, or rounded segment for an arm) extruded through the
+  // plate's thickness along the cell's own normal, in the cell's actual 3D
+  // pose. Penetration between two parts is estimated by sampling points
+  // across each part (rim, interior, three depths) and evaluating the other
+  // part's exact signed distance. The two pads one joint pin passes
+  // through, and the arms leading to them, are exempt from each other:
+  // whether that joint can bend far enough is the backlash tilt check.
+  const COLLISION_TOLERANCE_MM = 0.05;
+  const PLATE_HALF_THICKNESS = CAD.bodyThicknessMm / 2;
 
-  function pointSegmentDistance(point, start, end) {
-    const segment = end.clone().sub(start);
-    const lengthSquared = segment.lengthSq();
-    if (lengthSquared <= 1e-12) return point.distanceTo(start);
-    const t = clamp(point.clone().sub(start).dot(segment) / lengthSquared, 0, 1);
-    return point.distanceTo(start.clone().add(segment.multiplyScalar(t)));
-  }
-
-  function orientation(a, b, c) {
-    return Math.sign((b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x));
-  }
-
-  function onSegment(a, b, c) {
-    return (
-      Math.min(a.x, b.x) - 1e-9 <= c.x &&
-      c.x <= Math.max(a.x, b.x) + 1e-9 &&
-      Math.min(a.y, b.y) - 1e-9 <= c.y &&
-      c.y <= Math.max(a.y, b.y) + 1e-9
-    );
-  }
-
-  function segmentsIntersect(a, b, c, d) {
-    const o1 = orientation(a, b, c);
-    const o2 = orientation(a, b, d);
-    const o3 = orientation(c, d, a);
-    const o4 = orientation(c, d, b);
-    if (o1 !== o2 && o3 !== o4) return true;
-    if (o1 === 0 && onSegment(a, b, c)) return true;
-    if (o2 === 0 && onSegment(a, b, d)) return true;
-    if (o3 === 0 && onSegment(c, d, a)) return true;
-    return o4 === 0 && onSegment(c, d, b);
-  }
-
-  function segmentSegmentDistance(a, b, c, d) {
-    if (segmentsIntersect(a, b, c, d)) return 0;
-    return Math.min(
-      pointSegmentDistance(a, c, d),
-      pointSegmentDistance(b, c, d),
-      pointSegmentDistance(c, a, b),
-      pointSegmentDistance(d, a, b)
-    );
-  }
-
-  function primitiveDistance(first, second) {
-    if (first.type === "disk" && second.type === "disk") {
-      return first.center.distanceTo(second.center) - first.radius - second.radius;
-    }
-    if (first.type === "capsule" && second.type === "capsule") {
-      return segmentSegmentDistance(first.start, first.end, second.start, second.end) - first.radius - second.radius;
-    }
-    const capsule = first.type === "capsule" ? first : second;
-    const disk = first.type === "disk" ? first : second;
-    return pointSegmentDistance(disk.center, capsule.start, capsule.end) - disk.radius - capsule.radius;
-  }
-
-  function zBandsOverlap(first, second) {
-    return Math.max(first.zMin, second.zMin) < Math.min(first.zMax, second.zMax) - BODY_EPSILON_MM;
-  }
-
-  function localBodyPrimitives() {
-    const armRadius = CAD.armWidthMm * 0.5;
-    const r = CAD.siteRadiusMm;
-    return [
-      { type: "capsule", start: new THREE.Vector2(-r, 0), end: new THREE.Vector2(r, 0), radius: armRadius },
-      { type: "capsule", start: new THREE.Vector2(0, -r), end: new THREE.Vector2(0, r), radius: armRadius },
-      { type: "disk", center: new THREE.Vector2(0, 0), radius: CAD.hubRadiusMm },
-      { type: "disk", center: SITE_VECTORS.east, radius: CAD.padRadiusMm },
-      { type: "disk", center: SITE_VECTORS.north, radius: CAD.padRadiusMm },
-      { type: "disk", center: SITE_VECTORS.west, radius: CAD.padRadiusMm },
-      { type: "disk", center: SITE_VECTORS.south, radius: CAD.padRadiusMm },
-    ];
-  }
-
-  const LOCAL_BODY_PRIMITIVES = localBodyPrimitives();
-
-  function transformPoint(point, origin, angle) {
-    return rotate2(point, angle).add(origin);
-  }
-
-  function bodyPrimitives(body) {
-    return LOCAL_BODY_PRIMITIVES.map((primitive) => {
-      if (primitive.type === "disk") {
-        return {
-          type: "disk",
-          cell: body.cell,
-          center: transformPoint(primitive.center, body.origin, body.rotation),
-          radius: primitive.radius,
-        };
+  function partSamples(part) {
+    const inPlane = [];
+    if (part.kind === "disc") {
+      inPlane.push([part.a.x, part.a.y]);
+      for (let k = 0; k < 8; k += 1) {
+        const angle = (k * Math.PI) / 4;
+        inPlane.push([part.a.x + 0.995 * part.r * Math.cos(angle), part.a.y + 0.995 * part.r * Math.sin(angle)]);
       }
+    } else {
+      const dx = part.b.x - part.a.x;
+      const dy = part.b.y - part.a.y;
+      const length = Math.hypot(dx, dy);
+      const px = -dy / length;
+      const py = dx / length;
+      [0.25, 0.5, 0.75].forEach((f) => {
+        const cx = part.a.x + f * dx;
+        const cy = part.a.y + f * dy;
+        [0, 0.995, -0.995].forEach((o) => inPlane.push([cx + o * part.r * px, cy + o * part.r * py]));
+      });
+    }
+    const samples = [];
+    [-0.95, 0, 0.95].forEach((depth) => inPlane.forEach(([u, v]) => samples.push([u, v, depth * PLATE_HALF_THICKNESS])));
+    return samples;
+  }
+
+  const CROSS_PARTS = (() => {
+    const parts = [{ kind: "disc", site: null, a: new THREE.Vector2(0, 0), b: new THREE.Vector2(0, 0), r: CAD.hubRadiusMm }];
+    Object.entries(SITE_VECTORS).forEach(([site, vector]) => {
+      parts.push({ kind: "disc", site, a: vector.clone(), b: vector.clone(), r: CAD.padRadiusMm });
+      parts.push({ kind: "arm", site, a: new THREE.Vector2(0, 0), b: vector.clone(), r: CAD.armWidthMm / 2 });
+    });
+    return parts.map((part) => {
+      const halfLength = part.a.distanceTo(part.b) / 2;
       return {
-        type: "capsule",
-        cell: body.cell,
-        start: transformPoint(primitive.start, body.origin, body.rotation),
-        end: transformPoint(primitive.end, body.origin, body.rotation),
-        radius: primitive.radius,
+        ...part,
+        samples: partSamples(part),
+        mid: part.a.clone().add(part.b).multiplyScalar(0.5),
+        bound: Math.hypot(halfLength + part.r, PLATE_HALF_THICKNESS),
       };
+    });
+  })();
+  const CELL_BOUND = Math.hypot(CAD.siteRadiusMm + CAD.padRadiusMm, CAD.bodyThicknessMm);
+
+  function segmentDistance2(px, py, ax, ay, bx, by) {
+    const dx = bx - ax;
+    const dy = by - ay;
+    const len2 = dx * dx + dy * dy;
+    let t = len2 > 1e-12 ? ((px - ax) * dx + (py - ay) * dy) / len2 : 0;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    const qx = ax + t * dx - px;
+    const qy = ay + t * dy - py;
+    return Math.sqrt(qx * qx + qy * qy);
+  }
+
+  // Exact signed distance to a flat part in its own layer coordinates
+  // (u, v in the plate, w along the normal from the plate's mid-plane).
+  function partSignedDistance(part, u, v, w) {
+    const inPlane = segmentDistance2(u, v, part.a.x, part.a.y, part.b.x, part.b.y) - part.r;
+    const through = Math.abs(w) - PLATE_HALF_THICKNESS;
+    if (inPlane <= 0 && through <= 0) return Math.max(inPlane, through);
+    const a = Math.max(inPlane, 0);
+    const b = Math.max(through, 0);
+    return Math.sqrt(a * a + b * b);
+  }
+
+  // Both crosses of one cell as world-space layer frames: origin on the
+  // layer's mid-plane at the hub, e1/e2 the cross's own in-plane axes
+  // (twisted by crossRot about the normal), e3 the outward normal.
+  function cellLayers(ring, row, i, axialPitch) {
+    const t = ring.tangents[i];
+    const nrm = ring.normals[i];
+    const hub = new THREE.Vector3(ring.centers[i].x, ring.centers[i].y, row * axialPitch + ring.hubZ[i]);
+    return ["lower", "upper"].map((layer) => {
+      const phi = layer === "upper" ? ring.crossRotUpper[i] : ring.crossRotLower[i];
+      const offset = layer === "upper" ? PLATE_HALF_THICKNESS : -PLATE_HALF_THICKNESS;
+      const c = Math.cos(phi);
+      const s = Math.sin(phi);
+      const e1 = new THREE.Vector3(t.x * c, t.y * c, s);
+      const e2 = new THREE.Vector3(-t.x * s, -t.y * s, c);
+      const e3 = new THREE.Vector3(nrm.x, nrm.y, 0);
+      const origin = hub.clone().addScaledVector(e3, offset);
+      const parts = CROSS_PARTS.map((part) => {
+        const center = origin.clone().addScaledVector(e1, part.mid.x).addScaledVector(e2, part.mid.y);
+        const worldSamples = part.samples.map(([u, v, w]) =>
+          origin.clone().addScaledVector(e1, u).addScaledVector(e2, v).addScaledVector(e3, w)
+        );
+        return { part, center, worldSamples };
+      });
+      return { layer, origin, e1, e2, e3, parts };
     });
   }
 
-  // Checks material clearance only between physically adjacent cells
-  // (circumferential ring neighbors and axial row neighbors), not every
-  // n*m x n*m pair - non-adjacent cells sit far apart at typical ring
-  // radii, and this keeps the check O(n*m) instead of O((n*m)^2).
-  function checkNeighborClearance(n, m, rings, axialPitch, thetaPerRow) {
-    function bodiesForCell(row, i) {
-      const center = rings[row].centers[i];
-      const z = row * axialPitch;
-      const origin2 = new THREE.Vector2(center.x, center.y);
-      return [
-        { cell: `${row}-${i}-lower`, origin: origin2, rotation: rings[row].bottomRot[i], zMin: z - CAD.bodyThicknessMm, zMax: z },
-        {
-          cell: `${row}-${i}-upper`,
-          origin: origin2,
-          rotation: rings[row].bottomRot[i] + thetaPerRow[row][i],
-          zMin: z,
-          zMax: z + CAD.bodyThicknessMm,
-        },
-      ];
-    }
+  function toLayer(layer, point) {
+    const dx = point.x - layer.origin.x;
+    const dy = point.y - layer.origin.y;
+    const dz = point.z - layer.origin.z;
+    return [
+      dx * layer.e1.x + dy * layer.e1.y + dz * layer.e1.z,
+      dx * layer.e2.x + dy * layer.e2.y + dz * layer.e2.z,
+      dx * layer.e3.x + dy * layer.e3.y + dz * layer.e3.z,
+    ];
+  }
 
+  // Deepest sampled penetration between two parts (positive = overlap),
+  // and the sample point where it occurs.
+  function partPairPenetration(layerA, entryA, layerB, entryB) {
+    let depth = -Infinity;
+    let where = null;
+    entryA.worldSamples.forEach((point) => {
+      const [u, v, w] = toLayer(layerB, point);
+      const d = -partSignedDistance(entryB.part, u, v, w);
+      if (d > depth) {
+        depth = d;
+        where = point;
+      }
+    });
+    entryB.worldSamples.forEach((point) => {
+      const [u, v, w] = toLayer(layerA, point);
+      const d = -partSignedDistance(entryA.part, u, v, w);
+      if (d > depth) {
+        depth = d;
+        where = point;
+      }
+    });
+    return { depth, where };
+  }
+
+  // Checks every cell against its ring neighbors (one and two over) and the
+  // three nearest cells in the next row, culled by bounding spheres.
+  function checkCollisions(rings, n, m, axialPitch) {
+    const aSite = aSiteInput.value;
+    const bSite = bSiteInput.value;
+    const cells = rings.map((ring, row) => Array.from({ length: n }, (_, i) => cellLayers(ring, row, i, axialPitch)));
+    const hubs = rings.map((ring, row) =>
+      ring.centers.map((c, i) => new THREE.Vector3(c.x, c.y, row * axialPitch + ring.hubZ[i]))
+    );
     let maxPenetration = 0;
     let minClearance = Infinity;
     let pairsChecked = 0;
+    const contacts = [];
 
-    function checkCellPair(rowA, iA, rowB, iB) {
-      const bodiesA = bodiesForCell(rowA, iA).map((body) => ({ ...body, primitives: bodyPrimitives(body) }));
-      const bodiesB = bodiesForCell(rowB, iB).map((body) => ({ ...body, primitives: bodyPrimitives(body) }));
-      bodiesA.forEach((bodyA) => {
-        bodiesB.forEach((bodyB) => {
-          if (!zBandsOverlap(bodyA, bodyB)) return;
-          bodyA.primitives.forEach((first) => {
-            bodyB.primitives.forEach((second) => {
-              const clearance = primitiveDistance(first, second);
-              minClearance = Math.min(minClearance, clearance);
-              if (clearance < 0) maxPenetration = Math.max(maxPenetration, -clearance);
+    const secondPin = hasSecondJointPin();
+    // Joint pads (and the arms leading to them) are exempt from each other.
+    // Circumferential joints: cell i's aSite pads with cell i+1's bSite pads.
+    // Axial joints: a cell's north pads with the south pads of the cell
+    // stacked above it - north/south are opposite sites, so both layer
+    // pairings line up, like the second circumferential pin.
+    function isJointPair(joint, layerA, entryA, layerB, entryB) {
+      if (entryA.part.site !== joint.a || entryB.part.site !== joint.b) return false;
+      if (layerA.layer === "upper" && layerB.layer === "lower") return true;
+      return joint.both && layerA.layer === "lower" && layerB.layer === "upper";
+    }
+    const ringJoint = { a: aSite, b: bSite, both: secondPin };
+    const axialJoint = { a: "north", b: "south", both: true };
+
+    function checkPair(rowA, iA, rowB, iB, joint) {
+      if (hubs[rowA][iA].distanceTo(hubs[rowB][iB]) > 2 * CELL_BOUND) return;
+      pairsChecked += 1;
+      cells[rowA][iA].forEach((layerA) => {
+        cells[rowB][iB].forEach((layerB) => {
+          layerA.parts.forEach((entryA) => {
+            layerB.parts.forEach((entryB) => {
+              if (joint && isJointPair(joint, layerA, entryA, layerB, entryB)) return;
+              const gap = entryA.center.distanceTo(entryB.center) - entryA.part.bound - entryB.part.bound;
+              if (gap > 0) {
+                minClearance = Math.min(minClearance, gap);
+                return;
+              }
+              const { depth, where } = partPairPenetration(layerA, entryA, layerB, entryB);
+              minClearance = Math.min(minClearance, -depth);
+              if (depth > COLLISION_TOLERANCE_MM) {
+                maxPenetration = Math.max(maxPenetration, depth);
+                contacts.push({
+                  depth,
+                  point: where,
+                  cellA: [rowA, iA],
+                  cellB: [rowB, iB],
+                  partA: `${layerA.layer} ${entryA.part.kind} ${entryA.part.site || "hub"}`,
+                  partB: `${layerB.layer} ${entryB.part.kind} ${entryB.part.site || "hub"}`,
+                });
+              }
             });
           });
         });
       });
-      pairsChecked += 1;
     }
 
     for (let row = 0; row < m; row += 1) {
       for (let i = 0; i < n; i += 1) {
-        checkCellPair(row, i, row, (i + 1) % n);
+        checkPair(row, i, row, (i + 1) % n, ringJoint);
+        if (n > 4) checkPair(row, i, row, (i + 2) % n, null);
+        if (row + 1 < m) {
+          for (let di = -1; di <= 1; di += 1) checkPair(row, i, row + 1, (i + di + n) % n, di === 0 ? axialJoint : null);
+        }
       }
     }
-    for (let row = 0; row < m - 1; row += 1) {
-      for (let i = 0; i < n; i += 1) {
-        checkCellPair(row, i, row + 1, i);
-      }
-    }
-
+    contacts.sort((a, b) => b.depth - a.depth);
     return {
       maxPenetration,
-      minClearance: Number.isFinite(minClearance) ? minClearance : 0,
+      minClearance: Number.isFinite(minClearance) ? Math.max(0, minClearance) : 0,
       pairsChecked,
-      clear: maxPenetration <= BODY_EPSILON_MM,
+      contacts: contacts.slice(0, 60),
+      clear: maxPenetration <= COLLISION_TOLERANCE_MM,
     };
   }
 
@@ -458,50 +515,86 @@
     let count = 0;
     if (showPinsInput.checked && !isolateActive) {
       const radius = pinDiameterMm() / 2;
-      const siteRadius = CAD.siteRadiusMm;
+      const aSite = aSiteInput.value;
+      const bSite = bSiteInput.value;
+      const pinLayers = jointPinLayers();
       for (let row = 0; row < m; row += 1) {
-        const z = row * axialPitch;
         for (let i = 0; i < n; i += 1) {
           const frame = cellFramesByRow[row][i];
           const center = rings[row].centers[i];
-          placePin(count++, center.x, center.y, z, frame.normal.x, frame.normal.y, 0, CAD.bodyThicknessMm * 2.55, radius);
+          const hubZ = row * axialPitch + rings[row].hubZ[i];
+          placePin(count++, center.x, center.y, hubZ, frame.normal.x, frame.normal.y, 0, CAD.bodyThicknessMm * 2.55, radius);
 
+          // Joint pins pass through the actual pinned pad pairs.
           const next = (i + 1) % n;
           const frameB = cellFramesByRow[row][next];
-          const east = center.clone().addScaledVector(frame.tangent, siteRadius);
-          const west = rings[row].centers[next].clone().addScaledVector(frameB.tangent, -siteRadius);
-          placePin(
-            count++,
-            (east.x + west.x) / 2,
-            (east.y + west.y) / 2,
-            z,
-            frame.normal.x + frameB.normal.x,
-            frame.normal.y + frameB.normal.y,
-            0,
-            CAD.bodyThicknessMm * 2.95,
-            radius
-          );
-
-          if (row + 1 < m) {
-            const above = rings[row + 1].centers[i];
-            const frameUp = cellFramesByRow[row + 1][i];
+          pinLayers.forEach(([layerA, layerB]) => {
+            const padA = padWorld(rings[row], row, i, layerA, aSite, axialPitch);
+            const padB = padWorld(rings[row], row, next, layerB, bSite, axialPitch);
             placePin(
               count++,
-              (center.x + above.x) / 2,
-              (center.y + above.y) / 2,
-              z + axialPitch / 2,
-              frame.normal.x + frameUp.normal.x,
-              frame.normal.y + frameUp.normal.y,
+              (padA.x + padB.x) / 2,
+              (padA.y + padB.y) / 2,
+              (padA.z + padB.z) / 2,
+              frame.normal.x + frameB.normal.x,
+              frame.normal.y + frameB.normal.y,
               0,
               CAD.bodyThicknessMm * 2.95,
               radius
             );
+          });
+
+          // Axial joint pins between a cell's north pads and the south pads
+          // of the cell above (both layer pairings, as north/south are
+          // opposite sites). Rows are still a set pitch apart rather than
+          // pinned, so these pads are 5.8 mm apart along the axle by
+          // default; the pin sits between them.
+          if (row + 1 < m) {
+            const frameUp = cellFramesByRow[row + 1][i];
+            [
+              ["upper", "lower"],
+              ["lower", "upper"],
+            ].forEach(([layerA, layerB]) => {
+              const padA = padWorld(rings[row], row, i, layerA, "north", axialPitch);
+              const padB = padWorld(rings[row + 1], row + 1, i, layerB, "south", axialPitch);
+              placePin(
+                count++,
+                (padA.x + padB.x) / 2,
+                (padA.y + padB.y) / 2,
+                (padA.z + padB.z) / 2,
+                frame.normal.x + frameUp.normal.x,
+                frame.normal.y + frameUp.normal.y,
+                0,
+                CAD.bodyThicknessMm * 2.95,
+                radius
+              );
+            });
           }
         }
       }
     }
     for (let index = count; index < pinMeshes.length; index += 1) pinMeshes[index].visible = false;
     lastPinCount = count;
+  }
+
+  // Red dots where parts would overlap (the deepest sampled points). Those
+  // points lie inside solid parts, so they're drawn on top of everything.
+  const contactMaterial = new THREE.MeshBasicMaterial({ color: 0xff2a36, depthTest: false, transparent: true, opacity: 0.9 });
+  const contactGeometry = new THREE.SphereGeometry(1.8, 12, 8);
+  const contactMeshes = [];
+
+  function updateContactMarkers(contacts) {
+    contacts.forEach((contact, index) => {
+      if (!contactMeshes[index]) {
+        const mesh = new THREE.Mesh(contactGeometry, contactMaterial);
+        mesh.renderOrder = 10;
+        scene.add(mesh);
+        contactMeshes.push(mesh);
+      }
+      contactMeshes[index].position.copy(contact.point);
+      contactMeshes[index].visible = true;
+    });
+    for (let index = contacts.length; index < contactMeshes.length; index += 1) contactMeshes[index].visible = false;
   }
 
   function computePinAlignment(n, m, rings, cellFramesByRow, axialPitch) {
@@ -511,14 +604,25 @@
     let maxCircumferentialBend = 0;
     let maxAxialBend = 0;
     let jointsChecked = 0;
+    const aSite = aSiteInput.value;
+    const bSite = bSiteInput.value;
+    const pinLayers = jointPinLayers();
     for (let row = 0; row < m; row += 1) {
       for (let i = 0; i < n; i += 1) {
         const next = (i + 1) % n;
         const frameA = cellFramesByRow[row][i];
         const frameB = cellFramesByRow[row][next];
-        const eastPad = rings[row].centers[i].clone().addScaledVector(frameA.tangent, siteRadius);
-        const westPad = rings[row].centers[next].clone().addScaledVector(frameB.tangent, -siteRadius);
-        maxCircumferential = Math.max(maxCircumferential, eastPad.distanceTo(westPad));
+        // A pin passes through both holes when the two pad centers line up
+        // across the pin axis (bisector of the two normals); their spacing
+        // along the axis is just the stacked plate thickness.
+        const axis = new THREE.Vector3(frameA.normal.x + frameB.normal.x, frameA.normal.y + frameB.normal.y, 0).normalize();
+        pinLayers.forEach(([layerA, layerB]) => {
+          const offset = padWorld(rings[row], row, i, layerA, aSite, axialPitch).sub(
+            padWorld(rings[row], row, next, layerB, bSite, axialPitch)
+          );
+          const lateral = offset.addScaledVector(axis, -offset.dot(axis)).length();
+          maxCircumferential = Math.max(maxCircumferential, lateral);
+        });
         // With radially oriented cells the joint bolt is radial, so the
         // angle between neighbors' normals is a tilt of the plates on that
         // bolt - the quantity the backlash tilt limit bounds.
@@ -528,9 +632,9 @@
       }
     }
     for (let row = 0; row < m - 1; row += 1) {
-      const zNorth = row * axialPitch + siteRadius;
-      const zSouth = (row + 1) * axialPitch - siteRadius;
       for (let i = 0; i < n; i += 1) {
+        const zNorth = row * axialPitch + rings[row].hubZ[i] + siteRadius;
+        const zSouth = (row + 1) * axialPitch + rings[row + 1].hubZ[i] - siteRadius;
         const centerNorth = rings[row].centers[i];
         const centerSouth = rings[row + 1].centers[i];
         const dx = centerNorth.x - centerSouth.x;
@@ -700,75 +804,323 @@
     }
   }
 
-  // Close n single-pin joints into a ring: cell i's upper-cross hole (aSite,
-  // at absolute rotation bottomRot[i] + thetaPerCell[i]) meets cell i+1's
-  // lower-cross hole (bSite, at absolute rotation bottomRot[i+1]), where each
-  // step turns by a fixed 2*pi/n regardless of thetaPerCell. This is the same
-  // forward relation two_cell_attachment.js uses for its A-B pin
-  // (aAttachWorld - bAttachOffset), just walked n times with a fixed turn
-  // increment instead of laid flat.
-  //
-  // When every thetaPerCell[i] is equal this is an exact regular n-gon (the
-  // classic turtle-graphics closure: identical local steps + a turn summing
-  // to 2*pi always return to the start) - closureResidual is ~0. When cells
-  // differ, the fixed-turn construction still walks all the way around
-  // (heading always returns to 0 after n steps), but the *chord lengths*
-  // differ per joint, so the loop generally will not land back exactly on
-  // its own start - closureResidual becomes a genuine, meaningful measure of
-  // how inconsistent the per-cell commands are with a physically closed
-  // ring, the same way real backlash/compliance would have to absorb that
-  // mismatch in hardware.
+  // One cell's two circumferential joint pins, in the plane of the cell.
+  // The dilation twist is split symmetrically - lower cross at -theta/2,
+  // upper at +theta/2 - so the upper aSite pin (joint with the next cell)
+  // and the lower bSite pin (joint with the previous cell) end up level:
+  // the chord between them is rotated by psi so it lies along the cell's
+  // own tangential axis. Twisting only the upper cross (lower fixed) would
+  // tilt that chord by theta/2 and send the row off axially in a helix.
+  // For east/west sites: pitch = 2*L*cos(theta/2), psi = 0.
+  function cellJointGeometry(theta) {
+    const aLocal = SITE_VECTORS[aSiteInput.value] || SITE_VECTORS.east;
+    const bLocal = SITE_VECTORS[bSiteInput.value] || SITE_VECTORS.west;
+    const aPin = rotate2(aLocal, theta / 2);
+    const bPin = rotate2(bLocal, -theta / 2);
+    const chord = aPin.clone().sub(bPin);
+    const pitch = Math.max(chord.length(), 1e-6);
+    const psi = chord.length() > 1e-9 ? Math.atan2(chord.y, chord.x) : 0;
+    const aInFace = rotate2(aPin, -psi);
+    const bInFace = rotate2(bPin, -psi);
+    return {
+      pitch,
+      crossRotLower: -theta / 2 - psi,
+      crossRotUpper: theta / 2 - psi,
+      // Pin positions relative to the hub, in face coordinates
+      // (x along the tangent, y along the axle). aInFace.y === bInFace.y.
+      bPinAlong: bInFace.x,
+      pinAxial: aInFace.y,
+    };
+  }
+
+  // With opposite attachment sites (east/west or north/south) the symmetric
+  // twist also brings a second pad pair exactly together at every joint:
+  // cell i's LOWER aSite pad and cell i+1's UPPER bSite pad, offset from the
+  // first pin by 2*L*sin(theta/2) along the axle (rot(v, t/2) - rot(v, -t/2)
+  // = 2 sin(t/2) perp(v), so the offsets match only when a = -b). That is a
+  // second pin per joint - the mirrored double-pin closure.
+  function hasSecondJointPin() {
+    const a = SITE_VECTORS[aSiteInput.value] || SITE_VECTORS.east;
+    const b = SITE_VECTORS[bSiteInput.value] || SITE_VECTORS.west;
+    return a.clone().add(b).lengthSq() < 1e-9;
+  }
+
+  // Circumradius of a polygon with sides `sides` inscribed in a circle
+  // (every vertex on the circle), and the central angle of each side.
+  // Exact for any mix of side lengths, so the ring always closes; the
+  // physical question becomes whether each joint can bend that far
+  // (backlash tilt check) and whether bodies collide.
+  function solveCyclicPolygon(sides) {
+    const n = sides.length;
+    const maxSide = Math.max(...sides);
+    const maxIndex = sides.indexOf(maxSide);
+    const halfMin = maxSide / 2;
+    const angleSum = (R) => sides.reduce((sum, p) => sum + 2 * Math.asin(Math.min(1, p / (2 * R))), 0);
+    // If even the tightest circle (longest side as a diameter) leaves the
+    // arcs short of 2*pi, the circumcenter lies outside the polygon and the
+    // longest side takes the major arc instead.
+    const centerInside = angleSum(halfMin) >= 2 * Math.PI;
+    const residual = centerInside
+      ? (R) => angleSum(R) - 2 * Math.PI
+      : (R) =>
+          sides.reduce((sum, p, i) => (i === maxIndex ? sum : sum + Math.asin(Math.min(1, p / (2 * R)))), 0) -
+          Math.asin(Math.min(1, maxSide / (2 * R)));
+    let lo = halfMin;
+    let hi = halfMin * 2;
+    // centerInside: residual falls with R; otherwise it rises. Bracket, then bisect.
+    const sign = centerInside ? 1 : -1;
+    while (sign * residual(hi) > 0) hi *= 2;
+    for (let iter = 0; iter < 80; iter += 1) {
+      const mid = (lo + hi) / 2;
+      if (sign * residual(mid) > 0) lo = mid;
+      else hi = mid;
+    }
+    const R = (lo + hi) / 2;
+    const angles = sides.map((p, i) => {
+      const minor = 2 * Math.asin(Math.min(1, p / (2 * R)));
+      return !centerInside && i === maxIndex ? 2 * Math.PI - minor : minor;
+    });
+    const closure = Math.abs(angles.reduce((a, b) => a + b, 0) - 2 * Math.PI) * R;
+    return { R, angles, closure, centerInside, n };
+  }
+
+  // Build one ring: cell i sits flat on the polygon face between joint pin
+  // i (its lower bSite pin, shared with cell i-1) and joint pin i+1 (its
+  // upper aSite pin, shared with cell i+1). Pins are the polygon vertices
+  // on a circle about the axle, so neighboring pins coincide exactly.
+  // Each cell's frame: tangent along its face (vertex i -> i+1), normal
+  // pointing outward, axial along the axle. The whole ring is then rotated
+  // so cell 0's hub sits at polar angle 0, so rows stack in columns.
   function buildRing(n, thetaPerCell) {
-    const aAttachLocal = SITE_VECTORS[aSiteInput.value] || SITE_VECTORS.east;
-    const bAttachLocal = SITE_VECTORS[bSiteInput.value] || SITE_VECTORS.west;
-    const turn = (2 * Math.PI) / n;
-    const centers = [new THREE.Vector2(0, 0)];
-    const bottomRot = [0];
-    let heading = 0;
-    let pitchSum = 0;
-    let closureResidual = 0;
+    const joints = thetaPerCell.map((theta) => cellJointGeometry(theta));
+    const sides = joints.map((j) => j.pitch);
+    const cyclic = solveCyclicPolygon(sides);
+    const vertices = [];
+    let angle = 0;
     for (let i = 0; i < n; i += 1) {
-      const aAttachWorld = rotate2(aAttachLocal, heading + thetaPerCell[i]);
-      heading += turn;
-      const bAttachWorld = rotate2(bAttachLocal, heading);
-      const step = aAttachWorld.clone().sub(bAttachWorld);
-      const nextCenter = centers[i].clone().add(step);
-      pitchSum += step.length();
-      if (i < n - 1) {
-        centers.push(nextCenter);
-        bottomRot.push(heading);
-      } else {
-        closureResidual = nextCenter.distanceTo(centers[0]);
+      vertices.push(new THREE.Vector2(cyclic.R * Math.cos(angle), cyclic.R * Math.sin(angle)));
+      angle += cyclic.angles[i];
+    }
+    const meanPinAxial = joints.reduce((sum, j) => sum + j.pinAxial, 0) / n;
+    const centers = [];
+    const tangents = [];
+    const normals = [];
+    const hubZ = [];
+    for (let i = 0; i < n; i += 1) {
+      const start = vertices[i];
+      const end = vertices[(i + 1) % n];
+      const tangent = end.clone().sub(start).normalize();
+      const normal = new THREE.Vector2(tangent.y, -tangent.x);
+      tangents.push(tangent);
+      normals.push(normal);
+      centers.push(start.clone().addScaledVector(tangent, -joints[i].bPinAlong));
+      // Pins of a ring share one height; each hub sits below its pins by
+      // its own pinAxial, re-centered so the ring's mean hub height is 0.
+      hubZ.push(meanPinAxial - joints[i].pinAxial);
+    }
+    const phase = -Math.atan2(centers[0].y, centers[0].x);
+    const origin = new THREE.Vector2(0, 0);
+    [vertices, centers, tangents, normals].forEach((list) => list.forEach((v) => v.rotateAround(origin, phase)));
+    const radius = centers.reduce((sum, c) => sum + c.length(), 0) / n;
+    const heading = tangents.map((t) => Math.atan2(t.y, t.x));
+    return {
+      centers,
+      tangents,
+      normals,
+      vertices,
+      hubZ,
+      pinZ: meanPinAxial,
+      crossRotLower: joints.map((j) => j.crossRotLower),
+      crossRotUpper: joints.map((j) => j.crossRotUpper),
+      // Absolute in-plane rotation of each cross about the cell normal,
+      // measured from the ring's +x axis (for the Selected Cell readout).
+      bottomRot: heading.map((h, i) => h + joints[i].crossRotLower),
+      topRot: heading.map((h, i) => h + joints[i].crossRotUpper),
+      radialAngle: centers.map((c) => Math.atan2(c.y, c.x)),
+      pitch: sides.reduce((a, b) => a + b, 0) / n,
+      pinCircleRadius: cyclic.R,
+      closureResidual: cyclic.closure,
+      radius,
+      diameter: 2 * radius,
+      centroid: origin.clone(),
+    };
+  }
+
+  // World position of one pad's center (on its layer's mid-plane).
+  function padWorld(ring, row, i, layer, site, axialPitch) {
+    const face = rotate2(SITE_VECTORS[site], layer === "upper" ? ring.crossRotUpper[i] : ring.crossRotLower[i]);
+    const t = ring.tangents[i];
+    const nrm = ring.normals[i];
+    const offset = layer === "upper" ? PLATE_HALF_THICKNESS : -PLATE_HALF_THICKNESS;
+    return new THREE.Vector3(
+      ring.centers[i].x + face.x * t.x + offset * nrm.x,
+      ring.centers[i].y + face.x * t.y + offset * nrm.y,
+      row * axialPitch + ring.hubZ[i] + face.y
+    );
+  }
+
+  // The pinned pad pairs at the joint between cell i and cell i+1:
+  // [cell i's layer, cell i+1's layer] for each pin.
+  function jointPinLayers() {
+    return hasSecondJointPin()
+      ? [
+          ["upper", "lower"],
+          ["lower", "upper"],
+        ]
+      : [["upper", "lower"]];
+  }
+
+  // --- Constraint solver: no fusing through, no discontinuous motion ---
+  // The realized pose never teleports to a requested one. It walks there
+  // from the last valid pose in small steps (1 deg of cell twist per step,
+  // the step Ahyan's V2 samples its drive at), collision-checking each step.
+  // A step that would push parts into each other, or that makes any cell
+  // jump more than 4 mm or turn more than 5 deg at once (Ahyan's
+  // discontinuity thresholds), is refused; the pose then settles at the
+  // contact point found by bisection and is "held" there.
+  const CONSTRAINT_STEP_RAD = (1 * Math.PI) / 180;
+  const MAX_STEP_CENTER_JUMP_MM = 4;
+  const MAX_STEP_ROTATION_JUMP_RAD = (5 * Math.PI) / 180;
+  const MAX_CONSTRAINT_STEPS_PER_FRAME = 24;
+  let acceptedPose = null;
+  let snapPosePending = true;
+  let lastSolve = null;
+
+  function buildPose(n, m, axialPitch, grid, withCollisions) {
+    const rings = grid.map((row) => buildRing(n, row));
+    return { grid, rings, report: withCollisions ? checkCollisions(rings, n, m, axialPitch) : null };
+  }
+
+  function angleGap(a, b) {
+    return Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)));
+  }
+
+  function stepIsContinuous(from, to) {
+    for (let row = 0; row < from.rings.length; row += 1) {
+      const a = from.rings[row];
+      const b = to.rings[row];
+      for (let i = 0; i < a.centers.length; i += 1) {
+        const jump = Math.hypot(a.centers[i].x - b.centers[i].x, a.centers[i].y - b.centers[i].y, a.hubZ[i] - b.hubZ[i]);
+        if (jump > MAX_STEP_CENTER_JUMP_MM) return false;
+        if (angleGap(a.bottomRot[i], b.bottomRot[i]) > MAX_STEP_ROTATION_JUMP_RAD) return false;
+        if (angleGap(a.topRot[i], b.topRot[i]) > MAX_STEP_ROTATION_JUMP_RAD) return false;
       }
     }
-    // The walk starts cell 0 at the origin, so rings of different diameter
-    // would otherwise have different centers and rows wouldn't share an
-    // axle. Re-center every ring on the axle (z axis) so rows stay coaxial.
-    const walkCentroid = centers.reduce((acc, c) => acc.add(c), new THREE.Vector2(0, 0)).multiplyScalar(1 / n);
-    centers.forEach((c) => c.sub(walkCentroid));
-    // The walk's angular phase also depends on theta (heading leads the
-    // polar angle by a theta-dependent amount), so rows at different alpha
-    // would come out twisted relative to each other. Axial bolts force
-    // stacked cells to the same angle, so rigidly rotate the ring (positions
-    // and headings together) to put cell 0 at polar angle 0 in every row.
-    const phase = -Math.atan2(centers[0].y, centers[0].x);
-    centers.forEach((c) => c.rotateAround(new THREE.Vector2(0, 0), phase));
-    for (let i = 0; i < bottomRot.length; i += 1) bottomRot[i] += phase;
-    const centroid = new THREE.Vector2(0, 0);
-    let radius = 0;
-    centers.forEach((c) => {
-      radius += c.distanceTo(centroid);
-    });
-    radius /= n;
-    // bottomRot[i] is the cell's own chain-walking heading, not its polar
-    // position angle around the ring - for a turtle-graphics polygon walk
-    // those differ by a constant phase (heading leads the true radial
-    // direction, exact amount depends on n and the chosen attachment sites).
-    // Radial cell orientation needs the true outward direction from the
-    // ring's own centroid, so compute it directly from each cell's actual
-    // position rather than reusing bottomRot.
-    const radialAngle = centers.map((c) => Math.atan2(c.y - centroid.y, c.x - centroid.x));
-    return { centers, bottomRot, radialAngle, pitch: pitchSum / n, closureResidual, radius, diameter: 2 * radius, centroid };
+    return true;
+  }
+
+  function gridSignature(grid) {
+    return grid.map((row) => row.map((v) => v.toFixed(7)).join(",")).join(";");
+  }
+
+  function realizePose(n, m, axialPitch, requested) {
+    const enforce = constraintsEnabledInput.checked;
+    const withCollisions = enforce || collisionEnabledInput.checked;
+    const topoKey = [n, m, axialPitch, aSiteInput.value, bSiteInput.value].join("|");
+    const key = `${topoKey}|${enforce}|${withCollisions}`;
+    const requestSig = gridSignature(requested);
+    if (
+      lastSolve &&
+      !snapPosePending &&
+      lastSolve.key === key &&
+      lastSolve.requestSig === requestSig &&
+      lastSolve.status !== "moving"
+    ) {
+      return lastSolve;
+    }
+
+    let pose;
+    let status;
+    if (!enforce || snapPosePending || !acceptedPose || acceptedPose.topoKey !== topoKey || acceptedPose.key !== key) {
+      pose = buildPose(n, m, axialPitch, requested, withCollisions);
+      status = !enforce ? "off" : pose.report.clear ? "free" : "start-collides";
+      snapPosePending = false;
+    } else {
+      let current = acceptedPose.pose;
+      const start = current.grid;
+      let maxDelta = 0;
+      requested.forEach((row, r) => row.forEach((v, i) => (maxDelta = Math.max(maxDelta, Math.abs(v - start[r][i])))));
+      status = current.report.clear ? "free" : "start-collides";
+      if (maxDelta > 1e-9) {
+        const totalSteps = Math.ceil(maxDelta / CONSTRAINT_STEP_RAD);
+        const steps = Math.min(totalSteps, MAX_CONSTRAINT_STEPS_PER_FRAME);
+        const lerpGrid = (f) => start.map((row, r) => row.map((v, i) => v + (requested[r][i] - v) * f));
+        // Leaving an already-overlapping start is allowed as long as the
+        // overlap doesn't grow; otherwise nothing may overlap.
+        const penetrationAllowed = (from) => Math.max(COLLISION_TOLERANCE_MM, from.report.maxPenetration + 1e-6);
+        let previousF = 0;
+        for (let k = 1; k <= steps; k += 1) {
+          const f = k / totalSteps;
+          const candidate = buildPose(n, m, axialPitch, lerpGrid(f), true);
+          const continuous = stepIsContinuous(current, candidate);
+          if (!continuous || candidate.report.maxPenetration > penetrationAllowed(current)) {
+            let lo = previousF;
+            let hi = f;
+            for (let iter = 0; iter < 6; iter += 1) {
+              const mid = (lo + hi) / 2;
+              const probe = buildPose(n, m, axialPitch, lerpGrid(mid), true);
+              if (stepIsContinuous(current, probe) && probe.report.maxPenetration <= penetrationAllowed(current)) {
+                current = probe;
+                lo = mid;
+              } else {
+                hi = mid;
+              }
+            }
+            status = continuous ? "held" : "discontinuous";
+            break;
+          }
+          current = candidate;
+          previousF = f;
+          status = current.report.clear ? "free" : "start-collides";
+          if (k === steps && steps < totalSteps) status = "moving";
+        }
+      }
+      pose = current;
+    }
+    acceptedPose = { topoKey, key, pose };
+    lastSolve = { key, requestSig, status, pose };
+    return lastSolve;
+  }
+
+  // Collision-free ranges of one shared effective alpha for the current
+  // ring/row/site settings: sweep alpha in 0.01 steps, keep poses with no
+  // overlap, and split a range wherever consecutive poses jump
+  // discontinuously. Cached per setting; a uniform ring's rows are
+  // identical, so two rows capture every row-to-row interaction.
+  let envelopeCache = { key: "", value: null };
+
+  function uniformAlphaEnvelope(n, m, axialPitch) {
+    const key = [n, Math.min(m, 2), axialPitch, aSiteInput.value, bSiteInput.value].join("|");
+    if (envelopeCache.key === key) return envelopeCache.value;
+    const rows = Math.min(m, 2);
+    const ranges = [];
+    let open = null;
+    let previous = null;
+    for (let k = 0; k <= Math.round((ALPHA_MAX - ALPHA_MIN) / 0.01); k += 1) {
+      const alpha = Math.round((ALPHA_MIN + k * 0.01) * 100) / 100;
+      const theta = degToRad(cellThetaDeg(alpha));
+      const pose = buildPose(n, rows, axialPitch, Array.from({ length: rows }, () => new Array(n).fill(theta)), true);
+      const ok = pose.report.clear && (!previous || !open || stepIsContinuous(previous, pose));
+      if (ok) {
+        if (!open) open = [alpha, alpha];
+        else open[1] = alpha;
+      } else if (open) {
+        ranges.push(open);
+        open = pose.report.clear ? [alpha, alpha] : null;
+      }
+      previous = pose;
+    }
+    if (open) ranges.push(open);
+    envelopeCache = { key, value: ranges };
+    return ranges;
+  }
+
+  function envelopeRangeContaining(ranges, alpha) {
+    return ranges.find(([lo, hi]) => alpha >= lo - 1e-9 && alpha <= hi + 1e-9) || null;
+  }
+
+  function thetaToAlpha(theta) {
+    return (radToDeg(theta) + 60) / 70;
   }
 
   // --- Per-cell actuation: each cell is "free" (tracks a backlash-gated
@@ -880,28 +1232,6 @@
   const radialScratchZ = new THREE.Vector3();
   const radialScratchMatrix = new THREE.Matrix4();
 
-  // A cell's tangential (east/west) heading can't exactly face both of its
-  // circumferential neighbors at once - a straight cross arm has one axis,
-  // but the ring curves - so instead of a pure "tangent to the circle"
-  // angle, aim it along the chord from the previous neighbor to the next
-  // one (the standard vertex-tangent estimate for a polygon). That's the
-  // orientation that minimizes how far each of the two neighboring pin
-  // holes ends up from this cell's own hole, the same honest-residual
-  // approach the ring closure/diameter fit already use elsewhere, rather
-  // than assuming a perfect regular polygon (which per-cell actuation and
-  // even the exact-closure case's own pin geometry don't quite give).
-  function computeCellFrame(centers, centroid, i, n) {
-    const prev = centers[(i - 1 + n) % n];
-    const next = centers[(i + 1) % n];
-    const tangent = next.clone().sub(prev);
-    if (tangent.lengthSq() < 1e-9) tangent.set(1, 0);
-    tangent.normalize();
-    const normal = new THREE.Vector2(-tangent.y, tangent.x);
-    const outward = centers[i].clone().sub(centroid);
-    if (normal.dot(outward) < 0) normal.negate();
-    return { tangent, normal };
-  }
-
   function setRadialOrientation(object3d, tangent2, normal2) {
     radialScratchX.set(tangent2.x, tangent2.y, 0); // tangential (hole-aligned)
     radialScratchZ.set(normal2.x, normal2.y, 0); // radial (outward)
@@ -916,16 +1246,18 @@
     return heatmapColorScratch;
   }
 
-  // Diameter vs alpha is NOT monotonic (it rises then falls as cells
-  // over-rotate past their most-open pose - verified numerically before
-  // building this: for n=10, diameter peaks around alpha=1.4 then drops
-  // back down toward alpha=2.0), so this can't be solved with a bisection
-  // search or a closed-form inverse of theta=70*alpha-60. Instead it
+  // Diameter vs alpha is NOT monotonic over the slider's range: the pin
+  // chord 2L*cos(theta/2) is longest at zero twist (theta = 0, alpha ~0.86)
+  // and shrinks as the twist grows either way, so the ring is widest there
+  // and narrower toward both ends. That rules out a bisection search or a
+  // closed-form inverse of theta=70*alpha-60 over the full range. Instead it
   // exhaustively evaluates every alpha the slider can reach (a uniform
   // ring, all cells at the same theta) and keeps whichever is closest to
   // the target - simple, robust to non-monotonicity, and cheap since a
   // whole ring build is just O(n).
-  function fitAlphaToDiameter(targetDiameter, n, backlash) {
+  // `allowedRanges` (effective-alpha ranges) restricts the search to poses
+  // the constraint solver can actually reach; null means unrestricted.
+  function fitAlphaToDiameter(targetDiameter, n, backlash, allowedRanges = null) {
     let bestAlpha = ALPHA_REFERENCE;
     let bestDiameter = 0;
     let bestDiff = Infinity;
@@ -938,6 +1270,7 @@
       // get shifted by the dead-zone once actually applied and render at a
       // different diameter than what was just fit.
       const effectiveAlpha = ALPHA_REFERENCE + reluDeadzone(a - ALPHA_REFERENCE, backlash);
+      if (allowedRanges && !envelopeRangeContaining(allowedRanges, Math.round(effectiveAlpha * 100) / 100)) continue;
       const thetaRad = degToRad(cellThetaDeg(effectiveAlpha));
       const diameter = buildRing(n, new Array(n).fill(thetaRad)).diameter;
       const diff = Math.abs(diameter - targetDiameter);
@@ -1053,6 +1386,10 @@
   let lastRingsSnapshot = null;
   let lastPinAlignment = null;
   let lastPinCount = 0;
+  let lastCollisionReport = null;
+  let lastRealizedAlphas = null;
+  let lastConstraintStatus = "off";
+  let lastEnvelope = [];
 
   function updateCamera() {
     const r = cameraState.radius;
@@ -1119,9 +1456,13 @@
     const cellAlphas = computeCellAlphas(n, m, baselineAlpha, backlash);
     lastCellAlphas = cellAlphas;
     lastCellRolesSnapshot = cellRoles;
-    const thetaPerRow = cellAlphas.map((row) => row.map((a) => degToRad(cellThetaDeg(a))));
-    const rings = [];
-    for (let row = 0; row < m; row += 1) rings.push(buildRing(n, thetaPerRow[row]));
+    const requestedTheta = cellAlphas.map((row) => row.map((a) => degToRad(cellThetaDeg(a))));
+    const solve = realizePose(n, m, axialPitch, requestedTheta);
+    const rings = solve.pose.rings;
+    const thetaPerRow = solve.pose.grid;
+    const realizedAlphas = thetaPerRow.map((row) => row.map(thetaToAlpha));
+    lastRealizedAlphas = realizedAlphas;
+    lastConstraintStatus = solve.status;
     lastRingsSnapshot = rings;
     const cellFramesByRow = [];
     for (let row = 0; row < m; row += 1) cellFramesByRow.push(new Array(n));
@@ -1133,28 +1474,19 @@
     if (showMeasurements) updateMeasurementLine(rings[0], 0);
 
     for (let row = 0; row < m; row += 1) {
-      const z = row * axialPitch;
       for (let i = 0; i < n; i += 1) {
         const cell = cellPool[row * n + i];
         const center = rings[row].centers[i];
+        const z = row * axialPitch + rings[row].hubZ[i];
         cell.group.position.set(center.x, center.y, z);
-        const frame = computeCellFrame(rings[row].centers, rings[row].centroid, i, n);
+        const frame = { tangent: rings[row].tangents[i], normal: rings[row].normals[i] };
         cellFramesByRow[row][i] = frame;
         setRadialOrientation(cell.group, frame.tangent, frame.normal);
-        // The group's own orientation now carries the cell's true outward
-        // direction (normal, from computeCellFrame - not bottomRot[i], the
-        // chain-walking heading used for pin closure, which leads the true
-        // radial direction by a construction-dependent phase, not a fixed
-        // 90deg) and a tangential heading aimed at minimizing hole
-        // misalignment with both circumferential neighbors at once. The
-        // child crosses' local z-rotation is only the *relative* dilation
-        // twist between layers on top of that heading, not heading + twist -
-        // otherwise heading would be double-applied. The bottom cross's
-        // 4-fold symmetry makes 0 an arbitrary but equally valid reference;
-        // top stays exactly theta ahead of bottom, preserving the same
-        // "opens up by theta" dilation visual as before.
-        cell.bottom.rotation.z = 0;
-        cell.top.rotation.z = thetaPerRow[row][i];
+        // Cross twists are measured in the cell's own face frame (group
+        // local x = tangent, y = axle, z = outward normal): lower at
+        // -theta/2, upper at +theta/2 (see cellJointGeometry).
+        cell.bottom.rotation.z = rings[row].crossRotLower[i];
+        cell.top.rotation.z = rings[row].crossRotUpper[i];
         const role = cellRoles[row][i].role;
         if (role === "free") {
           cell.roleMarker.visible = false;
@@ -1170,7 +1502,7 @@
           cell.batchMarker.visible = false;
         }
         if (heatmapEnabledInput.checked) {
-          const color = heatColor(cellAlphas[row][i]);
+          const color = heatColor(realizedAlphas[row][i]);
           cell.topMaterial.color.copy(color);
           cell.bottomMaterial.color.copy(color);
         } else {
@@ -1223,8 +1555,10 @@
     actuatorCountMetric.textContent = String(actuatorCount);
     lockedCountMetric.textContent = String(lockedCount);
 
-    if (collisionEnabledInput.checked) {
-      const report = checkNeighborClearance(n, m, rings, axialPitch, thetaPerRow);
+    const report = solve.pose.report;
+    lastCollisionReport = report;
+    updateContactMarkers(collisionEnabledInput.checked && report && !isolateActive ? report.contacts : []);
+    if (collisionEnabledInput.checked && report) {
       collisionState.textContent = report.clear ? "clear" : "blocked";
       collisionState.classList.toggle("status-ok", report.clear);
       collisionState.classList.toggle("status-blocked", !report.clear);
@@ -1238,6 +1572,36 @@
       clearanceMetric.textContent = "-";
       pairsCheckedMetric.textContent = "0";
     }
+
+    const CONSTRAINT_LABELS = {
+      off: "not enforced",
+      free: "free - pose reached",
+      moving: "moving toward the command",
+      held: "held at contact (would fuse through)",
+      discontinuous: "held (step would jump discontinuously)",
+      "start-collides": "start pose overlaps - can only move out",
+    };
+    constraintStateMetric.textContent = CONSTRAINT_LABELS[solve.status] || solve.status;
+    constraintStateMetric.classList.toggle("status-ok", solve.status === "free" || solve.status === "moving");
+    constraintStateMetric.classList.toggle(
+      "status-blocked",
+      solve.status === "held" || solve.status === "discontinuous" || solve.status === "start-collides"
+    );
+    let meanRealized = 0;
+    let maxLag = 0;
+    realizedAlphas.forEach((row, r) =>
+      row.forEach((a, i) => {
+        meanRealized += a / (n * m);
+        maxLag = Math.max(maxLag, Math.abs(a - thetaToAlpha(requestedTheta[r][i])));
+      })
+    );
+    realizedAlphaMetric.textContent =
+      maxLag > 0.005 ? `${meanRealized.toFixed(2)} mean (lags command by up to ${maxLag.toFixed(2)})` : `${meanRealized.toFixed(2)} mean`;
+    const envelope = uniformAlphaEnvelope(n, m, axialPitch);
+    lastEnvelope = envelope;
+    feasibleRangeMetric.textContent = envelope.length
+      ? envelope.map(([lo, hi]) => (lo === hi ? lo.toFixed(2) : `${lo.toFixed(2)} - ${hi.toFixed(2)}`)).join(", ")
+      : "none";
 
     const pinAlignment = computePinAlignment(n, m, rings, cellFramesByRow, axialPitch);
     lastPinAlignment = pinAlignment;
@@ -1269,7 +1633,7 @@
       const row = selected.row;
       const i = selected.i;
       const center = rings[row].centers[i];
-      const z = row * axialPitch;
+      const z = row * axialPitch + rings[row].hubZ[i];
       selectionMarker.visible = true;
       selectionMarker.position.set(center.x, center.y, z + 0.01);
       selectedWorld.set(center.x, center.y, z);
@@ -1278,8 +1642,13 @@
       selectedIndexMetric.textContent = `${row}, ${i}`;
       selectedCenterMetric.textContent = `(${center.x.toFixed(1)}, ${center.y.toFixed(1)}, ${z.toFixed(1)})`;
       selectedBottomRotMetric.textContent = `${radToDeg(rings[row].bottomRot[i]).toFixed(1)} deg`;
-      selectedTopRotMetric.textContent = `${radToDeg(rings[row].bottomRot[i] + thetaPerRow[row][i]).toFixed(1)} deg`;
-      selectedCellAlphaMetric.textContent = cellAlphas[row][i].toFixed(2);
+      selectedTopRotMetric.textContent = `${radToDeg(rings[row].topRot[i]).toFixed(1)} deg`;
+      const commandedCellAlpha = cellAlphas[row][i];
+      const realizedCellAlpha = realizedAlphas[row][i];
+      selectedCellAlphaMetric.textContent =
+        Math.abs(realizedCellAlpha - commandedCellAlpha) > 0.005
+          ? `${realizedCellAlpha.toFixed(2)} (commanded ${commandedCellAlpha.toFixed(2)})`
+          : realizedCellAlpha.toFixed(2);
       frameCellBtn.disabled = false;
       isolateCellBtn.disabled = false;
       cellRoleSelect.disabled = false;
@@ -1446,10 +1815,12 @@
     [aSiteInput, bSiteInput].forEach((select) => {
       select.value = Array.from(select.options).find((option) => option.defaultSelected).value;
     });
-    [animateInput, collisionEnabledInput, heatmapEnabledInput, showPinsInput].forEach((input) => {
+    [animateInput, collisionEnabledInput, heatmapEnabledInput, showPinsInput, constraintsEnabledInput].forEach((input) => {
       input.checked = input.defaultChecked;
     });
     clearAllRoles();
+    // A reset is a fresh setup, not a motion - jump straight to the new pose.
+    snapPosePending = true;
     selected = null;
     multiSelected.clear();
     updateBatchSelectionUi();
@@ -1543,14 +1914,33 @@
 
   // Shape presets: command every cell in a row to the same alpha, but vary
   // that alpha row-to-row, so each ring settles at a different diameter
-  // (rows already solve independently - see computeCellAlphas) producing a
-  // visibly non-uniform wheel profile in one click, as a fast demo of
-  // differential dilation on top of the shift-click batch tool above.
-  function applyRowAlphaPreset(rowAlphaFn) {
+  // (rows solve independently) - a one-click non-uniform wheel profile.
+  // `rowWidthFn(row, m)` gives each row's wanted width in [0, 1] (1 = widest).
+  // Alphas are picked from the collision-free window the pose is currently
+  // in (or the widest window), so the constraint solver can actually reach
+  // them. Diameter falls as alpha rises in that window - more twist
+  // shortens the pin-to-pin span 2L*cos(theta/2) - so the widest row gets
+  // the window's lowest alpha. Without a window, fall back to 1.25-1.75.
+  function applyRowWidthPreset(rowWidthFn) {
+    const margin = 0.02;
+    let lo = 1.25;
+    let hi = 1.75;
+    if (lastEnvelope.length) {
+      const flat = lastRealizedAlphas ? lastRealizedAlphas.flat() : [];
+      const current = flat.length ? Math.round((flat.reduce((a, b) => a + b, 0) / flat.length) * 100) / 100 : null;
+      const range =
+        (current !== null && envelopeRangeContaining(lastEnvelope, current)) ||
+        lastEnvelope.reduce((best, r) => (r[1] - r[0] > best[1] - best[0] ? r : best), lastEnvelope[0]);
+      if (range[1] - range[0] > 2 * margin) {
+        lo = range[0] + margin;
+        hi = range[1] - margin;
+      }
+    }
     const m = cellRoles.length;
     for (let row = 0; row < m; row += 1) {
       const n = cellRoles[row].length;
-      const alpha = clamp(rowAlphaFn(row, m), ALPHA_MIN, ALPHA_MAX);
+      const width = clamp(rowWidthFn(row, m), 0, 1);
+      const alpha = Math.round(clamp(hi - width * (hi - lo), ALPHA_MIN, ALPHA_MAX) * 100) / 100;
       for (let i = 0; i < n; i += 1) {
         cellRoles[row][i] = { role: "actuator", alpha };
       }
@@ -1558,34 +1948,30 @@
     updateMechanism();
   }
 
-  presetBarrelBtn.addEventListener("click", () => {
-    applyRowAlphaPreset((row, m) => {
-      const mid = (m - 1) / 2;
-      const t = mid === 0 ? 0 : 1 - Math.abs(row - mid) / mid;
-      return ALPHA_REFERENCE + t * 0.5;
-    });
-  });
+  // 1 at the middle row(s), 0 at the ends.
+  function middleWeight(row, m) {
+    const mid = (m - 1) / 2;
+    return mid === 0 ? 1 : 1 - Math.abs(row - mid) / mid;
+  }
 
-  presetConeBtn.addEventListener("click", () => {
-    applyRowAlphaPreset((row, m) => {
-      const t = m <= 1 ? 0 : row / (m - 1);
-      return 0.75 + t * 0.7;
-    });
-  });
-
-  presetSaddleBtn.addEventListener("click", () => {
-    applyRowAlphaPreset((row, m) => {
-      const mid = (m - 1) / 2;
-      const t = mid === 0 ? 0 : 1 - Math.abs(row - mid) / mid;
-      return ALPHA_REFERENCE - t * 0.4;
-    });
-  });
+  presetBarrelBtn.addEventListener("click", () => applyRowWidthPreset((row, m) => middleWeight(row, m)));
+  presetConeBtn.addEventListener("click", () => applyRowWidthPreset((row, m) => (m <= 1 ? 0.5 : row / (m - 1))));
+  presetSaddleBtn.addEventListener("click", () => applyRowWidthPreset((row, m) => 1 - middleWeight(row, m)));
 
   function applyDiameterFit() {
     const n = clamp(Math.round(Number(ringCountInput.value)), RING_COUNT_MIN, RING_COUNT_MAX);
     const target = Number(targetDiameterInput.value);
     const backlash = Number(backlashInput.value);
-    const fit = fitAlphaToDiameter(target, n, backlash);
+    // With constraints on, only fit within the collision-free range the
+    // current pose is in (the pose can't cross a collision to reach another).
+    let allowedRanges = null;
+    if (constraintsEnabledInput.checked && lastEnvelope.length) {
+      const flat = lastRealizedAlphas ? lastRealizedAlphas.flat() : [];
+      const current = flat.length ? Math.round((flat.reduce((a, b) => a + b, 0) / flat.length) * 100) / 100 : null;
+      const range = current === null ? null : envelopeRangeContaining(lastEnvelope, current);
+      allowedRanges = range ? [range] : lastEnvelope;
+    }
+    const fit = fitAlphaToDiameter(target, n, backlash, allowedRanges);
     clearAllRoles();
     alphaInput.value = String(fit.alpha);
     achievedDiameterMetric.textContent = `${fit.achievedDiameter.toFixed(1)} mm`;
@@ -1620,6 +2006,7 @@
     showMeasurementsInput,
     pinDiameterInput,
     showPinsInput,
+    constraintsEnabledInput,
   ].forEach((input) => {
     input.addEventListener("input", () => updateMechanism());
     input.addEventListener("change", () => updateMechanism());
@@ -1752,6 +2139,8 @@
     const reader = new FileReader();
     reader.onload = () => {
       try {
+        // Loading a file sets up a pose; it isn't a motion to walk through.
+        snapPosePending = true;
         applyStateSnapshot(JSON.parse(String(reader.result)));
       } catch (_error) {
         window.alert("Could not parse that JSON file.");
@@ -1898,6 +2287,17 @@
       const cell = cellPool[row * n + i];
       return cell ? `#${cell.topMaterial.color.getHexString()}` : null;
     },
+    // World position of one pad (site) on one layer of a rendered cell, read
+    // from the actual meshes - lets tests check that joined pads coincide.
+    getSiteWorld: (row, i, layer, site) => {
+      const cell = cellPool[row * poolN + i];
+      if (!cell || !SITE_VECTORS[site]) return null;
+      const cross = layer === "upper" ? cell.top : cell.bottom;
+      cell.group.updateMatrixWorld(true);
+      const local = SITE_VECTORS[site];
+      const world = cross.localToWorld(new THREE.Vector3(local.x, local.y, 0));
+      return { x: world.x, y: world.y, z: world.z };
+    },
     getCellGroupNormal: (row, i) => {
       // World-space direction of the cell group's local Z axis (its
       // "thickness"/face-normal direction) - radially outward once
@@ -1909,6 +2309,48 @@
       return { x: normal.x, y: normal.y, z: normal.z };
     },
     getPinAlignment: () => lastPinAlignment,
+    getRealizedAlphas: () => lastRealizedAlphas,
+    getConstraintState: () => lastConstraintStatus,
+    getEnvelope: () => lastEnvelope,
+    getCollisionReport: () =>
+      lastCollisionReport && {
+        maxPenetration: lastCollisionReport.maxPenetration,
+        clear: lastCollisionReport.clear,
+        pairsChecked: lastCollisionReport.pairsChecked,
+        contactCount: lastCollisionReport.contacts.length,
+        deepest: lastCollisionReport.contacts[0]
+          ? {
+              cellA: lastCollisionReport.contacts[0].cellA,
+              cellB: lastCollisionReport.contacts[0].cellB,
+              partA: lastCollisionReport.contacts[0].partA,
+              partB: lastCollisionReport.contacts[0].partB,
+              depth: lastCollisionReport.contacts[0].depth,
+            }
+          : null,
+      },
+    // Collision-check rows at the given effective alphas (one per row),
+    // without touching the live pose.
+    probeRowAlphas: (rowAlphas) => {
+      const n = clamp(Math.round(Number(ringCountInput.value)), RING_COUNT_MIN, RING_COUNT_MAX);
+      const grid = rowAlphas.map((a) => new Array(n).fill(degToRad(cellThetaDeg(a))));
+      const pose = buildPose(n, grid.length, Number(axialPitchInput.value), grid, true);
+      const c = pose.report.contacts[0];
+      return { maxPenetration: pose.report.maxPenetration, deepest: c ? `${c.cellA}:${c.partA} x ${c.cellB}:${c.partB}` : null };
+    },
+    // Collision-check a uniform ring at a given effective alpha without
+    // touching the live pose (used to map the collision-free range).
+    probeUniformAlpha: (alphaEffective) => {
+      const n = clamp(Math.round(Number(ringCountInput.value)), RING_COUNT_MIN, RING_COUNT_MAX);
+      const m = Math.min(2, clamp(Math.round(Number(rowCountInput.value)), ROW_COUNT_MIN, ROW_COUNT_MAX));
+      const theta = degToRad(cellThetaDeg(alphaEffective));
+      const rings = Array.from({ length: m }, () => buildRing(n, new Array(n).fill(theta)));
+      const report = checkCollisions(rings, n, m, Number(axialPitchInput.value));
+      return {
+        maxPenetration: report.maxPenetration,
+        clear: report.clear,
+        contacts: report.contacts.slice(0, 8).map((c) => `${c.cellA}:${c.partA} x ${c.cellB}:${c.partB} ${c.depth.toFixed(2)}`),
+      };
+    },
     getPinInfo: () => ({
       visibleCount: lastPinCount,
       renderedRadius: pinMeshes.find((pin) => pin.visible)?.scale.x ?? null,

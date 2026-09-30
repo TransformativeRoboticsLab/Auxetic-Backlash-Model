@@ -98,14 +98,16 @@ async function checkViewport(browser, name, viewport) {
   assert.strictEqual(defaults.ringCount, "10", `${name} default ring count should be 10`);
   assert.strictEqual(defaults.rowCount, "3", `${name} default row count should be 3`);
   assert.strictEqual(defaults.totalCells, "30", `${name} default total cells should be n*m`);
-  assert.strictEqual(defaults.alpha, "1.3", `${name} default alpha should be 1.3`);
-  assert.strictEqual(defaults.alphaCommand, "1.30", `${name} commanded alpha readout should mirror the slider`);
+  // Default 1.4 (effective 1.30, theta 31 deg) is inside the collision-free
+  // window; the earlier 1.3 (effective 1.20) overlaps neighboring pads.
+  assert.strictEqual(defaults.alpha, "1.4", `${name} default alpha should be 1.4`);
+  assert.strictEqual(defaults.alphaCommand, "1.40", `${name} commanded alpha readout should mirror the slider`);
   // Dead-zone shifts the engaged effective alpha down by the gap width:
-  // effective = 1.0 + reluDeadzone(alpha-1.0, backlash) = 1.0 + (0.3-0.1) = 1.2
-  assert.strictEqual(defaults.alphaEffective, "1.20", `${name} at backlash=0.1 and |alpha-1|=0.3>0.1, effective alpha should be shifted by the gap width to 1.20`);
-  assert.strictEqual(defaults.deadzone, "engaged", `${name} default alpha=1.3 should be outside the b=0.1 dead zone around 1.0`);
+  // effective = 1.0 + reluDeadzone(alpha-1.0, backlash) = 1.0 + (0.4-0.1) = 1.3
+  assert.strictEqual(defaults.alphaEffective, "1.30", `${name} at backlash=0.1 and |alpha-1|=0.4>0.1, effective alpha should be shifted by the gap width to 1.30`);
+  assert.strictEqual(defaults.deadzone, "engaged", `${name} default alpha=1.4 should be outside the b=0.1 dead zone around 1.0`);
   const theta = Number(defaults.theta.replace(/ ?deg$/, ""));
-  assert.ok(Math.abs(theta - (70 * 1.2 - 60)) <= 0.05, `${name} theta should follow theta = 70*effectiveAlpha - 60`);
+  assert.ok(Math.abs(theta - (70 * 1.3 - 60)) <= 0.05, `${name} theta should follow theta = 70*effectiveAlpha - 60`);
   assert.ok(Math.abs(mmValue(defaults.closure)) <= 0.01, `${name} default ring closure residual should be ~0`);
   const defaultDiameter = mmValue(defaults.diameter);
   const defaultRadius = mmValue(defaults.radius);
@@ -187,7 +189,7 @@ async function checkViewport(browser, name, viewport) {
   );
 
   await page.evaluate(() => {
-    document.getElementById("alpha").value = "1.3";
+    document.getElementById("alpha").value = "1.4";
     document.getElementById("alpha").dispatchEvent(new Event("input", { bubbles: true }));
   });
 
@@ -212,19 +214,49 @@ async function checkViewport(browser, name, viewport) {
   assert.ok(defaults.clearance.endsWith("mm"), `${name} should report minimum clearance`);
   assert.ok(Number(defaults.pairsChecked) > 0, `${name} should report a positive number of clearance pairs checked`);
 
-  // Pin-hole alignment: a real gap measurement between each joint's actual
-  // pin holes (from each cell's true 3D orientation), not just whether cell
-  // bodies overlap. At the default (uniform) state, the circumferential gap
-  // should be small (a straight cross arm can't perfectly face two curved
-  // neighbors, so it's an honest residual, not forced to zero) and the
-  // axial gap should match the known geometric constant: axial pitch minus
-  // the two half-cells' site reach (50 - 2*22.1 = 5.8mm), since every row
-  // shares the same diameter with no differential dilation yet.
+  // Pinned holes must actually line up. Read straight from the rendered
+  // meshes (not from the pin-alignment math): at every joint, cell i's
+  // upper east pad and cell i+1's lower west pad - and, with opposite sites,
+  // cell i's lower east pad and cell i+1's upper west pad - must sit on one
+  // pin axis (the bisector of the two cells' normals), spaced along it only
+  // by the stacked plates: 4 mm * cos(bend/2). A regression here once left
+  // the pinned pads 10.3 mm apart (9 mm of it along the axle) while an
+  // earlier pin-gap readout, comparing the wrong pads, reported 1.9 mm.
+  const jointGeometry = await page.evaluate(() => {
+    const debugHook = window.__cylinderTilingDebug;
+    const n = debugHook.getCellAlphas()[0].length;
+    let worstLateral = 0;
+    let worstAlong = 0;
+    for (let i = 0; i < n; i += 1) {
+      const next = (i + 1) % n;
+      const nA = debugHook.getCellGroupNormal(0, i);
+      const nB = debugHook.getCellGroupNormal(0, next);
+      const axisLength = Math.hypot(nA.x + nB.x, nA.y + nB.y, nA.z + nB.z);
+      const axis = { x: (nA.x + nB.x) / axisLength, y: (nA.y + nB.y) / axisLength, z: (nA.z + nB.z) / axisLength };
+      const bendHalf = Math.acos(Math.min(1, nA.x * nB.x + nA.y * nB.y + nA.z * nB.z)) / 2;
+      [
+        ["upper", "lower"],
+        ["lower", "upper"],
+      ].forEach(([layerA, layerB]) => {
+        const a = debugHook.getSiteWorld(0, i, layerA, "east");
+        const b = debugHook.getSiteWorld(0, next, layerB, "west");
+        const d = { x: a.x - b.x, y: a.y - b.y, z: a.z - b.z };
+        const along = d.x * axis.x + d.y * axis.y + d.z * axis.z;
+        const lateral = Math.hypot(d.x - along * axis.x, d.y - along * axis.y, d.z - along * axis.z);
+        worstLateral = Math.max(worstLateral, lateral);
+        worstAlong = Math.max(worstAlong, Math.abs(Math.abs(along) - 4 * Math.cos(bendHalf)));
+      });
+    }
+    return { worstLateral, worstAlong };
+  });
+  assert.ok(jointGeometry.worstLateral < 1e-6, `${name} pinned pads should share one pin axis (off by ${jointGeometry.worstLateral} mm)`);
+  assert.ok(jointGeometry.worstAlong < 1e-6, `${name} pinned pads should be spaced only by the stacked plates along the pin (off by ${jointGeometry.worstAlong} mm)`);
+
+  // The pin-alignment readout agrees (~0), and the axial gap matches the
+  // geometric constant: axial pitch minus the two half-cells' site reach
+  // (50 - 2*22.1 = 5.8mm), since every row shares one diameter here.
   const pinAlignmentDefault = await page.evaluate(() => window.__cylinderTilingDebug.getPinAlignment());
-  assert.ok(
-    pinAlignmentDefault.maxCircumferential >= 0 && pinAlignmentDefault.maxCircumferential < 5,
-    `${name} default circumferential pin gap should be small (got ${pinAlignmentDefault.maxCircumferential})`
-  );
+  assert.ok(pinAlignmentDefault.maxCircumferential < 1e-6, `${name} pin-offset readout should be ~0 (got ${pinAlignmentDefault.maxCircumferential})`);
   assert.ok(
     Math.abs(pinAlignmentDefault.maxAxial - 5.8) < 0.5,
     `${name} default axial pin gap should match axialPitch - 2*siteRadius = 5.8mm (got ${pinAlignmentDefault.maxAxial})`
@@ -245,11 +277,79 @@ async function checkViewport(browser, name, viewport) {
   const bendText = await page.evaluate(() => document.getElementById("circumferentialBendMetric").textContent);
   assert.ok(bendText.includes("exceeds backlash"), `${name} circumferential bend readout should flag exceeding backlash (got "${bendText}")`);
 
+  // Constraints: no fusing through, no discontinuous motion. The default
+  // pose sits inside the collision-free window; driving past either edge
+  // holds the pose at contact instead of overlapping, and the pose can't
+  // jump across a colliding band to the other, separate clear window.
+  const readConstraint = () =>
+    page.evaluate(() => {
+      const debugHook = window.__cylinderTilingDebug;
+      const realized = debugHook.getRealizedAlphas().flat();
+      return {
+        state: debugHook.getConstraintState(),
+        envelope: debugHook.getEnvelope(),
+        realizedMean: realized.reduce((a, b) => a + b, 0) / realized.length,
+        collision: debugHook.getCollisionReport(),
+      };
+    });
+  const driveAlpha = async (value) => {
+    await page.evaluate((v) => {
+      const input = document.getElementById("alpha");
+      input.value = v;
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    }, value);
+    await page.waitForTimeout(350);
+  };
+  const atDefault = await readConstraint();
+  assert.strictEqual(atDefault.state, "free", `${name} default pose should be free (no overlap)`);
+  assert.ok(atDefault.collision.clear, `${name} default pose should be collision-free`);
+  const window1 = atDefault.envelope.find(([lo, hi]) => 1.3 >= lo && 1.3 <= hi);
+  assert.ok(window1, `${name} collision-free range should contain the default effective alpha 1.30 (got ${JSON.stringify(atDefault.envelope)})`);
+  assert.ok(window1[0] > 1.2, `${name} effective alpha 1.20 should overlap neighbors (window starts at ${window1[0]})`);
+
+  await driveAlpha("2.0");
+  const drivenUp = await readConstraint();
+  assert.strictEqual(drivenUp.state, "held", `${name} driving past the window should hold at contact (got ${drivenUp.state})`);
+  assert.ok(drivenUp.collision.clear, `${name} a held pose must not overlap`);
+  assert.ok(Math.abs(drivenUp.realizedMean - window1[1]) < 0.03, `${name} should hold at the window's upper edge ${window1[1]} (got ${drivenUp.realizedMean})`);
+
+  await driveAlpha("0.4");
+  const drivenDown = await readConstraint();
+  assert.ok(drivenDown.collision.clear, `${name} driving down must not overlap either`);
+  assert.ok(
+    Math.abs(drivenDown.realizedMean - window1[0]) < 0.03,
+    `${name} should stop at the window's lower edge ${window1[0]}, not jump to the other clear range (got ${drivenDown.realizedMean})`
+  );
+
+  // With constraints off, the pose follows the command straight into overlap.
+  await page.evaluate(() => {
+    const input = document.getElementById("constraintsEnabled");
+    input.checked = false;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await driveAlpha("1.3");
+  const unconstrained = await readConstraint();
+  assert.strictEqual(unconstrained.state, "off", `${name} constraint state should read off`);
+  assert.ok(Math.abs(unconstrained.realizedMean - 1.2) < 1e-6, `${name} unconstrained pose should follow the command exactly`);
+  assert.ok(!unconstrained.collision.clear, `${name} effective alpha 1.20 should be reported as overlapping`);
+  await page.evaluate(() => {
+    const input = document.getElementById("constraintsEnabled");
+    input.checked = true;
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+  await page.waitForTimeout(150);
+  assert.strictEqual((await readConstraint()).state, "start-collides", `${name} re-enabling on an overlapping pose should say so`);
+  await driveAlpha(defaults.alpha);
+  const recovered = await readConstraint();
+  assert.strictEqual(recovered.state, "free", `${name} moving back to the default should leave the overlap (got ${recovered.state})`);
+  assert.ok(Math.abs(recovered.realizedMean - 1.3) < 1e-6, `${name} should reach the default pose again`);
+
   // Physical pins (pin-sized backlash, concept from Ahyan's two-cell V2):
-  // one per hub, one per circumferential joint, one per axial joint =
-  // n*m + n*m + n*(m-1) = 30 + 30 + 20 at the n=10, m=3 default.
+  // one per hub, two per circumferential joint (opposite sites pin both
+  // pad pairs) and two per axial joint (north/south, likewise) =
+  // n*m + 2*n*m + 2*n*(m-1) = 30 + 60 + 40 at the n=10, m=3 default.
   const pinsDefault = await page.evaluate(() => window.__cylinderTilingDebug.getPinInfo());
-  assert.strictEqual(pinsDefault.visibleCount, 80, `${name} should render one pin per hub and per joint`);
+  assert.strictEqual(pinsDefault.visibleCount, 130, `${name} should render one pin per hub and two per circumferential and axial joint`);
   assert.ok(Math.abs(pinsDefault.renderedRadius - 1.5) < 1e-6, `${name} default 3.0 mm pin should render at 1.5 mm radius`);
   // dphi = asin(radial clearance / arm length) = asin(0.2 / 22.1) = 0.52 deg.
   assert.ok(Math.abs(pinsDefault.deltaPhiDeg - 0.5185) < 0.001, `${name} pin in-plane dead zone should be asin(b/L) (got ${pinsDefault.deltaPhiDeg})`);
@@ -442,10 +542,12 @@ async function checkViewport(browser, name, viewport) {
   assert.strictEqual(unfocusState.label, "Focus", `${name} button should relabel back to Focus`);
 
   // Per-cell actuation: making the selected cell an actuator at max alpha
-  // should (a) show up in the actuator count, (b) break the exact ring
-  // closure that only holds when every cell shares one alpha, and (c) pull
-  // a neighboring free cell's alpha away from the shared baseline through
-  // the backlash-gated propagation - not just the actuated cell itself.
+  // should (a) show up in the actuator count, (b) actually open that cell
+  // and resize its ring (the ring re-solves its radius, so closure stays
+  // exact), and (c) pull a neighboring free cell's alpha away from the
+  // shared baseline through the backlash-gated propagation - not just the
+  // actuated cell itself. With constraints on, the realized pose may stop
+  // short of the command at contact, so (b) checks the realized value.
   const beforeActuation = await readMetrics(page);
   assert.strictEqual(beforeActuation.selectedStatus === "no cell selected" ? "no" : "yes", "yes", `${name} a cell should still be selected here`);
   const preActuationAlpha = await page.evaluate(() => document.getElementById("selectedCellAlphaMetric").textContent);
@@ -460,8 +562,15 @@ async function checkViewport(browser, name, viewport) {
   await page.waitForTimeout(150);
   const afterActuation = await readMetrics(page);
   assert.strictEqual(afterActuation.actuatorCount, "1", `${name} setting a cell's role to actuator should count it`);
-  assert.ok(Number(afterActuation.selectedCellAlpha) > Number(preActuationAlpha), `${name} the actuated cell's alpha should jump toward its commanded max`);
-  assert.ok(Math.abs(mmValue(afterActuation.closure)) > 0.01, `${name} an actuated cell should generally break exact ring closure (non-uniform per-cell alpha)`);
+  assert.ok(
+    parseFloat(afterActuation.selectedCellAlpha) > parseFloat(preActuationAlpha) + 0.05,
+    `${name} the actuated cell's realized alpha should rise toward its commanded max (${preActuationAlpha} -> ${afterActuation.selectedCellAlpha})`
+  );
+  assert.ok(Math.abs(mmValue(afterActuation.closure)) <= 0.01, `${name} the ring should still close exactly with non-uniform per-cell alpha`);
+  assert.ok(
+    Math.abs(mmValue(afterActuation.diameter) - mmValue(beforeActuation.diameter)) > 0.1,
+    `${name} actuating one cell should resize its ring (${beforeActuation.diameter} -> ${afterActuation.diameter})`
+  );
 
   // Read the full per-cell alpha grid through the debug hook (window.__cylinderTilingDebug,
   // exposed specifically because guessing screen coordinates to click a
@@ -486,18 +595,19 @@ async function checkViewport(browser, name, viewport) {
   assert.ok(propagation.selectedAlpha >= 1.99, `${name} the actuated cell's own alpha should be at its commanded max (~2.0)`);
   assert.strictEqual(propagation.neighborRole, "free", `${name} the actuated cell's circumferential neighbor should still be "free"`);
   assert.ok(
-    Math.abs(propagation.neighborAlpha - 1.2) > 0.01,
-    `${name} the actuated cell's free neighbor should shift away from the 1.20 no-actuator baseline (got ${propagation.neighborAlpha})`
+    Math.abs(propagation.neighborAlpha - 1.3) > 0.01,
+    `${name} the actuated cell's free neighbor should shift away from the 1.30 no-actuator baseline (got ${propagation.neighborAlpha})`
   );
 
   // Alpha heatmap: read the actuated cell's actual material color through
   // the debug hook (precise; a screenshot pixel-color approach turned out
   // to be too fragile here, since lighting/shading shifts rendered pixels
   // away from the material's raw hex color, and several row-palette colors
-  // incidentally fall inside any reasonably wide "reddish" band). With the
-  // actuator still at alpha~2.0, its material color should be near the
-  // heatmap's "expanded" red once the toggle is on, and back to its row
-  // palette color once off.
+  // incidentally fall inside any reasonably wide "reddish" band). The
+  // heatmap colors the *realized* alpha; with constraints on, the actuator
+  // (commanded 2.0) is held at contact somewhere above the 1.2 midpoint, so
+  // its color should be on the red "expanded" side once the toggle is on,
+  // and back to its row palette color once off.
   const colorBeforeHeatmap = await page.evaluate(() => {
     const selectedCell = window.__cylinderTilingDebug.getSelected();
     return window.__cylinderTilingDebug.getCellTopColor(selectedCell.row, selectedCell.i);
@@ -513,7 +623,14 @@ async function checkViewport(browser, name, viewport) {
     const selectedCell = window.__cylinderTilingDebug.getSelected();
     return window.__cylinderTilingDebug.getCellTopColor(selectedCell.row, selectedCell.i);
   });
-  assert.strictEqual(colorDuringHeatmap, "#d63a2f", `${name} an alpha~2.0 (max) cell should render at the heatmap's "expanded" red once enabled`);
+  const realizedActuatorAlpha = await page.evaluate(() => {
+    const selectedCell = window.__cylinderTilingDebug.getSelected();
+    return window.__cylinderTilingDebug.getRealizedAlphas()[selectedCell.row][selectedCell.i];
+  });
+  assert.ok(realizedActuatorAlpha > 1.2, `${name} the actuator should be realized above the heatmap midpoint (got ${realizedActuatorAlpha})`);
+  const [heatR, heatG, heatB] = [1, 3, 5].map((k) => parseInt(colorDuringHeatmap.slice(k, k + 2), 16));
+  assert.notStrictEqual(colorDuringHeatmap, colorBeforeHeatmap, `${name} enabling the heatmap should recolor the cell`);
+  assert.ok(heatR > heatG && heatR > heatB, `${name} an expanded cell should render on the heatmap's red side (got ${colorDuringHeatmap})`);
   await page.evaluate(() => {
     const heatmapInput = document.getElementById("heatmapEnabled");
     heatmapInput.checked = false;
@@ -591,23 +708,52 @@ async function checkViewport(browser, name, viewport) {
   await page.click("#clearRolesBtn");
   await page.waitForTimeout(150);
 
-  // Shape presets: Barrel should command a different alpha per row (bulging
-  // the middle rows relative to the ends) instead of the whole structure
-  // dilating uniformly - the "enabling different shapes" capability.
-  await page.click("#presetBarrelBtn");
-  await page.waitForTimeout(150);
-  const barrelAlphas = await page.evaluate(() => window.__cylinderTilingDebug.getCellAlphas().map((row) => row[0]));
-  assert.ok(barrelAlphas.length >= 3, `${name} preset test needs at least 3 rows (the default row count)`);
-  const midRow = Math.floor((barrelAlphas.length - 1) / 2);
+  // Shape presets: each should command a different alpha per row and, with
+  // constraints on, actually reach it (the presets pick alphas inside the
+  // collision-free window) - producing the named profile in the realized
+  // ring diameters, not just in the commands.
+  const presetShape = async (buttonId) => {
+    await page.evaluate((id) => {
+      document.getElementById("clearRolesBtn").click();
+      document.getElementById(id).click();
+    }, buttonId);
+    await page.waitForTimeout(400);
+    return page.evaluate(() => {
+      const debugHook = window.__cylinderTilingDebug;
+      const rows = debugHook.getCellAlphas().length;
+      const diameters = [];
+      for (let row = 0; row < rows; row += 1) {
+        const ring = debugHook.getRingGeometry(row);
+        diameters.push((2 * ring.centers.reduce((sum, c) => sum + Math.hypot(c.x, c.y), 0)) / ring.centers.length);
+      }
+      return { diameters, state: debugHook.getConstraintState(), clear: debugHook.getCollisionReport().clear };
+    });
+  };
+  const barrel = await presetShape("presetBarrelBtn");
+  assert.ok(barrel.diameters.length >= 3, `${name} preset test needs at least 3 rows (the default row count)`);
+  const midRow = Math.floor((barrel.diameters.length - 1) / 2);
+  const lastRow = barrel.diameters.length - 1;
+  assert.strictEqual(barrel.state, "free", `${name} Barrel preset should be reachable under constraints (got ${barrel.state})`);
+  assert.ok(barrel.clear, `${name} Barrel pose should be collision-free`);
   assert.ok(
-    barrelAlphas[midRow] > barrelAlphas[0] - 1e-6,
-    `${name} Barrel preset's middle row alpha should be >= its end row alpha (got ${JSON.stringify(barrelAlphas)})`
+    barrel.diameters[midRow] > barrel.diameters[0] + 5 && barrel.diameters[midRow] > barrel.diameters[lastRow] + 5,
+    `${name} Barrel should bulge the middle row (diameters ${JSON.stringify(barrel.diameters)})`
   );
-  const uniqueBarrelAlphas = new Set(barrelAlphas.map((a) => a.toFixed(3)));
-  assert.ok(uniqueBarrelAlphas.size > 1, `${name} Barrel preset should command different alphas across rows, not a uniform structure`);
+  const saddle = await presetShape("presetSaddleBtn");
+  assert.strictEqual(saddle.state, "free", `${name} Saddle preset should be reachable under constraints (got ${saddle.state})`);
+  assert.ok(
+    saddle.diameters[midRow] < saddle.diameters[0] - 5 && saddle.diameters[midRow] < saddle.diameters[lastRow] - 5,
+    `${name} Saddle should pinch the middle row (diameters ${JSON.stringify(saddle.diameters)})`
+  );
+  const cone = await presetShape("presetConeBtn");
+  assert.strictEqual(cone.state, "free", `${name} Cone preset should be reachable under constraints (got ${cone.state})`);
+  assert.ok(
+    cone.diameters.every((d, row) => row === 0 || d > cone.diameters[row - 1]),
+    `${name} Cone should widen row by row (diameters ${JSON.stringify(cone.diameters)})`
+  );
 
   await page.click("#clearRolesBtn");
-  await page.waitForTimeout(150);
+  await page.waitForTimeout(300);
 
   // Re-actuate once more so the JSON save/load round-trip below has
   // non-trivial per-cell state to carry through.
@@ -846,7 +992,7 @@ async function checkViewport(browser, name, viewport) {
   await page.click("#resetAllBtn");
   await page.waitForTimeout(150);
   const afterResetAll = await readMetrics(page);
-  assert.strictEqual(afterResetAll.alpha, "1.3", `${name} Reset All should restore the default alpha`);
+  assert.strictEqual(afterResetAll.alpha, "1.4", `${name} Reset All should restore the default alpha`);
   assert.strictEqual(afterResetAll.ringCount, "10", `${name} Reset All should restore the default ring count`);
   assert.strictEqual(afterResetAll.rowCount, "3", `${name} Reset All should restore the default row count`);
   assert.strictEqual(afterResetAll.actuatorCount, "0", `${name} Reset All should clear actuators`);

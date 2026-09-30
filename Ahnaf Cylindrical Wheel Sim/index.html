@@ -34,8 +34,8 @@
         <details class="panel-section" open>
           <summary>Drive (alpha)</summary>
           <label>
-            Dilation alpha <output id="alphaOut">1.30</output>
-            <input id="alpha" type="range" min="0.4" max="2.0" step="0.01" value="1.3" />
+            Dilation alpha <output id="alphaOut">1.40</output>
+            <input id="alpha" type="range" min="0.4" max="2.0" step="0.01" value="1.4" />
           </label>
           <div class="deadzone-ruler" aria-hidden="true">
             <div id="deadzoneBand" class="deadzone-band"></div>
@@ -47,9 +47,9 @@
           </p>
           <label class="toggle"><input id="animate" type="checkbox" /> Animate drive</label>
           <dl>
-            <div><dt>commanded alpha</dt><dd id="alphaCommandMetric">1.30</dd></div>
-            <div><dt>effective alpha</dt><dd id="alphaEffectiveMetric">1.20</dd></div>
-            <div><dt>theta (70*alpha-60)</dt><dd id="thetaMetric">24.0 deg</dd></div>
+            <div><dt>commanded alpha</dt><dd id="alphaCommandMetric">1.40</dd></div>
+            <div><dt>effective alpha</dt><dd id="alphaEffectiveMetric">1.30</dd></div>
+            <div><dt>theta (70*alpha-60)</dt><dd id="thetaMetric">31.0 deg</dd></div>
             <div><dt>coupling state</dt><dd id="deadzoneState" class="status-ok">engaged</dd></div>
           </dl>
         </details>
@@ -220,24 +220,44 @@
           </div>
         </details>
 
-        <details class="panel-section">
-          <summary>Material Restriction &amp; Pin Alignment</summary>
-          <label class="toggle"><input id="collisionEnabled" type="checkbox" checked /> Check neighbor clearance</label>
+        <details class="panel-section" open>
+          <summary>Constraints, Collisions &amp; Pins</summary>
+          <label class="toggle">
+            <input id="constraintsEnabled" type="checkbox" checked /> Enforce constraints: no fusing through, no
+            discontinuous motion
+          </label>
+          <p class="hint">
+            With constraints on, the pose never jumps to a command. It moves there in 1&deg; steps of cell twist,
+            collision-checking each step, and stops at first contact. A step that would make a cell jump more than
+            4 mm or turn more than 5&deg; at once is also refused. The step size and jump thresholds follow Ahyan's V2
+            drive envelope.
+          </p>
+          <dl>
+            <div><dt>constraint state</dt><dd id="constraintStateMetric">-</dd></div>
+            <div><dt>realized alpha</dt><dd id="realizedAlphaMetric">-</dd></div>
+            <div><dt>collision-free alpha (uniform)</dt><dd id="feasibleRangeMetric">-</dd></div>
+          </dl>
+          <label class="toggle"><input id="collisionEnabled" type="checkbox" checked /> Show collision readouts and contact points</label>
+          <p class="hint">
+            3D check: every hub, pad and arm at its real 4 mm thickness in its actual pose, against the ring neighbors
+            one and two over and the three nearest cells in the next row. Red dots mark overlap. The two pads a joint
+            pin passes through are exempt from each other; how far that joint can bend is the backlash tilt check below.
+          </p>
           <dl>
             <div><dt>guard</dt><dd id="collisionState" class="status-ok">clear</dd></div>
             <div><dt>max penetration</dt><dd id="penetrationMetric">0.000 mm</dd></div>
             <div><dt>minimum clearance</dt><dd id="clearanceMetric">0.000 mm</dd></div>
-            <div><dt>pairs checked</dt><dd id="pairsCheckedMetric">0</dd></div>
+            <div><dt>cell pairs checked</dt><dd id="pairsCheckedMetric">0</dd></div>
           </dl>
           <p class="hint">
-            The clearance guard above only checks that neighboring cell bodies don't overlap. It doesn't know where
-            the actual connecting holes are. These two readouts measure the real gap between each joint's pin holes
-            (computed from each cell's actual 3D orientation): a straight cross arm can't perfectly face two curved
-            neighbors at once, so a small circumferential gap is expected and honestly reported, the same way ring
-            closure residual is - it is not forced to a fake zero.
+            <strong>Pins:</strong> the lower cross is twisted -theta/2 and the upper +theta/2, so each joint's pinned pads meet
+            exactly. With opposite sites (east/west) a second pad pair meets too, 2L&middot;sin(theta/2) along the
+            axle: two pins per joint. The circumferential readout is how far the paired holes sit off a common pin
+            axis. It should be ~0; their spacing along the pin is just the stacked plates. The axial readout is the
+            gap between rows (no axial pin is modeled).
           </p>
           <dl>
-            <div><dt>circumferential pin gap (max)</dt><dd id="circumferentialPinMetric">0.000 mm</dd></div>
+            <div><dt>circumferential pin offset (max)</dt><dd id="circumferentialPinMetric">0.000 mm</dd></div>
             <div><dt>axial pin gap (max)</dt><dd id="axialPinMetric">0.000 mm</dd></div>
           </dl>
           <p class="hint">
@@ -352,18 +372,15 @@
         </details>
 
         <p class="note">
-          Each ring closes exactly by construction when every cell shares one alpha (n single-pin joints, turn
-          angle 2*pi/n per joint). Actuating or locking individual cells makes per-cell alpha genuinely vary, so
-          the same fixed-turn construction generally will not land back on its own start - the "ring closure
-          residual" then measures how inconsistent the per-cell commands are with a physically closed ring, which
-          the backlash-gated coupling above is what keeps small in practice. Wheel diameter is derived from cell
-          pitch and count, not chosen directly, and can now differ row to row (see the diameter range above) since
-          each row is its own ring solved from that row's own per-cell alphas. Drive is the paper's
-          <code>alpha</code> dilation factor with the reported <code>theta = 70*alpha - 60</code> angle law.
-          Material Restriction checks clearance between circumferential and axial neighbor cells only (not the
-          full n*m x n*m pair set). This still reuses the row primitive's single "A-B" pin relation rather than
-          its mirrored double-pin closure, and axial row-to-row attachment is a rigid z-offset copy rather than a
-          solved joint - both remain natural next steps before this is a fabrication-level wheel model.
+          Each ring is a polygon of flat cells whose joint pins sit on a circle around the axle: every cell's twist
+          is split -theta/2 (lower cross) / +theta/2 (upper cross), which makes its two joint pins level, a chord
+          2L&middot;cos(theta/2) apart, and the ring's radius is solved so those chords close exactly - with one
+          shared alpha or with per-cell alphas. Closure is therefore always exact; whether a pose is physically
+          reachable is decided by the joint tilt check and the 3D collision check instead. Wheel diameter is
+          derived from cell pitch and count, not chosen directly, and can differ row to row since each row is its
+          own ring. Drive is the paper's <code>alpha</code> dilation factor with the reported
+          <code>theta = 70*alpha - 60</code> angle law. Axial row-to-row attachment is still a rigid z-offset
+          copy rather than a pinned, solved joint.
         </p>
       </aside>
     </main>

@@ -37,19 +37,24 @@ the RAD tooling:
   primitives there rather than using different made-up numbers.
 
 From Ahyan's V2 two-cell attachment (`V2/web/two-cell-attachment/`, read
-only - nothing in that folder is modified), this project also borrows one
-modeling concept: sizing backlash from a physical pin in the hole (pin
-radius -> radial clearance `b` -> `b/L` -> in-plane dead zone
-`dphi = asin(b/L)`) and rendering those pins in the joints. The
-implementation here is separate and extends it to 3D: the same pin also
-drives the out-of-plane joint tilt limit (Jacob's pin-in-hole contact
-relation), and pins are placed on the cylinder along each joint's radial
-axis.
+only - nothing in that folder is modified), this project also borrows two
+modeling concepts, reimplemented here in 3D:
 
-Everything else - the ring-closure math, cylinder stacking, backlash
-coupling/propagation, per-cell actuation, collision checking, cell picking,
-timeline, target-diameter fitting, and the UI - is new work, not adapted
-from that project's files.
+- Sizing backlash from a physical pin in the hole (pin radius -> radial
+  clearance `b` -> `b/L` -> in-plane dead zone `dphi = asin(b/L)`) and
+  rendering those pins in the joints. Here the same pin also drives the
+  out-of-plane joint tilt limit (Jacob's pin-in-hole contact relation).
+- His "no discontinuous motion" drive envelope: step the drive in 1 deg
+  increments and refuse a step where any cell jumps more than 4 mm or turns
+  more than 5 deg. Here it runs as a continuous constraint solver on the
+  whole cylinder, together with a new 3D collision check.
+
+Earlier versions also adapted his flat 2D disk/capsule clearance checker and
+his single-pin A-B chain walk; both have been replaced (see "Ring
+construction" and "Collisions" below). Everything else - ring construction,
+cylinder stacking, collisions, constraints, backlash coupling/propagation,
+per-cell actuation, cell picking, timeline, target-diameter fitting, and the
+UI - is new work, not adapted from that project's files.
 
 ## Open it
 
@@ -66,17 +71,24 @@ python -m http.server 8000
 
 ## What it models
 
-- **Ring closure**: `n` cells are placed by walking the same single-pin
-  attach relation used elsewhere in the RAD tooling (a fixed local step,
-  rotated by a turn angle of `2*pi/n` at each step) all the way around a
-  loop. When every cell shares one alpha this is an exact regular n-gon -
-  the "ring closure residual" readout is a live numerical check of that,
-  not a fixed display value. With per-cell actuation (below), cells
-  generally differ, so the fixed-turn construction still walks all the way
-  around but the *chord lengths* differ per joint - the residual then
-  measures how inconsistent the per-cell commands are with a physically
-  closed ring, which the coupling propagation is what keeps small in
-  practice.
+- **Ring construction**: each cell's dilation twist is split symmetrically -
+  lower cross at `-theta/2`, upper at `+theta/2` about the cell's normal -
+  which puts its two circumferential joint pins (upper east -> next cell,
+  lower west <- previous cell) level with each other, a chord
+  `p = 2L*cos(theta/2)` apart (`L = 22.1 mm`). Twisting only the upper cross
+  tilts that chord by `theta/2`, which on a cylinder sends the row off
+  axially and left pinned pads ~10 mm apart. The pins are the vertices of a
+  polygon inscribed in a circle about the axle; each cell lies flat on one
+  face. The circumradius is solved so the chords close exactly
+  (`R = p/(2 sin(pi/n))` for one shared alpha, bisection on the arc sum for
+  per-cell alphas), so the ring always closes and the "ring closure
+  residual" is ~0. Whether a pose is physically reachable is decided by the
+  tilt check and the collision check instead. With opposite attachment sites
+  (the default east/west) a second pad pair also meets at every joint (cell
+  i's lower east with cell i+1's upper west, `2L*sin(theta/2)` along the
+  axle): two pins per joint, the mirrored double-pin closure. Every ring is
+  centered on the axle and rotated so cell 0's hub sits at polar angle 0, so
+  rows stay coaxial and stack in columns.
 - **Drive**: the paper-supported dilation factor `alpha`, converted to the
   cell rotation `theta = 70*alpha - 60`, with a bidirectional backlash
   dead-zone (`f(x) = max(0, x-b) + min(x+b, 0)`) applied around `alpha = 1`.
@@ -100,58 +112,68 @@ python -m http.server 8000
   cell at once - this is the direct "select individual cells to expand/
   contract independently" workflow. For a faster demo, the three Shape
   Preset buttons (Barrel, Cone, Saddle) command a different alpha per row in
-  one click, producing an immediately visible non-uniform wheel profile
-  without clicking every cell by hand.
-- **Target Diameter fit**: diameter isn't monotonic in alpha (it rises then
-  falls as cells over-rotate past their most-open pose), so "Fit Alpha"
-  exhaustively evaluates every alpha the slider can reach and keeps
-  whichever produces the closest ring diameter, reporting the achieved
-  diameter and residual honestly (including when a target is out of the
-  achievable range) rather than solving a closed-form inverse. Fitting
-  clears any actuators/locks first, since it targets one shared alpha, and
-  applies live as the slider is dragged, the same as every other control.
+  one click. They pick alphas inside the current collision-free window so
+  the constraint solver can actually reach them, and since the ring gets
+  *smaller* as alpha rises in that window (more twist shortens the pin
+  chord), the widest row gets the lowest alpha. At the defaults: Barrel
+  117 / 132 / 117 mm, Cone 117 -> 126 -> 132 mm, Saddle 132 / 117 / 132 mm.
+- **Target Diameter fit**: diameter isn't monotonic in alpha over the full
+  slider range (the pin chord is longest at zero twist, alpha ~0.86), so
+  "Fit Alpha" exhaustively evaluates every alpha the slider can reach and
+  keeps whichever produces the closest ring diameter, reporting the achieved
+  diameter and residual honestly rather than solving a closed-form inverse.
+  With constraints on, it only considers alphas inside the collision-free
+  window the pose is currently in (the pose can't cross a collision to reach
+  another). Fitting clears any actuators/locks first, since it targets one
+  shared alpha, and applies live as the slider is dragged.
 - **Radial cell orientation**: each cell's thickness axis (top/bottom cross
   plane normal) points radially outward from the ring's own center, and its
   flat cross face lies tangent to the cylinder (spanning the circumferential
   and axial directions) - the same way the physical hardware's cells tile
-  the wheel's surface, not flat-on to the axle like earlier versions. The
-  per-cell local frame is built from each cell's true polar position angle
-  around its own ring (`atan2` against the ring's centroid, exposed for
-  testing as `getRingGeometry`) via `THREE.Matrix4.makeBasis` on
-  tangential/axial/radial basis vectors - deliberately *not* the
-  ring-closure walk's chain heading (`bottomRot`), which is the direction
-  each cell's pin joints face for closing the loop and leads the true polar
-  angle by a construction-dependent phase, not a fixed 90deg. Reusing that
-  heading directly was an earlier bug: it rendered every cell rotated off by
-  that phase, so the wide tangential face pointed radially (like spokes)
-  instead of wrapping the surface. The two crosses' relative twist (the
-  dilation angle `theta`) is unchanged - only which way the whole cell
-  faces changed, matching the assembled-hardware photos.
+  the wheel's surface, not flat-on to the axle like earlier versions. Each
+  cell's frame comes straight from the ring construction: tangent along its
+  polygon face, normal outward through the face, axial along the axle
+  (`THREE.Matrix4.makeBasis`). A regression test checks the normal against
+  the ring's actual geometry (`getRingGeometry`), not against the
+  orientation code's own inputs - an earlier version passed every
+  self-consistency check while rendering cells rotated like spokes.
 - **Cylinder stacking**: `m` rings are repeated along the axle (`z`) axis at
-  a configurable pitch. Axial row-to-row attachment is currently a rigid
-  copy, not a solved joint - see Known limitations. Every ring is
-  re-centered on the axle and rotated so cell 0 sits at polar angle 0, so
-  rows stay coaxial and each column stacks at one angle even when rows have
-  different alphas (axial bolts force that). Without this, the ring walk
-  (which starts cell 0 at the origin, with a theta-dependent angular phase)
-  left rows of different diameter shifted sideways and twisted relative to
-  each other.
-- **Material Restriction**: neighbor-only clearance checking (circumferential
-  and axial neighbors only, not every cell pair) using the same disk/capsule
-  primitive distance math as the row primitive.
-- **Pin-hole alignment**: a real gap measurement between each joint's actual
-  connecting holes, computed from each cell's true 3D orientation (not the
-  clearance guard's flat 2D body approximation above). Each cell's tangential
-  heading is aimed along the chord from its previous neighbor to its next one
-  (the standard vertex-tangent estimate for a curved polygon) rather than a
-  pure circle-tangent angle, which minimizes - but can't fully eliminate - the
-  circumferential gap: a straight cross arm can't perfectly face two curved
-  neighbors at once, so a small residual is expected and reported honestly,
-  the same way ring closure residual is. The axial gap is exactly the
-  geometric constant `axialPitch - 2*siteRadius` when every row shares one
-  diameter, and grows by the real radius change once differential dilation
-  gives rows different diameters. This measure doesn't model which layer
-  (upper/lower cross) meets which at a joint, so it carries no pass/fail.
+  a configurable pitch. Rows are still a set spacing apart rather than
+  pinned and solved - see Known limitations. A cell's north pads and the
+  south pads of the cell above it are the axial joint (drawn with pins).
+- **Pin alignment**: the circumferential readout is how far each joint's
+  paired pad centers sit off a common pin axis (the bisector of the two
+  cells' normals), read from the actual pad positions. It is ~0: their only
+  separation is along the pin, by the stacked plates (`4 mm * cos(bend/2)`).
+  A test checks this from the rendered meshes. The axial readout is the gap
+  between a cell's north pad and the south pad of the cell above:
+  `axialPitch - 2L*cos(theta/2)`-ish, 5.8 mm at the default pitch.
+- **Collisions ("no fusing through other solids")**: every cross is modeled
+  at its real 4 mm thickness as a hub disc, four pad discs and four
+  half-arms, each extruded along the cell's own normal in its actual 3D
+  pose. Penetration is estimated by sampling points across each part (rim,
+  interior, three depths) and evaluating the other part's exact signed
+  distance. Each cell is checked against its ring neighbors one and two
+  over and the three nearest cells in the next row, culled by bounding
+  spheres (~1-2 ms per check at the defaults). Joint pads - the pinned pad
+  pairs at circumferential joints, and the north/south pads at axial joints
+  - are exempt from each other, with the arms leading to them; how far those
+  joints can bend is the backlash tilt check. Red dots mark overlap.
+- **Constraints ("no discontinuous motion")**: with constraints on (the
+  default), the pose never jumps to a command. It walks from the last valid
+  pose toward the command in 1 deg steps of cell twist, collision-checking
+  each step; a step that would overlap, or make any cell jump more than
+  4 mm or turn more than 5 deg (Ahyan's V2 thresholds), is refused, and the
+  pose settles at the contact point found by bisection ("held at contact").
+  Leaving an already-overlapping pose is allowed as long as the overlap
+  doesn't grow. Loading a file or Reset All jumps straight to the new setup.
+  The panel shows the constraint state, the realized alpha against the
+  command, and the collision-free range of one shared alpha. At the
+  defaults (n = 10, pitch 50 mm) that is effective alpha 1.22-1.75 plus a
+  separate 0.40-0.49 window across a colliding band that the pose can't
+  cross; below ~1.22 neighbors' same-layer pads clash, above ~1.75 arms do.
+  The default alpha is 1.4 (effective 1.30) so the page opens in a valid
+  pose; the earlier 1.3 (effective 1.20) overlapped by ~0.5 mm.
 - **Backlash tilt check**: with radially facing cells, each joint bolt points
   radially, so the bend between neighboring cells is a tilt of two plates on
   one bolt. The limit comes from the exact pin-in-hole contact relation
@@ -172,8 +194,8 @@ python -m http.server 8000
   each 3.4 mm hole, following Ahyan's V2 pin-sized backlash. It reports the
   radial clearance `b`, `b/L` (L = 22.1 mm arm), the in-plane dead zone
   `dphi = asin(b/L)` and that same dead zone expressed in alpha (`dphi/70`,
-  from the angle law), and renders pins through every hub and every
-  circumferential and axial joint along the local radial axis (hideable).
+  from the angle law), and renders pins through every hub and through both
+  pad pairs of every circumferential and axial joint (hideable).
   The paper's design-space "normalized gap" slider is kept separate: it is
   the backlash the coupling model uses, while the pin is the hardware - the
   readouts show how far apart the two are (the default 0.10 gap is much
@@ -214,13 +236,19 @@ python -m http.server 8000
 
 ## Known limitations (intentional, not yet done)
 
-- Only a single-pin joint per cell-to-cell connection is modeled, not the
-  row primitive's mirrored double-pin closure. Generalizing double-pin
-  closure to an arbitrary n-cell ring with independently-actuated cells is
-  a real nonlinear loop-closure problem; it was left for later rather than
-  shipped half-verified.
-- Axial (row-to-row) attachment is a rigid z-offset copy, not a solved
-  joint - there's no axial backlash or clearance-driven pitch yet.
+- The double-pin closure only arises for opposite attachment sites
+  (east/west, north/south); other site pairs get a single pin per joint.
+- Axial (row-to-row) spacing is a set pitch, not solved from the pin
+  geometry: the north/south pads of stacked cells sit 5.8 mm apart along the
+  axle at the default pitch rather than concentric, and their exemption
+  from the collision check assumes they are the axial joint.
+- Collisions are checked between near neighbors only (ring neighbors one
+  and two over, and the three nearest cells in the next row), and
+  penetration is sampled rather than solved exactly, so very shallow
+  overlaps between samples can be missed (~0.05 mm tolerance).
+- The constraint solver interpolates every cell toward the command together;
+  when one part of the structure hits contact, the whole pose holds there,
+  rather than letting unconstrained cells keep moving.
 - Per-cell actuation is a discrete backlash-gated relaxation, not a force/
   energy equilibrium solve - it's a reasonable discrete analogue of the
   paper's coupling law, not a calibrated mechanics model.
@@ -230,11 +258,9 @@ python -m http.server 8000
   Target Diameter fit is a direct exhaustive search over one shared alpha,
   not a general per-cell optimizer), unlike the much larger RAD digital
   workbench in `../Ahyan Virtual Simulation/web/`.
-- Pin-hole alignment (above) is a *measurement*, not a constraint: nothing
-  stops a cell from moving independently of what its neighbors' holes would
-  require, and there's no check against discontinuous motion between states
-  (a cell "fusing through" another between two alpha values). Solving that
-  properly is a contact-dynamics problem, not a visualization fix.
+- Constraints are kinematic (poses are checked, not simulated): there are
+  no contact forces or dynamics, e.g. the Lankarani-Nikravesh contact model
+  in Jacob's pin one-pager.
 
 ## Test
 
@@ -245,18 +271,20 @@ node tests/validate_cylinder_tiling_page.js
 ```
 
 The Playwright script loads the page in a real Chromium browser (desktop and
-mobile viewports) and checks: the ring closure residual (both the uniform
-and per-cell-actuated cases), the paper angle law, the backlash dead-zone,
-neighbor clearance reporting, pin-hole alignment (both the small honest
-circumferential residual at the default uniform state and the exact axial
-gap constant, plus that it grows under differential dilation), cell picking,
-Frame/Isolate/Focus behavior,
+mobile viewports) and checks: exact ring closure (uniform and per-cell
+actuated), the paper angle law, the backlash dead-zone, that every joint's
+pinned pads share one pin axis (read from the rendered meshes), the axial
+gap constant, the backlash tilt check and pin sizing, the constraints (the
+default pose is collision-free, driving past either edge of the window holds
+at contact without overlap, the pose can't jump to the separate clear
+window, switching constraints off lets it overlap, and it can move back out),
+that all three shape presets are reachable and produce their named profile,
+cell picking, Frame/Isolate/Focus behavior,
 per-cell actuator/lock roles and their coupling propagation to a neighbor
 (read through a minimal `window.__cylinderTilingDebug` hook rather than
 guessing screen coordinates across camera angles), shift-click batch
-selection and applying a role/alpha to every selected cell at once, the
-Shape Preset buttons producing a genuinely non-uniform per-row alpha
-pattern, Target Diameter fitting
+selection and applying a role/alpha to every selected cell at once, Target
+Diameter fitting
 (including that the reported achieved diameter matches what's actually
 rendered), Timeline capture/jump/play/save/load, and a Save/Load JSON
 round-trip - then screenshots the rendered cells and checks their colors.
