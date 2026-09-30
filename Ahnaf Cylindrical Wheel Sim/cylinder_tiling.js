@@ -1384,12 +1384,17 @@
   const twistSine = (alpha) => Math.sin(degToRad(cellThetaDeg(alpha)) / 2);
   const alphaFromTwistSine = (s) => thetaToAlpha(2 * Math.asin(clamp(s, -1, 1)));
 
-  function computeCellAlphas(n, m, baselineAlpha) {
+  // `bounds` (optional [lo, hi]): the reachable range. An actuator or lock
+  // commanded past it physically stops at its edge, so it only drags its
+  // neighbors that far. Returned values for fixed cells stay the raw
+  // commands (for display); free cells are the coupled result.
+  function computeCellAlphas(n, m, baselineAlpha, bounds = null) {
     const limits = jointCouplingLimits();
     const base = twistSine(baselineAlpha);
+    const fixedAlpha = (row, i) => (bounds ? clamp(cellRoles[row][i].alpha, bounds[0], bounds[1]) : cellRoles[row][i].alpha);
     const s = [];
     for (let row = 0; row < m; row += 1) {
-      s.push(Array.from({ length: n }, (_, i) => (isFixedCell(row, i) ? twistSine(cellRoles[row][i].alpha) : base)));
+      s.push(Array.from({ length: n }, (_, i) => (isFixedCell(row, i) ? twistSine(fixedAlpha(row, i)) : base)));
     }
     for (let iter = 0; iter < 400; iter += 1) {
       let change = 0;
@@ -1761,16 +1766,17 @@
 
     const envelope = uniformAlphaEnvelope(n, m, spacing);
     lastEnvelope = envelope;
-    const cellAlphas = computeCellAlphas(n, m, baselineAlpha);
-    lastCellAlphas = cellAlphas;
-    lastCellRolesSnapshot = cellRoles;
     // With constraints on, no cell is asked to go past the reachable range
     // - like Ahyan's V2 clamping its drive to the nearest feasible value -
     // keeping a small margin from contact, so a command past it doesn't jam
-    // the structure against its stops. Clamping never widens the difference
-    // between neighbors, so the bolted-pin limits still hold.
-    let driveLimited = false;
+    // the structure against its stops. Actuators are limited before they
+    // drag their neighbors; clamping never widens the difference between
+    // neighbors, so the bolted-pin limits still hold.
     const bounds = constraintsEnabledInput.checked ? reachableBounds(envelope, baselineAlpha) : null;
+    const cellAlphas = computeCellAlphas(n, m, baselineAlpha, bounds);
+    lastCellAlphas = cellAlphas;
+    lastCellRolesSnapshot = cellRoles;
+    let driveLimited = false;
     const targetAlphas = cellAlphas.map((row) =>
       row.map((a) => {
         if (!bounds) return a;
