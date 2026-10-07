@@ -55,6 +55,12 @@ body {
   border-bottom: 1px solid var(--border);
 }
 
+.topbar nav {
+  display: flex;
+  gap: 12px;
+  white-space: nowrap;
+}
+
 h1,
 h2,
 p {

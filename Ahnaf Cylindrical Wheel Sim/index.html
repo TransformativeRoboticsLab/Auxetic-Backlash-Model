@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Cylindrical Wheel Tiling Simulator</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="viewer-panel" aria-label="Cylindrical wheel tiling simulator">
+        <header class="topbar">
+          <div>
+            <h1>Cylindrical Wheel Tiling Simulator</h1>
+            <p>RAD cells closed into a ring (reconfigurable wheel cross-section), stacked into a cylindrical tiling.</p>
+          </div>
+        </header>
+        <div id="threeMount" class="three-mount" aria-label="3D cylinder tiling view"></div>
+        <div class="viewbar" role="group" aria-label="View controls">
+          <button type="button" data-view="iso" aria-pressed="true">Iso</button>
+          <button type="button" data-view="top" aria-pressed="false">Top</button>
+          <button type="button" data-view="front" aria-pressed="false">Front</button>
+          <button type="button" data-view="side" aria-pressed="false">Side</button>
+          <button id="resetView" type="button">Reset</button>
+          <button id="focusToggle" type="button">Focus</button>
+          <button id="resetAllBtn" type="button" title="Reset every control to its default value, clear actuators/locks, and reset the camera">Reset All</button>
+          <span class="spacer"></span>
+          <span id="selectedCellStatus" class="hud-chip">no cell selected</span>
+        </div>
+      </section>
+
+      <aside class="control-panel" aria-label="Cylinder tiling controls">
+        <details class="panel-section" open>
+          <summary>Drive (alpha)</summary>
+          <label>
+            Dilation alpha <output id="alphaOut">1.40</output>
+            <input id="alpha" type="range" min="0.4" max="2.0" step="0.01" value="1.4" />
+          </label>
+          <div class="deadzone-ruler" aria-hidden="true">
+            <div id="deadzoneBand" class="deadzone-band"></div>
+            <div id="deadzoneMarker" class="deadzone-marker"></div>
+          </div>
+          <div class="reach-ruler" aria-hidden="true">
+            <div id="reachBands"></div>
+            <div id="realizedMarker" class="realized-marker"></div>
+          </div>
+          <p class="hint">
+            Yellow band = backlash dead zone (dragging alpha here does nothing); the dot is the current commanded
+            alpha. Green = alpha the ring can reach without parts passing through each other; the hollow marker is
+            where the pose actually is. Past the green, the pose stops at contact - commanding further does nothing.
+          </p>
+          <label class="toggle"><input id="animate" type="checkbox" /> Animate drive</label>
+          <dl>
+            <div><dt>commanded alpha</dt><dd id="alphaCommandMetric">1.40</dd></div>
+            <div><dt>effective alpha</dt><dd id="alphaEffectiveMetric">1.30</dd></div>
+            <div><dt>theta (70*alpha-60)</dt><dd id="thetaMetric">31.0 deg</dd></div>
+            <div><dt>realized (effective)</dt><dd id="driveRealizedMetric">-</dd></div>
+            <div><dt>coupling state</dt><dd id="deadzoneState" class="status-ok">engaged</dd></div>
+          </dl>
+        </details>
+
+        <details class="panel-section">
+          <summary>Backlash</summary>
+          <label>
+            Normalized gap b/L <output id="backlashOut">0.10</output>
+            <input id="backlash" type="range" min="0" max="0.3" step="0.01" value="0.1" />
+          </label>
+          <p class="hint">
+            Dead-zone applied around alpha=1 (reference/undilated cell) using the paper's
+            <code>f(x) = max(0, x-b) + min(x+b, 0)</code> coupling law: commanded alpha inside the gap produces no
+            motion, so <code>effective alpha</code> and <code>theta</code> stay pinned until the command clears it.
+            The shaded band on the Drive slider (above) shows this gap directly - alpha inside the band is "free",
+            outside it is "engaged".
+          </p>
+          <p class="hint">
+            Note: once alpha is engaged (outside the band), raising alpha and raising backlash move the wheel in
+            <em>opposite</em> directions by the same amount (<code>effective alpha = alpha - backlash</code> in that
+            region), which is why they can look like they are "doing the same thing" - they are both moving the one
+            same underlying value, just from different ends.
+          </p>
+          <dl>
+            <div><dt>alpha dead zone</dt><dd id="deadzoneRangeMetric">0.90 - 1.10</dd></div>
+          </dl>
+
+          <p class="hint">
+            <strong>Physical pin:</strong> the gap above is the paper's design-space backlash; it now only sets the Drive's
+            dead zone. The pin below is the real joint hardware: its clearance in the 3.4 mm hole sets how much
+            neighboring cells can twist differently (the cell-to-cell coupling), the physical in-plane dead zone
+            (<code>&Delta;&phi; = asin(b/L)</code>, radial clearance b over arm length L = 22.45 mm) and the out-of-plane
+            tilt limit used by the backlash tilt check. Pin-sized backlash follows Ahyan's two-cell attachment V2.
+          </p>
+          <label>
+            Pin diameter <output id="pinDiameterOut">3.00 mm</output>
+            <input id="pinDiameter" type="range" min="1.2" max="3.4" step="0.02" value="3.0" />
+          </label>
+          <label class="toggle"><input id="showPins" type="checkbox" checked /> Show pins</label>
+          <dl>
+            <div><dt>radial clearance b</dt><dd id="pinClearanceMetric">-</dd></div>
+            <div><dt>b/L (physical)</dt><dd id="pinBOverLMetric">-</dd></div>
+            <div><dt>in-plane dead zone &Delta;&phi;</dt><dd id="pinDeltaPhiMetric">-</dd></div>
+            <div><dt>same dead zone in alpha</dt><dd id="pinAlphaDeadzoneMetric">-</dd></div>
+          </dl>
+        </details>
+
+        <details class="panel-section" open>
+          <summary>Ring Tiling</summary>
+          <label>
+            Cells per ring (n) <output id="ringCountOut">10</output>
+            <input id="ringCount" type="range" min="6" max="16" step="1" value="10" />
+          </label>
+          <label>
+            Outgoing cross hole
+            <select id="aSite">
+              <option value="east" selected>east arm</option>
+              <option value="north">north arm</option>
+              <option value="west">west arm</option>
+              <option value="south">south arm</option>
+            </select>
+          </label>
+          <label>
+            Incoming cross hole
+            <select id="bSite">
+              <option value="west" selected>west arm</option>
+              <option value="east">east arm</option>
+              <option value="north">north arm</option>
+              <option value="south">south arm</option>
+            </select>
+          </label>
+          <dl>
+            <div><dt>cell pitch, row 0 (avg chord)</dt><dd id="pitchMetric">44.1 mm</dd></div>
+            <div><dt>turn angle per joint</dt><dd id="turnMetric">36.0 deg</dd></div>
+            <div><dt>wheel diameter, row 0</dt><dd id="diameterMetric">142.8 mm</dd></div>
+            <div><dt>wheel radius, row 0</dt><dd id="radiusMetric">71.4 mm</dd></div>
+            <div><dt>ring closure residual, row 0</dt><dd id="closureMetric">0.000 mm</dd></div>
+          </dl>
+          <label class="toggle"><input id="showMeasurements" type="checkbox" /> Show diameter dimension line (row 0)</label>
+        </details>
+
+        <details class="panel-section" open>
+          <summary>Cylinder Stacking</summary>
+          <label>
+            Rows along axis (m) <output id="rowCountOut">3</output>
+            <input id="rowCount" type="range" min="1" max="6" step="1" value="3" />
+          </label>
+          <label class="toggle"><input id="pinRows" type="checkbox" checked /> Pin rows together (spacing set by the pins)</label>
+          <label>
+            Axial pitch <output id="axialPitchOut">set by the pins</output>
+            <input id="axialPitch" type="range" min="30" max="70" step="1" value="50" disabled />
+          </label>
+          <p class="hint">
+            Pinned rows are joined like the cells in a ring: a cell's north pads meet the south pads of the cell above,
+            so the spacing follows the twist (2L&middot;cos(theta/2), ~43.3 mm at the default). Unpin to set a pitch by
+            hand; the rows are then separate rings with nothing joining them.
+          </p>
+          <dl>
+            <div><dt>total cells</dt><dd id="totalCellsMetric">30</dd></div>
+            <div><dt>assembly height</dt><dd id="heightMetric">100.0 mm</dd></div>
+            <div><dt>diameter range (all rows)</dt><dd><span id="minDiameterMetric">142.8</span>-<span id="maxDiameterMetric">142.8</span> mm</dd></div>
+          </dl>
+        </details>
+
+        <details class="panel-section">
+          <summary>Target Diameter</summary>
+          <p class="hint">
+            Diameter isn't monotonic in alpha (it rises then falls as the cells over-rotate), so this searches
+            every reachable alpha for the closest match rather than solving a formula directly. Fitting clears
+            any actuators/locks first, since it targets one shared alpha for the whole wheel.
+          </p>
+          <label>
+            Target diameter <output id="targetDiameterOut">140 mm</output>
+            <input id="targetDiameter" type="range" min="60" max="260" step="1" value="140" />
+          </label>
+          <div class="button-row">
+            <button id="fitDiameterBtn" type="button">Fit Alpha</button>
+          </div>
+          <dl>
+            <div><dt>achieved diameter</dt><dd id="achievedDiameterMetric">-</dd></div>
+            <div><dt>fit residual</dt><dd id="fitResidualMetric">-</dd></div>
+          </dl>
+        </details>
+
+        <details class="panel-section" open>
+          <summary>Per-Cell Actuation &amp; Differential Dilation</summary>
+          <p class="hint">
+            Both stacked pad pairs of every joint are bolted, so neighboring cells can only twist differently by
+            what the pins' hole clearance allows (D - d: 0.4 mm for a 3.0 mm pin, about 1&deg; of twist). Every cell
+            defaults to "free" and settles as close to the Drive as those limits allow, so actuating or locking one
+            cell drags its neighbors with it, fading with distance - the pin size sets the die-off.
+          </p>
+          <dl>
+            <div><dt>actuator cells</dt><dd id="actuatorCountMetric">0</dd></div>
+            <div><dt>locked cells</dt><dd id="lockedCountMetric">0</dd></div>
+          </dl>
+          <div class="button-row">
+            <button id="clearRolesBtn" type="button">Clear All Actuators/Locks</button>
+          </div>
+
+          <p class="hint">
+            <strong>Batch select:</strong> shift-click cells in the 3D view to add/remove them from a selection
+            (shown with a green ring), then set a role and alpha and apply it to every selected cell at once -
+            this is how to expand and contract different regions independently to shape the wheel, not just
+            actuate one cell at a time.
+          </p>
+          <dl>
+            <div><dt>batch selected</dt><dd id="batchSelectedCountMetric">0</dd></div>
+          </dl>
+          <label>
+            Batch role
+            <select id="batchRoleSelect">
+              <option value="actuator" selected>actuator (commanded)</option>
+              <option value="locked">locked (frozen)</option>
+              <option value="free">free (coupled)</option>
+            </select>
+          </label>
+          <label>
+            Batch alpha <output id="batchAlphaOut">1.30</output>
+            <input id="batchAlpha" type="range" min="0.4" max="2.0" step="0.01" value="1.3" />
+          </label>
+          <div class="button-row">
+            <button id="applyBatchBtn" type="button" disabled>Apply to Selected</button>
+            <button id="clearBatchSelectionBtn" type="button" disabled>Clear Selection</button>
+          </div>
+
+          <p class="hint">
+            <strong>Shape presets:</strong> instantly command a differential alpha pattern across every row to
+            demonstrate a non-uniform wheel shape, rather than the whole structure dilating uniformly. With rows
+            bolted together, the profile is scaled to the most the pins allow - small with a snug pin; a thinner pin
+            (Backlash panel) or unpinned rows allow more.
+          </p>
+          <div class="button-row">
+            <button id="presetBarrelBtn" type="button">Barrel (bulge middle)</button>
+            <button id="presetConeBtn" type="button">Cone (taper)</button>
+            <button id="presetSaddleBtn" type="button">Saddle (pinch middle)</button>
+          </div>
+        </details>
+
+        <details class="panel-section" open>
+          <summary>Constraints, Collisions &amp; Pins</summary>
+          <label class="toggle">
+            <input id="constraintsEnabled" type="checkbox" checked /> Enforce constraints: no fusing through, no
+            discontinuous motion
+          </label>
+          <p class="hint">
+            With constraints on, the pose never jumps to a command. It moves there in 1&deg; steps of cell twist,
+            collision-checking each step, and stops at first contact. A step that would make a cell jump more than
+            4 mm or turn more than 5&deg; at once is also refused. The step size and jump thresholds follow Ahyan's V2
+            drive envelope.
+          </p>
+          <dl>
+            <div><dt>constraint state</dt><dd id="constraintStateMetric">-</dd></div>
+            <div><dt>realized alpha</dt><dd id="realizedAlphaMetric">-</dd></div>
+            <div><dt>collision-free alpha (uniform)</dt><dd id="feasibleRangeMetric">-</dd></div>
+          </dl>
+          <label class="toggle"><input id="collisionEnabled" type="checkbox" checked /> Show collision readouts and contact points</label>
+          <p class="hint">
+            3D check: every hub, pad and arm at its real 4 mm thickness in its actual pose, against the ring neighbors
+            one and two over and the three nearest cells in the next row. Red dots mark overlap. The two pads a joint
+            pin passes through are exempt from each other; how far that joint can bend is the backlash tilt check below.
+          </p>
+          <dl>
+            <div><dt>guard</dt><dd id="collisionState" class="status-ok">clear</dd></div>
+            <div><dt>max penetration</dt><dd id="penetrationMetric">0.000 mm</dd></div>
+            <div><dt>minimum clearance</dt><dd id="clearanceMetric">0.000 mm</dd></div>
+            <div><dt>cell pairs checked</dt><dd id="pairsCheckedMetric">0</dd></div>
+          </dl>
+          <p class="hint">
+            <strong>Pins:</strong> the lower cross is twisted -theta/2 and the upper +theta/2, so each joint's pinned pads meet
+            exactly. With opposite sites (east/west) a second pad pair meets too, 2L&middot;sin(theta/2) along the
+            axle: two pins per joint. The circumferential readout is how far the paired holes sit off a common pin
+            axis. It should be ~0; their spacing along the pin is just the stacked plates. The axial readout is the
+            gap between rows (no axial pin is modeled).
+          </p>
+          <dl>
+            <div><dt>circumferential pin offset (max)</dt><dd id="circumferentialPinMetric">0.000 mm</dd></div>
+            <div><dt>axial pin gap (max)</dt><dd id="axialPinMetric">0.000 mm</dd></div>
+          </dl>
+          <p class="hint">
+            <strong>Backlash tilt check:</strong> with cells facing radially, each joint bolt points radially, so the bend
+            between neighboring cells is a tilt of the two plates on that bolt. The limit uses the exact pin-in-hole
+            contact relation, theta_max = acos(d / sqrt(D&sup2; + t&sup2;)) - atan(t / D), with D = 3.4 mm hole,
+            t = 4.0 mm plate, and d = the pin diameter set in the Backlash panel (default 3.0 mm, an M3 bolt - not
+            measured), doubled for two plates on one floating bolt. A joint that exceeds it can't be reached through
+            backlash alone; it needs more cells per ring or an extra hinge.
+          </p>
+          <dl>
+            <div><dt>joint tilt limit (backlash)</dt><dd id="jointTiltLimitMetric">-</dd></div>
+            <div><dt>circumferential joint bend (max)</dt><dd id="circumferentialBendMetric">-</dd></div>
+            <div><dt>axial joint bend (max)</dt><dd id="axialBendMetric">-</dd></div>
+            <div><dt>min cells/ring to close by backlash</dt><dd id="minCellsClosureMetric">-</dd></div>
+          </dl>
+        </details>
+
+        <details class="panel-section" open>
+          <summary>Selected Cell</summary>
+          <p class="hint">Click a cell in the 3D view to inspect it.</p>
+          <div class="button-row">
+            <button id="frameCellBtn" type="button" disabled>Frame Cell</button>
+            <button id="isolateCellBtn" type="button" disabled>Isolate Cell</button>
+          </div>
+          <label>
+            Role
+            <select id="cellRoleSelect" disabled>
+              <option value="free" selected>free (coupled)</option>
+              <option value="actuator">actuator (commanded)</option>
+              <option value="locked">locked (frozen)</option>
+            </select>
+          </label>
+          <label>
+            Cell alpha <output id="cellAlphaOut">-</output>
+            <input id="cellAlpha" type="range" min="0.4" max="2.0" step="0.01" value="1.3" disabled />
+          </label>
+          <dl>
+            <div><dt>row, index</dt><dd id="selectedIndexMetric">-</dd></div>
+            <div><dt>center</dt><dd id="selectedCenterMetric">-</dd></div>
+            <div><dt>bottom rotation</dt><dd id="selectedBottomRotMetric">-</dd></div>
+            <div><dt>top rotation</dt><dd id="selectedTopRotMetric">-</dd></div>
+            <div><dt>current alpha</dt><dd id="selectedCellAlphaMetric">-</dd></div>
+          </dl>
+        </details>
+
+        <details class="panel-section">
+          <summary>Cross Colors</summary>
+          <label class="toggle"><input id="heatmapEnabled" type="checkbox" /> Color cells by alpha (heatmap)</label>
+          <p class="hint">
+            <span style="color:#2f6fd6">&#9632;</span> contracted (low alpha) -
+            <span style="color:#9a9a9a">&#9632;</span> neutral -
+            <span style="color:#d63a2f">&#9632;</span> expanded (high alpha). Overrides the row colors below while
+            on, so propagation from an actuator and per-row diameter differences are visible at a glance.
+          </p>
+          <div id="colorLegend" class="legend-grid" aria-label="Cross color legend by row"></div>
+          <div class="legend-grid" aria-label="Role marker legend">
+            <span><i class="swatch" style="background:#ffd54a"></i>Selected cell</span>
+            <span><i class="swatch" style="background:#e14b4b"></i>Actuator cell</span>
+            <span><i class="swatch" style="background:#4b7de1"></i>Locked cell</span>
+          </div>
+        </details>
+
+        <details class="panel-section">
+          <summary>Geometry</summary>
+          <dl>
+            <div><dt>cell envelope</dt><dd>52.9 mm</dd></div>
+            <div><dt>nominal hole</dt><dd>3.4 mm</dd></div>
+            <div><dt>body thickness</dt><dd>4.0 mm each</dd></div>
+          </dl>
+        </details>
+
+        <details class="panel-section">
+          <summary>Timeline</summary>
+          <p class="hint">Capture named poses (alpha, backlash, ring/row counts, attachment sites, and every cell's role/alpha) and step or play back through them. Jumps are discrete, not interpolated.</p>
+          <div class="button-row">
+            <button id="captureKeyframeBtn" type="button">Capture Keyframe</button>
+            <button id="playSequenceBtn" type="button" disabled>Play Sequence</button>
+          </div>
+          <div id="keyframeList" class="keyframe-list" aria-label="Captured keyframes"></div>
+          <dl>
+            <div><dt>keyframes</dt><dd id="keyframeCountMetric">0</dd></div>
+          </dl>
+          <div class="button-row">
+            <button id="saveSequenceBtn" type="button" disabled>Save Sequence JSON</button>
+            <button id="loadSequenceBtn" type="button">Load Sequence JSON</button>
+            <input id="loadSequenceFile" type="file" accept="application/json" hidden />
+          </div>
+        </details>
+
+        <details class="panel-section">
+          <summary>Save / Load</summary>
+          <div class="button-row">
+            <button id="saveJsonBtn" type="button">Save JSON</button>
+            <button id="loadJsonBtn" type="button">Load JSON</button>
+            <input id="loadJsonFile" type="file" accept="application/json" hidden />
+          </div>
+          <p class="hint">Captures alpha, backlash, ring/row counts, axial pitch, attachment sites, and every cell's role/alpha.</p>
+        </details>
+
+        <details class="panel-section">
+          <summary>Export Geometry</summary>
+          <div class="button-row">
+            <button id="exportObjBtn" type="button">Export OBJ</button>
+          </div>
+          <p class="hint">
+            Exports the current pose's actual 3D geometry (every visible cell's arms, hubs, and pads, in real mm) as
+            a Wavefront OBJ file for reference/measurement in CAD software. This is a geometry snapshot, not a
+            print-ready model: hole locations are solid placeholder cylinders (no boolean subtraction), and there
+            is no fastener/tolerance detail beyond what's already in the 3D view.
+          </p>
+        </details>
+
+        <p class="note">
+          Each ring is a polygon of flat cells whose joint pins sit on a circle around the axle: every cell's twist
+          is split -theta/2 (lower cross) / +theta/2 (upper cross), which makes its two joint pins level, a chord
+          2L&middot;cos(theta/2) apart, and the ring's radius is solved so those chords close exactly - with one
+          shared alpha or with per-cell alphas. Closure is therefore always exact; whether a pose is physically
+          reachable is decided by the joint tilt check and the 3D collision check instead. Wheel diameter is
+          derived from cell pitch and count, not chosen directly, and can differ row to row since each row is its
+          own ring. Drive is the paper's <code>alpha</code> dilation factor with the reported
+          <code>theta = 70*alpha - 60</code> angle law. Axial row-to-row attachment is still a rigid z-offset
+          copy rather than a pinned, solved joint.
+        </p>
+      </aside>
+    </main>
+
+    <script src="./vendor/three.min.js"></script>
+    <script src="./cylinder_tiling.js"></script>
+  </body>
+</html>
