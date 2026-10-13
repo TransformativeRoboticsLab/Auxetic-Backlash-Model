@@ -15,6 +15,32 @@ class WebStaticTests(unittest.TestCase):
         for ref in refs:
             self.assertTrue((WEB / ref.removeprefix("./")).exists(), ref)
 
+    def test_v2_large_lattice_performance_controls_and_renderer_are_present(self):
+        html = (WEB / "index.html").read_text(encoding="utf-8")
+        renderer = (WEB / "renderer.js").read_text(encoding="utf-8")
+        app = (WEB / "app.js").read_text(encoding="utf-8")
+        state = (WEB / "state.js").read_text(encoding="utf-8")
+        ui = (WEB / "ui.js").read_text(encoding="utf-8")
+        self.assertIn('id="performanceMode"', html)
+        self.assertIn('performanceMode: "auto"', state)
+        self.assertIn('interactionQuality: "full"', state)
+        self.assertIn("markInteractionActive", app)
+        self.assertIn("setTimeout", app)
+        self.assertIn("performanceMode", ui)
+        for symbol in [
+            "new T.InstancedMesh",
+            "setMatrixAt",
+            "setColorAt",
+            "instanceMatrix.needsUpdate",
+            "instanceColor.needsUpdate",
+            "shouldUseReducedRenderer",
+            "updateReducedDynamicObjects",
+            "cellFromHit",
+            "instanceId",
+            "instanceCapacity = 900",
+        ]:
+            self.assertIn(symbol, renderer)
+
     def test_one_cell_rotation_page_references_existing_local_assets(self):
         page = WEB / "one-cell-rotation" / "index.html"
         html = page.read_text(encoding="utf-8")
@@ -32,11 +58,12 @@ class WebStaticTests(unittest.TestCase):
         page = WEB / "two-cell-attachment" / "index.html"
         html = page.read_text(encoding="utf-8")
         refs = re.findall(r'(?:src|href)="([^"]+)"', html)
+        ref_paths = [ref.split("?", 1)[0] for ref in refs]
         self.assertIn("../vendor/three.min.js", refs)
         self.assertIn("./styles.css", refs)
-        self.assertIn("./two_cell_attachment.js", refs)
+        self.assertIn("./two_cell_attachment.js", ref_paths)
         self.assertNotIn("cdn.jsdelivr.net", html)
-        for ref in refs:
+        for ref in ref_paths:
             if ref.startswith("data:"):
                 continue
             self.assertTrue((page.parent / ref).resolve().exists(), ref)
@@ -51,9 +78,19 @@ class WebStaticTests(unittest.TestCase):
             "applyGrid",
             "showPins",
             "showCenterLines",
+            "showContactState",
             "fitView",
             "actuationMode",
+            "actuateSelectedCell",
+            "resetContracted",
+            "resetExpanded",
+            "resetBacklashMemory",
             "selectedCellMetric",
+            "activeCellMetric",
+            "backlashPathMetric",
+            "engagedLinksMetric",
+            "floatingLinksMetric",
+            "hysteresisMetric",
             "dieOffRadiusMetric",
             "maxPropagatedMetric",
             "latticeSizeMetric",
@@ -88,10 +125,30 @@ class WebStaticTests(unittest.TestCase):
             "function updatePinGeometry",
             "function updateContactReadout",
             "function contactTransmit",
+            "function playOperator",
+            "function playTrace",
+            "function backlashHysteresisDiagnostic",
+            "function contactSide",
+            "function applyCellContactMaterial",
+            "function resetContactMemory",
+            "function actuateSelectedCell",
+            "function currentCellDriveDeg",
+            "activeDriveCell",
+            "selectionSyncOnly",
+            "previousSourceDriveBySource",
+            "function connectionKey",
+            "function propagatePlayField",
             "function contactDriveField",
             "function explicitConnectionPinPairs",
             "function contactPinPointForPair",
             "function contactPinPoints",
+            "function connectionPinItems",
+            "function contactPinItems",
+            "function dedupePinItems",
+            "function pinMaterialForContact",
+            "function pinGradientMaterialForValue",
+            "function pinMaterialForContact(_edgeKey, _contactField)",
+            "return materials.pin;",
             "function buildLatticeSnapshot",
             "function snapshotHoleRefPoint",
             "function selectCellFromPointer",
@@ -127,11 +184,38 @@ class WebStaticTests(unittest.TestCase):
             "MAX_DRIVE_STEP_ROTATION_JUMP_DEG = 5",
             "const feasible = continuousDriveSamples",
             "deltaField",
+            "contactSideField",
+            "connectionSideField",
+            "function contactMaterialForCell(cell, contactField)",
+            "return cellGradientMaterialForDrive(drive, contactField.restDrive, contactField.minDrive)",
+            "function cellGradientMaterialForDrive(driveDeg, expandedDriveDeg, contractedDriveDeg)",
+            "pinGradient",
+            "0xff0000",
+            "showContactStateInput",
             "contactRestDriveDeg",
+            "contactMemory.deltaField",
+            "contactMemory.connectionField",
+            "activeCellMetric.textContent = activeCellLabel()",
+            "aTopInput.value = drive.toFixed(2)",
+            "actuateSelectedCell({ update: false })",
+            "if (selectionSyncOnly) return;",
+            "previousConnectionField",
+            "const connectionItems = contactMode ? contactPinItems(latestContactField) : connectionPinItems()",
+            "const coincidentItems = overlappingHolePinPoints().map",
+            "dedupePinItems([...connectionItems, ...coincidentItems])",
+            "engagedLinks",
+            "floatingLinks",
+            "loopGap",
+            "hysteretic",
+            "backlashHysteresisDiagnostic,",
+            "propagatePlayField,",
+            "playTrace,",
+            "resetContactMemory(`scan",
         ]:
             self.assertIn(symbol, script)
         self.assertIn("const floorGrid = new THREE.GridHelper", script)
         self.assertIn("function resizeFloorGridForDimensions", script)
+        self.assertNotIn("if (Math.abs(delta) <= 1e-9) continue;", script)
         self.assertLess(script.index("function resizeFloorGridForDimensions"), script.index("function rebuildLattice"))
         self.assertNotIn("floorGrid.scale.setScalar", script[script.index("function updateLatticeFromPose") : script.index("function updateMechanism")])
         for removed_control_id in ["aSite", "bSite", "bTopSite", "aLowerSite"]:
@@ -154,9 +238,21 @@ class WebStaticTests(unittest.TestCase):
         self.assertIn("centerPin", script)
         self.assertIn("CAD.nominalHoleDiameterMm * 0.5", script)
         self.assertIn('id="animationHalfPeriodSeconds"', html)
+        self.assertIn("Show cell contact colors", html)
+        for legend_class in ["contact-legend", "legend-positive", "legend-negative", "legend-free"]:
+            self.assertIn(legend_class, html)
+        styles = (page.parent / "styles.css").read_text(encoding="utf-8")
+        self.assertIn("#ff0000", styles)
+        self.assertNotIn("#d37a2c", styles)
         self.assertIn("animationHalfPeriodSecondsInput", script)
         self.assertIn("ANIMATION_EASE_BLEND = 0.18", script)
         self.assertIn("function mildlyEasedPingPong", script)
+        self.assertIn("function currentDriveEnvelope", script)
+        self.assertIn("function currentCellDriveDeg", script)
+        self.assertIn("function resetWholeLattice", script)
+        self.assertIn('${target} reset', script)
+        self.assertIn('resetWholeLattice("contracted")', script)
+        self.assertIn('resetWholeLattice("expanded")', script)
         self.assertIn("sineEaseT", script)
         self.assertNotIn("amplitude * Math.sin(timeMs", script)
         for camera_symbol in ["function minCameraRadius", "function maxCameraRadius", "function updateCameraClipPlanes", "camera.far = far"]:

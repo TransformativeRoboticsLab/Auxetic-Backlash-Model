@@ -6,12 +6,17 @@
   const aTopInput = document.getElementById("aTopAngle");
   const actuationModeInput = document.getElementById("actuationMode");
   const animateInput = document.getElementById("animate");
+  const actuateSelectedCellButton = document.getElementById("actuateSelectedCell");
+  const resetContractedButton = document.getElementById("resetContracted");
+  const resetExpandedButton = document.getElementById("resetExpanded");
+  const resetBacklashMemoryButton = document.getElementById("resetBacklashMemory");
   const animationHalfPeriodSecondsInput = document.getElementById("animationHalfPeriodSeconds");
   const rowCountInput = document.getElementById("rowCount");
   const colCountInput = document.getElementById("colCount");
   const applyGridButton = document.getElementById("applyGrid");
   const showPinsInput = document.getElementById("showPins");
   const showCenterLinesInput = document.getElementById("showCenterLines");
+  const showContactStateInput = document.getElementById("showContactState");
   const pinRadiusRatioInput = document.getElementById("pinRadiusRatio");
   const contactTestCommandInput = document.getElementById("contactTestCommand");
   const aTopOut = document.getElementById("aTopOut");
@@ -39,6 +44,11 @@
   const latticeSizeMetric = document.getElementById("latticeSizeMetric");
   const cellCountMetric = document.getElementById("cellCountMetric");
   const selectedCellMetric = document.getElementById("selectedCellMetric");
+  const activeCellMetric = document.getElementById("activeCellMetric");
+  const backlashPathMetric = document.getElementById("backlashPathMetric");
+  const engagedLinksMetric = document.getElementById("engagedLinksMetric");
+  const floatingLinksMetric = document.getElementById("floatingLinksMetric");
+  const hysteresisMetric = document.getElementById("hysteresisMetric");
   const dieOffRadiusMetric = document.getElementById("dieOffRadiusMetric");
   const maxPropagatedMetric = document.getElementById("maxPropagatedMetric");
   const pinRadiusRatioOut = document.getElementById("pinRadiusRatioOut");
@@ -118,7 +128,11 @@
   let renderedPinRadius = null;
   let latestContactField = null;
   let latestRestSnapshot = null;
+  let contactMemory = null;
+  let contactMemorySerial = 0;
   let selectedDriveCell = { row: 0, col: 0 };
+  let activeDriveCell = { row: 0, col: 0 };
+  let selectionSyncOnly = false;
   const pointer = new THREE.Vector2();
   const raycaster = new THREE.Raycaster();
   const selectableMeshes = [];
@@ -133,6 +147,14 @@
     pin: new THREE.MeshStandardMaterial({ color: 0x1f2933, roughness: 0.36, metalness: 0.35 }),
     centerLine: new THREE.LineBasicMaterial({ color: 0x6b7480, transparent: true, opacity: 0.62 }),
     source: new THREE.LineBasicMaterial({ color: 0x22a36f, transparent: true, opacity: 0.95 }),
+    contactSource: new THREE.MeshStandardMaterial({ color: 0x22a36f, roughness: 0.48, metalness: 0.16 }),
+    contactPositive: new THREE.MeshStandardMaterial({ color: 0x2f73d8, roughness: 0.5, metalness: 0.12 }),
+    contactNegative: new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.5, metalness: 0.12 }),
+    contactFree: new THREE.MeshStandardMaterial({ color: 0x8f969f, roughness: 0.55, metalness: 0.1, transparent: true, opacity: 0.66 }),
+    pinGradient: Array.from({ length: 17 }, (_, index) => {
+      const color = new THREE.Color(0x2f73d8).lerp(new THREE.Color(0xff0000), index / 16);
+      return new THREE.MeshStandardMaterial({ color, roughness: 0.42, metalness: 0.22 });
+    }),
   };
 
   const latticeRoot = new THREE.Group();
@@ -176,8 +198,16 @@
     return `(${cleanZero(point.x).toFixed(1)}, ${cleanZero(point.y).toFixed(1)})`;
   }
 
+  function cellLabel(cell) {
+    return `r${cell.row + 1} c${cell.col + 1}`;
+  }
+
   function selectedCellLabel() {
-    return `r${selectedDriveCell.row + 1} c${selectedDriveCell.col + 1}`;
+    return cellLabel(selectedDriveCell);
+  }
+
+  function activeCellLabel() {
+    return cellLabel(activeDriveCell);
   }
 
   function holeRadiusMm() {
@@ -214,6 +244,69 @@
     return Math.sign(commandDeg) * Math.max(0, Math.abs(commandDeg) - backlash);
   }
 
+  function playOperator(driverDeg, previousFollowerDeg, backlashDeg) {
+    return Math.max(driverDeg - backlashDeg, Math.min(driverDeg + backlashDeg, previousFollowerDeg));
+  }
+
+  function playTrace(commandsDeg, backlashDeg, initialFollowerDeg = 0) {
+    let follower = Number(initialFollowerDeg) || 0;
+    return commandsDeg.map((driver) => {
+      const previousFollower = follower;
+      follower = playOperator(driver, previousFollower, backlashDeg);
+      return {
+        driver,
+        follower,
+        delta: follower - previousFollower,
+        side: contactSide(driver, follower, backlashDeg),
+      };
+    });
+  }
+
+  function backlashHysteresisDiagnostic(options = {}) {
+    const backlash = Math.max(0, Number(options.backlashDeg ?? researchAngularBacklashDeg()) || 0);
+    const amplitude = Math.max(Number(options.amplitudeDeg) || 0, backlash * 4, 6);
+    const steps = Math.max(8, Math.round(Number(options.steps) || 40));
+    const descending = [];
+    const ascending = [];
+    for (let index = 0; index <= steps; index += 1) {
+      descending.push((amplitude * (steps - 2 * index)) / steps);
+    }
+    for (let index = 0; index <= steps; index += 1) {
+      ascending.push((-amplitude * (steps - 2 * index)) / steps);
+    }
+    const downTrace = playTrace(descending, backlash, amplitude - backlash);
+    const upTrace = playTrace(ascending, backlash, downTrace[downTrace.length - 1]?.follower ?? -amplitude + backlash);
+    const targetDriver = 0;
+    const nearest = (trace) =>
+      trace.reduce((best, item) => (Math.abs(item.driver - targetDriver) < Math.abs(best.driver - targetDriver) ? item : best), trace[0]);
+    const downMid = nearest(downTrace);
+    const upMid = nearest(upTrace);
+    const loopGap = Math.abs((downMid?.follower || 0) - (upMid?.follower || 0));
+    return {
+      backlash,
+      amplitude,
+      loopGap,
+      downMid,
+      upMid,
+      hysteretic: loopGap > Math.max(1e-6, backlash * 0.5),
+      downTrace,
+      upTrace,
+    };
+  }
+
+  function contactSide(driverDeg, followerDeg, backlashDeg) {
+    const gap = driverDeg - followerDeg;
+    if (gap >= backlashDeg - 1e-6) return 1;
+    if (gap <= -backlashDeg + 1e-6) return -1;
+    return 0;
+  }
+
+  function resetContactMemory(reason = "reset") {
+    contactMemory = null;
+    contactMemorySerial += 1;
+    if (backlashPathMetric) backlashPathMetric.textContent = reason;
+  }
+
   function contactRestDriveDeg(envelope) {
     return envelope ? envelope.max : A_TOP_FULL_MAX_DEG;
   }
@@ -227,38 +320,114 @@
     return cells;
   }
 
-  function contactDriveField(requestedDeg, envelope) {
-    const rows = cellViews.length;
-    const cols = rows ? cellViews[0].length : 0;
-    const restDrive = contactRestDriveDeg(envelope);
-    const field = Array.from({ length: rows }, () => Array.from({ length: cols }, () => restDrive));
-    const deltaField = Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0));
+  function connectionKey(rowA, colA, rowB, colB) {
+    const first = `${rowA},${colA}`;
+    const second = `${rowB},${colB}`;
+    return first < second ? `${first}|${second}` : `${second}|${first}`;
+  }
+
+  function propagatePlayField({ rows, cols, sourceRow, sourceCol, sourceDelta, previousDeltaField, previousConnectionField = {}, backlash }) {
     const distance = Array.from({ length: rows }, () => Array.from({ length: cols }, () => Infinity));
-    const sourceRow = clampInt(selectedDriveCell.row, 0, Math.max(0, rows - 1));
-    const sourceCol = clampInt(selectedDriveCell.col, 0, Math.max(0, cols - 1));
-    const clampDrive = (value) => (envelope && !envelopeContainsDrive(value, envelope) ? nearestFeasibleDrive(value, envelope) : clamp(value, A_TOP_FULL_MIN_DEG, A_TOP_FULL_MAX_DEG));
-    const sourceDrive = clampDrive(requestedDeg);
-    const queue = [[sourceRow, sourceCol, sourceDrive - restDrive, 0]];
+    const contactSideField = Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0));
+    const connectionSideField = {};
+    const deltaField = Array.from({ length: rows }, (_, row) =>
+      Array.from({ length: cols }, (_, col) => previousDeltaField[row]?.[col] || 0)
+    );
+    const connectionField = { ...previousConnectionField };
+    const queue = [[sourceRow, sourceCol, sourceDelta, 0]];
 
     while (queue.length) {
       const [row, col, delta, depth] = queue.shift();
       if (row < 0 || row >= rows || col < 0 || col >= cols) continue;
-      if (Math.abs(delta) <= Math.abs(deltaField[row][col]) + 1e-9 && depth >= distance[row][col]) continue;
+      if (Math.abs(delta - deltaField[row][col]) <= 1e-9 && depth >= distance[row][col]) continue;
       deltaField[row][col] = delta;
-      field[row][col] = clampDrive(restDrive + delta);
       distance[row][col] = Math.min(distance[row][col], depth);
-      const residual = contactTransmit(delta);
-      if (Math.abs(residual) <= 1e-6) continue;
       neighborCells(row, col, rows, cols).forEach(([nextRow, nextCol]) => {
-        if (Math.abs(residual) > Math.abs(deltaField[nextRow][nextCol]) + 1e-9 || depth + 1 < distance[nextRow][nextCol]) {
-          queue.push([nextRow, nextCol, residual, depth + 1]);
+        if (nextRow === sourceRow && nextCol === sourceCol) return;
+        const edgeKey = connectionKey(row, col, nextRow, nextCol);
+        const hasConnectionMemory = Object.prototype.hasOwnProperty.call(connectionField, edgeKey);
+        const previousFollower = hasConnectionMemory && Number.isFinite(connectionField[edgeKey]) ? connectionField[edgeKey] : deltaField[nextRow][nextCol];
+        const nextFollower = playOperator(delta, previousFollower, backlash);
+        const side = contactSide(delta, nextFollower, backlash);
+        if (hasConnectionMemory || Math.abs(nextFollower) > 1e-6 || side !== 0) {
+          connectionField[edgeKey] = nextFollower;
+        }
+        if (side !== 0) connectionSideField[edgeKey] = side;
+        contactSideField[nextRow][nextCol] = side;
+        if (Math.abs(nextFollower - previousFollower) > 1e-6 || (Math.abs(nextFollower) > 1e-6 && depth + 1 < distance[nextRow][nextCol])) {
+          queue.push([nextRow, nextCol, nextFollower, depth + 1]);
         }
       });
     }
 
+    return { deltaField, distance, contactSideField, connectionField, connectionSideField };
+  }
+
+  function contactDriveField(requestedDeg, envelope) {
+    const rows = cellViews.length;
+    const cols = rows ? cellViews[0].length : 0;
+    const restDrive = contactRestDriveDeg(envelope);
+    const backlash = researchAngularBacklashDeg();
+    const sourceRow = clampInt(activeDriveCell.row, 0, Math.max(0, rows - 1));
+    const sourceCol = clampInt(activeDriveCell.col, 0, Math.max(0, cols - 1));
+    const memoryKey = [
+      rows,
+      cols,
+      restDrive.toFixed(6),
+      backlash.toFixed(6),
+      envelope ? envelope.min.toFixed(6) : "none",
+      envelope ? envelope.max.toFixed(6) : "none",
+    ].join("|");
+    if (!contactMemory || contactMemory.key !== memoryKey) {
+      contactMemory = {
+        key: memoryKey,
+        serial: contactMemorySerial,
+        previousSourceDriveBySource: {},
+        deltaField: Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0)),
+        connectionField: {},
+      };
+    }
+    const clampDrive = (value) => (envelope && !envelopeContainsDrive(value, envelope) ? nearestFeasibleDrive(value, envelope) : clamp(value, A_TOP_FULL_MIN_DEG, A_TOP_FULL_MAX_DEG));
+    const sourceDrive = clampDrive(requestedDeg);
+    const sourceDelta = sourceDrive - restDrive;
+    const sourceKey = `${sourceRow},${sourceCol}`;
+    const previousSourceDrive = Number.isFinite(contactMemory.previousSourceDriveBySource[sourceKey])
+      ? contactMemory.previousSourceDriveBySource[sourceKey]
+      : restDrive;
+    const sourceStep = sourceDrive - previousSourceDrive;
+    contactMemory.previousSourceDriveBySource[sourceKey] = sourceDrive;
+    const { deltaField, distance, contactSideField, connectionField, connectionSideField } = propagatePlayField({
+      rows,
+      cols,
+      sourceRow,
+      sourceCol,
+      sourceDelta,
+      previousDeltaField: contactMemory.deltaField,
+      previousConnectionField: contactMemory.connectionField,
+      backlash,
+    });
+    const field = deltaField.map((row) => row.map((delta) => clampDrive(restDrive + delta)));
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        deltaField[row][col] = field[row][col] - restDrive;
+      }
+    }
+    contactSideField[sourceRow][sourceCol] = Math.abs(sourceStep) > 1e-6 ? Math.sign(sourceStep) : 0;
+    contactMemory.deltaField = deltaField.map((row) => row.slice());
+    contactMemory.connectionField = { ...connectionField };
+
     let reach = 0;
     let dieOffRadius = 0;
     let maxAbs = 0;
+    let freeCells = 0;
+    let positiveContacts = 0;
+    let negativeContacts = 0;
+    let engagedLinks = 0;
+    let floatingLinks = 0;
+    Object.values(connectionField).forEach((value) => {
+      if (Math.abs(value) > 1e-6) engagedLinks += 1;
+      else floatingLinks += 1;
+    });
     field.forEach((row, rowIndex) => {
       row.forEach((value, colIndex) => {
         if (Math.abs(value - restDrive) > 1e-6) reach += 1;
@@ -266,9 +435,30 @@
           dieOffRadius = Math.max(dieOffRadius, distance[rowIndex][colIndex]);
         }
         maxAbs = Math.max(maxAbs, Math.abs(value - restDrive));
+        if (contactSideField[rowIndex][colIndex] > 0) positiveContacts += 1;
+        else if (contactSideField[rowIndex][colIndex] < 0) negativeContacts += 1;
+        else freeCells += 1;
       });
     });
-    return { field, deltaField, distance, reach, dieOffRadius, maxAbs, sourceRow, sourceCol, restDrive };
+    return {
+      field,
+      deltaField,
+      distance,
+      contactSideField,
+      connectionField,
+      connectionSideField,
+      reach,
+      dieOffRadius,
+      maxAbs,
+      sourceRow,
+      sourceCol,
+      restDrive,
+      minDrive: envelope?.min ?? A_TOP_FULL_MIN_DEG,
+      sourceStep,
+      backlash,
+      memorySerial: contactMemory.serial,
+      pathSummary: { freeCells, positiveContacts, negativeContacts, engagedLinks, floatingLinks },
+    };
   }
 
   function degToRad(value) {
@@ -799,6 +989,31 @@
       .join("; ");
   }
 
+  function currentDriveEnvelope() {
+    return cachedDriveEnvelope(degToRad(B_LOWER_REFERENCE_DEG), degToRad(B_TOP_REFERENCE_DEG));
+  }
+
+  function currentCellDriveDeg(row, col, envelope) {
+    const restDrive = contactRestDriveDeg(envelope);
+    const memoryDelta = contactMemory?.deltaField?.[row]?.[col];
+    const latestDelta = latestContactField?.deltaField?.[row]?.[col];
+    const delta = Number.isFinite(memoryDelta) ? memoryDelta : Number.isFinite(latestDelta) ? latestDelta : 0;
+    const drive = restDrive + delta;
+    if (envelope && !envelopeContainsDrive(drive, envelope)) return nearestFeasibleDrive(drive, envelope);
+    return clamp(drive, A_TOP_FULL_MIN_DEG, A_TOP_FULL_MAX_DEG);
+  }
+
+  function resetWholeLattice(target) {
+    selectionSyncOnly = false;
+    const envelope = currentDriveEnvelope();
+    const drive = target === "contracted" ? envelope?.min ?? A_TOP_FULL_MIN_DEG : envelope?.max ?? A_TOP_FULL_MAX_DEG;
+    animateInput.checked = false;
+    aTopInput.value = drive.toFixed(2);
+    resetContactMemory(`${target} reset`);
+    lastMechanismUpdateKey = "";
+    updateMechanism();
+  }
+
   function cylinderZ(radius, depth, material, segments = 48) {
     const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, depth, segments), material);
     mesh.rotation.x = Math.PI / 2;
@@ -916,6 +1131,24 @@
     return { top: materials.upper, bottom: materials.lower };
   }
 
+  function applyCrossMaterial(cross, material) {
+    cross.traverse((object) => {
+      if (object.isMesh) object.material = material;
+    });
+  }
+
+  function contactMaterialForCell(cell, contactField) {
+    if (!contactField || showContactStateInput.checked !== true) return null;
+    const drive = contactField.field?.[cell.row]?.[cell.col] ?? contactField.restDrive;
+    return cellGradientMaterialForDrive(drive, contactField.restDrive, contactField.minDrive);
+  }
+
+  function applyCellContactMaterial(cell, contactField) {
+    const override = contactMaterialForCell(cell, contactField);
+    applyCrossMaterial(cell.bottom, override || cell.baseMaterials.bottom);
+    applyCrossMaterial(cell.top, override || cell.baseMaterials.top);
+  }
+
   function cellName(row, col) {
     if (row === 0 && col === 0) return "Cell A";
     if (row === 0 && col === 1) return "Cell B";
@@ -951,6 +1184,7 @@
       group,
       top,
       bottom,
+      baseMaterials: pair,
       centerPin,
       center: new THREE.Vector2(),
       topRotation: 0,
@@ -992,6 +1226,7 @@
     colCountInput.value = String(cols);
     resizeFloorGridForDimensions(rows, cols);
     lastMechanismUpdateKey = "";
+    resetContactMemory("lattice changed");
     removeChildren(latticeRoot);
     removeChildren(pinRoot);
     cellViews = [];
@@ -1000,6 +1235,8 @@
     selectableMeshes.length = 0;
     selectedDriveCell.row = Math.min(selectedDriveCell.row, rows - 1);
     selectedDriveCell.col = Math.min(selectedDriveCell.col, cols - 1);
+    activeDriveCell.row = Math.min(activeDriveCell.row, rows - 1);
+    activeDriveCell.col = Math.min(activeDriveCell.col, cols - 1);
 
     for (let row = 0; row < rows; row += 1) {
       const rowViews = [];
@@ -1075,12 +1312,22 @@
     return connectionPinPairs(connection).map(([first, second]) => holeRefPoint(first).add(holeRefPoint(second)).multiplyScalar(0.5));
   }
 
-  function explicitConnectionPinPoints() {
-    const points = [];
+  function connectionPinItems() {
+    const items = [];
     connections.forEach((connection) => {
-      connectionPinPoints(connection).forEach((point) => points.push(point));
+      const edgeKey = connectionKey(connection.from.row, connection.from.col, connection.to.row, connection.to.col);
+      connectionPinPairs(connection).forEach(([first, second]) => {
+        items.push({
+          point: holeRefPoint(first).add(holeRefPoint(second)).multiplyScalar(0.5),
+          edgeKey,
+        });
+      });
     });
-    return points;
+    return items;
+  }
+
+  function explicitConnectionPinPoints() {
+    return connectionPinItems().map((item) => item.point);
   }
 
   function explicitConnectionPinPairs() {
@@ -1154,12 +1401,16 @@
       .map((group) => group.point);
   }
 
-  function dedupePinPoints(points) {
+  function dedupePinItems(items) {
     const dedupeTolerance = CAD.nominalHoleDiameterMm * 0.28;
     const deduped = [];
-    points.forEach((point) => {
-      if (!deduped.some((existing) => existing.distanceTo(point) <= dedupeTolerance)) {
-        deduped.push(point);
+    items.forEach((item) => {
+      const point = item.point;
+      const existing = deduped.find((candidate) => candidate.point.distanceTo(point) <= dedupeTolerance);
+      if (existing) {
+        if (!existing.edgeKey && item.edgeKey) existing.edgeKey = item.edgeKey;
+      } else {
+        deduped.push({ point, edgeKey: item.edgeKey || null });
       }
     });
     return deduped;
@@ -1198,6 +1449,38 @@
     return explicitConnectionPinPairs().map(([first, second]) => contactPinPointForPair(first, second, contactField));
   }
 
+  function contactPinItems(contactField) {
+    const items = [];
+    connections.forEach((connection) => {
+      const edgeKey = connectionKey(connection.from.row, connection.from.col, connection.to.row, connection.to.col);
+      connectionPinPairs(connection).forEach(([first, second]) => {
+        items.push({
+          point: contactPinPointForPair(first, second, contactField),
+          edgeKey,
+        });
+      });
+    });
+    return items;
+  }
+
+  function pinMaterialForContact(_edgeKey, _contactField) {
+    return materials.pin;
+  }
+
+  function pinGradientMaterialForValue(value, scale) {
+    const span = Math.max(1e-6, Math.abs(scale) || 0);
+    const normalized = clamp(value / span, -1, 1);
+    const index = Math.round(((1 - normalized) / 2) * (materials.pinGradient.length - 1));
+    return materials.pinGradient[index];
+  }
+
+  function cellGradientMaterialForDrive(driveDeg, expandedDriveDeg, contractedDriveDeg) {
+    const span = Math.max(1e-6, Math.abs(expandedDriveDeg - contractedDriveDeg));
+    const contraction = clamp((expandedDriveDeg - driveDeg) / span, 0, 1);
+    const index = Math.round(contraction * (materials.pinGradient.length - 1));
+    return materials.pinGradient[index];
+  }
+
   function buildCenterLineGeometry() {
     const points = [];
     for (let row = 0; row < cellViews.length; row += 1) {
@@ -1220,13 +1503,16 @@
   function updateConnectionPins() {
     const visible = showPinsInput.checked;
     const contactMode = actuationModeInput.value === "contact" && latestContactField;
-    const drivenPoints = contactMode ? contactPinPoints(latestContactField) : explicitConnectionPinPoints();
-    const pinPoints = visible ? dedupePinPoints(contactMode ? drivenPoints : [...drivenPoints, ...overlappingHolePinPoints()]) : [];
-    ensureConnectionPinMeshCount(pinPoints.length);
+    const connectionItems = contactMode ? contactPinItems(latestContactField) : connectionPinItems();
+    const coincidentItems = overlappingHolePinPoints().map((point) => ({ point, edgeKey: null }));
+    const pinItems = visible ? dedupePinItems([...connectionItems, ...coincidentItems]) : [];
+    ensureConnectionPinMeshCount(pinItems.length);
     updatePinGeometry();
     connectionPinMeshes.forEach((pin, index) => {
-      const point = pinPoints[index];
+      const item = pinItems[index];
+      const point = item?.point;
       pin.visible = Boolean(visible && point);
+      pin.material = item ? pinMaterialForContact(item.edgeKey, latestContactField) : materials.pin;
       if (point) pin.position.set(point.x, point.y, 0);
     });
   }
@@ -1256,7 +1542,7 @@
 
   function updateSelectionMarker() {
     const cell = cellAt(selectedDriveCell.row, selectedDriveCell.col);
-    if (!cell || actuationModeInput.value !== "contact") {
+    if (!cell) {
       selectionRing.visible = false;
       return;
     }
@@ -1554,7 +1840,7 @@
     };
   }
 
-  function updateLatticeFromPose(pose, displayFrame, driveField = null, requestedBLower = degToRad(B_LOWER_REFERENCE_DEG), requestedBTop = degToRad(B_TOP_REFERENCE_DEG)) {
+  function updateLatticeFromPose(pose, displayFrame, driveField = null, requestedBLower = degToRad(B_LOWER_REFERENCE_DEG), requestedBTop = degToRad(B_TOP_REFERENCE_DEG), contactField = null) {
     const rows = cellViews.length;
     const cols = rows ? cellViews[0].length : 0;
     const local = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ({ pose, frame: displayFrame })));
@@ -1615,6 +1901,7 @@
         cell.group.position.set(center.x, center.y, 0);
         cell.bottom.rotation.z = bottomRotation;
         cell.top.rotation.z = topRotation;
+        applyCellContactMaterial(cell, contactField);
         maxRadius = Math.max(maxRadius, center.length() + CAD.cellWidthMm);
         centerSum.add(center);
         centerCount += 1;
@@ -1635,6 +1922,7 @@
   }
 
   function updateMechanism(timeMs = 0) {
+    if (selectionSyncOnly) return;
     const requestedBLower = degToRad(B_LOWER_REFERENCE_DEG);
     const requestedBTop = degToRad(B_TOP_REFERENCE_DEG);
     const driveEnvelope = cachedDriveEnvelope(requestedBLower, requestedBTop);
@@ -1669,10 +1957,11 @@
       rowCountInput.value,
       colCountInput.value,
       actuationModeInput.value,
-      selectedDriveCell.row,
-      selectedDriveCell.col,
+      activeDriveCell.row,
+      activeDriveCell.col,
       showPinsInput.checked ? 1 : 0,
       showCenterLinesInput.checked ? 1 : 0,
+      showContactStateInput.checked ? 1 : 0,
       pinRadiusRatioInput.value,
       contactTestCommandInput.value,
       driveEnvelope ? driveEnvelope.min : "none",
@@ -1694,7 +1983,7 @@
     const contactField = contactMode ? contactDriveField(aTopDeg, driveEnvelope) : null;
     latestContactField = contactField;
     latestRestSnapshot = contactField ? buildLatticeSnapshot(uniformDriveField(contactField.restDrive), requestedBLower, requestedBTop) : null;
-    const lattice = updateLatticeFromPose(pose, displayFrame, contactField?.field || null, requestedBLower, requestedBTop);
+    const lattice = updateLatticeFromPose(pose, displayFrame, contactField?.field || null, requestedBLower, requestedBTop, contactField);
     const latticeReport = latticeCollisionReportFromRenderedCells();
     const combinedReport = mergeCollisionReports(solution.report, latticeReport);
     const displayedSolution = {
@@ -1727,6 +2016,19 @@
     bcSecondResidualMetric.textContent = `${residuals.bcSecond.toFixed(3)} mm`;
     bcPitchMetric.textContent = `${displayC.clone().sub(displayB).length().toFixed(1)} mm`;
     selectedCellMetric.textContent = selectedCellLabel();
+    activeCellMetric.textContent = activeCellLabel();
+    if (contactField) {
+      const summary = contactField.pathSummary;
+      backlashPathMetric.textContent = `play ${contactField.memorySerial}: +${summary.positiveContacts} / -${summary.negativeContacts} / free ${summary.freeCells}`;
+      engagedLinksMetric.textContent = `${summary.engagedLinks}`;
+      floatingLinksMetric.textContent = `${summary.floatingLinks}`;
+    } else {
+      backlashPathMetric.textContent = "uniform baseline";
+      engagedLinksMetric.textContent = "n/a";
+      floatingLinksMetric.textContent = "n/a";
+    }
+    const hysteresis = backlashHysteresisDiagnostic();
+    hysteresisMetric.textContent = `${hysteresis.loopGap.toFixed(2)} deg loop gap`;
     dieOffRadiusMetric.textContent = contactField ? `${contactField.dieOffRadius} steps (${contactField.reach}/${cellViews.length * (cellViews[0]?.length || 0)} cells)` : "uniform";
     maxPropagatedMetric.textContent = contactField ? `${contactField.maxAbs.toFixed(1)} deg` : `${Math.abs(aTopDeg).toFixed(1)} deg`;
     updateCollisionReadout(displayedSolution);
@@ -1761,6 +2063,7 @@
       mode: actuationModeInput.value,
       ratio: pinRadiusRatioInput.value,
       selected: { ...selectedDriveCell },
+      active: { ...activeDriveCell },
     };
     const failures = [];
 
@@ -1772,6 +2075,7 @@
         rowCountInput.value = String(rows);
         colCountInput.value = String(cols);
         selectedDriveCell = { row: 0, col: 0 };
+        activeDriveCell = { row: 0, col: 0 };
         rebuildLattice();
         actuationModeInput.value = "contact";
         ratios.forEach((ratio) => {
@@ -1783,6 +2087,7 @@
           ["descending", "ascending"].forEach((direction) => {
             let previous = null;
             const drives = [];
+            resetContactMemory(`scan ${direction}`);
             if (direction === "descending") {
               for (let drive = maxDrive; drive >= minDrive - 1e-9; drive -= stepDeg) drives.push(Math.max(minDrive, drive));
             } else {
@@ -1817,10 +2122,12 @@
       rowCountInput.value = saved.rows;
       colCountInput.value = saved.cols;
       selectedDriveCell = saved.selected;
+      activeDriveCell = saved.active;
       rebuildLattice();
       actuationModeInput.value = saved.mode;
       pinRadiusRatioInput.value = saved.ratio;
       aTopInput.value = saved.drive;
+      resetContactMemory("scan restored");
       lastMechanismUpdateKey = "";
       updateMechanism();
     }
@@ -1833,8 +2140,36 @@
   }
 
   window.RADAttachmentDiagnostics = {
+    backlashHysteresisDiagnostic,
+    propagatePlayField,
+    playTrace,
     scanStringContinuity,
   };
+
+  function actuateSelectedCell({ update = true } = {}) {
+    selectionSyncOnly = false;
+    const envelope = currentDriveEnvelope();
+    const row = clampInt(selectedDriveCell.row, 0, Math.max(0, cellViews.length - 1));
+    const col = clampInt(selectedDriveCell.col, 0, Math.max(0, (cellViews[0]?.length || 1) - 1));
+    const drive = currentCellDriveDeg(row, col, envelope);
+    activeDriveCell = { row, col };
+    actuationModeInput.value = "contact";
+    aTopInput.value = drive.toFixed(2);
+    aTopOut.textContent = `${drive.toFixed(0)} deg`;
+    activeCellMetric.textContent = activeCellLabel();
+    const sourceKey = `${row},${col}`;
+    if (contactMemory?.previousSourceDriveBySource) {
+      contactMemory.previousSourceDriveBySource[sourceKey] = drive;
+    }
+    if (backlashPathMetric) backlashPathMetric.textContent = update ? `actuated ${activeCellLabel()}` : `editing ${activeCellLabel()}`;
+    if (!update) {
+      animateInput.checked = false;
+      selectionSyncOnly = true;
+      return;
+    }
+    lastMechanismUpdateKey = "";
+    updateMechanism();
+  }
 
   function resize() {
     const rect = mount.getBoundingClientRect();
@@ -1865,9 +2200,9 @@
       row: hit.object.userData.cellRow,
       col: hit.object.userData.cellCol,
     };
-    actuationModeInput.value = "contact";
-    lastMechanismUpdateKey = "";
-    updateMechanism();
+    selectedCellMetric.textContent = selectedCellLabel();
+    updateSelectionMarker();
+    actuateSelectedCell({ update: false });
   }
 
   renderer.domElement.addEventListener("pointerdown", (event) => {
@@ -1930,6 +2265,18 @@
   });
   document.getElementById("fitView").addEventListener("click", fitCurrentView);
   document.getElementById("resetView").addEventListener("click", () => setView("iso"));
+  actuateSelectedCellButton.addEventListener("click", actuateSelectedCell);
+  resetContractedButton.addEventListener("click", () => resetWholeLattice("contracted"));
+  resetExpandedButton.addEventListener("click", () => resetWholeLattice("expanded"));
+  resetBacklashMemoryButton.addEventListener("click", () => {
+    selectionSyncOnly = false;
+    resetContactMemory("manual reset");
+    lastMechanismUpdateKey = "";
+    updateMechanism();
+  });
+  actuationModeInput.addEventListener("change", () => resetContactMemory("mode changed"));
+  pinRadiusRatioInput.addEventListener("input", () => resetContactMemory("backlash changed"));
+  pinRadiusRatioInput.addEventListener("change", () => resetContactMemory("backlash changed"));
   [
     aTopInput,
     actuationModeInput,
@@ -1937,25 +2284,30 @@
     animationHalfPeriodSecondsInput,
     showPinsInput,
     showCenterLinesInput,
+    showContactStateInput,
     pinRadiusRatioInput,
     contactTestCommandInput,
   ].forEach((input) => {
     input.addEventListener("input", () => {
+      selectionSyncOnly = false;
       lastMechanismUpdateKey = "";
       updateMechanism();
     });
     input.addEventListener("change", () => {
+      selectionSyncOnly = false;
       lastMechanismUpdateKey = "";
       updateMechanism();
     });
   });
   applyGridButton.addEventListener("click", () => {
+    selectionSyncOnly = false;
     rebuildLattice();
     updateMechanism();
     setView(currentView);
   });
   [rowCountInput, colCountInput].forEach((input) => {
     input.addEventListener("change", () => {
+      selectionSyncOnly = false;
       rebuildLattice();
       updateMechanism();
       setView(currentView);

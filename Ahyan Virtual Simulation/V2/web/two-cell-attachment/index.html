@@ -46,12 +46,23 @@
             </select>
           </label>
           <label class="toggle"><input id="animate" type="checkbox" /> Animate drive</label>
+          <button id="actuateSelectedCell" type="button">Actuate selected cell</button>
+          <div class="button-row">
+            <button id="resetContracted" type="button">Fully contracted</button>
+            <button id="resetExpanded" type="button">Fully expanded</button>
+          </div>
+          <button id="resetBacklashMemory" type="button">Reset backlash memory</button>
           <label>
             Seconds from one extrema to the next
             <input id="animationHalfPeriodSeconds" type="number" min="0.25" max="30" step="0.25" value="2.5" />
           </label>
           <dl>
             <div><dt>selected actuator</dt><dd id="selectedCellMetric">r1 c1</dd></div>
+            <div><dt>active actuator</dt><dd id="activeCellMetric">r1 c1</dd></div>
+            <div><dt>backlash path</dt><dd id="backlashPathMetric">memory reset</dd></div>
+            <div><dt>engaged links</dt><dd id="engagedLinksMetric">0</dd></div>
+            <div><dt>floating memory</dt><dd id="floatingLinksMetric">0</dd></div>
+            <div><dt>hysteresis check</dt><dd id="hysteresisMetric">not sampled</dd></div>
             <div><dt>die off radius</dt><dd id="dieOffRadiusMetric">uniform</dd></div>
             <div><dt>max propagated command</dt><dd id="maxPropagatedMetric">64.0 deg</dd></div>
           </dl>
@@ -62,16 +73,23 @@
           <div class="dimension-grid">
             <label>
               Rows
-              <input id="rowCount" type="number" min="1" max="15" step="1" value="1" />
+              <input id="rowCount" type="number" min="1" max="30" step="1" value="1" />
             </label>
             <label>
               Columns
-              <input id="colCount" type="number" min="1" max="20" step="1" value="3" />
+              <input id="colCount" type="number" min="1" max="30" step="1" value="3" />
             </label>
           </div>
           <button id="applyGrid" type="button">Apply lattice size</button>
           <label class="toggle"><input id="showPins" type="checkbox" checked /> Show connection pins</label>
           <label class="toggle"><input id="showCenterLines" type="checkbox" checked /> Show center grid</label>
+          <label class="toggle"><input id="showContactState" type="checkbox" checked /> Show cell contact colors</label>
+          <div class="contact-legend" aria-label="Contact state legend">
+            <span><i class="legend-swatch legend-source"></i> driven</span>
+            <span><i class="legend-swatch legend-positive"></i> + contact</span>
+            <span><i class="legend-swatch legend-negative"></i> - contact</span>
+            <span><i class="legend-swatch legend-free"></i> floating</span>
+          </div>
           <dl>
             <div><dt>active lattice</dt><dd id="latticeSizeMetric">1 x 3</dd></div>
             <div><dt>cell count</dt><dd id="cellCountMetric">3</dd></div>
@@ -134,7 +152,7 @@
         </section>
 
         <p class="note">
-          Contact propagation uses the RAD model: b_norm = b/L, Delta phi = asin(b/L), and f(x) = max(0, x-b) + min(x+b, 0).
+          Contact propagation uses the RAD model b_norm = b/L and Delta phi = asin(b/L), then applies a path-dependent play operator so reverse motion crosses clearance before neighboring cells follow.
         </p>
       </aside>
 
@@ -152,6 +170,6 @@
     </main>
 
     <script src="../vendor/three.min.js"></script>
-    <script src="./two_cell_attachment.js"></script>
+    <script src="./two_cell_attachment.js?v=expanded-blue-gradient-1"></script>
   </body>
 </html>
