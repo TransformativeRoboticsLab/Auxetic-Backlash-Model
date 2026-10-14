@@ -1,5 +1,8 @@
 # RAD Virtual Simulation V2
 
+New collaborators: follow the [opening guide](OPEN_SIMULATOR.md) for download,
+launch, controls, and troubleshooting instructions.
+
 The current pin-hole lattice simulator is `web/two-cell-attachment/index.html`.
 Open that file directly in Chrome; its scripts, styles, and Three.js dependency
 are local. Other existing V2 entry points are legacy implementations and are

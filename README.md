@@ -3,6 +3,17 @@ This repository contains a set of programs to model the backlash in auxetic latt
 
 The backlash in an auxetic structure can be configured or programmed to design a shape-changing structure.
 
+## Open the RAD Simulator
+
+Start with the [V2 opening guide](Ahyan%20Virtual%20Simulation/V2/OPEN_SIMULATOR.md).
+It covers downloading the repository, opening the simulator in Chrome without
+installing development tools, basic controls, and troubleshooting.
+
+The current simulator is on the
+[`codex/web-simulator-upgrade` branch](https://github.com/TransformativeRoboticsLab/Auxetic-Backlash-Model/tree/codex/web-simulator-upgrade),
+under `Ahyan Virtual Simulation/V2/web/two-cell-attachment/index.html`.
+Downloading just the HTML file is not enough; keep its supporting files together.
+
 Task List
 https://docs.google.com/spreadsheets/d/1UB8SRYQrKouYJ8RqrWCk4LBVXZi8fhDDzx1xIQ8QW4M/edit?usp=sharing
 
