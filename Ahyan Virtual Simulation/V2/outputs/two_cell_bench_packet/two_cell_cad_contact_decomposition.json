@@ -1,0 +1,4882 @@
+{
+  "schema": "rad-sim.two-cell-cad-contact-decomposition.v1",
+  "model": "two-cell-cad-contact-decomposition-contract",
+  "cadReference": {
+    "schema": "rad-sim.cad-rad-cell-reference.v1",
+    "source": "Autodesk A360 public share https://a360.co/4bMlzip",
+    "localFiles": {
+      "fusionArchive": "assets/cad/RADs_unit_cell.f3d",
+      "viewerSummary": "assets/cad/RADs_unit_cell_reference.json",
+      "preview": "assets/cad/RADs_unit_cell_preview.png"
+    },
+    "units": "mm",
+    "boundingBoxMm": {
+      "widthX": 55.604331129396634,
+      "widthY": 55.60433117189373,
+      "heightZ": 19.99999621152464
+    },
+    "nominalHoleDiameterMm": 3.4,
+    "fusionManifestLabels": {
+      "archiveDisplayName": "RADs unit cell",
+      "linkedCellDisplayName": "RADs free cell 4mm tall 3.4mm hole"
+    },
+    "viewerAccess": {
+      "shareUrl": "https://a360.co/4bMlzip",
+      "resolvedTitle": "RADs unit cell - AUTODESK FUSION",
+      "downloadFormatsObserved": [
+        "Fusion Archive",
+        "Inventor 2025",
+        "IGES",
+        "SAT",
+        "SMT",
+        "STEP",
+        "DWG",
+        "DXF",
+        "STL",
+        "FBX",
+        "SketchUp",
+        "OBJ"
+      ],
+      "downloadRequiresEmailExport": true
+    },
+    "visibleFeatures": [
+      "central circular crown and screw stack",
+      "eight radial arms",
+      "outer circular pin-hole pads",
+      "single-cell monolithic upper/lower body fragments"
+    ],
+    "fragments": [
+      {
+        "id": 0,
+        "name": "RADs free cell 4mm tall 3.4mm hole body",
+        "zMin": 3.9999988079071045,
+        "zMax": 8.000000953674316
+      },
+      {
+        "id": 1,
+        "name": "cell lower body",
+        "zMin": 0.0,
+        "zMax": 4.0
+      },
+      {
+        "id": 2,
+        "name": "18-8 stainless screw",
+        "zMin": -9.999998092651367,
+        "zMax": 9.999998092651367
+      }
+    ],
+    "physicalInterpretation": "CAD-derived visual/dimensional reference. The reduced two-cell model does not replace segmented rigid-body contact simulation."
+  },
+  "layout": {
+    "schema": "rad-sim.cad-rad-cell-layout.v1",
+    "cadReference": {
+      "schema": "rad-sim.cad-rad-cell-reference.v1",
+      "source": "Autodesk A360 public share https://a360.co/4bMlzip",
+      "localFiles": {
+        "fusionArchive": "assets/cad/RADs_unit_cell.f3d",
+        "viewerSummary": "assets/cad/RADs_unit_cell_reference.json",
+        "preview": "assets/cad/RADs_unit_cell_preview.png"
+      },
+      "units": "mm",
+      "boundingBoxMm": {
+        "widthX": 55.604331129396634,
+        "widthY": 55.60433117189373,
+        "heightZ": 19.99999621152464
+      },
+      "nominalHoleDiameterMm": 3.4,
+      "fusionManifestLabels": {
+        "archiveDisplayName": "RADs unit cell",
+        "linkedCellDisplayName": "RADs free cell 4mm tall 3.4mm hole"
+      },
+      "viewerAccess": {
+        "shareUrl": "https://a360.co/4bMlzip",
+        "resolvedTitle": "RADs unit cell - AUTODESK FUSION",
+        "downloadFormatsObserved": [
+          "Fusion Archive",
+          "Inventor 2025",
+          "IGES",
+          "SAT",
+          "SMT",
+          "STEP",
+          "DWG",
+          "DXF",
+          "STL",
+          "FBX",
+          "SketchUp",
+          "OBJ"
+        ],
+        "downloadRequiresEmailExport": true
+      },
+      "visibleFeatures": [
+        "central circular crown and screw stack",
+        "eight radial arms",
+        "outer circular pin-hole pads",
+        "single-cell monolithic upper/lower body fragments"
+      ],
+      "fragments": [
+        {
+          "id": 0,
+          "name": "RADs free cell 4mm tall 3.4mm hole body",
+          "zMin": 3.9999988079071045,
+          "zMax": 8.000000953674316
+        },
+        {
+          "id": 1,
+          "name": "cell lower body",
+          "zMin": 0.0,
+          "zMax": 4.0
+        },
+        {
+          "id": 2,
+          "name": "18-8 stainless screw",
+          "zMin": -9.999998092651367,
+          "zMax": 9.999998092651367
+        }
+      ],
+      "physicalInterpretation": "CAD-derived visual/dimensional reference. The reduced two-cell model does not replace segmented rigid-body contact simulation."
+    },
+    "sourceEvidence": [
+      "A360 Fusion archive bounding box",
+      "linked cell label: RADs free cell 4mm tall 3.4mm hole",
+      "eight radial pad sites visible in extracted preview"
+    ],
+    "limitations": [
+      "Site layout is dimension-consistent and topology-matched, but not exact BREP vertex extraction.",
+      "Fusion BREP streams still need segmentation/export before exact rigid-body contact simulation."
+    ],
+    "dimensionsMm": {
+      "widthMm": 55.604331129396634,
+      "heightMm": 19.99999621152464,
+      "bodyThicknessMm": 4.0,
+      "lowerBodyThicknessMm": 4.0,
+      "stackHeightMm": 19.99999621152464,
+      "nominalHoleRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "holeRadiusMm": 1.7,
+      "pinHoleClearanceMm": 0.3400000000000001,
+      "padRadiusMm": 3.145,
+      "hubRadiusMm": 3.6142815234107815,
+      "siteRadiusMm": 24.657165564698317,
+      "connectorPitchMm": 49.314331129396635,
+      "armStartRadiusMm": 2.8191395882604096,
+      "armWidthMm": 1.0008779603291393,
+      "screwRadiusMm": 0.8839999999999999
+    },
+    "padSites": [
+      {
+        "name": "n",
+        "angleDegrees": 90.0,
+        "xMm": 1.5098159442427066e-15,
+        "yMm": 24.657165564698317,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "ne",
+        "angleDegrees": 45.0,
+        "xMm": 17.43524897563761,
+        "yMm": 17.435248975637606,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "e",
+        "angleDegrees": 0.0,
+        "xMm": 24.657165564698317,
+        "yMm": 0.0,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "se",
+        "angleDegrees": -45.0,
+        "xMm": 17.43524897563761,
+        "yMm": -17.435248975637606,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "s",
+        "angleDegrees": -90.0,
+        "xMm": 1.5098159442427066e-15,
+        "yMm": -24.657165564698317,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "sw",
+        "angleDegrees": -135.0,
+        "xMm": -17.435248975637606,
+        "yMm": -17.43524897563761,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "w",
+        "angleDegrees": 180.0,
+        "xMm": -24.657165564698317,
+        "yMm": 3.0196318884854133e-15,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "nw",
+        "angleDegrees": 135.0,
+        "xMm": -17.435248975637606,
+        "yMm": 17.43524897563761,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      }
+    ],
+    "twoCellConnectorPairs": [
+      {
+        "name": "upper",
+        "leftSite": "ne",
+        "rightSite": "nw",
+        "axis": "x",
+        "leftPinGeom": "left_cell_ne_pin",
+        "rightHoleGeom": "right_cell_nw_hole_clearance"
+      },
+      {
+        "name": "middle",
+        "leftSite": "e",
+        "rightSite": "w",
+        "axis": "x",
+        "leftPinGeom": "left_cell_e_pin",
+        "rightHoleGeom": "right_cell_w_hole_clearance"
+      },
+      {
+        "name": "lower",
+        "leftSite": "se",
+        "rightSite": "sw",
+        "axis": "x",
+        "leftPinGeom": "left_cell_se_pin",
+        "rightHoleGeom": "right_cell_sw_hole_clearance"
+      }
+    ],
+    "envelopeCheck": {
+      "maxOuterEnvelopeMm": 27.802165564698317,
+      "halfWidthMm": 27.802165564698317,
+      "matchesBoundingBox": true
+    },
+    "visualModel": {
+      "siteRadiusToWidth": 0.44343965773670974,
+      "padRadiusToWidth": 0.056560342263290285,
+      "hubRadiusToWidth": 0.065,
+      "holeRadiusToWidth": 0.03057315798015691,
+      "pinRadiusToWidth": 0.024458526384125524,
+      "armStartRadiusToWidth": 0.0507,
+      "armWidthToWidth": 0.018,
+      "bodyThicknessToWidth": 0.07193684230625155,
+      "stackHeightToWidth": 0.3596841433985191,
+      "siteRadiusToPitch": 0.5,
+      "padRadiusToPitch": 0.0637745646746741,
+      "hubRadiusToPitch": 0.07329069340770764,
+      "holeRadiusToPitch": 0.034472737661986,
+      "pinRadiusToPitch": 0.027578190129588797,
+      "holeToPadRadiusRatio": 0.5405405405405406,
+      "pinToHoleRadiusRatio": 0.7999999999999999,
+      "screwToHubRadiusRatio": 0.24458526384125523,
+      "hubToPadRadiusRatio": 1.1492151107824424,
+      "armStartRadiusToPitch": 0.05716674085801196,
+      "armWidthToPitch": 0.020295884328288265,
+      "bodyThicknessToPitch": 0.0811123239105553,
+      "stackHeightToPitch": 0.4055615427297663,
+      "modelUnitsPerMm": 0.017984210576562888
+    }
+  },
+  "cellInstances": [
+    {
+      "cell": "left",
+      "originMm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "upperBody": "left_upper_free_cell_body",
+      "lowerBody": "left_lower_cell_body",
+      "pinBody": "left_screw_pin_body",
+      "fixtureRule": "position-lockable fixture; left cell is fixed in the default two-cell bench"
+    },
+    {
+      "cell": "right",
+      "originMm": [
+        49.314331129396635,
+        0.0,
+        0.0
+      ],
+      "upperBody": "right_upper_free_cell_body",
+      "lowerBody": "right_lower_cell_body",
+      "pinBody": "right_screw_pin_body",
+      "fixtureRule": "free, state-locked, or position-locked depending on the selected bench case"
+    }
+  ],
+  "bodyRoles": [
+    {
+      "role": "upper_free_cell_body",
+      "instances": [
+        "left_upper_free_cell_body",
+        "right_upper_free_cell_body"
+      ],
+      "expectedAssets": [
+        "upper_free_cell_body.step",
+        "upper_free_cell_body.stl",
+        "upper_free_cell_body.obj"
+      ],
+      "solverUse": "moving rigid body carrying radial arms, annular pads, pin-hole surfaces, alpha rotation, and vertical free-play"
+    },
+    {
+      "role": "lower_cell_body",
+      "instances": [
+        "left_lower_cell_body",
+        "right_lower_cell_body"
+      ],
+      "expectedAssets": [
+        "lower_cell_body.step",
+        "lower_cell_body.stl",
+        "lower_cell_body.obj"
+      ],
+      "solverUse": "fixture or base body defining the ground z reference and position-lock frame"
+    },
+    {
+      "role": "screw_pin_body",
+      "instances": [
+        "left_screw_pin_body",
+        "right_screw_pin_body"
+      ],
+      "expectedAssets": [
+        "screw_pin_body.step",
+        "screw_pin_body.stl",
+        "screw_pin_body.obj"
+      ],
+      "solverUse": "pin or screw stack participating in radial clearance and vertical slip contacts"
+    }
+  ],
+  "jointSpec": {
+    "alphaRotation": {
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "requiresEvidence": [
+        "joint_axes.json.central_alpha_rotation_axis"
+      ],
+      "stateVariable": "alpha",
+      "thetaMapping": "theta_degrees = 70 * alpha - 60 in the reduced model; replace by measured crown/arm relation when available"
+    },
+    "verticalSlide": {
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "requiresEvidence": [
+        "joint_axes.json.vertical_slide_axis",
+        "contact_parameters.json.verticalTravelMm"
+      ],
+      "stateVariable": "z",
+      "contactRole": "pin-hole radius difference permits vertical residual motion under actuation and gravity"
+    },
+    "lockStops": {
+      "requiresEvidence": [
+        "lock_crown_geometry.csv",
+        "lock_crown_geometry.json"
+      ],
+      "note": "Crown angle is not equal to lattice theta because the arm has nonzero width; use measured effective stop theta."
+    }
+  },
+  "holeDecomposition": [
+    {
+      "cell": "left",
+      "site": "n",
+      "centerMm": [
+        1.5098159442427066e-15,
+        24.657165564698317,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "left_upper_free_cell_body",
+      "pinBody": "left_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "cell": "left",
+      "site": "ne",
+      "centerMm": [
+        17.43524897563761,
+        17.435248975637606,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "left_upper_free_cell_body",
+      "pinBody": "left_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            17.43524897563761,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            17.43524897563761,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            17.43524897563761,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            17.43524897563761,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            17.43524897563761,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            17.43524897563761,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            17.43524897563761,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            17.43524897563761,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            17.43524897563761,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            17.43524897563761,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            17.43524897563761,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            17.43524897563761,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "cell": "left",
+      "site": "e",
+      "centerMm": [
+        24.657165564698317,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "left_upper_free_cell_body",
+      "pinBody": "left_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            24.657165564698317,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            24.657165564698317,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            24.657165564698317,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            24.657165564698317,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            24.657165564698317,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            24.657165564698317,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            24.657165564698317,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            24.657165564698317,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            24.657165564698317,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            24.657165564698317,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            24.657165564698317,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            24.657165564698317,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "cell": "left",
+      "site": "se",
+      "centerMm": [
+        17.43524897563761,
+        -17.435248975637606,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "left_upper_free_cell_body",
+      "pinBody": "left_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            17.43524897563761,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            17.43524897563761,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            17.43524897563761,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            17.43524897563761,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            17.43524897563761,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            17.43524897563761,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            17.43524897563761,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            17.43524897563761,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            17.43524897563761,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            17.43524897563761,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            17.43524897563761,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            17.43524897563761,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "cell": "left",
+      "site": "s",
+      "centerMm": [
+        1.5098159442427066e-15,
+        -24.657165564698317,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "left_upper_free_cell_body",
+      "pinBody": "left_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            1.5098159442427066e-15,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "cell": "left",
+      "site": "sw",
+      "centerMm": [
+        -17.435248975637606,
+        -17.43524897563761,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "left_upper_free_cell_body",
+      "pinBody": "left_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            -17.435248975637606,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            -17.435248975637606,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            -17.435248975637606,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            -17.435248975637606,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            -17.435248975637606,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            -17.435248975637606,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            -17.435248975637606,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            -17.435248975637606,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            -17.435248975637606,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            -17.435248975637606,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            -17.435248975637606,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            -17.435248975637606,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "cell": "left",
+      "site": "w",
+      "centerMm": [
+        -24.657165564698317,
+        3.0196318884854133e-15,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "left_upper_free_cell_body",
+      "pinBody": "left_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            -24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            -24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            -24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            -24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            -24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            -24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            -24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            -24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            -24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            -24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            -24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            -24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "cell": "left",
+      "site": "nw",
+      "centerMm": [
+        -17.435248975637606,
+        17.43524897563761,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "left_upper_free_cell_body",
+      "pinBody": "left_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            -17.435248975637606,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            -17.435248975637606,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            -17.435248975637606,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            -17.435248975637606,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            -17.435248975637606,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            -17.435248975637606,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            -17.435248975637606,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            -17.435248975637606,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            -17.435248975637606,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            -17.435248975637606,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            -17.435248975637606,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            -17.435248975637606,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "left_screw_pin_body",
+          "bodyB": "left_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "cell": "right",
+      "site": "n",
+      "centerMm": [
+        49.314331129396635,
+        24.657165564698317,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "right_upper_free_cell_body",
+      "pinBody": "right_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            49.314331129396635,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            49.314331129396635,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            49.314331129396635,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            49.314331129396635,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            49.314331129396635,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            49.314331129396635,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            49.314331129396635,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            49.314331129396635,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            49.314331129396635,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            49.314331129396635,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            49.314331129396635,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            49.314331129396635,
+            24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "cell": "right",
+      "site": "ne",
+      "centerMm": [
+        66.74958010503424,
+        17.435248975637606,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "right_upper_free_cell_body",
+      "pinBody": "right_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            66.74958010503424,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            66.74958010503424,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            66.74958010503424,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            66.74958010503424,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            66.74958010503424,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            66.74958010503424,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            66.74958010503424,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            66.74958010503424,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            66.74958010503424,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            66.74958010503424,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            66.74958010503424,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            66.74958010503424,
+            17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "cell": "right",
+      "site": "e",
+      "centerMm": [
+        73.97149669409495,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "right_upper_free_cell_body",
+      "pinBody": "right_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            73.97149669409495,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            73.97149669409495,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            73.97149669409495,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            73.97149669409495,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            73.97149669409495,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            73.97149669409495,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            73.97149669409495,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            73.97149669409495,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            73.97149669409495,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            73.97149669409495,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            73.97149669409495,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            73.97149669409495,
+            0.0,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "cell": "right",
+      "site": "se",
+      "centerMm": [
+        66.74958010503424,
+        -17.435248975637606,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "right_upper_free_cell_body",
+      "pinBody": "right_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            66.74958010503424,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            66.74958010503424,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            66.74958010503424,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            66.74958010503424,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            66.74958010503424,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            66.74958010503424,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            66.74958010503424,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            66.74958010503424,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            66.74958010503424,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            66.74958010503424,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            66.74958010503424,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            66.74958010503424,
+            -17.435248975637606,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "cell": "right",
+      "site": "s",
+      "centerMm": [
+        49.314331129396635,
+        -24.657165564698317,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "right_upper_free_cell_body",
+      "pinBody": "right_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            49.314331129396635,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            49.314331129396635,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            49.314331129396635,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            49.314331129396635,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            49.314331129396635,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            49.314331129396635,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            49.314331129396635,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            49.314331129396635,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            49.314331129396635,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            49.314331129396635,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            49.314331129396635,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            49.314331129396635,
+            -24.657165564698317,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "cell": "right",
+      "site": "sw",
+      "centerMm": [
+        31.87908215375903,
+        -17.43524897563761,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "right_upper_free_cell_body",
+      "pinBody": "right_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            31.87908215375903,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            31.87908215375903,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            31.87908215375903,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            31.87908215375903,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            31.87908215375903,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            31.87908215375903,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            31.87908215375903,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            31.87908215375903,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            31.87908215375903,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            31.87908215375903,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            31.87908215375903,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            31.87908215375903,
+            -17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "cell": "right",
+      "site": "w",
+      "centerMm": [
+        24.657165564698317,
+        3.0196318884854133e-15,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "right_upper_free_cell_body",
+      "pinBody": "right_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            24.657165564698317,
+            3.0196318884854133e-15,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "cell": "right",
+      "site": "nw",
+      "centerMm": [
+        31.87908215375903,
+        17.43524897563761,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeWallBody": "right_upper_free_cell_body",
+      "pinBody": "right_screw_pin_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "ringSegmentCount": 12,
+      "recommendedCollisionPrimitive": "convex_ring_sector_or_capsule_wall",
+      "ringSegments": [
+        {
+          "segmentIndex": 0,
+          "angleStartDeg": 0.0,
+          "angleEndDeg": 30.0,
+          "centerMm": [
+            31.87908215375903,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 1,
+          "angleStartDeg": 30.0,
+          "angleEndDeg": 60.0,
+          "centerMm": [
+            31.87908215375903,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 2,
+          "angleStartDeg": 60.0,
+          "angleEndDeg": 90.0,
+          "centerMm": [
+            31.87908215375903,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 3,
+          "angleStartDeg": 90.0,
+          "angleEndDeg": 120.0,
+          "centerMm": [
+            31.87908215375903,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 4,
+          "angleStartDeg": 120.0,
+          "angleEndDeg": 150.0,
+          "centerMm": [
+            31.87908215375903,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 5,
+          "angleStartDeg": 150.0,
+          "angleEndDeg": 180.0,
+          "centerMm": [
+            31.87908215375903,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 6,
+          "angleStartDeg": 180.0,
+          "angleEndDeg": 210.0,
+          "centerMm": [
+            31.87908215375903,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 7,
+          "angleStartDeg": 210.0,
+          "angleEndDeg": 240.0,
+          "centerMm": [
+            31.87908215375903,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 8,
+          "angleStartDeg": 240.0,
+          "angleEndDeg": 270.0,
+          "centerMm": [
+            31.87908215375903,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 9,
+          "angleStartDeg": 270.0,
+          "angleEndDeg": 300.0,
+          "centerMm": [
+            31.87908215375903,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 10,
+          "angleStartDeg": 300.0,
+          "angleEndDeg": 330.0,
+          "centerMm": [
+            31.87908215375903,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        },
+        {
+          "segmentIndex": 11,
+          "angleStartDeg": 330.0,
+          "angleEndDeg": 360.0,
+          "centerMm": [
+            31.87908215375903,
+            17.43524897563761,
+            0.0
+          ],
+          "axis": [
+            0.0,
+            0.0,
+            1.0
+          ],
+          "bodyA": "right_screw_pin_body",
+          "bodyB": "right_upper_free_cell_body",
+          "primitive": "convex_ring_sector_or_capsule_wall",
+          "source": "layout-derived-placeholder-needs-CAD-surface",
+          "physicalAccuracyValidated": false
+        }
+      ],
+      "source": "A360 layout-derived site; replace with segmented radial_pad_hole_surfaces evidence before exact claims",
+      "physicalAccuracyValidated": false
+    }
+  ],
+  "twoCellContactPairs": [
+    {
+      "name": "upper",
+      "leftCell": "left",
+      "rightCell": "right",
+      "leftSite": "ne",
+      "rightSite": "nw",
+      "leftCenterMm": [
+        17.43524897563761,
+        17.435248975637606,
+        0.0
+      ],
+      "rightCenterMm": [
+        31.87908215375903,
+        17.43524897563761,
+        0.0
+      ],
+      "axis": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "leftPinBody": "left_ne_connector_pin_or_screw",
+      "rightHoleBody": "right_upper_free_cell_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "requiredSurfacePair": "two_cell_connector_pairs.json plus radial_pad_hole_surfaces.json",
+      "observableMarkers": [
+        {
+          "marker": "upper_lower",
+          "zMm": 2.0,
+          "description": "lower connector marker coordinate for bench and engine comparison"
+        },
+        {
+          "marker": "upper_middle",
+          "zMm": 4.0,
+          "description": "middle connector marker coordinate for bench and engine comparison"
+        },
+        {
+          "marker": "upper_upper",
+          "zMm": 4.0,
+          "description": "upper connector marker coordinate for bench and engine comparison"
+        }
+      ],
+      "source": "layout-derived X-neighbor connector pair; replace with measured connector origins before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "name": "middle",
+      "leftCell": "left",
+      "rightCell": "right",
+      "leftSite": "e",
+      "rightSite": "w",
+      "leftCenterMm": [
+        24.657165564698317,
+        0.0,
+        0.0
+      ],
+      "rightCenterMm": [
+        24.657165564698317,
+        3.0196318884854133e-15,
+        0.0
+      ],
+      "axis": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "leftPinBody": "left_e_connector_pin_or_screw",
+      "rightHoleBody": "right_upper_free_cell_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "requiredSurfacePair": "two_cell_connector_pairs.json plus radial_pad_hole_surfaces.json",
+      "observableMarkers": [
+        {
+          "marker": "middle_lower",
+          "zMm": 2.0,
+          "description": "lower connector marker coordinate for bench and engine comparison"
+        },
+        {
+          "marker": "middle_middle",
+          "zMm": 4.0,
+          "description": "middle connector marker coordinate for bench and engine comparison"
+        },
+        {
+          "marker": "middle_upper",
+          "zMm": 4.0,
+          "description": "upper connector marker coordinate for bench and engine comparison"
+        }
+      ],
+      "source": "layout-derived X-neighbor connector pair; replace with measured connector origins before exact claims",
+      "physicalAccuracyValidated": false
+    },
+    {
+      "name": "lower",
+      "leftCell": "left",
+      "rightCell": "right",
+      "leftSite": "se",
+      "rightSite": "sw",
+      "leftCenterMm": [
+        17.43524897563761,
+        -17.435248975637606,
+        0.0
+      ],
+      "rightCenterMm": [
+        31.87908215375903,
+        -17.43524897563761,
+        0.0
+      ],
+      "axis": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "leftPinBody": "left_se_connector_pin_or_screw",
+      "rightHoleBody": "right_upper_free_cell_body",
+      "holeRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "clearanceMm": 0.3400000000000001,
+      "requiredSurfacePair": "two_cell_connector_pairs.json plus radial_pad_hole_surfaces.json",
+      "observableMarkers": [
+        {
+          "marker": "lower_lower",
+          "zMm": 2.0,
+          "description": "lower connector marker coordinate for bench and engine comparison"
+        },
+        {
+          "marker": "lower_middle",
+          "zMm": 4.0,
+          "description": "middle connector marker coordinate for bench and engine comparison"
+        },
+        {
+          "marker": "lower_upper",
+          "zMm": 4.0,
+          "description": "upper connector marker coordinate for bench and engine comparison"
+        }
+      ],
+      "source": "layout-derived X-neighbor connector pair; replace with measured connector origins before exact claims",
+      "physicalAccuracyValidated": false
+    }
+  ],
+  "collisionPrimitiveContract": {
+    "holeWallPrimitive": "split each annular hole wall into convex sectors or analytic capsule/cylinder contacts",
+    "avoid": "single concave hole mesh as the active collision body",
+    "ringSegmentCount": 12,
+    "minimumRecommendedRingSegments": 8,
+    "collisionPrimitiveCount": 195
+  },
+  "engineAdapters": [
+    {
+      "engine": "MuJoCo",
+      "preferredFile": "assets/cad/segmented/mujoco/rad_two_cell.xml",
+      "contactGuidance": "use named bodies, slide/hinge joints, convex contact geoms, and margin/gap to expose pin-hole free-play before contact",
+      "requiredOutputs": [
+        "qpos",
+        "body_xpos",
+        "contact pairs",
+        "constraint forces",
+        "final marker xyz"
+      ]
+    },
+    {
+      "engine": "Gazebo/Ignition",
+      "preferredFile": "assets/cad/segmented/gazebo/rad_two_cell.sdf",
+      "contactGuidance": "use simplified convex collision meshes separate from visual meshes; log joint states and contact wrenches",
+      "requiredOutputs": [
+        "link poses",
+        "joint states",
+        "contact wrenches",
+        "final marker xyz"
+      ]
+    },
+    {
+      "engine": "Isaac Sim",
+      "preferredFile": "assets/cad/segmented/isaac/rad_two_cell.usd",
+      "contactGuidance": "use USD visual mesh plus convex decomposition collision meshes with PhysX contact reporting",
+      "requiredOutputs": [
+        "body poses",
+        "joint states",
+        "contact reports",
+        "final marker xyz"
+      ]
+    }
+  ],
+  "benchTruthRequirements": {
+    "coordinateFrame": "left lower-cell frame, millimeters, z=0 at the lower body ground plane",
+    "observables": [
+      "left/right cell center xyz",
+      "left/right alpha",
+      "left/right theta",
+      "upper/middle/lower connector marker xyz",
+      "lock held/released/fell",
+      "stable state index"
+    ],
+    "holdoutPolicy": "do not tune on every bench case; reserve some lock/actuation cases for validation"
+  },
+  "summary": {
+    "status": "needs-cad-contact-decomposition-inputs",
+    "cellCount": 2,
+    "holeCount": 16,
+    "twoCellConnectorCount": 3,
+    "ringSegments": 12,
+    "collisionPrimitiveCount": 195,
+    "canBuildExactContactModel": false,
+    "physicalAccuracyValidated": false,
+    "missingEvidence": [
+      "assets/cad/segmented/actuator_force_displacement.csv",
+      "assets/cad/segmented/bench_coordinate_truth.csv",
+      "assets/cad/segmented/contact_parameters.json",
+      "assets/cad/segmented/joint_axes.json",
+      "assets/cad/segmented/lock_crown_geometry.csv",
+      "assets/cad/segmented/mass_inertia.json",
+      "assets/cad/segmented/radial_pad_hole_surfaces.json",
+      "assets/cad/segmented/two_cell_connector_pairs.json",
+      "bench-coordinate-holdout-comparison",
+      "body-collision-exclusion-mask",
+      "convex-or-analytic-hole-wall-contact-primitives",
+      "external-engine-contact-run",
+      "external-engine-handoff-file",
+      "external-engine-run-and-bench-comparison",
+      "joint-limit-stop-surfaces",
+      "lower_cell_body",
+      "radial_pad_hole_surfaces.step-or-filled-json",
+      "screw_pin_body",
+      "upper_free_cell_body"
+    ],
+    "missingEvidenceCount": 19
+  },
+  "claimBoundary": {
+    "allowedClaim": "solver-ready decomposition contract derived from the A360 one-cell reference and current two-cell topology",
+    "blockedClaim": "fabrication-accurate contact mechanics until segmented CAD primitives and bench holdouts validate the model",
+    "physicalAccuracyValidated": false
+  }
+}

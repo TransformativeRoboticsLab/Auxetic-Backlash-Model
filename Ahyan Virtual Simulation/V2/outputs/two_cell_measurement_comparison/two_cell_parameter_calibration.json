@@ -1,0 +1,142 @@
+{
+  "schema": "rad-sim.two-cell-parameter-calibration.v1",
+  "candidateCount": 75,
+  "observedScalarCount": 0,
+  "best": null,
+  "topCandidates": [],
+  "baseline": {
+    "schema": "rad-sim.two-cell-measurement-comparison.v1",
+    "model": "cad-derived-two-cell-rigid-contact-proxy",
+    "sampleCount": 5,
+    "observedScalarCount": 0,
+    "rmsError": null,
+    "maxAbsError": null,
+    "contactModeAccuracy": null,
+    "missingObservationCases": [
+      "free_contract_lift",
+      "free_expand_pushdown",
+      "right_state_locked",
+      "right_position_locked",
+      "left_free_neighbor_residual"
+    ],
+    "rows": [
+      {
+        "caseId": "free_contract_lift",
+        "predicted": {
+          "leftX": 0.0,
+          "leftY": 0.0,
+          "leftZ": 0.0,
+          "rightX": 0.88625,
+          "rightY": 0.0,
+          "rightZ": 0.30499999999999994,
+          "rightAlpha": 0.7725,
+          "rightTheta": -5.925000000000004
+        },
+        "observed": {},
+        "residual": {},
+        "contactModePredicted": "clearance-taken-up",
+        "contactModeObserved": "",
+        "availableFields": []
+      },
+      {
+        "caseId": "free_expand_pushdown",
+        "predicted": {
+          "leftX": 0.0,
+          "leftY": 0.0,
+          "leftZ": 0.0,
+          "rightX": 1.11375,
+          "rightY": 0.0,
+          "rightZ": -0.30499999999999994,
+          "rightAlpha": 1.2275,
+          "rightTheta": 25.924999999999997
+        },
+        "observed": {},
+        "residual": {},
+        "contactModePredicted": "clearance-taken-up",
+        "contactModeObserved": "",
+        "availableFields": []
+      },
+      {
+        "caseId": "right_state_locked",
+        "predicted": {
+          "leftX": 0.0,
+          "leftY": 0.0,
+          "leftZ": 0.0,
+          "rightX": 1.0,
+          "rightY": 0.0,
+          "rightZ": 0.0,
+          "rightAlpha": 1.0,
+          "rightTheta": 10.0
+        },
+        "observed": {},
+        "residual": {},
+        "contactModePredicted": "blocked-by-lock",
+        "contactModeObserved": "",
+        "availableFields": []
+      },
+      {
+        "caseId": "right_position_locked",
+        "predicted": {
+          "leftX": 0.0,
+          "leftY": 0.0,
+          "leftZ": 0.0,
+          "rightX": 1.0,
+          "rightY": 0.0,
+          "rightZ": 0.0,
+          "rightAlpha": 1.0,
+          "rightTheta": 10.0
+        },
+        "observed": {},
+        "residual": {},
+        "contactModePredicted": "blocked-by-lock",
+        "contactModeObserved": "",
+        "availableFields": []
+      },
+      {
+        "caseId": "left_free_neighbor_residual",
+        "predicted": {
+          "leftX": 0.080620519890936,
+          "leftY": 0.0,
+          "leftZ": 0.08489179906474928,
+          "rightX": 0.919379480109064,
+          "rightY": 0.0,
+          "rightZ": 0.30499999999999994,
+          "rightAlpha": 0.7725,
+          "rightTheta": -5.925000000000004
+        },
+        "observed": {},
+        "residual": {},
+        "contactModePredicted": "clearance-taken-up",
+        "contactModeObserved": "",
+        "availableFields": []
+      }
+    ],
+    "acceptance": {
+      "readyForParameterFit": false,
+      "requiresMoreData": true,
+      "requiresSegmentedPhysics": true
+    }
+  },
+  "measurementTemplate": [
+    "caseId",
+    "alphaCommand",
+    "zCommand",
+    "pinRadius",
+    "holeRadius",
+    "leftX",
+    "leftY",
+    "leftZ",
+    "rightX",
+    "rightY",
+    "rightZ",
+    "rightAlpha",
+    "rightTheta",
+    "contactModeObserved",
+    "notes"
+  ],
+  "interpretation": {
+    "calibrationScope": "reduced two-cell proxy only",
+    "requiresSegmentedPhysics": true,
+    "nextStep": "measure the packet cases, fit this proxy, then compare against an external rigid-body contact model"
+  }
+}

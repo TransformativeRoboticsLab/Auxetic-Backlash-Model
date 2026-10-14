@@ -1,0 +1,138 @@
+{
+  "schema": "rad-sim.segmented-cad-radial-pad-hole-surfaces-template.v1",
+  "units": "mm",
+  "instructions": [
+    "Replace analytic placeholders with exact hole-wall surface IDs or mesh filenames from Fusion.",
+    "Keep site names n/ne/e/se/s/sw/w/nw so connector pairing remains stable."
+  ],
+  "surfaces": [
+    {
+      "site": "n",
+      "centerMm": [
+        1.5098159442427066e-15,
+        24.657165564698317,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeRadiusMm": 1.7,
+      "surfaceAsset": "",
+      "fusionBodyOrFaceId": ""
+    },
+    {
+      "site": "ne",
+      "centerMm": [
+        17.43524897563761,
+        17.435248975637606,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeRadiusMm": 1.7,
+      "surfaceAsset": "",
+      "fusionBodyOrFaceId": ""
+    },
+    {
+      "site": "e",
+      "centerMm": [
+        24.657165564698317,
+        0.0,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeRadiusMm": 1.7,
+      "surfaceAsset": "",
+      "fusionBodyOrFaceId": ""
+    },
+    {
+      "site": "se",
+      "centerMm": [
+        17.43524897563761,
+        -17.435248975637606,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeRadiusMm": 1.7,
+      "surfaceAsset": "",
+      "fusionBodyOrFaceId": ""
+    },
+    {
+      "site": "s",
+      "centerMm": [
+        1.5098159442427066e-15,
+        -24.657165564698317,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeRadiusMm": 1.7,
+      "surfaceAsset": "",
+      "fusionBodyOrFaceId": ""
+    },
+    {
+      "site": "sw",
+      "centerMm": [
+        -17.435248975637606,
+        -17.43524897563761,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeRadiusMm": 1.7,
+      "surfaceAsset": "",
+      "fusionBodyOrFaceId": ""
+    },
+    {
+      "site": "w",
+      "centerMm": [
+        -24.657165564698317,
+        3.0196318884854133e-15,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeRadiusMm": 1.7,
+      "surfaceAsset": "",
+      "fusionBodyOrFaceId": ""
+    },
+    {
+      "site": "nw",
+      "centerMm": [
+        -17.435248975637606,
+        17.43524897563761,
+        0.0
+      ],
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "holeRadiusMm": 1.7,
+      "surfaceAsset": "",
+      "fusionBodyOrFaceId": ""
+    }
+  ]
+}

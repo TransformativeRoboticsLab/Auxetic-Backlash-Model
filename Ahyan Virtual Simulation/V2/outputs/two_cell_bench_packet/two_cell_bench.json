@@ -1,0 +1,156 @@
+{
+  "schema": "rad-sim.two-cell-physical-bench.v1",
+  "model": "cad-derived-two-cell-rigid-contact-proxy",
+  "cadReference": {
+    "schema": "rad-sim.cad-rad-cell-reference.v1",
+    "source": "Autodesk A360 public share https://a360.co/4bMlzip",
+    "localFiles": {
+      "fusionArchive": "assets/cad/RADs_unit_cell.f3d",
+      "viewerSummary": "assets/cad/RADs_unit_cell_reference.json",
+      "preview": "assets/cad/RADs_unit_cell_preview.png"
+    },
+    "units": "mm",
+    "boundingBoxMm": {
+      "widthX": 55.604331129396634,
+      "widthY": 55.60433117189373,
+      "heightZ": 19.99999621152464
+    },
+    "nominalHoleDiameterMm": 3.4,
+    "fusionManifestLabels": {
+      "archiveDisplayName": "RADs unit cell",
+      "linkedCellDisplayName": "RADs free cell 4mm tall 3.4mm hole"
+    },
+    "viewerAccess": {
+      "shareUrl": "https://a360.co/4bMlzip",
+      "resolvedTitle": "RADs unit cell - AUTODESK FUSION",
+      "downloadFormatsObserved": [
+        "Fusion Archive",
+        "Inventor 2025",
+        "IGES",
+        "SAT",
+        "SMT",
+        "STEP",
+        "DWG",
+        "DXF",
+        "STL",
+        "FBX",
+        "SketchUp",
+        "OBJ"
+      ],
+      "downloadRequiresEmailExport": true
+    },
+    "visibleFeatures": [
+      "central circular crown and screw stack",
+      "eight radial arms",
+      "outer circular pin-hole pads",
+      "single-cell monolithic upper/lower body fragments"
+    ],
+    "fragments": [
+      {
+        "id": 0,
+        "name": "RADs free cell 4mm tall 3.4mm hole body",
+        "zMin": 3.9999988079071045,
+        "zMax": 8.000000953674316
+      },
+      {
+        "id": 1,
+        "name": "cell lower body",
+        "zMin": 0.0,
+        "zMax": 4.0
+      },
+      {
+        "id": 2,
+        "name": "18-8 stainless screw",
+        "zMin": -9.999998092651367,
+        "zMax": 9.999998092651367
+      }
+    ],
+    "physicalInterpretation": "CAD-derived visual/dimensional reference. The reduced two-cell model does not replace segmented rigid-body contact simulation."
+  },
+  "units": "normalized-cell-units",
+  "controls": {
+    "alphaCommand": -0.35,
+    "zCommand": 0.35,
+    "holeSweepMax": 0.5,
+    "holeSweepSteps": 9,
+    "leftPositionLocked": true,
+    "rightLocked": false,
+    "rightPositionLocked": false
+  },
+  "dimensions": {
+    "cellSize": 1.0,
+    "pinRadius": 0.18,
+    "holeRadius": 0.225,
+    "pinHoleClearance": 0.04500000000000001
+  },
+  "deadZones": {
+    "backlash": 0.1,
+    "clearance": 0.04500000000000001,
+    "alphaDeadZone": 0.12250000000000001,
+    "verticalDeadZone": 0.04500000000000001,
+    "effectiveBacklash": 0.14500000000000002
+  },
+  "cells": [
+    {
+      "id": "left",
+      "positionLocked": true,
+      "locked": false,
+      "alpha": 1.0,
+      "theta": 10.0,
+      "center": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "residualAlpha": 0.0,
+      "residualZ": 0.0
+    },
+    {
+      "id": "right",
+      "positionLocked": false,
+      "locked": false,
+      "alpha": 0.7725,
+      "theta": -5.925000000000004,
+      "center": {
+        "x": 0.88625,
+        "y": 0.0,
+        "z": 0.30499999999999994
+      },
+      "residualAlpha": -0.22749999999999998,
+      "residualZ": 0.30499999999999994
+    }
+  ],
+  "connector": {
+    "pitch": 1.0,
+    "restPitch": 0.88625,
+    "distance": 0.93726413699661,
+    "axialStrain": 0.05756179068728917,
+    "verticalShear": 0.30499999999999994,
+    "contactMode": "clearance-taken-up",
+    "contactPenetration": 0.30499999999999994,
+    "alphaTransmission": 0.4175036464340396,
+    "zTransmission": 0.27833376742540755
+  },
+  "energy": {
+    "axialEnergy": 0.013253438988509161,
+    "hingeEnergy": 0.09656586391361954,
+    "verticalEnergy": 0.23256249999999992,
+    "contactEnergy": 1.1162999999999996,
+    "lockPenaltyEnergy": 0.0,
+    "totalEnergy": 1.4586818029021282
+  },
+  "lockChecks": {
+    "leftFixtureError": 0.0,
+    "rightFixtureError": null,
+    "rightStateMotionSuppressed": false
+  },
+  "interpretation": {
+    "calibratedAccuracy": "not-yet-calibrated",
+    "limitation": "Reduced proxy: no segmented moving CAD bodies, no solved collisions, no friction, and no measured joint stiffness.",
+    "nextEvidenceNeeded": [
+      "two-cell CAD assembly or STEP with separated moving bodies",
+      "pin-hole contact radius and friction measurements",
+      "alpha/z actuation traces for free, state-locked, and position-locked pairs"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+caseId,bodyId,bodyName,lockMode,alphaCommand,zCommand,pinRadius,holeRadius,expectedX,expectedY,expectedZ,expectedAlpha,expectedTheta,externalX,externalY,externalZ,externalAlpha,externalTheta,sourceEngine,notes
+free_contract_lift,left,left_cell,free,-0.35,0.35,0.18,0.225,0.0,0.0,0.0,0.8502666234321212,-0.48133635975151634,,,,,,,
+free_contract_lift,right,right_cell,free,-0.35,0.35,0.18,0.225,0.88625,0.0,0.06310076580111743,0.7833896086141819,-5.1627273970072665,,,,,,,
+free_expand_pushdown,left,left_cell,free,0.35,-0.35,0.18,0.225,0.0,0.0,0.0,1.1497333508155547,20.48133455708883,,,,,,,
+free_expand_pushdown,right,right_cell,free,0.35,-0.35,0.18,0.225,1.11375,0.0,-0.055240179862622904,1.2166102931648572,25.16272052154001,,,,,,,
+right_state_locked,left,left_cell,right_state_locked,-0.35,0.35,0.18,0.225,0.0,0.0,0.0,0.9999999999051391,9.999999993359737,,,,,,,
+right_state_locked,right,right_cell,right_state_locked,-0.35,0.35,0.18,0.225,1.0,0.0,0.06310077045541398,1.0,10.0,,,,,,,
+right_position_locked,left,left_cell,right_position_locked,-0.35,0.35,0.18,0.225,0.0,0.0,0.0,0.8937248268824645,2.5607378817725106,,,,,,,
+right_position_locked,right,right_cell,right_position_locked,-0.35,0.35,0.18,0.225,1.0,0.0,0.0,0.7964498290725552,-4.248511964921136,,,,,,,
+left_free_neighbor_residual,left,left_cell,left_free,-0.35,0.35,0.18,0.225,0.0,0.0,0.24367431258455183,0.8177989305560286,-2.7540748610779957,,,,,,,
+left_free_neighbor_residual,right,right_cell,left_free,-0.35,0.35,0.18,0.225,0.838758960218128,0.0,0.28977453513632984,0.7788432123633747,-5.480975134563771,,,,,,,

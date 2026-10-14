@@ -1,0 +1,108 @@
+<mujoco model="rad_two_cell_cad_proxy">
+  <compiler angle="degree" coordinate="local"/>
+  <option timestep="0.001" gravity="0 0 -0.24525"/>
+  <worldbody>
+    <geom name="ground" type="plane" pos="0 0 -2" size="90 45 1" rgba="0.82 0.84 0.82 1"/>
+    <body name="left_cell" pos="0 0 0">
+      <geom name="left_cell_hub" type="cylinder" pos="0 0 0" size="3.61428152 2" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_screw" type="cylinder" pos="0 0 6.99999905" size="1.105 4.99999905" rgba="0.16 0.16 0.15 1"/>
+      <geom name="left_cell_n_arm" type="capsule" fromto="0 0 0 1.50981594e-15 24.6571656 0" size="1.00087796" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_n_pad" type="cylinder" pos="1.50981594e-15 24.6571656 0" size="3.145 2" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_n_pin" type="cylinder" pos="1.50981594e-15 24.6571656 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="left_cell_n_hole_clearance" type="cylinder" pos="1.50981594e-15 24.6571656 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="left_cell_n_marker" pos="1.50981594e-15 24.6571656 0" size="0.595" rgba="1 0.92 0.15 1"/>
+      <geom name="left_cell_ne_arm" type="capsule" fromto="0 0 0 17.435249 17.435249 0" size="1.00087796" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_ne_pad" type="cylinder" pos="17.435249 17.435249 0" size="3.145 2" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_ne_pin" type="cylinder" pos="17.435249 17.435249 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="left_cell_ne_hole_clearance" type="cylinder" pos="17.435249 17.435249 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="left_cell_ne_marker" pos="17.435249 17.435249 0" size="0.595" rgba="1 0.92 0.15 1"/>
+      <geom name="left_cell_e_arm" type="capsule" fromto="0 0 0 24.6571656 0 0" size="1.00087796" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_e_pad" type="cylinder" pos="24.6571656 0 0" size="3.145 2" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_e_pin" type="cylinder" pos="24.6571656 0 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="left_cell_e_hole_clearance" type="cylinder" pos="24.6571656 0 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="left_cell_e_marker" pos="24.6571656 0 0" size="0.595" rgba="1 0.92 0.15 1"/>
+      <geom name="left_cell_se_arm" type="capsule" fromto="0 0 0 17.435249 -17.435249 0" size="1.00087796" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_se_pad" type="cylinder" pos="17.435249 -17.435249 0" size="3.145 2" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_se_pin" type="cylinder" pos="17.435249 -17.435249 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="left_cell_se_hole_clearance" type="cylinder" pos="17.435249 -17.435249 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="left_cell_se_marker" pos="17.435249 -17.435249 0" size="0.595" rgba="1 0.92 0.15 1"/>
+      <geom name="left_cell_s_arm" type="capsule" fromto="0 0 0 1.50981594e-15 -24.6571656 0" size="1.00087796" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_s_pad" type="cylinder" pos="1.50981594e-15 -24.6571656 0" size="3.145 2" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_s_pin" type="cylinder" pos="1.50981594e-15 -24.6571656 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="left_cell_s_hole_clearance" type="cylinder" pos="1.50981594e-15 -24.6571656 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="left_cell_s_marker" pos="1.50981594e-15 -24.6571656 0" size="0.595" rgba="1 0.92 0.15 1"/>
+      <geom name="left_cell_sw_arm" type="capsule" fromto="0 0 0 -17.435249 -17.435249 0" size="1.00087796" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_sw_pad" type="cylinder" pos="-17.435249 -17.435249 0" size="3.145 2" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_sw_pin" type="cylinder" pos="-17.435249 -17.435249 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="left_cell_sw_hole_clearance" type="cylinder" pos="-17.435249 -17.435249 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="left_cell_sw_marker" pos="-17.435249 -17.435249 0" size="0.595" rgba="1 0.92 0.15 1"/>
+      <geom name="left_cell_w_arm" type="capsule" fromto="0 0 0 -24.6571656 3.01963189e-15 0" size="1.00087796" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_w_pad" type="cylinder" pos="-24.6571656 3.01963189e-15 0" size="3.145 2" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_w_pin" type="cylinder" pos="-24.6571656 3.01963189e-15 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="left_cell_w_hole_clearance" type="cylinder" pos="-24.6571656 3.01963189e-15 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="left_cell_w_marker" pos="-24.6571656 3.01963189e-15 0" size="0.595" rgba="1 0.92 0.15 1"/>
+      <geom name="left_cell_nw_arm" type="capsule" fromto="0 0 0 -17.435249 17.435249 0" size="1.00087796" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_nw_pad" type="cylinder" pos="-17.435249 17.435249 0" size="3.145 2" rgba="0.12 0.28 0.42 1"/>
+      <geom name="left_cell_nw_pin" type="cylinder" pos="-17.435249 17.435249 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="left_cell_nw_hole_clearance" type="cylinder" pos="-17.435249 17.435249 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="left_cell_nw_marker" pos="-17.435249 17.435249 0" size="0.595" rgba="1 0.92 0.15 1"/>
+    </body>
+    <body name="right_cell" pos="49.3143311 0 -6.99999867">
+      <joint name="right_cell_slide_x" type="slide" axis="1 0 0" damping="0.35"/>
+      <joint name="right_cell_slide_z" type="slide" axis="0 0 1" damping="0.35"/>
+      <joint name="right_cell_yaw" type="hinge" axis="0 0 1" damping="0.35"/>
+      <geom name="right_cell_hub" type="cylinder" pos="0 0 0" size="3.61428152 2" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_screw" type="cylinder" pos="0 0 6.99999905" size="1.105 4.99999905" rgba="0.16 0.16 0.15 1"/>
+      <geom name="right_cell_n_arm" type="capsule" fromto="0 0 0 1.50981594e-15 24.6571656 0" size="1.00087796" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_n_pad" type="cylinder" pos="1.50981594e-15 24.6571656 0" size="3.145 2" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_n_pin" type="cylinder" pos="1.50981594e-15 24.6571656 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="right_cell_n_hole_clearance" type="cylinder" pos="1.50981594e-15 24.6571656 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="right_cell_n_marker" pos="1.50981594e-15 24.6571656 0" size="0.595" rgba="1 0.92 0.15 1"/>
+      <geom name="right_cell_ne_arm" type="capsule" fromto="0 0 0 17.435249 17.435249 0" size="1.00087796" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_ne_pad" type="cylinder" pos="17.435249 17.435249 0" size="3.145 2" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_ne_pin" type="cylinder" pos="17.435249 17.435249 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="right_cell_ne_hole_clearance" type="cylinder" pos="17.435249 17.435249 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="right_cell_ne_marker" pos="17.435249 17.435249 0" size="0.595" rgba="1 0.92 0.15 1"/>
+      <geom name="right_cell_e_arm" type="capsule" fromto="0 0 0 24.6571656 0 0" size="1.00087796" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_e_pad" type="cylinder" pos="24.6571656 0 0" size="3.145 2" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_e_pin" type="cylinder" pos="24.6571656 0 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="right_cell_e_hole_clearance" type="cylinder" pos="24.6571656 0 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="right_cell_e_marker" pos="24.6571656 0 0" size="0.595" rgba="1 0.92 0.15 1"/>
+      <geom name="right_cell_se_arm" type="capsule" fromto="0 0 0 17.435249 -17.435249 0" size="1.00087796" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_se_pad" type="cylinder" pos="17.435249 -17.435249 0" size="3.145 2" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_se_pin" type="cylinder" pos="17.435249 -17.435249 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="right_cell_se_hole_clearance" type="cylinder" pos="17.435249 -17.435249 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="right_cell_se_marker" pos="17.435249 -17.435249 0" size="0.595" rgba="1 0.92 0.15 1"/>
+      <geom name="right_cell_s_arm" type="capsule" fromto="0 0 0 1.50981594e-15 -24.6571656 0" size="1.00087796" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_s_pad" type="cylinder" pos="1.50981594e-15 -24.6571656 0" size="3.145 2" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_s_pin" type="cylinder" pos="1.50981594e-15 -24.6571656 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="right_cell_s_hole_clearance" type="cylinder" pos="1.50981594e-15 -24.6571656 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="right_cell_s_marker" pos="1.50981594e-15 -24.6571656 0" size="0.595" rgba="1 0.92 0.15 1"/>
+      <geom name="right_cell_sw_arm" type="capsule" fromto="0 0 0 -17.435249 -17.435249 0" size="1.00087796" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_sw_pad" type="cylinder" pos="-17.435249 -17.435249 0" size="3.145 2" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_sw_pin" type="cylinder" pos="-17.435249 -17.435249 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="right_cell_sw_hole_clearance" type="cylinder" pos="-17.435249 -17.435249 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="right_cell_sw_marker" pos="-17.435249 -17.435249 0" size="0.595" rgba="1 0.92 0.15 1"/>
+      <geom name="right_cell_w_arm" type="capsule" fromto="0 0 0 -24.6571656 3.01963189e-15 0" size="1.00087796" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_w_pad" type="cylinder" pos="-24.6571656 3.01963189e-15 0" size="3.145 2" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_w_pin" type="cylinder" pos="-24.6571656 3.01963189e-15 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="right_cell_w_hole_clearance" type="cylinder" pos="-24.6571656 3.01963189e-15 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="right_cell_w_marker" pos="-24.6571656 3.01963189e-15 0" size="0.595" rgba="1 0.92 0.15 1"/>
+      <geom name="right_cell_nw_arm" type="capsule" fromto="0 0 0 -17.435249 17.435249 0" size="1.00087796" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_nw_pad" type="cylinder" pos="-17.435249 17.435249 0" size="3.145 2" rgba="0.70 0.34 0.12 1"/>
+      <geom name="right_cell_nw_pin" type="cylinder" pos="-17.435249 17.435249 0" size="1.7 2.36" rgba="0.05 0.05 0.05 1"/>
+      <geom name="right_cell_nw_hole_clearance" type="cylinder" pos="-17.435249 17.435249 0" size="1.7 2.44" rgba="0.1 0.65 0.9 0.22"/>
+      <site name="right_cell_nw_marker" pos="-17.435249 17.435249 0" size="0.595" rgba="1 0.92 0.15 1"/>
+    </body>
+  </worldbody>
+  <contact>
+    <pair name="upper_pin_hole" geom1="left_cell_ne_pin" geom2="right_cell_nw_hole_clearance" margin="0" gap="0" condim="3" friction="0.4 0.02 0.001"/>
+    <pair name="middle_pin_hole" geom1="left_cell_e_pin" geom2="right_cell_w_hole_clearance" margin="0" gap="0" condim="3" friction="0.4 0.02 0.001"/>
+    <pair name="lower_pin_hole" geom1="left_cell_se_pin" geom2="right_cell_sw_hole_clearance" margin="0" gap="0" condim="3" friction="0.4 0.02 0.001"/>
+  </contact>
+  <actuator>
+    <motor name="right_cell_alpha_slide" joint="right_cell_slide_x" gear="1" ctrlrange="-1 1"/>
+    <motor name="right_cell_vertical_slide" joint="right_cell_slide_z" gear="1" ctrlrange="-1 1"/>
+    <motor name="right_cell_yaw_theta" joint="right_cell_yaw" gear="1" ctrlrange="-1 1"/>
+  </actuator>
+</mujoco>

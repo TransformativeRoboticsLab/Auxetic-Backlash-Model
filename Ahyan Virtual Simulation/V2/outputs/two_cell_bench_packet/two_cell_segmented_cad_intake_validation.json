@@ -1,0 +1,397 @@
+{
+  "schema": "rad-sim.two-cell-segmented-cad-intake-validation.v1",
+  "model": "two-cell-segmented-cad-intake-validation",
+  "cadReference": {
+    "schema": "rad-sim.cad-rad-cell-reference.v1",
+    "source": "Autodesk A360 public share https://a360.co/4bMlzip",
+    "localFiles": {
+      "fusionArchive": "assets/cad/RADs_unit_cell.f3d",
+      "viewerSummary": "assets/cad/RADs_unit_cell_reference.json",
+      "preview": "assets/cad/RADs_unit_cell_preview.png"
+    },
+    "units": "mm",
+    "boundingBoxMm": {
+      "widthX": 55.604331129396634,
+      "widthY": 55.60433117189373,
+      "heightZ": 19.99999621152464
+    },
+    "nominalHoleDiameterMm": 3.4,
+    "fusionManifestLabels": {
+      "archiveDisplayName": "RADs unit cell",
+      "linkedCellDisplayName": "RADs free cell 4mm tall 3.4mm hole"
+    },
+    "viewerAccess": {
+      "shareUrl": "https://a360.co/4bMlzip",
+      "resolvedTitle": "RADs unit cell - AUTODESK FUSION",
+      "downloadFormatsObserved": [
+        "Fusion Archive",
+        "Inventor 2025",
+        "IGES",
+        "SAT",
+        "SMT",
+        "STEP",
+        "DWG",
+        "DXF",
+        "STL",
+        "FBX",
+        "SketchUp",
+        "OBJ"
+      ],
+      "downloadRequiresEmailExport": true
+    },
+    "visibleFeatures": [
+      "central circular crown and screw stack",
+      "eight radial arms",
+      "outer circular pin-hole pads",
+      "single-cell monolithic upper/lower body fragments"
+    ],
+    "fragments": [
+      {
+        "id": 0,
+        "name": "RADs free cell 4mm tall 3.4mm hole body",
+        "zMin": 3.9999988079071045,
+        "zMax": 8.000000953674316
+      },
+      {
+        "id": 1,
+        "name": "cell lower body",
+        "zMin": 0.0,
+        "zMax": 4.0
+      },
+      {
+        "id": 2,
+        "name": "18-8 stainless screw",
+        "zMin": -9.999998092651367,
+        "zMax": 9.999998092651367
+      }
+    ],
+    "physicalInterpretation": "CAD-derived visual/dimensional reference. The reduced two-cell model does not replace segmented rigid-body contact simulation."
+  },
+  "intakeDirectory": "assets/cad/segmented",
+  "readinessSummary": {
+    "status": "needs-segmented-cad-export",
+    "localAssetCount": 3,
+    "oneCellCadExportDetected": false,
+    "detectedSegmentedCadAssetCount": 0,
+    "requiredTaskCount": 16,
+    "missingRequiredTaskCount": 15,
+    "segmentedCadReady": false,
+    "physicalAccuracyValidated": false,
+    "canRunReducedProxy": true,
+    "canRunExactRigidBodyContact": false,
+    "nextAction": "Export separated STEP/STL/OBJ bodies from Fusion with pin/hole axes, then attach friction/contact and bench coordinate data."
+  },
+  "templateValidationRows": [
+    {
+      "templateId": "joint_axes.json",
+      "path": "assets/cad/segmented/joint_axes.json",
+      "kind": "json",
+      "description": "cell-local alpha/z axes and eight pin-hole axes",
+      "exists": false,
+      "status": "missing",
+      "requiredFieldCount": 0,
+      "filledFieldCount": 0,
+      "errorCount": 1,
+      "errors": [
+        "file missing"
+      ],
+      "rowCount": 0,
+      "topLevelKeys": []
+    },
+    {
+      "templateId": "radial_pad_hole_surfaces.json",
+      "path": "assets/cad/segmented/radial_pad_hole_surfaces.json",
+      "kind": "json",
+      "description": "exact or analytic hole-wall surfaces for all eight pad sites",
+      "exists": false,
+      "status": "missing",
+      "requiredFieldCount": 0,
+      "filledFieldCount": 0,
+      "errorCount": 1,
+      "errors": [
+        "file missing"
+      ],
+      "rowCount": 0,
+      "topLevelKeys": []
+    },
+    {
+      "templateId": "two_cell_connector_pairs.json",
+      "path": "assets/cad/segmented/two_cell_connector_pairs.json",
+      "kind": "json",
+      "description": "upper/middle/lower mating connector site transforms",
+      "exists": false,
+      "status": "missing",
+      "requiredFieldCount": 0,
+      "filledFieldCount": 0,
+      "errorCount": 1,
+      "errors": [
+        "file missing"
+      ],
+      "rowCount": 0,
+      "topLevelKeys": []
+    },
+    {
+      "templateId": "mass_inertia.json",
+      "path": "assets/cad/segmented/mass_inertia.json",
+      "kind": "json",
+      "description": "mass, center of mass, and inertia tensors for segmented bodies",
+      "exists": false,
+      "status": "missing",
+      "requiredFieldCount": 0,
+      "filledFieldCount": 0,
+      "errorCount": 1,
+      "errors": [
+        "file missing"
+      ],
+      "rowCount": 0,
+      "topLevelKeys": []
+    },
+    {
+      "templateId": "contact_parameters.json",
+      "path": "assets/cad/segmented/contact_parameters.json",
+      "kind": "json",
+      "description": "normal/friction/contact parameters for external engines",
+      "exists": false,
+      "status": "missing",
+      "requiredFieldCount": 0,
+      "filledFieldCount": 0,
+      "errorCount": 1,
+      "errors": [
+        "file missing"
+      ],
+      "rowCount": 0,
+      "topLevelKeys": []
+    },
+    {
+      "templateId": "lock_crown_geometry.csv",
+      "path": "assets/cad/segmented/lock_crown_geometry.csv",
+      "kind": "csv",
+      "description": "nominal/effective lock crown angles and fallout observations",
+      "exists": false,
+      "status": "missing",
+      "requiredFieldCount": 0,
+      "filledFieldCount": 0,
+      "errorCount": 1,
+      "errors": [
+        "file missing"
+      ],
+      "rowCount": 0,
+      "topLevelKeys": []
+    },
+    {
+      "templateId": "actuator_force_displacement.csv",
+      "path": "assets/cad/segmented/actuator_force_displacement.csv",
+      "kind": "csv",
+      "description": "alpha/z actuator command-to-displacement/force measurements",
+      "exists": false,
+      "status": "missing",
+      "requiredFieldCount": 0,
+      "filledFieldCount": 0,
+      "errorCount": 1,
+      "errors": [
+        "file missing"
+      ],
+      "rowCount": 0,
+      "topLevelKeys": []
+    },
+    {
+      "templateId": "bench_coordinate_truth.csv",
+      "path": "assets/cad/segmented/bench_coordinate_truth.csv",
+      "kind": "csv",
+      "description": "tracked center/marker coordinates for physical two-cell cases",
+      "exists": false,
+      "status": "missing",
+      "requiredFieldCount": 0,
+      "filledFieldCount": 0,
+      "errorCount": 1,
+      "errors": [
+        "file missing"
+      ],
+      "rowCount": 0,
+      "topLevelKeys": []
+    }
+  ],
+  "bodyAssetValidationRows": [
+    {
+      "assetId": "upper_free_cell_body",
+      "requiredFor": "segmented rigid body collision and inertia frame",
+      "status": "missing",
+      "expectedAssets": [
+        {
+          "path": "assets/cad/segmented/upper_free_cell_body.step",
+          "exists": false,
+          "bytes": null
+        },
+        {
+          "path": "assets/cad/segmented/upper_free_cell_body.stl",
+          "exists": false,
+          "bytes": null
+        },
+        {
+          "path": "assets/cad/segmented/upper_free_cell_body.obj",
+          "exists": false,
+          "bytes": null
+        }
+      ],
+      "detectedAssets": []
+    },
+    {
+      "assetId": "lower_cell_body",
+      "requiredFor": "segmented rigid body collision and inertia frame",
+      "status": "missing",
+      "expectedAssets": [
+        {
+          "path": "assets/cad/segmented/lower_cell_body.step",
+          "exists": false,
+          "bytes": null
+        },
+        {
+          "path": "assets/cad/segmented/lower_cell_body.stl",
+          "exists": false,
+          "bytes": null
+        },
+        {
+          "path": "assets/cad/segmented/lower_cell_body.obj",
+          "exists": false,
+          "bytes": null
+        }
+      ],
+      "detectedAssets": []
+    },
+    {
+      "assetId": "screw_pin_body",
+      "requiredFor": "segmented rigid body collision and inertia frame",
+      "status": "missing",
+      "expectedAssets": [
+        {
+          "path": "assets/cad/segmented/screw_pin_body.step",
+          "exists": false,
+          "bytes": null
+        },
+        {
+          "path": "assets/cad/segmented/screw_pin_body.stl",
+          "exists": false,
+          "bytes": null
+        },
+        {
+          "path": "assets/cad/segmented/screw_pin_body.obj",
+          "exists": false,
+          "bytes": null
+        }
+      ],
+      "detectedAssets": []
+    }
+  ],
+  "radialSurfaceAssetValidation": {
+    "status": "missing",
+    "expectedAssets": [
+      {
+        "path": "assets/cad/segmented/radial_pad_hole_surfaces.step",
+        "exists": false,
+        "bytes": null
+      },
+      {
+        "path": "assets/cad/segmented/radial_pad_hole_surfaces.json",
+        "exists": false,
+        "bytes": null
+      }
+    ],
+    "detectedAssets": []
+  },
+  "engineHandoffValidationRows": [
+    {
+      "engine": "MuJoCo",
+      "status": "missing",
+      "expectedAssets": [
+        {
+          "path": "assets/cad/segmented/mujoco/rad_two_cell.xml",
+          "exists": false,
+          "bytes": null
+        },
+        {
+          "path": "assets/cad/segmented/rad_two_cell.xml",
+          "exists": false,
+          "bytes": null
+        }
+      ],
+      "detectedAssets": []
+    },
+    {
+      "engine": "Gazebo/Ignition",
+      "status": "missing",
+      "expectedAssets": [
+        {
+          "path": "assets/cad/segmented/gazebo/rad_two_cell.sdf",
+          "exists": false,
+          "bytes": null
+        },
+        {
+          "path": "assets/cad/segmented/rad_two_cell.sdf",
+          "exists": false,
+          "bytes": null
+        },
+        {
+          "path": "assets/cad/segmented/rad_two_cell.urdf",
+          "exists": false,
+          "bytes": null
+        }
+      ],
+      "detectedAssets": []
+    },
+    {
+      "engine": "Isaac Sim",
+      "status": "missing",
+      "expectedAssets": [
+        {
+          "path": "assets/cad/segmented/isaac/rad_two_cell.usd",
+          "exists": false,
+          "bytes": null
+        },
+        {
+          "path": "assets/cad/segmented/rad_two_cell.usd",
+          "exists": false,
+          "bytes": null
+        }
+      ],
+      "detectedAssets": []
+    }
+  ],
+  "summary": {
+    "templateCount": 8,
+    "existingTemplateCount": 0,
+    "completeTemplateCount": 0,
+    "missingTemplateCount": 8,
+    "parseErrorCount": 0,
+    "requiredFieldCount": 0,
+    "filledFieldCount": 0,
+    "completeBodyAssetCount": 0,
+    "requiredBodyAssetCount": 3,
+    "radialSurfaceAssetDetected": false,
+    "engineHandoffAssetCount": 0,
+    "intakeValidationReady": false,
+    "canAttemptExactRigidBodyContact": false,
+    "physicalAccuracyValidated": false,
+    "missingEvidence": [
+      "assets/cad/segmented/joint_axes.json",
+      "assets/cad/segmented/radial_pad_hole_surfaces.json",
+      "assets/cad/segmented/two_cell_connector_pairs.json",
+      "assets/cad/segmented/mass_inertia.json",
+      "assets/cad/segmented/contact_parameters.json",
+      "assets/cad/segmented/lock_crown_geometry.csv",
+      "assets/cad/segmented/actuator_force_displacement.csv",
+      "assets/cad/segmented/bench_coordinate_truth.csv",
+      "upper_free_cell_body",
+      "lower_cell_body",
+      "screw_pin_body",
+      "radial_pad_hole_surfaces.step-or-filled-json",
+      "external-engine-handoff-file",
+      "external-engine-run-and-bench-comparison"
+    ],
+    "nextAction": "Fill segmented CAD/body/contact templates and add at least one external engine handoff."
+  },
+  "claimLabels": {
+    "oneCellCadSource": "Autodesk A360 public share https://a360.co/4bMlzip",
+    "validationBoundary": "complete intake only permits an external contact run; it does not validate physical accuracy",
+    "blockedClaim": "exact real-life mechanics until contact simulation and measured bench comparison pass"
+  }
+}

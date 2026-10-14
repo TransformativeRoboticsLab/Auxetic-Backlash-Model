@@ -1,0 +1,181 @@
+{
+  "schema": "rad-sim.two-cell-quasistatic-physics.v1",
+  "model": "two-cell-hard-lock-quasistatic-clearance-energy",
+  "cadReference": {
+    "schema": "rad-sim.cad-rad-cell-reference.v1",
+    "source": "Autodesk A360 public share https://a360.co/4bMlzip",
+    "localFiles": {
+      "fusionArchive": "assets/cad/RADs_unit_cell.f3d",
+      "viewerSummary": "assets/cad/RADs_unit_cell_reference.json",
+      "preview": "assets/cad/RADs_unit_cell_preview.png"
+    },
+    "units": "mm",
+    "boundingBoxMm": {
+      "widthX": 55.604331129396634,
+      "widthY": 55.60433117189373,
+      "heightZ": 19.99999621152464
+    },
+    "nominalHoleDiameterMm": 3.4,
+    "fusionManifestLabels": {
+      "archiveDisplayName": "RADs unit cell",
+      "linkedCellDisplayName": "RADs free cell 4mm tall 3.4mm hole"
+    },
+    "viewerAccess": {
+      "shareUrl": "https://a360.co/4bMlzip",
+      "resolvedTitle": "RADs unit cell - AUTODESK FUSION",
+      "downloadFormatsObserved": [
+        "Fusion Archive",
+        "Inventor 2025",
+        "IGES",
+        "SAT",
+        "SMT",
+        "STEP",
+        "DWG",
+        "DXF",
+        "STL",
+        "FBX",
+        "SketchUp",
+        "OBJ"
+      ],
+      "downloadRequiresEmailExport": true
+    },
+    "visibleFeatures": [
+      "central circular crown and screw stack",
+      "eight radial arms",
+      "outer circular pin-hole pads",
+      "single-cell monolithic upper/lower body fragments"
+    ],
+    "fragments": [
+      {
+        "id": 0,
+        "name": "RADs free cell 4mm tall 3.4mm hole body",
+        "zMin": 3.9999988079071045,
+        "zMax": 8.000000953674316
+      },
+      {
+        "id": 1,
+        "name": "cell lower body",
+        "zMin": 0.0,
+        "zMax": 4.0
+      },
+      {
+        "id": 2,
+        "name": "18-8 stainless screw",
+        "zMin": -9.999998092651367,
+        "zMax": 9.999998092651367
+      }
+    ],
+    "physicalInterpretation": "CAD-derived visual/dimensional reference. The reduced two-cell model does not replace segmented rigid-body contact simulation."
+  },
+  "controls": {
+    "alphaCommand": -0.35,
+    "zCommand": 0.35,
+    "leftPositionLocked": true,
+    "rightLocked": false,
+    "rightPositionLocked": false
+  },
+  "dimensions": {
+    "cellSize": 1.0,
+    "pinRadius": 0.18,
+    "holeRadius": 0.225,
+    "pinHoleClearance": 0.04500000000000001
+  },
+  "deadZones": {
+    "backlash": 0.1,
+    "clearance": 0.04500000000000001,
+    "alphaDeadZone": 0.12250000000000001,
+    "verticalDeadZone": 0.04500000000000001,
+    "effectiveBacklash": 0.14500000000000002
+  },
+  "targets": {
+    "leftAlpha": 1.0,
+    "rightAlpha": 0.7725,
+    "leftZ": 0.0,
+    "rightZ": 0.30499999999999994,
+    "restPitch": 0.88625
+  },
+  "cells": [
+    {
+      "id": "left",
+      "center": {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      "alpha": 0.8502666234321212,
+      "theta": -0.48133635975151634,
+      "positionLocked": true,
+      "stateLocked": false
+    },
+    {
+      "id": "right",
+      "center": {
+        "x": 0.88625,
+        "y": 0.0,
+        "z": 0.06310076580111743
+      },
+      "alpha": 0.7833896086141819,
+      "theta": -5.1627273970072665,
+      "positionLocked": false,
+      "stateLocked": false
+    }
+  ],
+  "contact": {
+    "mode": "pin-hole-vertical-contact",
+    "distance": 0.8884935391687929,
+    "restPitch": 0.8168281160231516,
+    "axialBacklashGap": 0.14500000000000002,
+    "axialError": 0.07166542314564128,
+    "axialExcess": 0.0,
+    "verticalClearance": 0.04500000000000001,
+    "verticalShear": 0.06310076580111743,
+    "verticalExcess": 0.018100765801117413,
+    "leftFloorPenetration": 0.0,
+    "rightFloorPenetration": 0.0
+  },
+  "energy": {
+    "axialEnergy": 0.0,
+    "hingeEnergy": 0.02002745794946455,
+    "rightAlphaActuatorEnergy": 0.0032610483336768244,
+    "rightZActuatorEnergy": 1.3165928888851308,
+    "leftResidualEnergy": 0.044840168116836374,
+    "verticalContactEnergy": 0.0982913167760705,
+    "groundContactEnergy": 0.0,
+    "gravityPotential": 0.0015775191450279357,
+    "storedEnergy": 1.483012880061179,
+    "totalEnergy": 1.484590399206207
+  },
+  "constraints": {
+    "hardFixedDofs": {
+      "leftX": 0.0,
+      "leftZ": 0.0
+    },
+    "freeDofs": [
+      "leftAlpha",
+      "rightX",
+      "rightZ",
+      "rightAlpha"
+    ],
+    "leftFixtureError": 0.0,
+    "rightFixtureError": null,
+    "rightStateAlphaError": null,
+    "positionLocksHold": true,
+    "stateLocksHold": true,
+    "rightLockedVerticalMotionAllowed": false
+  },
+  "solver": {
+    "engine": "scipy.optimize.minimize",
+    "method": "L-BFGS-B",
+    "success": true,
+    "message": "CONVERGENCE: NORM_OF_PROJECTED_GRADIENT_<=_PGTOL",
+    "iterations": 9,
+    "tolerance": 1e-09,
+    "maxiter": 800,
+    "scipyAvailable": true
+  },
+  "claimLabels": {
+    "physics": "internal quasistatic energy solve with hard coordinate constraints",
+    "contact": "clearance penalty proxy, not collision-resolved CAD contact",
+    "accuracy": "requires external solver and bench measurement comparison before physical claims"
+  }
+}

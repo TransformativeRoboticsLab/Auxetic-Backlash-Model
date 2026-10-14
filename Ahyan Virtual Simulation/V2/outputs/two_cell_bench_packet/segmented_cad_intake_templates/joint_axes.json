@@ -1,0 +1,171 @@
+{
+  "schema": "rad-sim.segmented-cad-joint-axes-template.v1",
+  "units": "mm",
+  "cadSource": "Autodesk A360 public share https://a360.co/4bMlzip",
+  "instructions": [
+    "Replace derived origins/directions with values measured from segmented Fusion exports.",
+    "Use a right-handed cell-local frame with z along the screw/pin stack."
+  ],
+  "axes": [
+    {
+      "id": "central_alpha_rotation_axis",
+      "originMm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "direction": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "source": "derived-placeholder"
+    },
+    {
+      "id": "vertical_slide_axis",
+      "originMm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "direction": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "travelMinMm": "",
+      "travelMaxMm": "",
+      "source": "measure-from-CAD-or-bench"
+    }
+  ],
+  "pinHoleAxes": [
+    {
+      "site": "n",
+      "originMm": [
+        1.5098159442427066e-15,
+        24.657165564698317,
+        0.0
+      ],
+      "direction": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "pinRadiusMm": 1.3599999999999999,
+      "holeRadiusMm": 1.7,
+      "source": "layout-derived-placeholder"
+    },
+    {
+      "site": "ne",
+      "originMm": [
+        17.43524897563761,
+        17.435248975637606,
+        0.0
+      ],
+      "direction": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "pinRadiusMm": 1.3599999999999999,
+      "holeRadiusMm": 1.7,
+      "source": "layout-derived-placeholder"
+    },
+    {
+      "site": "e",
+      "originMm": [
+        24.657165564698317,
+        0.0,
+        0.0
+      ],
+      "direction": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "pinRadiusMm": 1.3599999999999999,
+      "holeRadiusMm": 1.7,
+      "source": "layout-derived-placeholder"
+    },
+    {
+      "site": "se",
+      "originMm": [
+        17.43524897563761,
+        -17.435248975637606,
+        0.0
+      ],
+      "direction": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "pinRadiusMm": 1.3599999999999999,
+      "holeRadiusMm": 1.7,
+      "source": "layout-derived-placeholder"
+    },
+    {
+      "site": "s",
+      "originMm": [
+        1.5098159442427066e-15,
+        -24.657165564698317,
+        0.0
+      ],
+      "direction": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "pinRadiusMm": 1.3599999999999999,
+      "holeRadiusMm": 1.7,
+      "source": "layout-derived-placeholder"
+    },
+    {
+      "site": "sw",
+      "originMm": [
+        -17.435248975637606,
+        -17.43524897563761,
+        0.0
+      ],
+      "direction": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "pinRadiusMm": 1.3599999999999999,
+      "holeRadiusMm": 1.7,
+      "source": "layout-derived-placeholder"
+    },
+    {
+      "site": "w",
+      "originMm": [
+        -24.657165564698317,
+        3.0196318884854133e-15,
+        0.0
+      ],
+      "direction": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "pinRadiusMm": 1.3599999999999999,
+      "holeRadiusMm": 1.7,
+      "source": "layout-derived-placeholder"
+    },
+    {
+      "site": "nw",
+      "originMm": [
+        -17.435248975637606,
+        17.43524897563761,
+        0.0
+      ],
+      "direction": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "pinRadiusMm": 1.3599999999999999,
+      "holeRadiusMm": 1.7,
+      "source": "layout-derived-placeholder"
+    }
+  ]
+}

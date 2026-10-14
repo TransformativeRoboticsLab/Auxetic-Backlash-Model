@@ -1,0 +1,323 @@
+{
+  "schema": "rad-sim.two-cell-physics-validation-report.v1",
+  "model": "two-cell-cad-proxy-validation-gates",
+  "cadReference": {
+    "schema": "rad-sim.cad-rad-cell-reference.v1",
+    "source": "Autodesk A360 public share https://a360.co/4bMlzip",
+    "localFiles": {
+      "fusionArchive": "assets/cad/RADs_unit_cell.f3d",
+      "viewerSummary": "assets/cad/RADs_unit_cell_reference.json",
+      "preview": "assets/cad/RADs_unit_cell_preview.png"
+    },
+    "units": "mm",
+    "boundingBoxMm": {
+      "widthX": 55.604331129396634,
+      "widthY": 55.60433117189373,
+      "heightZ": 19.99999621152464
+    },
+    "nominalHoleDiameterMm": 3.4,
+    "fusionManifestLabels": {
+      "archiveDisplayName": "RADs unit cell",
+      "linkedCellDisplayName": "RADs free cell 4mm tall 3.4mm hole"
+    },
+    "viewerAccess": {
+      "shareUrl": "https://a360.co/4bMlzip",
+      "resolvedTitle": "RADs unit cell - AUTODESK FUSION",
+      "downloadFormatsObserved": [
+        "Fusion Archive",
+        "Inventor 2025",
+        "IGES",
+        "SAT",
+        "SMT",
+        "STEP",
+        "DWG",
+        "DXF",
+        "STL",
+        "FBX",
+        "SketchUp",
+        "OBJ"
+      ],
+      "downloadRequiresEmailExport": true
+    },
+    "visibleFeatures": [
+      "central circular crown and screw stack",
+      "eight radial arms",
+      "outer circular pin-hole pads",
+      "single-cell monolithic upper/lower body fragments"
+    ],
+    "fragments": [
+      {
+        "id": 0,
+        "name": "RADs free cell 4mm tall 3.4mm hole body",
+        "zMin": 3.9999988079071045,
+        "zMax": 8.000000953674316
+      },
+      {
+        "id": 1,
+        "name": "cell lower body",
+        "zMin": 0.0,
+        "zMax": 4.0
+      },
+      {
+        "id": 2,
+        "name": "18-8 stainless screw",
+        "zMin": -9.999998092651367,
+        "zMax": 9.999998092651367
+      }
+    ],
+    "physicalInterpretation": "CAD-derived visual/dimensional reference. The reduced two-cell model does not replace segmented rigid-body contact simulation."
+  },
+  "config": {
+    "cellSize": 1.0,
+    "backlash": 0.1,
+    "couplingGain": 0.55,
+    "zCouplingGain": 0.32,
+    "pinRadius": 0.18,
+    "holeRadius": 0.225,
+    "initialAlpha": 1.0
+  },
+  "controls": {
+    "alphaCommand": -0.35,
+    "zCommand": 0.35,
+    "holeSweepMax": 0.5,
+    "holeSweepSteps": 9
+  },
+  "tests": [
+    {
+      "testId": "cad_layout_envelope",
+      "status": "pass",
+      "pass": true,
+      "metrics": {
+        "padSiteCount": 8,
+        "maxOuterEnvelopeMm": 27.802165564698317,
+        "halfWidthMm": 27.802165564698317,
+        "matchesBoundingBox": true
+      },
+      "evidence": [
+        "A360 bounding box and nominal 3.4 mm hole label"
+      ],
+      "limitations": [
+        "dimension-consistent layout, not direct BREP vertex extraction"
+      ],
+      "missingEvidence": []
+    },
+    {
+      "testId": "hole_clearance_monotonicity",
+      "status": "pass",
+      "pass": true,
+      "metrics": {
+        "rowCount": 9,
+        "clearanceStart": 0.0,
+        "clearanceEnd": 0.32,
+        "neighborResidualZStart": 0.11199999999999999,
+        "neighborResidualZEnd": 0.003560009090862675
+      },
+      "evidence": [
+        "sweep_two_cell_backlash with left cell free",
+        "larger pin-hole clearance increases dead-zone and reduces neighbor residual z"
+      ],
+      "limitations": [],
+      "missingEvidence": []
+    },
+    {
+      "testId": "quasistatic_sweep_success",
+      "status": "pass",
+      "pass": true,
+      "metrics": {
+        "rowCount": 108,
+        "solverSuccessCount": 108,
+        "solverFailureCount": 0,
+        "maxStoredEnergy": 2.9584085301848178
+      },
+      "evidence": [
+        "targeted alpha/z/hole/lock-mode quasistatic sweep"
+      ],
+      "limitations": [],
+      "missingEvidence": []
+    },
+    {
+      "testId": "connector_clearance_contact_dieoff",
+      "status": "pass",
+      "pass": true,
+      "metrics": {
+        "tightClearanceMm": 0.0,
+        "looseClearanceMm": 2.417777777777778,
+        "tightMaxVerticalExcessMm": 0.48759667672461415,
+        "looseMaxVerticalExcessMm": 0.0,
+        "connectorCount": 3
+      },
+      "evidence": [
+        "three CAD-derived two-cell connector pairs"
+      ],
+      "limitations": [
+        "connector contact is clearance-excess bookkeeping, not solved BREP collision"
+      ],
+      "missingEvidence": []
+    },
+    {
+      "testId": "state_lock_alpha_hold_vertical_free",
+      "status": "pass",
+      "pass": true,
+      "metrics": {
+        "rightAlpha": 1.0,
+        "rightZ": 0.06310077045541398,
+        "rightStateAlphaError": 0.0,
+        "verticalMotionAllowed": true
+      },
+      "evidence": [
+        "state lock constrains alpha but does not force the right cell back to ground z"
+      ],
+      "limitations": [],
+      "missingEvidence": []
+    },
+    {
+      "testId": "position_lock_fixture_hold",
+      "status": "pass",
+      "pass": true,
+      "metrics": {
+        "rightX": 1.0,
+        "rightZ": 0.0,
+        "rightFixtureError": 0.0
+      },
+      "evidence": [
+        "position lock hard-fixes right-cell x/z fixture coordinates"
+      ],
+      "limitations": [],
+      "missingEvidence": []
+    },
+    {
+      "testId": "gravity_clearance_sag",
+      "status": "pass",
+      "pass": true,
+      "metrics": {
+        "lowClearanceHoleRadius": 0.18,
+        "highClearanceHoleRadius": 0.28,
+        "lowClearanceSag": 2.183685918220472e-05,
+        "highClearanceSag": 0.0005555599036614117
+      },
+      "evidence": [
+        "zero-command quasistatic gravity probe"
+      ],
+      "limitations": [
+        "gravity/contact parameters are uncalibrated reduced-model values"
+      ],
+      "missingEvidence": []
+    },
+    {
+      "testId": "actuation_polarity",
+      "status": "pass",
+      "pass": true,
+      "metrics": {
+        "positiveZ": 0.0631007705624096,
+        "negativeZ": -0.05524017277337256,
+        "negativeAlpha": 0.7833896918678953,
+        "positiveAlpha": 1.2166102954777944
+      },
+      "evidence": [
+        "positive/negative z commands and contraction/expansion alpha commands"
+      ],
+      "limitations": [],
+      "missingEvidence": []
+    },
+    {
+      "testId": "mjcf_proxy_ready",
+      "status": "pass",
+      "pass": true,
+      "metrics": {
+        "bodyCount": 2,
+        "jointCount": 3,
+        "actuatorCount": 3,
+        "connectorContactPairCount": 3,
+        "externalRunComplete": false
+      },
+      "evidence": [
+        "CAD-dimensioned MuJoCo XML proxy exported from A360 one-cell metadata"
+      ],
+      "limitations": [
+        "The .f3d archive is not parsed into separate rigid bodies here.",
+        "Arms, pads, pins, and hole shells are generated proxy geoms, not exact BREP surfaces.",
+        "Locking is represented by omitting free joints on fixed bodies; real lock crown compliance is not modeled.",
+        "MuJoCo is not installed in this environment, so this report exports a runnable candidate but not a completed external run."
+      ],
+      "missingEvidence": [
+        "segmentedStepOrMeshExport",
+        "measuredJointAxes",
+        "measuredFriction",
+        "measuredContactStiffness",
+        "externalMuJoCoRun"
+      ]
+    },
+    {
+      "testId": "mujoco_proxy_run_gate",
+      "status": "incomplete",
+      "pass": false,
+      "metrics": {
+        "mujocoAvailable": false,
+        "bodyResultCount": 0,
+        "expectedBodyResultCount": 2,
+        "stepsCompleted": 0,
+        "maxFixtureDisplacementMm": 0.0
+      },
+      "evidence": [
+        "optional MuJoCo execution path for the two-cell CAD proxy"
+      ],
+      "limitations": [
+        "The MJCF model is a reduced proxy, not a direct import of separated Fusion rigid bodies.",
+        "When MuJoCo is unavailable this report is an explicit missing-evidence artifact.",
+        "A completed proxy run still needs measured friction, contact stiffness, joint axes, and bench validation."
+      ],
+      "missingEvidence": [
+        "externalMuJoCoRun",
+        "mujocoBodyResults",
+        "mujocoPythonPackage"
+      ]
+    },
+    {
+      "testId": "external_result_gate",
+      "status": "incomplete",
+      "pass": false,
+      "metrics": {
+        "rowCount": 10,
+        "observedScalarCount": 0,
+        "missingExternalResultCount": 10,
+        "lockViolationCount": 0
+      },
+      "evidence": [
+        "external results template and comparison gate"
+      ],
+      "limitations": [
+        "No external MuJoCo/Gazebo/Isaac run or bench coordinate data has been loaded into this report."
+      ],
+      "missingEvidence": [
+        "externalResultRows",
+        "observedExternalScalars"
+      ]
+    }
+  ],
+  "summary": {
+    "status": "needs-external-physical-validation",
+    "testCount": 11,
+    "passCount": 9,
+    "failCount": 0,
+    "incompleteCount": 2,
+    "internalValidationPass": true,
+    "externalValidationPass": false,
+    "missingEvidence": [
+      "externalMuJoCoRun",
+      "externalResultRows",
+      "measuredContactStiffness",
+      "measuredFriction",
+      "measuredJointAxes",
+      "mujocoBodyResults",
+      "mujocoPythonPackage",
+      "observedExternalScalars",
+      "segmentedStepOrMeshExport"
+    ],
+    "missingEvidenceCount": 9
+  },
+  "claimLabels": {
+    "internalModel": "reduced two-cell proxy is numerically self-consistent for the listed gates",
+    "cadReference": "A360 one-cell archive supplies dimensions and visual topology only",
+    "physicalAccuracy": "not established until segmented CAD/contact simulation and bench data pass external_result_gate"
+  }
+}

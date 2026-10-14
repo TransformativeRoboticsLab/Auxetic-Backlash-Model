@@ -1,0 +1,296 @@
+{
+  "schema": "rad-sim.calibration-experiment-protocol.v1",
+  "hardwareProfile": "paper-reference",
+  "grid": {
+    "rows": 3,
+    "cols": 3
+  },
+  "centerCell": {
+    "row": 1,
+    "col": 1
+  },
+  "measurementFields": [
+    "alpha_delta_grid",
+    "height_delta_grid",
+    "center_displacement_grid",
+    "actuator_command",
+    "lock_state",
+    "pin_hole_slip_mm",
+    "actuator_force_n"
+  ],
+  "notes": "Protocol defines repeatable simulator/bench measurements; it does not claim the current spring-hinge solver is calibrated.",
+  "steps": [
+    {
+      "id": "single_alpha_contract",
+      "scope": "single",
+      "commands": [
+        {
+          "row": 1,
+          "col": 1,
+          "alpha": -0.25,
+          "z": 0.0
+        }
+      ],
+      "observationCells": [
+        {
+          "row": 1,
+          "col": 1
+        }
+      ],
+      "lockedCells": [],
+      "measurementFields": [
+        "alpha_delta_grid",
+        "height_delta_grid",
+        "center_displacement_grid",
+        "actuator_command",
+        "lock_state",
+        "pin_hole_slip_mm",
+        "actuator_force_n"
+      ],
+      "purpose": "Measure the local rotating-square dilation response to contraction.",
+      "expectedResponse": "Primary alpha change at the commanded cell with backlash-gated neighbor influence.",
+      "repeatCount": 3
+    },
+    {
+      "id": "single_alpha_expand",
+      "scope": "single",
+      "commands": [
+        {
+          "row": 1,
+          "col": 1,
+          "alpha": 0.1875,
+          "z": 0.0
+        }
+      ],
+      "observationCells": [
+        {
+          "row": 1,
+          "col": 1
+        }
+      ],
+      "lockedCells": [],
+      "measurementFields": [
+        "alpha_delta_grid",
+        "height_delta_grid",
+        "center_displacement_grid",
+        "actuator_command",
+        "lock_state",
+        "pin_hole_slip_mm",
+        "actuator_force_n"
+      ],
+      "purpose": "Measure expansion-side travel and check for asymmetric backlash.",
+      "expectedResponse": "Positive alpha response at the commanded cell with smaller expansion command.",
+      "repeatCount": 3
+    },
+    {
+      "id": "single_z_lift",
+      "scope": "single",
+      "commands": [
+        {
+          "row": 1,
+          "col": 1,
+          "alpha": 0.0,
+          "z": 0.3
+        }
+      ],
+      "observationCells": [
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 1
+        }
+      ],
+      "lockedCells": [],
+      "measurementFields": [
+        "alpha_delta_grid",
+        "height_delta_grid",
+        "center_displacement_grid",
+        "actuator_command",
+        "lock_state",
+        "pin_hole_slip_mm",
+        "actuator_force_n"
+      ],
+      "purpose": "Measure direct vertical actuation and residual neighbor lift.",
+      "expectedResponse": "Commanded cell moves vertically; adjacent observation cell captures pin-hole residual coupling.",
+      "repeatCount": 3
+    },
+    {
+      "id": "pair_z_residual",
+      "scope": "pair",
+      "commands": [
+        {
+          "row": 1,
+          "col": 1,
+          "alpha": 0.0,
+          "z": 0.3
+        }
+      ],
+      "observationCells": [
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 1
+        }
+      ],
+      "lockedCells": [],
+      "measurementFields": [
+        "alpha_delta_grid",
+        "height_delta_grid",
+        "center_displacement_grid",
+        "actuator_command",
+        "lock_state",
+        "pin_hole_slip_mm",
+        "actuator_force_n"
+      ],
+      "purpose": "Quantify vertical die-off from one actuated cell into a neighboring cell.",
+      "expectedResponse": "Neighbor height response should decay with clearance, backlash, and graph distance.",
+      "repeatCount": 3
+    },
+    {
+      "id": "pair_superposition",
+      "scope": "pair",
+      "commands": [
+        {
+          "row": 1,
+          "col": 1,
+          "alpha": -0.25,
+          "z": 0.15
+        },
+        {
+          "row": 0,
+          "col": 1,
+          "alpha": -0.25,
+          "z": 0.15
+        }
+      ],
+      "observationCells": [
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 1
+        }
+      ],
+      "lockedCells": [],
+      "measurementFields": [
+        "alpha_delta_grid",
+        "height_delta_grid",
+        "center_displacement_grid",
+        "actuator_command",
+        "lock_state",
+        "pin_hole_slip_mm",
+        "actuator_force_n"
+      ],
+      "purpose": "Measure whether adjacent cell commands add linearly or interact through backlash.",
+      "expectedResponse": "Any deviation from summed single-cell responses identifies a programmable-discontinuity interaction.",
+      "repeatCount": 3
+    },
+    {
+      "id": "cluster_mixed_actuation",
+      "scope": "cluster",
+      "commands": [
+        {
+          "row": 1,
+          "col": 1,
+          "alpha": 0.0,
+          "z": 0.3
+        },
+        {
+          "row": 0,
+          "col": 1,
+          "alpha": -0.25,
+          "z": 0.0
+        },
+        {
+          "row": 2,
+          "col": 1,
+          "alpha": 0.09375,
+          "z": -0.15
+        }
+      ],
+      "observationCells": [
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 1
+        },
+        {
+          "row": 2,
+          "col": 1
+        },
+        {
+          "row": 1,
+          "col": 0
+        },
+        {
+          "row": 1,
+          "col": 2
+        }
+      ],
+      "lockedCells": [],
+      "measurementFields": [
+        "alpha_delta_grid",
+        "height_delta_grid",
+        "center_displacement_grid",
+        "actuator_command",
+        "lock_state",
+        "pin_hole_slip_mm",
+        "actuator_force_n"
+      ],
+      "purpose": "Measure collective response of mixed horizontal and vertical actuation.",
+      "expectedResponse": "Cluster field should reveal multi-operator coupling, residual height spread, and reachable directions.",
+      "repeatCount": 3
+    },
+    {
+      "id": "locked_cell_control",
+      "scope": "lock",
+      "commands": [
+        {
+          "row": 1,
+          "col": 1,
+          "alpha": -0.25,
+          "z": 0.3
+        }
+      ],
+      "observationCells": [
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 1
+        }
+      ],
+      "lockedCells": [
+        {
+          "row": 1,
+          "col": 1
+        }
+      ],
+      "measurementFields": [
+        "alpha_delta_grid",
+        "height_delta_grid",
+        "center_displacement_grid",
+        "actuator_command",
+        "lock_state",
+        "pin_hole_slip_mm",
+        "actuator_force_n"
+      ],
+      "purpose": "Verify lock enforcement against commanded alpha and vertical motion.",
+      "expectedResponse": "Locked cell should remain fixed while any neighbor residual exposes compliance leakage.",
+      "repeatCount": 3
+    }
+  ]
+}

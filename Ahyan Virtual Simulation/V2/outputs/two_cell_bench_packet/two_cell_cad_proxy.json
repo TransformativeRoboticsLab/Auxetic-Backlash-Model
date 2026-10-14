@@ -1,0 +1,862 @@
+{
+  "schema": "rad-sim.two-cell-cad-mjcf-proxy.v1",
+  "model": "cad-dimensioned-two-cell-mujoco-proxy",
+  "cadReference": {
+    "schema": "rad-sim.cad-rad-cell-reference.v1",
+    "source": "Autodesk A360 public share https://a360.co/4bMlzip",
+    "localFiles": {
+      "fusionArchive": "assets/cad/RADs_unit_cell.f3d",
+      "viewerSummary": "assets/cad/RADs_unit_cell_reference.json",
+      "preview": "assets/cad/RADs_unit_cell_preview.png"
+    },
+    "units": "mm",
+    "boundingBoxMm": {
+      "widthX": 55.604331129396634,
+      "widthY": 55.60433117189373,
+      "heightZ": 19.99999621152464
+    },
+    "nominalHoleDiameterMm": 3.4,
+    "fusionManifestLabels": {
+      "archiveDisplayName": "RADs unit cell",
+      "linkedCellDisplayName": "RADs free cell 4mm tall 3.4mm hole"
+    },
+    "viewerAccess": {
+      "shareUrl": "https://a360.co/4bMlzip",
+      "resolvedTitle": "RADs unit cell - AUTODESK FUSION",
+      "downloadFormatsObserved": [
+        "Fusion Archive",
+        "Inventor 2025",
+        "IGES",
+        "SAT",
+        "SMT",
+        "STEP",
+        "DWG",
+        "DXF",
+        "STL",
+        "FBX",
+        "SketchUp",
+        "OBJ"
+      ],
+      "downloadRequiresEmailExport": true
+    },
+    "visibleFeatures": [
+      "central circular crown and screw stack",
+      "eight radial arms",
+      "outer circular pin-hole pads",
+      "single-cell monolithic upper/lower body fragments"
+    ],
+    "fragments": [
+      {
+        "id": 0,
+        "name": "RADs free cell 4mm tall 3.4mm hole body",
+        "zMin": 3.9999988079071045,
+        "zMax": 8.000000953674316
+      },
+      {
+        "id": 1,
+        "name": "cell lower body",
+        "zMin": 0.0,
+        "zMax": 4.0
+      },
+      {
+        "id": 2,
+        "name": "18-8 stainless screw",
+        "zMin": -9.999998092651367,
+        "zMax": 9.999998092651367
+      }
+    ],
+    "physicalInterpretation": "CAD-derived visual/dimensional reference. The reduced two-cell model does not replace segmented rigid-body contact simulation."
+  },
+  "cadLayout": {
+    "schema": "rad-sim.cad-rad-cell-layout.v1",
+    "cadReference": {
+      "schema": "rad-sim.cad-rad-cell-reference.v1",
+      "source": "Autodesk A360 public share https://a360.co/4bMlzip",
+      "localFiles": {
+        "fusionArchive": "assets/cad/RADs_unit_cell.f3d",
+        "viewerSummary": "assets/cad/RADs_unit_cell_reference.json",
+        "preview": "assets/cad/RADs_unit_cell_preview.png"
+      },
+      "units": "mm",
+      "boundingBoxMm": {
+        "widthX": 55.604331129396634,
+        "widthY": 55.60433117189373,
+        "heightZ": 19.99999621152464
+      },
+      "nominalHoleDiameterMm": 3.4,
+      "fusionManifestLabels": {
+        "archiveDisplayName": "RADs unit cell",
+        "linkedCellDisplayName": "RADs free cell 4mm tall 3.4mm hole"
+      },
+      "viewerAccess": {
+        "shareUrl": "https://a360.co/4bMlzip",
+        "resolvedTitle": "RADs unit cell - AUTODESK FUSION",
+        "downloadFormatsObserved": [
+          "Fusion Archive",
+          "Inventor 2025",
+          "IGES",
+          "SAT",
+          "SMT",
+          "STEP",
+          "DWG",
+          "DXF",
+          "STL",
+          "FBX",
+          "SketchUp",
+          "OBJ"
+        ],
+        "downloadRequiresEmailExport": true
+      },
+      "visibleFeatures": [
+        "central circular crown and screw stack",
+        "eight radial arms",
+        "outer circular pin-hole pads",
+        "single-cell monolithic upper/lower body fragments"
+      ],
+      "fragments": [
+        {
+          "id": 0,
+          "name": "RADs free cell 4mm tall 3.4mm hole body",
+          "zMin": 3.9999988079071045,
+          "zMax": 8.000000953674316
+        },
+        {
+          "id": 1,
+          "name": "cell lower body",
+          "zMin": 0.0,
+          "zMax": 4.0
+        },
+        {
+          "id": 2,
+          "name": "18-8 stainless screw",
+          "zMin": -9.999998092651367,
+          "zMax": 9.999998092651367
+        }
+      ],
+      "physicalInterpretation": "CAD-derived visual/dimensional reference. The reduced two-cell model does not replace segmented rigid-body contact simulation."
+    },
+    "sourceEvidence": [
+      "A360 Fusion archive bounding box",
+      "linked cell label: RADs free cell 4mm tall 3.4mm hole",
+      "eight radial pad sites visible in extracted preview"
+    ],
+    "limitations": [
+      "Site layout is dimension-consistent and topology-matched, but not exact BREP vertex extraction.",
+      "Fusion BREP streams still need segmentation/export before exact rigid-body contact simulation."
+    ],
+    "dimensionsMm": {
+      "widthMm": 55.604331129396634,
+      "heightMm": 19.99999621152464,
+      "bodyThicknessMm": 4.0,
+      "lowerBodyThicknessMm": 4.0,
+      "stackHeightMm": 19.99999621152464,
+      "nominalHoleRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "holeRadiusMm": 1.7,
+      "pinHoleClearanceMm": 0.3400000000000001,
+      "padRadiusMm": 3.145,
+      "hubRadiusMm": 3.6142815234107815,
+      "siteRadiusMm": 24.657165564698317,
+      "connectorPitchMm": 49.314331129396635,
+      "armStartRadiusMm": 2.8191395882604096,
+      "armWidthMm": 1.0008779603291393,
+      "screwRadiusMm": 0.8839999999999999
+    },
+    "padSites": [
+      {
+        "name": "n",
+        "angleDegrees": 90.0,
+        "xMm": 1.5098159442427066e-15,
+        "yMm": 24.657165564698317,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "ne",
+        "angleDegrees": 45.0,
+        "xMm": 17.43524897563761,
+        "yMm": 17.435248975637606,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "e",
+        "angleDegrees": 0.0,
+        "xMm": 24.657165564698317,
+        "yMm": 0.0,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "se",
+        "angleDegrees": -45.0,
+        "xMm": 17.43524897563761,
+        "yMm": -17.435248975637606,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "s",
+        "angleDegrees": -90.0,
+        "xMm": 1.5098159442427066e-15,
+        "yMm": -24.657165564698317,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "sw",
+        "angleDegrees": -135.0,
+        "xMm": -17.435248975637606,
+        "yMm": -17.43524897563761,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "w",
+        "angleDegrees": 180.0,
+        "xMm": -24.657165564698317,
+        "yMm": 3.0196318884854133e-15,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "nw",
+        "angleDegrees": 135.0,
+        "xMm": -17.435248975637606,
+        "yMm": 17.43524897563761,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      }
+    ],
+    "twoCellConnectorPairs": [
+      {
+        "name": "upper",
+        "leftSite": "ne",
+        "rightSite": "nw",
+        "axis": "x",
+        "leftPinGeom": "left_cell_ne_pin",
+        "rightHoleGeom": "right_cell_nw_hole_clearance"
+      },
+      {
+        "name": "middle",
+        "leftSite": "e",
+        "rightSite": "w",
+        "axis": "x",
+        "leftPinGeom": "left_cell_e_pin",
+        "rightHoleGeom": "right_cell_w_hole_clearance"
+      },
+      {
+        "name": "lower",
+        "leftSite": "se",
+        "rightSite": "sw",
+        "axis": "x",
+        "leftPinGeom": "left_cell_se_pin",
+        "rightHoleGeom": "right_cell_sw_hole_clearance"
+      }
+    ],
+    "envelopeCheck": {
+      "maxOuterEnvelopeMm": 27.802165564698317,
+      "halfWidthMm": 27.802165564698317,
+      "matchesBoundingBox": true
+    },
+    "visualModel": {
+      "siteRadiusToWidth": 0.44343965773670974,
+      "padRadiusToWidth": 0.056560342263290285,
+      "hubRadiusToWidth": 0.065,
+      "holeRadiusToWidth": 0.03057315798015691,
+      "pinRadiusToWidth": 0.024458526384125524,
+      "armStartRadiusToWidth": 0.0507,
+      "armWidthToWidth": 0.018,
+      "bodyThicknessToWidth": 0.07193684230625155,
+      "stackHeightToWidth": 0.3596841433985191,
+      "siteRadiusToPitch": 0.5,
+      "padRadiusToPitch": 0.0637745646746741,
+      "hubRadiusToPitch": 0.07329069340770764,
+      "holeRadiusToPitch": 0.034472737661986,
+      "pinRadiusToPitch": 0.027578190129588797,
+      "holeToPadRadiusRatio": 0.5405405405405406,
+      "pinToHoleRadiusRatio": 0.7999999999999999,
+      "screwToHubRadiusRatio": 0.24458526384125523,
+      "hubToPadRadiusRatio": 1.1492151107824424,
+      "armStartRadiusToPitch": 0.05716674085801196,
+      "armWidthToPitch": 0.020295884328288265,
+      "bodyThicknessToPitch": 0.0811123239105553,
+      "stackHeightToPitch": 0.4055615427297663,
+      "modelUnitsPerMm": 0.017984210576562888
+    }
+  },
+  "bench": {
+    "schema": "rad-sim.two-cell-physical-bench.v1",
+    "model": "cad-derived-two-cell-rigid-contact-proxy",
+    "cadReference": {
+      "schema": "rad-sim.cad-rad-cell-reference.v1",
+      "source": "Autodesk A360 public share https://a360.co/4bMlzip",
+      "localFiles": {
+        "fusionArchive": "assets/cad/RADs_unit_cell.f3d",
+        "viewerSummary": "assets/cad/RADs_unit_cell_reference.json",
+        "preview": "assets/cad/RADs_unit_cell_preview.png"
+      },
+      "units": "mm",
+      "boundingBoxMm": {
+        "widthX": 55.604331129396634,
+        "widthY": 55.60433117189373,
+        "heightZ": 19.99999621152464
+      },
+      "nominalHoleDiameterMm": 3.4,
+      "fusionManifestLabels": {
+        "archiveDisplayName": "RADs unit cell",
+        "linkedCellDisplayName": "RADs free cell 4mm tall 3.4mm hole"
+      },
+      "viewerAccess": {
+        "shareUrl": "https://a360.co/4bMlzip",
+        "resolvedTitle": "RADs unit cell - AUTODESK FUSION",
+        "downloadFormatsObserved": [
+          "Fusion Archive",
+          "Inventor 2025",
+          "IGES",
+          "SAT",
+          "SMT",
+          "STEP",
+          "DWG",
+          "DXF",
+          "STL",
+          "FBX",
+          "SketchUp",
+          "OBJ"
+        ],
+        "downloadRequiresEmailExport": true
+      },
+      "visibleFeatures": [
+        "central circular crown and screw stack",
+        "eight radial arms",
+        "outer circular pin-hole pads",
+        "single-cell monolithic upper/lower body fragments"
+      ],
+      "fragments": [
+        {
+          "id": 0,
+          "name": "RADs free cell 4mm tall 3.4mm hole body",
+          "zMin": 3.9999988079071045,
+          "zMax": 8.000000953674316
+        },
+        {
+          "id": 1,
+          "name": "cell lower body",
+          "zMin": 0.0,
+          "zMax": 4.0
+        },
+        {
+          "id": 2,
+          "name": "18-8 stainless screw",
+          "zMin": -9.999998092651367,
+          "zMax": 9.999998092651367
+        }
+      ],
+      "physicalInterpretation": "CAD-derived visual/dimensional reference. The reduced two-cell model does not replace segmented rigid-body contact simulation."
+    },
+    "units": "normalized-cell-units",
+    "controls": {
+      "alphaCommand": -0.35,
+      "zCommand": 0.35,
+      "holeSweepMax": 0.5,
+      "holeSweepSteps": 9,
+      "leftPositionLocked": true,
+      "rightLocked": false,
+      "rightPositionLocked": false
+    },
+    "dimensions": {
+      "cellSize": 1.0,
+      "pinRadius": 0.18,
+      "holeRadius": 0.225,
+      "pinHoleClearance": 0.04500000000000001
+    },
+    "deadZones": {
+      "backlash": 0.1,
+      "clearance": 0.04500000000000001,
+      "alphaDeadZone": 0.12250000000000001,
+      "verticalDeadZone": 0.04500000000000001,
+      "effectiveBacklash": 0.14500000000000002
+    },
+    "cells": [
+      {
+        "id": "left",
+        "positionLocked": true,
+        "locked": false,
+        "alpha": 1.0,
+        "theta": 10.0,
+        "center": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "residualAlpha": 0.0,
+        "residualZ": 0.0
+      },
+      {
+        "id": "right",
+        "positionLocked": false,
+        "locked": false,
+        "alpha": 0.7725,
+        "theta": -5.925000000000004,
+        "center": {
+          "x": 0.88625,
+          "y": 0.0,
+          "z": 0.30499999999999994
+        },
+        "residualAlpha": -0.22749999999999998,
+        "residualZ": 0.30499999999999994
+      }
+    ],
+    "connector": {
+      "pitch": 1.0,
+      "restPitch": 0.88625,
+      "distance": 0.93726413699661,
+      "axialStrain": 0.05756179068728917,
+      "verticalShear": 0.30499999999999994,
+      "contactMode": "clearance-taken-up",
+      "contactPenetration": 0.30499999999999994,
+      "alphaTransmission": 0.4175036464340396,
+      "zTransmission": 0.27833376742540755
+    },
+    "energy": {
+      "axialEnergy": 0.013253438988509161,
+      "hingeEnergy": 0.09656586391361954,
+      "verticalEnergy": 0.23256249999999992,
+      "contactEnergy": 1.1162999999999996,
+      "lockPenaltyEnergy": 0.0,
+      "totalEnergy": 1.4586818029021282
+    },
+    "lockChecks": {
+      "leftFixtureError": 0.0,
+      "rightFixtureError": null,
+      "rightStateMotionSuppressed": false
+    },
+    "interpretation": {
+      "calibratedAccuracy": "not-yet-calibrated",
+      "limitation": "Reduced proxy: no segmented moving CAD bodies, no solved collisions, no friction, and no measured joint stiffness.",
+      "nextEvidenceNeeded": [
+        "two-cell CAD assembly or STEP with separated moving bodies",
+        "pin-hole contact radius and friction measurements",
+        "alpha/z actuation traces for free, state-locked, and position-locked pairs"
+      ]
+    }
+  },
+  "scale": {
+    "xyMmPerModelUnit": 49.314331129396635,
+    "zMmPerModelUnit": 19.99999621152464,
+    "cadWidthMm": 55.604331129396634,
+    "cadHeightMm": 19.99999621152464,
+    "connectorPitchMm": 49.314331129396635,
+    "bodyThicknessMm": 4.0,
+    "nominalHoleRadiusMm": 1.7,
+    "pinRadiusMm": 1.3599999999999999,
+    "holeRadiusMm": 1.7,
+    "clearanceMm": 0.3400000000000001
+  },
+  "bodies": [
+    {
+      "id": "left",
+      "name": "left_cell",
+      "positionMm": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "positionLocked": true,
+      "stateLocked": false,
+      "alpha": 1.0,
+      "theta": 10.0,
+      "rgba": "0.12 0.28 0.42 1",
+      "fixed": true
+    },
+    {
+      "id": "right",
+      "name": "right_cell",
+      "positionMm": [
+        43.704825963427766,
+        0.0,
+        6.099998844515014
+      ],
+      "positionLocked": false,
+      "stateLocked": false,
+      "alpha": 0.7725,
+      "theta": -5.925000000000004,
+      "rgba": "0.70 0.34 0.12 1",
+      "fixed": false
+    }
+  ],
+  "joints": [
+    {
+      "body": "right_cell",
+      "joint": "right_cell_slide_x",
+      "type": "slide",
+      "axis": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "actuatorEnabled": true
+    },
+    {
+      "body": "right_cell",
+      "joint": "right_cell_slide_z",
+      "type": "slide",
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "actuatorEnabled": true
+    },
+    {
+      "body": "right_cell",
+      "joint": "right_cell_yaw",
+      "type": "hinge",
+      "axis": [
+        0.0,
+        0.0,
+        1.0
+      ],
+      "actuatorEnabled": true
+    }
+  ],
+  "actuators": [
+    {
+      "name": "right_cell_alpha_slide",
+      "joint": "right_cell_slide_x",
+      "channel": "alpha",
+      "command": -0.35,
+      "targetMm": 43.704825963427766
+    },
+    {
+      "name": "right_cell_vertical_slide",
+      "joint": "right_cell_slide_z",
+      "channel": "z",
+      "command": 0.35,
+      "targetMm": 6.099998844515014
+    },
+    {
+      "name": "right_cell_yaw_theta",
+      "joint": "right_cell_yaw",
+      "channel": "theta",
+      "command": -5.925000000000004,
+      "targetMm": 0.0
+    }
+  ],
+  "geoms": [
+    {
+      "body": "left_cell",
+      "site": "n",
+      "arm": "left_cell_n_arm",
+      "pad": "left_cell_n_pad",
+      "pin": "left_cell_n_pin",
+      "hole": "left_cell_n_hole_clearance",
+      "marker": "left_cell_n_marker",
+      "localPositionMm": [
+        1.5098159442427066e-15,
+        24.657165564698317,
+        0.0
+      ]
+    },
+    {
+      "body": "left_cell",
+      "site": "ne",
+      "arm": "left_cell_ne_arm",
+      "pad": "left_cell_ne_pad",
+      "pin": "left_cell_ne_pin",
+      "hole": "left_cell_ne_hole_clearance",
+      "marker": "left_cell_ne_marker",
+      "localPositionMm": [
+        17.43524897563761,
+        17.435248975637606,
+        0.0
+      ]
+    },
+    {
+      "body": "left_cell",
+      "site": "e",
+      "arm": "left_cell_e_arm",
+      "pad": "left_cell_e_pad",
+      "pin": "left_cell_e_pin",
+      "hole": "left_cell_e_hole_clearance",
+      "marker": "left_cell_e_marker",
+      "localPositionMm": [
+        24.657165564698317,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "body": "left_cell",
+      "site": "se",
+      "arm": "left_cell_se_arm",
+      "pad": "left_cell_se_pad",
+      "pin": "left_cell_se_pin",
+      "hole": "left_cell_se_hole_clearance",
+      "marker": "left_cell_se_marker",
+      "localPositionMm": [
+        17.43524897563761,
+        -17.435248975637606,
+        0.0
+      ]
+    },
+    {
+      "body": "left_cell",
+      "site": "s",
+      "arm": "left_cell_s_arm",
+      "pad": "left_cell_s_pad",
+      "pin": "left_cell_s_pin",
+      "hole": "left_cell_s_hole_clearance",
+      "marker": "left_cell_s_marker",
+      "localPositionMm": [
+        1.5098159442427066e-15,
+        -24.657165564698317,
+        0.0
+      ]
+    },
+    {
+      "body": "left_cell",
+      "site": "sw",
+      "arm": "left_cell_sw_arm",
+      "pad": "left_cell_sw_pad",
+      "pin": "left_cell_sw_pin",
+      "hole": "left_cell_sw_hole_clearance",
+      "marker": "left_cell_sw_marker",
+      "localPositionMm": [
+        -17.435248975637606,
+        -17.43524897563761,
+        0.0
+      ]
+    },
+    {
+      "body": "left_cell",
+      "site": "w",
+      "arm": "left_cell_w_arm",
+      "pad": "left_cell_w_pad",
+      "pin": "left_cell_w_pin",
+      "hole": "left_cell_w_hole_clearance",
+      "marker": "left_cell_w_marker",
+      "localPositionMm": [
+        -24.657165564698317,
+        3.0196318884854133e-15,
+        0.0
+      ]
+    },
+    {
+      "body": "left_cell",
+      "site": "nw",
+      "arm": "left_cell_nw_arm",
+      "pad": "left_cell_nw_pad",
+      "pin": "left_cell_nw_pin",
+      "hole": "left_cell_nw_hole_clearance",
+      "marker": "left_cell_nw_marker",
+      "localPositionMm": [
+        -17.435248975637606,
+        17.43524897563761,
+        0.0
+      ]
+    },
+    {
+      "body": "right_cell",
+      "site": "n",
+      "arm": "right_cell_n_arm",
+      "pad": "right_cell_n_pad",
+      "pin": "right_cell_n_pin",
+      "hole": "right_cell_n_hole_clearance",
+      "marker": "right_cell_n_marker",
+      "localPositionMm": [
+        1.5098159442427066e-15,
+        24.657165564698317,
+        0.0
+      ]
+    },
+    {
+      "body": "right_cell",
+      "site": "ne",
+      "arm": "right_cell_ne_arm",
+      "pad": "right_cell_ne_pad",
+      "pin": "right_cell_ne_pin",
+      "hole": "right_cell_ne_hole_clearance",
+      "marker": "right_cell_ne_marker",
+      "localPositionMm": [
+        17.43524897563761,
+        17.435248975637606,
+        0.0
+      ]
+    },
+    {
+      "body": "right_cell",
+      "site": "e",
+      "arm": "right_cell_e_arm",
+      "pad": "right_cell_e_pad",
+      "pin": "right_cell_e_pin",
+      "hole": "right_cell_e_hole_clearance",
+      "marker": "right_cell_e_marker",
+      "localPositionMm": [
+        24.657165564698317,
+        0.0,
+        0.0
+      ]
+    },
+    {
+      "body": "right_cell",
+      "site": "se",
+      "arm": "right_cell_se_arm",
+      "pad": "right_cell_se_pad",
+      "pin": "right_cell_se_pin",
+      "hole": "right_cell_se_hole_clearance",
+      "marker": "right_cell_se_marker",
+      "localPositionMm": [
+        17.43524897563761,
+        -17.435248975637606,
+        0.0
+      ]
+    },
+    {
+      "body": "right_cell",
+      "site": "s",
+      "arm": "right_cell_s_arm",
+      "pad": "right_cell_s_pad",
+      "pin": "right_cell_s_pin",
+      "hole": "right_cell_s_hole_clearance",
+      "marker": "right_cell_s_marker",
+      "localPositionMm": [
+        1.5098159442427066e-15,
+        -24.657165564698317,
+        0.0
+      ]
+    },
+    {
+      "body": "right_cell",
+      "site": "sw",
+      "arm": "right_cell_sw_arm",
+      "pad": "right_cell_sw_pad",
+      "pin": "right_cell_sw_pin",
+      "hole": "right_cell_sw_hole_clearance",
+      "marker": "right_cell_sw_marker",
+      "localPositionMm": [
+        -17.435248975637606,
+        -17.43524897563761,
+        0.0
+      ]
+    },
+    {
+      "body": "right_cell",
+      "site": "w",
+      "arm": "right_cell_w_arm",
+      "pad": "right_cell_w_pad",
+      "pin": "right_cell_w_pin",
+      "hole": "right_cell_w_hole_clearance",
+      "marker": "right_cell_w_marker",
+      "localPositionMm": [
+        -24.657165564698317,
+        3.0196318884854133e-15,
+        0.0
+      ]
+    },
+    {
+      "body": "right_cell",
+      "site": "nw",
+      "arm": "right_cell_nw_arm",
+      "pad": "right_cell_nw_pad",
+      "pin": "right_cell_nw_pin",
+      "hole": "right_cell_nw_hole_clearance",
+      "marker": "right_cell_nw_marker",
+      "localPositionMm": [
+        -17.435248975637606,
+        17.43524897563761,
+        0.0
+      ]
+    }
+  ],
+  "contacts": [
+    {
+      "connector": "upper",
+      "pinGeom": "left_cell_ne_pin",
+      "holeGeom": "right_cell_nw_hole_clearance",
+      "clearanceMm": 0.3400000000000001,
+      "margin": 0.3400000000000001,
+      "gap": 0.08500000000000002
+    },
+    {
+      "connector": "middle",
+      "pinGeom": "left_cell_e_pin",
+      "holeGeom": "right_cell_w_hole_clearance",
+      "clearanceMm": 0.3400000000000001,
+      "margin": 0.3400000000000001,
+      "gap": 0.08500000000000002
+    },
+    {
+      "connector": "lower",
+      "pinGeom": "left_cell_se_pin",
+      "holeGeom": "right_cell_sw_hole_clearance",
+      "clearanceMm": 0.3400000000000001,
+      "margin": 0.3400000000000001,
+      "gap": 0.08500000000000002
+    }
+  ],
+  "locks": [
+    {
+      "body": "left_cell",
+      "positionLocked": true,
+      "stateLocked": false,
+      "fixedInMjcf": true
+    },
+    {
+      "body": "right_cell",
+      "positionLocked": false,
+      "stateLocked": false,
+      "fixedInMjcf": false
+    }
+  ],
+  "xml": "<mujoco model=\"rad_two_cell_cad_proxy\">\n  <compiler angle=\"degree\" coordinate=\"local\"/>\n  <option timestep=\"0.001\" gravity=\"0 0 -9.81\"/>\n  <worldbody>\n    <geom name=\"ground\" type=\"plane\" pos=\"0 0 -2\" size=\"90 45 1\" rgba=\"0.82 0.84 0.82 1\"/>\n    <body name=\"left_cell\" pos=\"0 0 0\">\n      <geom name=\"left_cell_hub\" type=\"cylinder\" pos=\"0 0 0\" size=\"3.61428152 2\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_screw\" type=\"cylinder\" pos=\"0 0 6.99999905\" size=\"0.884 4.99999905\" rgba=\"0.16 0.16 0.15 1\"/>\n      <geom name=\"left_cell_n_arm\" type=\"capsule\" fromto=\"0 0 0 1.50981594e-15 24.6571656 0\" size=\"1.00087796\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_n_pad\" type=\"cylinder\" pos=\"1.50981594e-15 24.6571656 0\" size=\"3.145 2\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_n_pin\" type=\"cylinder\" pos=\"1.50981594e-15 24.6571656 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"left_cell_n_hole_clearance\" type=\"cylinder\" pos=\"1.50981594e-15 24.6571656 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"left_cell_n_marker\" pos=\"1.50981594e-15 24.6571656 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n      <geom name=\"left_cell_ne_arm\" type=\"capsule\" fromto=\"0 0 0 17.435249 17.435249 0\" size=\"1.00087796\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_ne_pad\" type=\"cylinder\" pos=\"17.435249 17.435249 0\" size=\"3.145 2\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_ne_pin\" type=\"cylinder\" pos=\"17.435249 17.435249 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"left_cell_ne_hole_clearance\" type=\"cylinder\" pos=\"17.435249 17.435249 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"left_cell_ne_marker\" pos=\"17.435249 17.435249 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n      <geom name=\"left_cell_e_arm\" type=\"capsule\" fromto=\"0 0 0 24.6571656 0 0\" size=\"1.00087796\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_e_pad\" type=\"cylinder\" pos=\"24.6571656 0 0\" size=\"3.145 2\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_e_pin\" type=\"cylinder\" pos=\"24.6571656 0 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"left_cell_e_hole_clearance\" type=\"cylinder\" pos=\"24.6571656 0 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"left_cell_e_marker\" pos=\"24.6571656 0 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n      <geom name=\"left_cell_se_arm\" type=\"capsule\" fromto=\"0 0 0 17.435249 -17.435249 0\" size=\"1.00087796\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_se_pad\" type=\"cylinder\" pos=\"17.435249 -17.435249 0\" size=\"3.145 2\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_se_pin\" type=\"cylinder\" pos=\"17.435249 -17.435249 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"left_cell_se_hole_clearance\" type=\"cylinder\" pos=\"17.435249 -17.435249 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"left_cell_se_marker\" pos=\"17.435249 -17.435249 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n      <geom name=\"left_cell_s_arm\" type=\"capsule\" fromto=\"0 0 0 1.50981594e-15 -24.6571656 0\" size=\"1.00087796\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_s_pad\" type=\"cylinder\" pos=\"1.50981594e-15 -24.6571656 0\" size=\"3.145 2\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_s_pin\" type=\"cylinder\" pos=\"1.50981594e-15 -24.6571656 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"left_cell_s_hole_clearance\" type=\"cylinder\" pos=\"1.50981594e-15 -24.6571656 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"left_cell_s_marker\" pos=\"1.50981594e-15 -24.6571656 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n      <geom name=\"left_cell_sw_arm\" type=\"capsule\" fromto=\"0 0 0 -17.435249 -17.435249 0\" size=\"1.00087796\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_sw_pad\" type=\"cylinder\" pos=\"-17.435249 -17.435249 0\" size=\"3.145 2\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_sw_pin\" type=\"cylinder\" pos=\"-17.435249 -17.435249 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"left_cell_sw_hole_clearance\" type=\"cylinder\" pos=\"-17.435249 -17.435249 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"left_cell_sw_marker\" pos=\"-17.435249 -17.435249 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n      <geom name=\"left_cell_w_arm\" type=\"capsule\" fromto=\"0 0 0 -24.6571656 3.01963189e-15 0\" size=\"1.00087796\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_w_pad\" type=\"cylinder\" pos=\"-24.6571656 3.01963189e-15 0\" size=\"3.145 2\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_w_pin\" type=\"cylinder\" pos=\"-24.6571656 3.01963189e-15 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"left_cell_w_hole_clearance\" type=\"cylinder\" pos=\"-24.6571656 3.01963189e-15 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"left_cell_w_marker\" pos=\"-24.6571656 3.01963189e-15 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n      <geom name=\"left_cell_nw_arm\" type=\"capsule\" fromto=\"0 0 0 -17.435249 17.435249 0\" size=\"1.00087796\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_nw_pad\" type=\"cylinder\" pos=\"-17.435249 17.435249 0\" size=\"3.145 2\" rgba=\"0.12 0.28 0.42 1\"/>\n      <geom name=\"left_cell_nw_pin\" type=\"cylinder\" pos=\"-17.435249 17.435249 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"left_cell_nw_hole_clearance\" type=\"cylinder\" pos=\"-17.435249 17.435249 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"left_cell_nw_marker\" pos=\"-17.435249 17.435249 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n    </body>\n    <body name=\"right_cell\" pos=\"43.704826 0 6.09999884\">\n      <joint name=\"right_cell_slide_x\" type=\"slide\" axis=\"1 0 0\" damping=\"0.35\"/>\n      <joint name=\"right_cell_slide_z\" type=\"slide\" axis=\"0 0 1\" damping=\"0.35\"/>\n      <joint name=\"right_cell_yaw\" type=\"hinge\" axis=\"0 0 1\" damping=\"0.35\"/>\n      <geom name=\"right_cell_hub\" type=\"cylinder\" pos=\"0 0 0\" size=\"3.61428152 2\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_screw\" type=\"cylinder\" pos=\"0 0 6.99999905\" size=\"0.884 4.99999905\" rgba=\"0.16 0.16 0.15 1\"/>\n      <geom name=\"right_cell_n_arm\" type=\"capsule\" fromto=\"0 0 0 1.50981594e-15 24.6571656 0\" size=\"1.00087796\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_n_pad\" type=\"cylinder\" pos=\"1.50981594e-15 24.6571656 0\" size=\"3.145 2\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_n_pin\" type=\"cylinder\" pos=\"1.50981594e-15 24.6571656 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"right_cell_n_hole_clearance\" type=\"cylinder\" pos=\"1.50981594e-15 24.6571656 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"right_cell_n_marker\" pos=\"1.50981594e-15 24.6571656 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n      <geom name=\"right_cell_ne_arm\" type=\"capsule\" fromto=\"0 0 0 17.435249 17.435249 0\" size=\"1.00087796\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_ne_pad\" type=\"cylinder\" pos=\"17.435249 17.435249 0\" size=\"3.145 2\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_ne_pin\" type=\"cylinder\" pos=\"17.435249 17.435249 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"right_cell_ne_hole_clearance\" type=\"cylinder\" pos=\"17.435249 17.435249 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"right_cell_ne_marker\" pos=\"17.435249 17.435249 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n      <geom name=\"right_cell_e_arm\" type=\"capsule\" fromto=\"0 0 0 24.6571656 0 0\" size=\"1.00087796\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_e_pad\" type=\"cylinder\" pos=\"24.6571656 0 0\" size=\"3.145 2\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_e_pin\" type=\"cylinder\" pos=\"24.6571656 0 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"right_cell_e_hole_clearance\" type=\"cylinder\" pos=\"24.6571656 0 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"right_cell_e_marker\" pos=\"24.6571656 0 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n      <geom name=\"right_cell_se_arm\" type=\"capsule\" fromto=\"0 0 0 17.435249 -17.435249 0\" size=\"1.00087796\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_se_pad\" type=\"cylinder\" pos=\"17.435249 -17.435249 0\" size=\"3.145 2\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_se_pin\" type=\"cylinder\" pos=\"17.435249 -17.435249 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"right_cell_se_hole_clearance\" type=\"cylinder\" pos=\"17.435249 -17.435249 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"right_cell_se_marker\" pos=\"17.435249 -17.435249 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n      <geom name=\"right_cell_s_arm\" type=\"capsule\" fromto=\"0 0 0 1.50981594e-15 -24.6571656 0\" size=\"1.00087796\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_s_pad\" type=\"cylinder\" pos=\"1.50981594e-15 -24.6571656 0\" size=\"3.145 2\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_s_pin\" type=\"cylinder\" pos=\"1.50981594e-15 -24.6571656 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"right_cell_s_hole_clearance\" type=\"cylinder\" pos=\"1.50981594e-15 -24.6571656 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"right_cell_s_marker\" pos=\"1.50981594e-15 -24.6571656 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n      <geom name=\"right_cell_sw_arm\" type=\"capsule\" fromto=\"0 0 0 -17.435249 -17.435249 0\" size=\"1.00087796\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_sw_pad\" type=\"cylinder\" pos=\"-17.435249 -17.435249 0\" size=\"3.145 2\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_sw_pin\" type=\"cylinder\" pos=\"-17.435249 -17.435249 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"right_cell_sw_hole_clearance\" type=\"cylinder\" pos=\"-17.435249 -17.435249 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"right_cell_sw_marker\" pos=\"-17.435249 -17.435249 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n      <geom name=\"right_cell_w_arm\" type=\"capsule\" fromto=\"0 0 0 -24.6571656 3.01963189e-15 0\" size=\"1.00087796\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_w_pad\" type=\"cylinder\" pos=\"-24.6571656 3.01963189e-15 0\" size=\"3.145 2\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_w_pin\" type=\"cylinder\" pos=\"-24.6571656 3.01963189e-15 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"right_cell_w_hole_clearance\" type=\"cylinder\" pos=\"-24.6571656 3.01963189e-15 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"right_cell_w_marker\" pos=\"-24.6571656 3.01963189e-15 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n      <geom name=\"right_cell_nw_arm\" type=\"capsule\" fromto=\"0 0 0 -17.435249 17.435249 0\" size=\"1.00087796\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_nw_pad\" type=\"cylinder\" pos=\"-17.435249 17.435249 0\" size=\"3.145 2\" rgba=\"0.70 0.34 0.12 1\"/>\n      <geom name=\"right_cell_nw_pin\" type=\"cylinder\" pos=\"-17.435249 17.435249 0\" size=\"1.36 2.36\" rgba=\"0.05 0.05 0.05 1\"/>\n      <geom name=\"right_cell_nw_hole_clearance\" type=\"cylinder\" pos=\"-17.435249 17.435249 0\" size=\"1.7 2.44\" rgba=\"0.1 0.65 0.9 0.22\"/>\n      <site name=\"right_cell_nw_marker\" pos=\"-17.435249 17.435249 0\" size=\"0.476\" rgba=\"1 0.92 0.15 1\"/>\n    </body>\n  </worldbody>\n  <contact>\n    <pair name=\"upper_pin_hole\" geom1=\"left_cell_ne_pin\" geom2=\"right_cell_nw_hole_clearance\" margin=\"0.34\" gap=\"0.085\" condim=\"3\" friction=\"0.4 0.02 0.001\"/>\n    <pair name=\"middle_pin_hole\" geom1=\"left_cell_e_pin\" geom2=\"right_cell_w_hole_clearance\" margin=\"0.34\" gap=\"0.085\" condim=\"3\" friction=\"0.4 0.02 0.001\"/>\n    <pair name=\"lower_pin_hole\" geom1=\"left_cell_se_pin\" geom2=\"right_cell_sw_hole_clearance\" margin=\"0.34\" gap=\"0.085\" condim=\"3\" friction=\"0.4 0.02 0.001\"/>\n  </contact>\n  <actuator>\n    <motor name=\"right_cell_alpha_slide\" joint=\"right_cell_slide_x\" gear=\"1\" ctrlrange=\"-1 1\"/>\n    <motor name=\"right_cell_vertical_slide\" joint=\"right_cell_slide_z\" gear=\"1\" ctrlrange=\"-1 1\"/>\n    <motor name=\"right_cell_yaw_theta\" joint=\"right_cell_yaw\" gear=\"1\" ctrlrange=\"-1 1\"/>\n  </actuator>\n</mujoco>\n",
+  "summary": {
+    "status": "ready-for-external-mujoco-run-with-proxy-caveats",
+    "bodyCount": 2,
+    "fixedBodyCount": 1,
+    "jointCount": 3,
+    "actuatorCount": 3,
+    "padSiteCount": 16,
+    "connectorContactPairCount": 3,
+    "pinRadiusMm": 1.3599999999999999,
+    "holeRadiusMm": 1.7,
+    "clearanceMm": 0.3400000000000001,
+    "rightStateMotionSuppressed": false,
+    "externalRunComplete": false,
+    "missingEvidence": [
+      "segmentedStepOrMeshExport",
+      "measuredJointAxes",
+      "measuredFriction",
+      "measuredContactStiffness",
+      "externalMuJoCoRun"
+    ],
+    "missingEvidenceCount": 5
+  },
+  "claimLabels": {
+    "geometry": "CAD-dimensioned proxy using A360 one-cell bounding box and manifest hole label",
+    "dynamics": "not yet externally solved in this environment",
+    "physicalAccuracy": "unvalidated until STEP/mesh segmentation and bench data agree"
+  },
+  "limitations": [
+    "The .f3d archive is not parsed into separate rigid bodies here.",
+    "Arms, pads, pins, and hole shells are generated proxy geoms, not exact BREP surfaces.",
+    "Locking is represented by omitting free joints on fixed bodies; real lock crown compliance is not modeled.",
+    "MuJoCo is not installed in this environment, so this report exports a runnable candidate but not a completed external run."
+  ]
+}

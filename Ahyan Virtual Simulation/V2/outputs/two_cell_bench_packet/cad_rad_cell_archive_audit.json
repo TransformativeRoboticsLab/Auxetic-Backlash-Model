@@ -1,0 +1,245 @@
+{
+  "schema": "rad-sim.cad-rad-cell-archive-audit.v1",
+  "source": "Autodesk A360 public share https://a360.co/4bMlzip",
+  "archive": {
+    "path": "assets/cad/RADs_unit_cell.f3d",
+    "exists": true,
+    "bytes": 106245,
+    "sha256": "d103feef5c1b437919a4bea87e3bcca97d333948fd7cd9445525a57a01ab1967",
+    "zipReadable": true
+  },
+  "summary": {
+    "archivePresent": true,
+    "zipReadable": true,
+    "entryCount": 21,
+    "fileEntryCount": 13,
+    "brepEntryCount": 2,
+    "previewEntryCount": 1,
+    "manifestEntryCount": 3,
+    "linkedLabelCount": 2,
+    "expectedEntriesPresent": true,
+    "canDeriveVisualReference": true,
+    "canAttemptExactRigidBodyContact": false,
+    "physicalAccuracyValidated": false,
+    "status": "archive-audited-needs-segmentation",
+    "missingEvidence": [
+      "segmentedBodyMeshExport",
+      "exactJointAxes",
+      "exactPinHoleContactSurfaces",
+      "materialContactParameters",
+      "benchCoordinateTruth"
+    ],
+    "missingEvidenceCount": 5
+  },
+  "entries": [
+    {
+      "name": "FusionAssetName[Active]/",
+      "bytes": 0,
+      "compressedBytes": 0,
+      "isDirectory": true
+    },
+    {
+      "name": "FusionAssetName[Active]/ProteinAssets.BlobParts/",
+      "bytes": 0,
+      "compressedBytes": 0,
+      "isDirectory": true
+    },
+    {
+      "name": "FusionAssetName[Active]/Previews/",
+      "bytes": 0,
+      "compressedBytes": 0,
+      "isDirectory": true
+    },
+    {
+      "name": "FusionAssetName[Active]/Images.BlobParts/",
+      "bytes": 0,
+      "compressedBytes": 0,
+      "isDirectory": true
+    },
+    {
+      "name": "FusionAssetName[Active]/FusionDesignSegmentType1/",
+      "bytes": 0,
+      "compressedBytes": 0,
+      "isDirectory": true
+    },
+    {
+      "name": "FusionAssetName[Active]/FusionACTSegmentType1/",
+      "bytes": 0,
+      "compressedBytes": 0,
+      "isDirectory": true
+    },
+    {
+      "name": "FusionAssetName[Active]/DesignConfigurationTable.BlobParts/",
+      "bytes": 0,
+      "compressedBytes": 0,
+      "isDirectory": true
+    },
+    {
+      "name": "FusionAssetName[Active]/Breps.BlobParts/",
+      "bytes": 0,
+      "compressedBytes": 0,
+      "isDirectory": true
+    },
+    {
+      "name": "Manifest.dat",
+      "bytes": 4653,
+      "compressedBytes": 1209,
+      "isDirectory": false
+    },
+    {
+      "name": "Properties.dat",
+      "bytes": 6,
+      "compressedBytes": 8,
+      "isDirectory": false
+    },
+    {
+      "name": "ComponentReferenceData.json",
+      "bytes": 2,
+      "compressedBytes": 2,
+      "isDirectory": false
+    },
+    {
+      "name": "FusionAssetName[Active]/Manifest.dat",
+      "bytes": 1153,
+      "compressedBytes": 527,
+      "isDirectory": false
+    },
+    {
+      "name": "FusionAssetName[Active]/ProteinAssets.BlobParts/ProteinAsset.c6d0b2c2-8216-453e-962d-1758b0c06179.protein",
+      "bytes": 15802,
+      "compressedBytes": 12248,
+      "isDirectory": false
+    },
+    {
+      "name": "FusionAssetName[Active]/Previews/small.png",
+      "bytes": 12116,
+      "compressedBytes": 11366,
+      "isDirectory": false
+    },
+    {
+      "name": "FusionAssetName[Active]/FusionDesignSegmentType1/BulkStream.dat",
+      "bytes": 152710,
+      "compressedBytes": 23841,
+      "isDirectory": false
+    },
+    {
+      "name": "FusionAssetName[Active]/FusionDesignSegmentType1/MetaStream.dat",
+      "bytes": 44235,
+      "compressedBytes": 14953,
+      "isDirectory": false
+    },
+    {
+      "name": "FusionAssetName[Active]/FusionACTSegmentType1/BulkStream.dat",
+      "bytes": 6117,
+      "compressedBytes": 1730,
+      "isDirectory": false
+    },
+    {
+      "name": "FusionAssetName[Active]/FusionACTSegmentType1/MetaStream.dat",
+      "bytes": 1025,
+      "compressedBytes": 386,
+      "isDirectory": false
+    },
+    {
+      "name": "FusionAssetName[Active]/DesignConfigurationTable.BlobParts/DesignConfigurationTable.dd9420f2-c7ad-4484-a173-4c215ce6dcf9.dsgcfg",
+      "bytes": 2,
+      "compressedBytes": 2,
+      "isDirectory": false
+    },
+    {
+      "name": "FusionAssetName[Active]/Breps.BlobParts/BREP.7d2e0b8b-fbfb-4c1a-a973-6c500ff05860.smb",
+      "bytes": 181604,
+      "compressedBytes": 21489,
+      "isDirectory": false
+    },
+    {
+      "name": "FusionAssetName[Active]/Breps.BlobParts/BREP.f5f9711e-f41d-4b1f-bef9-939b224e2b81.smbh",
+      "bytes": 113571,
+      "compressedBytes": 14626,
+      "isDirectory": false
+    }
+  ],
+  "brepEntries": [
+    {
+      "name": "FusionAssetName[Active]/Breps.BlobParts/BREP.7d2e0b8b-fbfb-4c1a-a973-6c500ff05860.smb",
+      "bytes": 181604,
+      "compressedBytes": 21489,
+      "isDirectory": false
+    },
+    {
+      "name": "FusionAssetName[Active]/Breps.BlobParts/BREP.f5f9711e-f41d-4b1f-bef9-939b224e2b81.smbh",
+      "bytes": 113571,
+      "compressedBytes": 14626,
+      "isDirectory": false
+    }
+  ],
+  "previewEntries": [
+    {
+      "name": "FusionAssetName[Active]/Previews/small.png",
+      "bytes": 12116,
+      "compressedBytes": 11366,
+      "isDirectory": false
+    }
+  ],
+  "manifestEntries": [
+    {
+      "name": "Manifest.dat",
+      "bytes": 4653,
+      "compressedBytes": 1209,
+      "isDirectory": false
+    },
+    {
+      "name": "ComponentReferenceData.json",
+      "bytes": 2,
+      "compressedBytes": 2,
+      "isDirectory": false
+    },
+    {
+      "name": "FusionAssetName[Active]/Manifest.dat",
+      "bytes": 1153,
+      "compressedBytes": 527,
+      "isDirectory": false
+    }
+  ],
+  "missingExpectedEntries": [],
+  "textEvidence": [
+    {
+      "entry": "Manifest.dat",
+      "tokens": [
+        "92125A136_18-8 Stainless Steel Hex Drive Flat Head Screw",
+        "A Fusion Document",
+        "Fusion Document",
+        "FusionAssetName",
+        "FusionDocType",
+        "RADs free cell 4mm tall 3.4mm hole",
+        "Users/jacobmiske/Library/Application Support/Autodesk/Autodesk Fusion 360/YCHJQXMDJYV6CVBM/W.logi",
+        "n/F/_RADs unit cell.04389982-da15-4623-9731-c443d9e44290.f3d"
+      ]
+    },
+    {
+      "entry": "FusionAssetName[Active]/Manifest.dat",
+      "tokens": [
+        "FusionACTSegmentType",
+        "FusionAssetName",
+        "FusionAssetType",
+        "FusionDesignSegmentType"
+      ]
+    },
+    {
+      "entry": "FusionAssetName[Active]/FusionACTSegmentType1/MetaStream.dat",
+      "tokens": [
+        "Fusion",
+        "FusionACTSegmentType"
+      ]
+    }
+  ],
+  "linkedLabels": [
+    "RADs free cell 4mm tall 3.4mm hole",
+    "n/F/_RADs unit cell.04389982-da15-4623-9731-c443d9e44290.f3d"
+  ],
+  "limitations": [
+    "Fusion archive entries prove local CAD evidence exists, not exact simulation fidelity.",
+    "BREP blobs are not segmented into named moving bodies or pin-hole contact surfaces here.",
+    "Exact real-life mechanics still require segmented exports, external contact simulation, and bench comparison."
+  ]
+}

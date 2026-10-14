@@ -1,0 +1,9 @@
+path,kind,description,bytes
+assets/cad/segmented/joint_axes.json,json,cell-local alpha/z axes and eight pin-hole axes,3371
+assets/cad/segmented/radial_pad_hole_surfaces.json,json,exact or analytic hole-wall surfaces for all eight pad sites,2529
+assets/cad/segmented/two_cell_connector_pairs.json,json,upper/middle/lower mating connector site transforms,1051
+assets/cad/segmented/mass_inertia.json,json,"mass, center of mass, and inertia tensors for segmented bodies",1439
+assets/cad/segmented/contact_parameters.json,json,normal/friction/contact parameters for external engines,863
+assets/cad/segmented/lock_crown_geometry.csv,csv,nominal/effective lock crown angles and fallout observations,133
+assets/cad/segmented/actuator_force_displacement.csv,csv,alpha/z actuator command-to-displacement/force measurements,281
+assets/cad/segmented/bench_coordinate_truth.csv,csv,tracked center/marker coordinates for physical two-cell cases,1351

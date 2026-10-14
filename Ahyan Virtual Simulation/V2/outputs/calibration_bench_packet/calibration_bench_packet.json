@@ -1,0 +1,2148 @@
+{
+  "schema": "rad-sim.calibration-bench-packet.v1",
+  "method": "bench handoff packet bundling calibration protocol, fit and holdout measurement templates, notebook scenario table, and validation instructions",
+  "schemas": {
+    "notebook": "rad-sim.calibration-bench-notebook.v1",
+    "protocol": "rad-sim.calibration-experiment-protocol.v1",
+    "resultsTemplate": "rad-sim.calibration-experiment-results.v1",
+    "datasetProvenance": "rad-sim.calibration-dataset-provenance.v1",
+    "modelProfile": "rad-sim.calibration-model-profile.v1",
+    "holdoutValidation": "rad-sim.calibration-model-profile-holdout-validation.v1",
+    "splitMetadata": "rad-sim.calibration-train-holdout-split.v1"
+  },
+  "grid": {
+    "rows": 3,
+    "cols": 3,
+    "cellSize": 1.0,
+    "backlash": 0.1,
+    "couplingGain": 0.55,
+    "zCouplingGain": 0.32,
+    "pinRadius": 0.18,
+    "holeRadius": 0.225,
+    "pinHoleClearance": 0.04500000000000001
+  },
+  "datasetPlan": {
+    "fit": {
+      "datasetId": "fit-run-001",
+      "role": "fit",
+      "suggestedFilename": "fit-run-001.json",
+      "sourceFileId": "fit-run-001.json",
+      "profileId": null,
+      "profileFrozenAt": null,
+      "provenanceSchema": "rad-sim.calibration-dataset-provenance.v1",
+      "purpose": "Estimate diagnostic response parameters and freeze a bounded model profile."
+    },
+    "holdout": {
+      "datasetId": "holdout-run-001",
+      "role": "holdout",
+      "suggestedFilename": "holdout-run-001.json",
+      "sourceFileId": "holdout-run-001.json",
+      "profileId": "calibration-profile-v1",
+      "profileFrozenAt": "set-after-fit-before-holdout",
+      "provenanceSchema": "rad-sim.calibration-dataset-provenance.v1",
+      "purpose": "Replay the frozen profile against data collected after the fit file is closed."
+    }
+  },
+  "filenames": {
+    "packet": "calibration_bench_packet.json",
+    "notebook": "calibration_bench_notebook.json",
+    "notebook_csv": "calibration_bench_notebook.csv",
+    "protocol": "calibration_experiment_protocol.json",
+    "fit_template": "calibration_fit_results_template.json",
+    "holdout_template": "calibration_holdout_results_template.json",
+    "readme": "README.md"
+  },
+  "benchNotebook": {
+    "schema": "rad-sim.calibration-bench-notebook.v1",
+    "grid": {
+      "rows": 3,
+      "cols": 3,
+      "cellSize": 1.0,
+      "backlash": 0.1,
+      "couplingGain": 0.55,
+      "zCouplingGain": 0.32,
+      "pinRadius": 0.18,
+      "holeRadius": 0.225,
+      "pinHoleClearance": 0.04500000000000001
+    },
+    "protocol": {
+      "schema": "rad-sim.calibration-experiment-protocol.v1",
+      "hardwareProfile": "paper-reference",
+      "centerCell": {
+        "row": 1,
+        "col": 1
+      },
+      "stepCount": 7,
+      "repeatCountTotal": 21,
+      "notes": "Protocol defines repeatable simulator/bench measurements; it does not claim the current spring-hinge solver is calibrated."
+    },
+    "datasetPlan": {
+      "fit": {
+        "datasetId": "fit-run-001",
+        "role": "fit",
+        "suggestedFilename": "fit-run-001.json",
+        "sourceFileId": "fit-run-001.json",
+        "profileId": null,
+        "profileFrozenAt": null,
+        "provenanceSchema": "rad-sim.calibration-dataset-provenance.v1",
+        "purpose": "Estimate diagnostic response parameters and freeze a bounded model profile."
+      },
+      "holdout": {
+        "datasetId": "holdout-run-001",
+        "role": "holdout",
+        "suggestedFilename": "holdout-run-001.json",
+        "sourceFileId": "holdout-run-001.json",
+        "profileId": "calibration-profile-v1",
+        "profileFrozenAt": "set-after-fit-before-holdout",
+        "provenanceSchema": "rad-sim.calibration-dataset-provenance.v1",
+        "purpose": "Replay the frozen profile against data collected after the fit file is closed."
+      }
+    },
+    "instruments": [
+      {
+        "id": "calipers-or-micrometer",
+        "measures": [
+          "pin radius",
+          "hole radius",
+          "plate thickness",
+          "joint stack height"
+        ],
+        "claimLabel": "required geometry measurement"
+      },
+      {
+        "id": "motion-tracking-camera",
+        "measures": [
+          "cell center displacement",
+          "height delta",
+          "neighbor residual z"
+        ],
+        "claimLabel": "required response measurement"
+      },
+      {
+        "id": "force-gauge-or-load-cell",
+        "measures": [
+          "actuator force",
+          "contact/load proxy"
+        ],
+        "claimLabel": "required force measurement for contact calibration"
+      },
+      {
+        "id": "fixture-and-clamps",
+        "measures": [
+          "locked cell enforcement",
+          "fixed boundary repeatability"
+        ],
+        "claimLabel": "required boundary-condition control"
+      },
+      {
+        "id": "actuator-controller",
+        "measures": [
+          "commanded alpha",
+          "commanded z",
+          "command repeat timing"
+        ],
+        "claimLabel": "required command provenance"
+      },
+      {
+        "id": "scale-reference-marker",
+        "measures": [
+          "pixel-to-mm scale",
+          "coordinate registration"
+        ],
+        "claimLabel": "required unit-scale evidence"
+      }
+    ],
+    "measurementColumns": [
+      "datasetId",
+      "datasetRole",
+      "sourceFileId",
+      "collectedAt",
+      "operator",
+      "profileId",
+      "profileFrozenAt",
+      "alpha_delta_grid",
+      "height_delta_grid",
+      "center_displacement_grid",
+      "actuator_command",
+      "lock_state",
+      "pin_hole_slip_mm",
+      "actuator_force_n"
+    ],
+    "phases": [
+      {
+        "id": "setup",
+        "description": "Measure hardware profile fields and register the cell coordinate frame.",
+        "requiredEvidence": [
+          "hardware profile",
+          "scale marker",
+          "fixture notes"
+        ]
+      },
+      {
+        "id": "fit-collection",
+        "description": "Collect the fit dataset without using any holdout measurements.",
+        "requiredEvidence": [
+          "fit-run-001",
+          "datasetRole=fit"
+        ]
+      },
+      {
+        "id": "profile-freeze",
+        "description": "Generate and freeze a model profile before holdout collection starts.",
+        "requiredEvidence": [
+          "calibration-profile-v1",
+          "set-after-fit-before-holdout"
+        ]
+      },
+      {
+        "id": "holdout-collection",
+        "description": "Collect a separate holdout file after the model profile is frozen.",
+        "requiredEvidence": [
+          "holdout-run-001",
+          "datasetRole=holdout"
+        ]
+      },
+      {
+        "id": "validation",
+        "description": "Run residual validation and independent split checks before making physical claims.",
+        "requiredEvidence": [
+          "rad-sim.calibration-model-profile-holdout-validation.v1",
+          "rad-sim.calibration-train-holdout-split.v1"
+        ]
+      }
+    ],
+    "scenarios": [
+      {
+        "stepId": "single_alpha_contract",
+        "scope": "single",
+        "repeatCount": 3,
+        "commandCells": [
+          {
+            "row": 1,
+            "col": 1
+          }
+        ],
+        "commands": [
+          {
+            "row": 1,
+            "col": 1,
+            "alpha": -0.25,
+            "z": 0.0
+          }
+        ],
+        "lockedCells": [],
+        "observationCells": [
+          {
+            "row": 1,
+            "col": 1
+          }
+        ],
+        "measurementFields": [
+          "alpha_delta_grid",
+          "height_delta_grid",
+          "center_displacement_grid",
+          "actuator_command",
+          "lock_state",
+          "pin_hole_slip_mm",
+          "actuator_force_n"
+        ],
+        "datasetRoles": [
+          "fit",
+          "holdout"
+        ],
+        "purpose": "Measure the local rotating-square dilation response to contraction.",
+        "expectedResponse": "Primary alpha change at the commanded cell with backlash-gated neighbor influence.",
+        "claimLabel": "bench protocol step; no physical law claimed until measured"
+      },
+      {
+        "stepId": "single_alpha_expand",
+        "scope": "single",
+        "repeatCount": 3,
+        "commandCells": [
+          {
+            "row": 1,
+            "col": 1
+          }
+        ],
+        "commands": [
+          {
+            "row": 1,
+            "col": 1,
+            "alpha": 0.1875,
+            "z": 0.0
+          }
+        ],
+        "lockedCells": [],
+        "observationCells": [
+          {
+            "row": 1,
+            "col": 1
+          }
+        ],
+        "measurementFields": [
+          "alpha_delta_grid",
+          "height_delta_grid",
+          "center_displacement_grid",
+          "actuator_command",
+          "lock_state",
+          "pin_hole_slip_mm",
+          "actuator_force_n"
+        ],
+        "datasetRoles": [
+          "fit",
+          "holdout"
+        ],
+        "purpose": "Measure expansion-side travel and check for asymmetric backlash.",
+        "expectedResponse": "Positive alpha response at the commanded cell with smaller expansion command.",
+        "claimLabel": "bench protocol step; no physical law claimed until measured"
+      },
+      {
+        "stepId": "single_z_lift",
+        "scope": "single",
+        "repeatCount": 3,
+        "commandCells": [
+          {
+            "row": 1,
+            "col": 1
+          }
+        ],
+        "commands": [
+          {
+            "row": 1,
+            "col": 1,
+            "alpha": 0.0,
+            "z": 0.3
+          }
+        ],
+        "lockedCells": [],
+        "observationCells": [
+          {
+            "row": 1,
+            "col": 1
+          },
+          {
+            "row": 0,
+            "col": 1
+          }
+        ],
+        "measurementFields": [
+          "alpha_delta_grid",
+          "height_delta_grid",
+          "center_displacement_grid",
+          "actuator_command",
+          "lock_state",
+          "pin_hole_slip_mm",
+          "actuator_force_n"
+        ],
+        "datasetRoles": [
+          "fit",
+          "holdout"
+        ],
+        "purpose": "Measure direct vertical actuation and residual neighbor lift.",
+        "expectedResponse": "Commanded cell moves vertically; adjacent observation cell captures pin-hole residual coupling.",
+        "claimLabel": "bench protocol step; no physical law claimed until measured"
+      },
+      {
+        "stepId": "pair_z_residual",
+        "scope": "pair",
+        "repeatCount": 3,
+        "commandCells": [
+          {
+            "row": 1,
+            "col": 1
+          }
+        ],
+        "commands": [
+          {
+            "row": 1,
+            "col": 1,
+            "alpha": 0.0,
+            "z": 0.3
+          }
+        ],
+        "lockedCells": [],
+        "observationCells": [
+          {
+            "row": 1,
+            "col": 1
+          },
+          {
+            "row": 0,
+            "col": 1
+          }
+        ],
+        "measurementFields": [
+          "alpha_delta_grid",
+          "height_delta_grid",
+          "center_displacement_grid",
+          "actuator_command",
+          "lock_state",
+          "pin_hole_slip_mm",
+          "actuator_force_n"
+        ],
+        "datasetRoles": [
+          "fit",
+          "holdout"
+        ],
+        "purpose": "Quantify vertical die-off from one actuated cell into a neighboring cell.",
+        "expectedResponse": "Neighbor height response should decay with clearance, backlash, and graph distance.",
+        "claimLabel": "bench protocol step; no physical law claimed until measured"
+      },
+      {
+        "stepId": "pair_superposition",
+        "scope": "pair",
+        "repeatCount": 3,
+        "commandCells": [
+          {
+            "row": 1,
+            "col": 1
+          },
+          {
+            "row": 0,
+            "col": 1
+          }
+        ],
+        "commands": [
+          {
+            "row": 1,
+            "col": 1,
+            "alpha": -0.25,
+            "z": 0.15
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alpha": -0.25,
+            "z": 0.15
+          }
+        ],
+        "lockedCells": [],
+        "observationCells": [
+          {
+            "row": 1,
+            "col": 1
+          },
+          {
+            "row": 0,
+            "col": 1
+          }
+        ],
+        "measurementFields": [
+          "alpha_delta_grid",
+          "height_delta_grid",
+          "center_displacement_grid",
+          "actuator_command",
+          "lock_state",
+          "pin_hole_slip_mm",
+          "actuator_force_n"
+        ],
+        "datasetRoles": [
+          "fit",
+          "holdout"
+        ],
+        "purpose": "Measure whether adjacent cell commands add linearly or interact through backlash.",
+        "expectedResponse": "Any deviation from summed single-cell responses identifies a programmable-discontinuity interaction.",
+        "claimLabel": "bench protocol step; no physical law claimed until measured"
+      },
+      {
+        "stepId": "cluster_mixed_actuation",
+        "scope": "cluster",
+        "repeatCount": 3,
+        "commandCells": [
+          {
+            "row": 1,
+            "col": 1
+          },
+          {
+            "row": 0,
+            "col": 1
+          },
+          {
+            "row": 2,
+            "col": 1
+          }
+        ],
+        "commands": [
+          {
+            "row": 1,
+            "col": 1,
+            "alpha": 0.0,
+            "z": 0.3
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alpha": -0.25,
+            "z": 0.0
+          },
+          {
+            "row": 2,
+            "col": 1,
+            "alpha": 0.09375,
+            "z": -0.15
+          }
+        ],
+        "lockedCells": [],
+        "observationCells": [
+          {
+            "row": 1,
+            "col": 1
+          },
+          {
+            "row": 0,
+            "col": 1
+          },
+          {
+            "row": 2,
+            "col": 1
+          },
+          {
+            "row": 1,
+            "col": 0
+          },
+          {
+            "row": 1,
+            "col": 2
+          }
+        ],
+        "measurementFields": [
+          "alpha_delta_grid",
+          "height_delta_grid",
+          "center_displacement_grid",
+          "actuator_command",
+          "lock_state",
+          "pin_hole_slip_mm",
+          "actuator_force_n"
+        ],
+        "datasetRoles": [
+          "fit",
+          "holdout"
+        ],
+        "purpose": "Measure collective response of mixed horizontal and vertical actuation.",
+        "expectedResponse": "Cluster field should reveal multi-operator coupling, residual height spread, and reachable directions.",
+        "claimLabel": "bench protocol step; no physical law claimed until measured"
+      },
+      {
+        "stepId": "locked_cell_control",
+        "scope": "lock",
+        "repeatCount": 3,
+        "commandCells": [
+          {
+            "row": 1,
+            "col": 1
+          }
+        ],
+        "commands": [
+          {
+            "row": 1,
+            "col": 1,
+            "alpha": -0.25,
+            "z": 0.3
+          }
+        ],
+        "lockedCells": [
+          {
+            "row": 1,
+            "col": 1
+          }
+        ],
+        "observationCells": [
+          {
+            "row": 1,
+            "col": 1
+          },
+          {
+            "row": 0,
+            "col": 1
+          }
+        ],
+        "measurementFields": [
+          "alpha_delta_grid",
+          "height_delta_grid",
+          "center_displacement_grid",
+          "actuator_command",
+          "lock_state",
+          "pin_hole_slip_mm",
+          "actuator_force_n"
+        ],
+        "datasetRoles": [
+          "fit",
+          "holdout"
+        ],
+        "purpose": "Verify lock enforcement against commanded alpha and vertical motion.",
+        "expectedResponse": "Locked cell should remain fixed while any neighbor residual exposes compliance leakage.",
+        "claimLabel": "bench protocol step; no physical law claimed until measured"
+      }
+    ],
+    "outputs": [
+      {
+        "id": "protocol-json",
+        "schema": "rad-sim.calibration-experiment-protocol.v1",
+        "function": "export_calibration_experiment_protocol_json",
+        "browserAction": "Save Protocol"
+      },
+      {
+        "id": "fit-results-template-json",
+        "schema": "rad-sim.calibration-experiment-results.v1",
+        "function": "export_calibration_experiment_results_template_json",
+        "datasetRole": "fit",
+        "browserAction": "Save Results Template"
+      },
+      {
+        "id": "holdout-results-template-json",
+        "schema": "rad-sim.calibration-experiment-results.v1",
+        "function": "export_calibration_experiment_results_template_json",
+        "datasetRole": "holdout",
+        "browserAction": "Save Results Template"
+      },
+      {
+        "id": "model-profile-json",
+        "schema": "rad-sim.calibration-model-profile.v1",
+        "function": "export_calibration_model_profile_json",
+        "browserAction": "Save Model Profile"
+      },
+      {
+        "id": "holdout-validation-json",
+        "schema": "rad-sim.calibration-model-profile-holdout-validation.v1",
+        "function": "export_calibration_model_profile_holdout_validation_json",
+        "browserAction": "Save Holdout Check"
+      },
+      {
+        "id": "holdout-validation-csv",
+        "schema": "rad-sim.calibration-model-profile-holdout-validation.v1",
+        "function": "export_calibration_model_profile_holdout_validation_csv",
+        "browserAction": "Save Holdout CSV"
+      },
+      {
+        "id": "bench-notebook-csv",
+        "schema": "rad-sim.calibration-bench-notebook.v1",
+        "function": "export_calibration_bench_notebook_csv",
+        "browserAction": "Save Bench CSV"
+      }
+    ],
+    "passFailCriteria": {
+      "residualValidationPass": "fit and holdout residual scores do not increase after an applied profile update",
+      "independentValidationPass": "residual pass plus complete train/holdout provenance metadata",
+      "missingEvidence": "must be empty before claiming independent hardware validation",
+      "physicalClaimLimit": "passing this protocol supports calibration bookkeeping only; contact, friction, stiffness, and material laws still require model-specific validation"
+    },
+    "formalization": {
+      "targetId": "calibration_bench_protocol_coverage",
+      "leanStructure": "Mechanics.CalibrationBenchProtocolCoverageNat",
+      "leanPredicate": "calibrationBenchProtocolCoverageReadyNat",
+      "schema": "rad-sim.calibration-bench-notebook.v1"
+    },
+    "claimLabels": {
+      "notebook": "bench protocol artifact",
+      "scenarioRows": "experimentally unvalidated physical procedure until performed",
+      "formalCoverage": "Lean-proven finite coverage predicate, not physical accuracy"
+    },
+    "limitations": [
+      "The notebook enforces artifact coverage and provenance fields but cannot prove the lab actually collected independent files.",
+      "The protocol is normalized and must be mapped to measured hardware units before physical claims.",
+      "Rigid-body contact, friction, stiffness, gravity sag, and actuator-force laws remain uncalibrated."
+    ]
+  },
+  "benchNotebookCsv": "schema,step_id,scope,repeat_count,command_cells,locked_cells,observation_cells,measurement_columns,fit_dataset_id,holdout_dataset_id,purpose,expected_response,claim_label\nrad-sim.calibration-bench-notebook.v1,single_alpha_contract,single,3,\"[{\"\"row\"\":1,\"\"col\"\":1}]\",[],\"[{\"\"row\"\":1,\"\"col\"\":1}]\",alpha_delta_grid;height_delta_grid;center_displacement_grid;actuator_command;lock_state;pin_hole_slip_mm;actuator_force_n,fit-run-001,holdout-run-001,Measure the local rotating-square dilation response to contraction.,Primary alpha change at the commanded cell with backlash-gated neighbor influence.,bench protocol step; no physical law claimed until measured\nrad-sim.calibration-bench-notebook.v1,single_alpha_expand,single,3,\"[{\"\"row\"\":1,\"\"col\"\":1}]\",[],\"[{\"\"row\"\":1,\"\"col\"\":1}]\",alpha_delta_grid;height_delta_grid;center_displacement_grid;actuator_command;lock_state;pin_hole_slip_mm;actuator_force_n,fit-run-001,holdout-run-001,Measure expansion-side travel and check for asymmetric backlash.,Positive alpha response at the commanded cell with smaller expansion command.,bench protocol step; no physical law claimed until measured\nrad-sim.calibration-bench-notebook.v1,single_z_lift,single,3,\"[{\"\"row\"\":1,\"\"col\"\":1}]\",[],\"[{\"\"row\"\":1,\"\"col\"\":1},{\"\"row\"\":0,\"\"col\"\":1}]\",alpha_delta_grid;height_delta_grid;center_displacement_grid;actuator_command;lock_state;pin_hole_slip_mm;actuator_force_n,fit-run-001,holdout-run-001,Measure direct vertical actuation and residual neighbor lift.,Commanded cell moves vertically; adjacent observation cell captures pin-hole residual coupling.,bench protocol step; no physical law claimed until measured\nrad-sim.calibration-bench-notebook.v1,pair_z_residual,pair,3,\"[{\"\"row\"\":1,\"\"col\"\":1}]\",[],\"[{\"\"row\"\":1,\"\"col\"\":1},{\"\"row\"\":0,\"\"col\"\":1}]\",alpha_delta_grid;height_delta_grid;center_displacement_grid;actuator_command;lock_state;pin_hole_slip_mm;actuator_force_n,fit-run-001,holdout-run-001,Quantify vertical die-off from one actuated cell into a neighboring cell.,\"Neighbor height response should decay with clearance, backlash, and graph distance.\",bench protocol step; no physical law claimed until measured\nrad-sim.calibration-bench-notebook.v1,pair_superposition,pair,3,\"[{\"\"row\"\":1,\"\"col\"\":1},{\"\"row\"\":0,\"\"col\"\":1}]\",[],\"[{\"\"row\"\":1,\"\"col\"\":1},{\"\"row\"\":0,\"\"col\"\":1}]\",alpha_delta_grid;height_delta_grid;center_displacement_grid;actuator_command;lock_state;pin_hole_slip_mm;actuator_force_n,fit-run-001,holdout-run-001,Measure whether adjacent cell commands add linearly or interact through backlash.,Any deviation from summed single-cell responses identifies a programmable-discontinuity interaction.,bench protocol step; no physical law claimed until measured\nrad-sim.calibration-bench-notebook.v1,cluster_mixed_actuation,cluster,3,\"[{\"\"row\"\":1,\"\"col\"\":1},{\"\"row\"\":0,\"\"col\"\":1},{\"\"row\"\":2,\"\"col\"\":1}]\",[],\"[{\"\"row\"\":1,\"\"col\"\":1},{\"\"row\"\":0,\"\"col\"\":1},{\"\"row\"\":2,\"\"col\"\":1},{\"\"row\"\":1,\"\"col\"\":0},{\"\"row\"\":1,\"\"col\"\":2}]\",alpha_delta_grid;height_delta_grid;center_displacement_grid;actuator_command;lock_state;pin_hole_slip_mm;actuator_force_n,fit-run-001,holdout-run-001,Measure collective response of mixed horizontal and vertical actuation.,\"Cluster field should reveal multi-operator coupling, residual height spread, and reachable directions.\",bench protocol step; no physical law claimed until measured\nrad-sim.calibration-bench-notebook.v1,locked_cell_control,lock,3,\"[{\"\"row\"\":1,\"\"col\"\":1}]\",\"[{\"\"row\"\":1,\"\"col\"\":1}]\",\"[{\"\"row\"\":1,\"\"col\"\":1},{\"\"row\"\":0,\"\"col\"\":1}]\",alpha_delta_grid;height_delta_grid;center_displacement_grid;actuator_command;lock_state;pin_hole_slip_mm;actuator_force_n,fit-run-001,holdout-run-001,Verify lock enforcement against commanded alpha and vertical motion.,Locked cell should remain fixed while any neighbor residual exposes compliance leakage.,bench protocol step; no physical law claimed until measured",
+  "experimentProtocol": {
+    "schema": "rad-sim.calibration-experiment-protocol.v1",
+    "hardwareProfile": "paper-reference",
+    "grid": {
+      "rows": 3,
+      "cols": 3
+    },
+    "centerCell": {
+      "row": 1,
+      "col": 1
+    },
+    "measurementFields": [
+      "alpha_delta_grid",
+      "height_delta_grid",
+      "center_displacement_grid",
+      "actuator_command",
+      "lock_state",
+      "pin_hole_slip_mm",
+      "actuator_force_n"
+    ],
+    "notes": "Protocol defines repeatable simulator/bench measurements; it does not claim the current spring-hinge solver is calibrated.",
+    "steps": [
+      {
+        "id": "single_alpha_contract",
+        "scope": "single",
+        "commands": [
+          {
+            "row": 1,
+            "col": 1,
+            "alpha": -0.25,
+            "z": 0.0
+          }
+        ],
+        "observationCells": [
+          {
+            "row": 1,
+            "col": 1
+          }
+        ],
+        "lockedCells": [],
+        "measurementFields": [
+          "alpha_delta_grid",
+          "height_delta_grid",
+          "center_displacement_grid",
+          "actuator_command",
+          "lock_state",
+          "pin_hole_slip_mm",
+          "actuator_force_n"
+        ],
+        "purpose": "Measure the local rotating-square dilation response to contraction.",
+        "expectedResponse": "Primary alpha change at the commanded cell with backlash-gated neighbor influence.",
+        "repeatCount": 3
+      },
+      {
+        "id": "single_alpha_expand",
+        "scope": "single",
+        "commands": [
+          {
+            "row": 1,
+            "col": 1,
+            "alpha": 0.1875,
+            "z": 0.0
+          }
+        ],
+        "observationCells": [
+          {
+            "row": 1,
+            "col": 1
+          }
+        ],
+        "lockedCells": [],
+        "measurementFields": [
+          "alpha_delta_grid",
+          "height_delta_grid",
+          "center_displacement_grid",
+          "actuator_command",
+          "lock_state",
+          "pin_hole_slip_mm",
+          "actuator_force_n"
+        ],
+        "purpose": "Measure expansion-side travel and check for asymmetric backlash.",
+        "expectedResponse": "Positive alpha response at the commanded cell with smaller expansion command.",
+        "repeatCount": 3
+      },
+      {
+        "id": "single_z_lift",
+        "scope": "single",
+        "commands": [
+          {
+            "row": 1,
+            "col": 1,
+            "alpha": 0.0,
+            "z": 0.3
+          }
+        ],
+        "observationCells": [
+          {
+            "row": 1,
+            "col": 1
+          },
+          {
+            "row": 0,
+            "col": 1
+          }
+        ],
+        "lockedCells": [],
+        "measurementFields": [
+          "alpha_delta_grid",
+          "height_delta_grid",
+          "center_displacement_grid",
+          "actuator_command",
+          "lock_state",
+          "pin_hole_slip_mm",
+          "actuator_force_n"
+        ],
+        "purpose": "Measure direct vertical actuation and residual neighbor lift.",
+        "expectedResponse": "Commanded cell moves vertically; adjacent observation cell captures pin-hole residual coupling.",
+        "repeatCount": 3
+      },
+      {
+        "id": "pair_z_residual",
+        "scope": "pair",
+        "commands": [
+          {
+            "row": 1,
+            "col": 1,
+            "alpha": 0.0,
+            "z": 0.3
+          }
+        ],
+        "observationCells": [
+          {
+            "row": 1,
+            "col": 1
+          },
+          {
+            "row": 0,
+            "col": 1
+          }
+        ],
+        "lockedCells": [],
+        "measurementFields": [
+          "alpha_delta_grid",
+          "height_delta_grid",
+          "center_displacement_grid",
+          "actuator_command",
+          "lock_state",
+          "pin_hole_slip_mm",
+          "actuator_force_n"
+        ],
+        "purpose": "Quantify vertical die-off from one actuated cell into a neighboring cell.",
+        "expectedResponse": "Neighbor height response should decay with clearance, backlash, and graph distance.",
+        "repeatCount": 3
+      },
+      {
+        "id": "pair_superposition",
+        "scope": "pair",
+        "commands": [
+          {
+            "row": 1,
+            "col": 1,
+            "alpha": -0.25,
+            "z": 0.15
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alpha": -0.25,
+            "z": 0.15
+          }
+        ],
+        "observationCells": [
+          {
+            "row": 1,
+            "col": 1
+          },
+          {
+            "row": 0,
+            "col": 1
+          }
+        ],
+        "lockedCells": [],
+        "measurementFields": [
+          "alpha_delta_grid",
+          "height_delta_grid",
+          "center_displacement_grid",
+          "actuator_command",
+          "lock_state",
+          "pin_hole_slip_mm",
+          "actuator_force_n"
+        ],
+        "purpose": "Measure whether adjacent cell commands add linearly or interact through backlash.",
+        "expectedResponse": "Any deviation from summed single-cell responses identifies a programmable-discontinuity interaction.",
+        "repeatCount": 3
+      },
+      {
+        "id": "cluster_mixed_actuation",
+        "scope": "cluster",
+        "commands": [
+          {
+            "row": 1,
+            "col": 1,
+            "alpha": 0.0,
+            "z": 0.3
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alpha": -0.25,
+            "z": 0.0
+          },
+          {
+            "row": 2,
+            "col": 1,
+            "alpha": 0.09375,
+            "z": -0.15
+          }
+        ],
+        "observationCells": [
+          {
+            "row": 1,
+            "col": 1
+          },
+          {
+            "row": 0,
+            "col": 1
+          },
+          {
+            "row": 2,
+            "col": 1
+          },
+          {
+            "row": 1,
+            "col": 0
+          },
+          {
+            "row": 1,
+            "col": 2
+          }
+        ],
+        "lockedCells": [],
+        "measurementFields": [
+          "alpha_delta_grid",
+          "height_delta_grid",
+          "center_displacement_grid",
+          "actuator_command",
+          "lock_state",
+          "pin_hole_slip_mm",
+          "actuator_force_n"
+        ],
+        "purpose": "Measure collective response of mixed horizontal and vertical actuation.",
+        "expectedResponse": "Cluster field should reveal multi-operator coupling, residual height spread, and reachable directions.",
+        "repeatCount": 3
+      },
+      {
+        "id": "locked_cell_control",
+        "scope": "lock",
+        "commands": [
+          {
+            "row": 1,
+            "col": 1,
+            "alpha": -0.25,
+            "z": 0.3
+          }
+        ],
+        "observationCells": [
+          {
+            "row": 1,
+            "col": 1
+          },
+          {
+            "row": 0,
+            "col": 1
+          }
+        ],
+        "lockedCells": [
+          {
+            "row": 1,
+            "col": 1
+          }
+        ],
+        "measurementFields": [
+          "alpha_delta_grid",
+          "height_delta_grid",
+          "center_displacement_grid",
+          "actuator_command",
+          "lock_state",
+          "pin_hole_slip_mm",
+          "actuator_force_n"
+        ],
+        "purpose": "Verify lock enforcement against commanded alpha and vertical motion.",
+        "expectedResponse": "Locked cell should remain fixed while any neighbor residual exposes compliance leakage.",
+        "repeatCount": 3
+      }
+    ]
+  },
+  "fitResultsTemplate": {
+    "schema": "rad-sim.calibration-experiment-results.v1",
+    "protocolSchema": "rad-sim.calibration-experiment-protocol.v1",
+    "hardwareProfile": "paper-reference",
+    "provenance": {
+      "schema": "rad-sim.calibration-dataset-provenance.v1",
+      "datasetId": "fit-run-001",
+      "datasetRole": "fit",
+      "sourceFileId": "fit-run-001.json",
+      "collectedAt": null,
+      "operator": null,
+      "profileId": null,
+      "profileFrozenAt": null,
+      "notes": "Fit file: collect before generating and freezing a profile."
+    },
+    "notes": "Fill optional measured fields with real bench measurements.",
+    "steps": [
+      {
+        "stepId": "single_alpha_contract",
+        "repeatIndex": 1,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_alpha_contract",
+        "repeatIndex": 2,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_alpha_contract",
+        "repeatIndex": 3,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_alpha_expand",
+        "repeatIndex": 1,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_alpha_expand",
+        "repeatIndex": 2,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_alpha_expand",
+        "repeatIndex": 3,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_z_lift",
+        "repeatIndex": 1,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_z_lift",
+        "repeatIndex": 2,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_z_lift",
+        "repeatIndex": 3,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "pair_z_residual",
+        "repeatIndex": 1,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "pair_z_residual",
+        "repeatIndex": 2,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "pair_z_residual",
+        "repeatIndex": 3,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "pair_superposition",
+        "repeatIndex": 1,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "pair_superposition",
+        "repeatIndex": 2,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "pair_superposition",
+        "repeatIndex": 3,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "cluster_mixed_actuation",
+        "repeatIndex": 1,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 2,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 1,
+            "col": 0,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 1,
+            "col": 2,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "cluster_mixed_actuation",
+        "repeatIndex": 2,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 2,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 1,
+            "col": 0,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 1,
+            "col": 2,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "cluster_mixed_actuation",
+        "repeatIndex": 3,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 2,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 1,
+            "col": 0,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 1,
+            "col": 2,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "locked_cell_control",
+        "repeatIndex": 1,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "locked_cell_control",
+        "repeatIndex": 2,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "locked_cell_control",
+        "repeatIndex": 3,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      }
+    ]
+  },
+  "holdoutResultsTemplate": {
+    "schema": "rad-sim.calibration-experiment-results.v1",
+    "protocolSchema": "rad-sim.calibration-experiment-protocol.v1",
+    "hardwareProfile": "paper-reference",
+    "provenance": {
+      "schema": "rad-sim.calibration-dataset-provenance.v1",
+      "datasetId": "holdout-run-001",
+      "datasetRole": "holdout",
+      "sourceFileId": "holdout-run-001.json",
+      "collectedAt": null,
+      "operator": null,
+      "profileId": "calibration-profile-v1",
+      "profileFrozenAt": "set-after-fit-before-holdout",
+      "notes": "Holdout file: collect only after the fit-derived profile is frozen."
+    },
+    "notes": "Fill optional measured fields with real bench measurements.",
+    "steps": [
+      {
+        "stepId": "single_alpha_contract",
+        "repeatIndex": 1,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_alpha_contract",
+        "repeatIndex": 2,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_alpha_contract",
+        "repeatIndex": 3,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_alpha_expand",
+        "repeatIndex": 1,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_alpha_expand",
+        "repeatIndex": 2,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_alpha_expand",
+        "repeatIndex": 3,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_z_lift",
+        "repeatIndex": 1,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_z_lift",
+        "repeatIndex": 2,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "single_z_lift",
+        "repeatIndex": 3,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "pair_z_residual",
+        "repeatIndex": 1,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "pair_z_residual",
+        "repeatIndex": 2,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "pair_z_residual",
+        "repeatIndex": 3,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "pair_superposition",
+        "repeatIndex": 1,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "pair_superposition",
+        "repeatIndex": 2,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "pair_superposition",
+        "repeatIndex": 3,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "cluster_mixed_actuation",
+        "repeatIndex": 1,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 2,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 1,
+            "col": 0,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 1,
+            "col": 2,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "cluster_mixed_actuation",
+        "repeatIndex": 2,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 2,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 1,
+            "col": 0,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 1,
+            "col": 2,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "cluster_mixed_actuation",
+        "repeatIndex": 3,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 2,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 1,
+            "col": 0,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 1,
+            "col": 2,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "locked_cell_control",
+        "repeatIndex": 1,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "locked_cell_control",
+        "repeatIndex": 2,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      },
+      {
+        "stepId": "locked_cell_control",
+        "repeatIndex": 3,
+        "cells": [
+          {
+            "row": 1,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          },
+          {
+            "row": 0,
+            "col": 1,
+            "alphaDelta": null,
+            "heightDelta": null,
+            "centerDelta": null,
+            "pinHoleSlipMm": null,
+            "actuatorForceN": null
+          }
+        ],
+        "notes": "Replace null fields with measured bench data."
+      }
+    ]
+  },
+  "artifactManifest": [
+    {
+      "id": "packet",
+      "filename": "calibration_bench_packet.json",
+      "schema": "rad-sim.calibration-bench-packet.v1",
+      "purpose": "single JSON bundle for review and archival"
+    },
+    {
+      "id": "notebook",
+      "filename": "calibration_bench_notebook.json",
+      "schema": "rad-sim.calibration-bench-notebook.v1",
+      "purpose": "human-readable protocol plan with phases and outputs"
+    },
+    {
+      "id": "notebook-csv",
+      "filename": "calibration_bench_notebook.csv",
+      "schema": "rad-sim.calibration-bench-notebook.v1",
+      "purpose": "one-row-per-scenario table for lab notebook or spreadsheet"
+    },
+    {
+      "id": "protocol",
+      "filename": "calibration_experiment_protocol.json",
+      "schema": "rad-sim.calibration-experiment-protocol.v1",
+      "purpose": "machine-readable protocol used by simulator comparisons"
+    },
+    {
+      "id": "fit-template",
+      "filename": "calibration_fit_results_template.json",
+      "schema": "rad-sim.calibration-experiment-results.v1",
+      "purpose": "blank fit measurement rows"
+    },
+    {
+      "id": "holdout-template",
+      "filename": "calibration_holdout_results_template.json",
+      "schema": "rad-sim.calibration-experiment-results.v1",
+      "purpose": "blank holdout measurement rows tied to frozen profile ID"
+    }
+  ],
+  "validationInstructions": {
+    "fitStep": "Fill the fit template first and use it to generate a model profile.",
+    "freezeStep": "Assign profileId and profileFrozenAt before collecting holdout measurements.",
+    "holdoutStep": "Fill the holdout template in a separate raw file after freezing the profile.",
+    "compareFunction": "calibration_model_profile_holdout_validation",
+    "csvFunction": "export_calibration_model_profile_holdout_validation_csv",
+    "acceptanceRule": "Treat independentValidationPass as meaningful only when residual validation passes and splitMetadata.missingEvidence is empty."
+  },
+  "formalization": {
+    "targetId": "calibration_bench_packet_completeness",
+    "leanStructure": "Mechanics.CalibrationBenchPacketCompletenessNat",
+    "leanPredicate": "calibrationBenchPacketCompleteNat",
+    "schema": "rad-sim.calibration-bench-packet.v1"
+  },
+  "claimLabels": {
+    "packetAssembly": "bench protocol artifact",
+    "fitTemplate": "experimentally unvalidated physical procedure until filled",
+    "holdoutTemplate": "experimentally unvalidated physical procedure until independently filled",
+    "formalCompleteness": "Lean-proven finite packet-completeness predicate, not physical accuracy"
+  },
+  "limitations": [
+    "The packet separates fit and holdout files but cannot prove laboratory independence by itself.",
+    "The templates are blank until real bench measurements replace null values.",
+    "Passing simulator residual checks is not a proof of contact, friction, stiffness, gravity, or material physics."
+  ]
+}

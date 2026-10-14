@@ -1,0 +1,9 @@
+actuatorId,command,measuredDisplacementMm,measuredForceN,measuredAlpha,measuredThetaDeg,notes
+alpha_actuator,-0.5,,,,,
+alpha_actuator,-0.25,,,,,
+alpha_actuator,0.0,,,,,
+alpha_actuator,0.25,,,,,
+alpha_actuator,0.5,,,,,
+z_actuator,-0.45,,,,,
+z_actuator,0.0,,,,,
+z_actuator,0.45,,,,,

@@ -1,0 +1,16 @@
+section,id,path,status,requiredFieldCount,filledFieldCount,errorCount,errors
+template,joint_axes.json,assets/cad/segmented/joint_axes.json,missing,0,0,1,file missing
+template,radial_pad_hole_surfaces.json,assets/cad/segmented/radial_pad_hole_surfaces.json,missing,0,0,1,file missing
+template,two_cell_connector_pairs.json,assets/cad/segmented/two_cell_connector_pairs.json,missing,0,0,1,file missing
+template,mass_inertia.json,assets/cad/segmented/mass_inertia.json,missing,0,0,1,file missing
+template,contact_parameters.json,assets/cad/segmented/contact_parameters.json,missing,0,0,1,file missing
+template,lock_crown_geometry.csv,assets/cad/segmented/lock_crown_geometry.csv,missing,0,0,1,file missing
+template,actuator_force_displacement.csv,assets/cad/segmented/actuator_force_displacement.csv,missing,0,0,1,file missing
+template,bench_coordinate_truth.csv,assets/cad/segmented/bench_coordinate_truth.csv,missing,0,0,1,file missing
+bodyAsset,upper_free_cell_body,assets/cad/segmented/upper_free_cell_body.step;assets/cad/segmented/upper_free_cell_body.stl;assets/cad/segmented/upper_free_cell_body.obj,missing,,,1,segmented body asset missing
+bodyAsset,lower_cell_body,assets/cad/segmented/lower_cell_body.step;assets/cad/segmented/lower_cell_body.stl;assets/cad/segmented/lower_cell_body.obj,missing,,,1,segmented body asset missing
+bodyAsset,screw_pin_body,assets/cad/segmented/screw_pin_body.step;assets/cad/segmented/screw_pin_body.stl;assets/cad/segmented/screw_pin_body.obj,missing,,,1,segmented body asset missing
+radialSurfaceAsset,radial_pad_hole_surfaces,assets/cad/segmented/radial_pad_hole_surfaces.step;assets/cad/segmented/radial_pad_hole_surfaces.json,missing,,,1,hole surface asset or filled surface json missing
+engineHandoff,MuJoCo,assets/cad/segmented/mujoco/rad_two_cell.xml;assets/cad/segmented/rad_two_cell.xml,missing,,,1,engine handoff asset missing
+engineHandoff,Gazebo/Ignition,assets/cad/segmented/gazebo/rad_two_cell.sdf;assets/cad/segmented/rad_two_cell.sdf;assets/cad/segmented/rad_two_cell.urdf,missing,,,1,engine handoff asset missing
+engineHandoff,Isaac Sim,assets/cad/segmented/isaac/rad_two_cell.usd;assets/cad/segmented/rad_two_cell.usd,missing,,,1,engine handoff asset missing

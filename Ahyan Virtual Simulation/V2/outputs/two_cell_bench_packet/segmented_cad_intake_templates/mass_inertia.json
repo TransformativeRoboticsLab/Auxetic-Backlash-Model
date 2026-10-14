@@ -1,0 +1,91 @@
+{
+  "schema": "rad-sim.segmented-cad-mass-inertia-template.v1",
+  "units": {
+    "mass": "kg",
+    "length": "mm",
+    "inertia": "kg*mm^2"
+  },
+  "bodies": [
+    {
+      "bodyId": "upper_free_cell_body",
+      "massKg": "",
+      "centerOfMassMm": [
+        "",
+        "",
+        ""
+      ],
+      "inertiaTensorKgMm2": [
+        [
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          ""
+        ]
+      ],
+      "source": "Fusion physical properties or measured mass"
+    },
+    {
+      "bodyId": "lower_cell_body",
+      "massKg": "",
+      "centerOfMassMm": [
+        "",
+        "",
+        ""
+      ],
+      "inertiaTensorKgMm2": [
+        [
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          ""
+        ]
+      ],
+      "source": "Fusion physical properties or measured mass"
+    },
+    {
+      "bodyId": "screw_pin_body",
+      "massKg": "",
+      "centerOfMassMm": [
+        "",
+        "",
+        ""
+      ],
+      "inertiaTensorKgMm2": [
+        [
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          ""
+        ],
+        [
+          "",
+          "",
+          ""
+        ]
+      ],
+      "source": "Fusion physical properties or measured mass"
+    }
+  ]
+}

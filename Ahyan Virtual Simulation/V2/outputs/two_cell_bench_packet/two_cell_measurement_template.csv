@@ -1,0 +1,6 @@
+caseId,alphaCommand,zCommand,pinRadius,holeRadius,leftX,leftY,leftZ,rightX,rightY,rightZ,rightAlpha,rightTheta,contactModeObserved,notes,predictedLeftX,predictedLeftY,predictedLeftZ,predictedRightX,predictedRightY,predictedRightZ,predictedRightAlpha,predictedRightTheta,contactModePredicted
+free_contract_lift,-0.35,0.35,0.18,0.225,,,,,,,,,,,0.0,0.0,0.0,0.88625,0.0,0.30499999999999994,0.7725,-5.925000000000004,clearance-taken-up
+free_expand_pushdown,0.35,-0.35,0.18,0.225,,,,,,,,,,,0.0,0.0,0.0,1.11375,0.0,-0.30499999999999994,1.2275,25.924999999999997,clearance-taken-up
+right_state_locked,-0.35,0.35,0.18,0.225,,,,,,,,,,,0.0,0.0,0.0,1.0,0.0,0.0,1.0,10.0,blocked-by-lock
+right_position_locked,-0.35,0.35,0.18,0.225,,,,,,,,,,,0.0,0.0,0.0,1.0,0.0,0.0,1.0,10.0,blocked-by-lock
+left_free_neighbor_residual,-0.35,0.35,0.18,0.225,,,,,,,,,,,0.080620519890936,0.0,0.08489179906474928,0.919379480109064,0.0,0.30499999999999994,0.7725,-5.925000000000004,clearance-taken-up

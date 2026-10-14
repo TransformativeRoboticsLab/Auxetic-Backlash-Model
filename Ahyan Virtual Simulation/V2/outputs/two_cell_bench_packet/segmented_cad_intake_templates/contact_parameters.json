@@ -1,0 +1,37 @@
+{
+  "schema": "rad-sim.segmented-cad-contact-parameters-template.v1",
+  "units": {
+    "stiffness": "N/m",
+    "damping": "N*s/m",
+    "friction": "unitless"
+  },
+  "contacts": [
+    {
+      "contactId": "pin_hole_wall",
+      "normalStiffness": "",
+      "normalDamping": "",
+      "staticFriction": "",
+      "dynamicFriction": "",
+      "restitution": "",
+      "source": "bench fit or material test"
+    },
+    {
+      "contactId": "lock_crown_contact",
+      "normalStiffness": "",
+      "normalDamping": "",
+      "staticFriction": "",
+      "dynamicFriction": "",
+      "restitution": "",
+      "source": "lock experiment fit"
+    },
+    {
+      "contactId": "ground_plane",
+      "normalStiffness": "",
+      "normalDamping": "",
+      "staticFriction": "",
+      "dynamicFriction": "",
+      "restitution": "",
+      "source": "bench fixture"
+    }
+  ]
+}

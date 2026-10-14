@@ -1,0 +1,631 @@
+{
+  "schema": "rad-sim.two-cell-connector-contact-report.v1",
+  "model": "cad-layout-two-cell-connector-clearance-contact",
+  "cadReference": {
+    "schema": "rad-sim.cad-rad-cell-reference.v1",
+    "source": "Autodesk A360 public share https://a360.co/4bMlzip",
+    "localFiles": {
+      "fusionArchive": "assets/cad/RADs_unit_cell.f3d",
+      "viewerSummary": "assets/cad/RADs_unit_cell_reference.json",
+      "preview": "assets/cad/RADs_unit_cell_preview.png"
+    },
+    "units": "mm",
+    "boundingBoxMm": {
+      "widthX": 55.604331129396634,
+      "widthY": 55.60433117189373,
+      "heightZ": 19.99999621152464
+    },
+    "nominalHoleDiameterMm": 3.4,
+    "fusionManifestLabels": {
+      "archiveDisplayName": "RADs unit cell",
+      "linkedCellDisplayName": "RADs free cell 4mm tall 3.4mm hole"
+    },
+    "viewerAccess": {
+      "shareUrl": "https://a360.co/4bMlzip",
+      "resolvedTitle": "RADs unit cell - AUTODESK FUSION",
+      "downloadFormatsObserved": [
+        "Fusion Archive",
+        "Inventor 2025",
+        "IGES",
+        "SAT",
+        "SMT",
+        "STEP",
+        "DWG",
+        "DXF",
+        "STL",
+        "FBX",
+        "SketchUp",
+        "OBJ"
+      ],
+      "downloadRequiresEmailExport": true
+    },
+    "visibleFeatures": [
+      "central circular crown and screw stack",
+      "eight radial arms",
+      "outer circular pin-hole pads",
+      "single-cell monolithic upper/lower body fragments"
+    ],
+    "fragments": [
+      {
+        "id": 0,
+        "name": "RADs free cell 4mm tall 3.4mm hole body",
+        "zMin": 3.9999988079071045,
+        "zMax": 8.000000953674316
+      },
+      {
+        "id": 1,
+        "name": "cell lower body",
+        "zMin": 0.0,
+        "zMax": 4.0
+      },
+      {
+        "id": 2,
+        "name": "18-8 stainless screw",
+        "zMin": -9.999998092651367,
+        "zMax": 9.999998092651367
+      }
+    ],
+    "physicalInterpretation": "CAD-derived visual/dimensional reference. The reduced two-cell model does not replace segmented rigid-body contact simulation."
+  },
+  "cadLayout": {
+    "schema": "rad-sim.cad-rad-cell-layout.v1",
+    "cadReference": {
+      "schema": "rad-sim.cad-rad-cell-reference.v1",
+      "source": "Autodesk A360 public share https://a360.co/4bMlzip",
+      "localFiles": {
+        "fusionArchive": "assets/cad/RADs_unit_cell.f3d",
+        "viewerSummary": "assets/cad/RADs_unit_cell_reference.json",
+        "preview": "assets/cad/RADs_unit_cell_preview.png"
+      },
+      "units": "mm",
+      "boundingBoxMm": {
+        "widthX": 55.604331129396634,
+        "widthY": 55.60433117189373,
+        "heightZ": 19.99999621152464
+      },
+      "nominalHoleDiameterMm": 3.4,
+      "fusionManifestLabels": {
+        "archiveDisplayName": "RADs unit cell",
+        "linkedCellDisplayName": "RADs free cell 4mm tall 3.4mm hole"
+      },
+      "viewerAccess": {
+        "shareUrl": "https://a360.co/4bMlzip",
+        "resolvedTitle": "RADs unit cell - AUTODESK FUSION",
+        "downloadFormatsObserved": [
+          "Fusion Archive",
+          "Inventor 2025",
+          "IGES",
+          "SAT",
+          "SMT",
+          "STEP",
+          "DWG",
+          "DXF",
+          "STL",
+          "FBX",
+          "SketchUp",
+          "OBJ"
+        ],
+        "downloadRequiresEmailExport": true
+      },
+      "visibleFeatures": [
+        "central circular crown and screw stack",
+        "eight radial arms",
+        "outer circular pin-hole pads",
+        "single-cell monolithic upper/lower body fragments"
+      ],
+      "fragments": [
+        {
+          "id": 0,
+          "name": "RADs free cell 4mm tall 3.4mm hole body",
+          "zMin": 3.9999988079071045,
+          "zMax": 8.000000953674316
+        },
+        {
+          "id": 1,
+          "name": "cell lower body",
+          "zMin": 0.0,
+          "zMax": 4.0
+        },
+        {
+          "id": 2,
+          "name": "18-8 stainless screw",
+          "zMin": -9.999998092651367,
+          "zMax": 9.999998092651367
+        }
+      ],
+      "physicalInterpretation": "CAD-derived visual/dimensional reference. The reduced two-cell model does not replace segmented rigid-body contact simulation."
+    },
+    "sourceEvidence": [
+      "A360 Fusion archive bounding box",
+      "linked cell label: RADs free cell 4mm tall 3.4mm hole",
+      "eight radial pad sites visible in extracted preview"
+    ],
+    "limitations": [
+      "Site layout is dimension-consistent and topology-matched, but not exact BREP vertex extraction.",
+      "Fusion BREP streams still need segmentation/export before exact rigid-body contact simulation."
+    ],
+    "dimensionsMm": {
+      "widthMm": 55.604331129396634,
+      "heightMm": 19.99999621152464,
+      "bodyThicknessMm": 4.0,
+      "lowerBodyThicknessMm": 4.0,
+      "stackHeightMm": 19.99999621152464,
+      "nominalHoleRadiusMm": 1.7,
+      "pinRadiusMm": 1.3599999999999999,
+      "holeRadiusMm": 1.7,
+      "pinHoleClearanceMm": 0.3400000000000001,
+      "padRadiusMm": 3.145,
+      "hubRadiusMm": 3.6142815234107815,
+      "siteRadiusMm": 24.657165564698317,
+      "connectorPitchMm": 49.314331129396635,
+      "armStartRadiusMm": 2.8191395882604096,
+      "armWidthMm": 1.0008779603291393,
+      "screwRadiusMm": 0.8839999999999999
+    },
+    "padSites": [
+      {
+        "name": "n",
+        "angleDegrees": 90.0,
+        "xMm": 1.5098159442427066e-15,
+        "yMm": 24.657165564698317,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "ne",
+        "angleDegrees": 45.0,
+        "xMm": 17.43524897563761,
+        "yMm": 17.435248975637606,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "e",
+        "angleDegrees": 0.0,
+        "xMm": 24.657165564698317,
+        "yMm": 0.0,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "se",
+        "angleDegrees": -45.0,
+        "xMm": 17.43524897563761,
+        "yMm": -17.435248975637606,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "s",
+        "angleDegrees": -90.0,
+        "xMm": 1.5098159442427066e-15,
+        "yMm": -24.657165564698317,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "sw",
+        "angleDegrees": -135.0,
+        "xMm": -17.435248975637606,
+        "yMm": -17.43524897563761,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "w",
+        "angleDegrees": 180.0,
+        "xMm": -24.657165564698317,
+        "yMm": 3.0196318884854133e-15,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      },
+      {
+        "name": "nw",
+        "angleDegrees": 135.0,
+        "xMm": -17.435248975637606,
+        "yMm": 17.43524897563761,
+        "padRadiusMm": 3.145,
+        "holeRadiusMm": 1.7,
+        "pinRadiusMm": 1.3599999999999999,
+        "outerEnvelopeRadiusMm": 27.802165564698317
+      }
+    ],
+    "twoCellConnectorPairs": [
+      {
+        "name": "upper",
+        "leftSite": "ne",
+        "rightSite": "nw",
+        "axis": "x",
+        "leftPinGeom": "left_cell_ne_pin",
+        "rightHoleGeom": "right_cell_nw_hole_clearance"
+      },
+      {
+        "name": "middle",
+        "leftSite": "e",
+        "rightSite": "w",
+        "axis": "x",
+        "leftPinGeom": "left_cell_e_pin",
+        "rightHoleGeom": "right_cell_w_hole_clearance"
+      },
+      {
+        "name": "lower",
+        "leftSite": "se",
+        "rightSite": "sw",
+        "axis": "x",
+        "leftPinGeom": "left_cell_se_pin",
+        "rightHoleGeom": "right_cell_sw_hole_clearance"
+      }
+    ],
+    "envelopeCheck": {
+      "maxOuterEnvelopeMm": 27.802165564698317,
+      "halfWidthMm": 27.802165564698317,
+      "matchesBoundingBox": true
+    },
+    "visualModel": {
+      "siteRadiusToWidth": 0.44343965773670974,
+      "padRadiusToWidth": 0.056560342263290285,
+      "hubRadiusToWidth": 0.065,
+      "holeRadiusToWidth": 0.03057315798015691,
+      "pinRadiusToWidth": 0.024458526384125524,
+      "armStartRadiusToWidth": 0.0507,
+      "armWidthToWidth": 0.018,
+      "bodyThicknessToWidth": 0.07193684230625155,
+      "stackHeightToWidth": 0.3596841433985191,
+      "siteRadiusToPitch": 0.5,
+      "padRadiusToPitch": 0.0637745646746741,
+      "hubRadiusToPitch": 0.07329069340770764,
+      "holeRadiusToPitch": 0.034472737661986,
+      "pinRadiusToPitch": 0.027578190129588797,
+      "holeToPadRadiusRatio": 0.5405405405405406,
+      "pinToHoleRadiusRatio": 0.7999999999999999,
+      "screwToHubRadiusRatio": 0.24458526384125523,
+      "hubToPadRadiusRatio": 1.1492151107824424,
+      "armStartRadiusToPitch": 0.05716674085801196,
+      "armWidthToPitch": 0.020295884328288265,
+      "bodyThicknessToPitch": 0.0811123239105553,
+      "stackHeightToPitch": 0.4055615427297663,
+      "modelUnitsPerMm": 0.017984210576562888
+    }
+  },
+  "scale": {
+    "xyMmPerModelUnit": 49.314331129396635,
+    "zMmPerModelUnit": 19.99999621152464,
+    "cadWidthMm": 55.604331129396634,
+    "cadHeightMm": 19.99999621152464,
+    "connectorPitchMm": 49.314331129396635,
+    "bodyThicknessMm": 4.0,
+    "nominalHoleRadiusMm": 1.7,
+    "pinRadiusMm": 1.3599999999999999,
+    "holeRadiusMm": 1.7,
+    "clearanceMm": 0.3400000000000001
+  },
+  "controls": {
+    "alphaCommand": -0.35,
+    "zCommand": 0.35,
+    "leftPositionLocked": true,
+    "rightLocked": false,
+    "rightPositionLocked": false
+  },
+  "dimensions": {
+    "cellSize": 1.0,
+    "pinRadius": 0.18,
+    "holeRadius": 0.225,
+    "pinHoleClearance": 0.04500000000000001,
+    "connectorPitchMm": 49.314331129396635,
+    "pinRadiusMm": 1.3599999999999999,
+    "holeRadiusMm": 1.7,
+    "pinHoleClearanceMm": 0.3400000000000001
+  },
+  "quasistatic": {
+    "schema": "rad-sim.two-cell-quasistatic-physics.v1",
+    "model": "two-cell-hard-lock-quasistatic-clearance-energy",
+    "cadReference": {
+      "schema": "rad-sim.cad-rad-cell-reference.v1",
+      "source": "Autodesk A360 public share https://a360.co/4bMlzip",
+      "localFiles": {
+        "fusionArchive": "assets/cad/RADs_unit_cell.f3d",
+        "viewerSummary": "assets/cad/RADs_unit_cell_reference.json",
+        "preview": "assets/cad/RADs_unit_cell_preview.png"
+      },
+      "units": "mm",
+      "boundingBoxMm": {
+        "widthX": 55.604331129396634,
+        "widthY": 55.60433117189373,
+        "heightZ": 19.99999621152464
+      },
+      "nominalHoleDiameterMm": 3.4,
+      "fusionManifestLabels": {
+        "archiveDisplayName": "RADs unit cell",
+        "linkedCellDisplayName": "RADs free cell 4mm tall 3.4mm hole"
+      },
+      "viewerAccess": {
+        "shareUrl": "https://a360.co/4bMlzip",
+        "resolvedTitle": "RADs unit cell - AUTODESK FUSION",
+        "downloadFormatsObserved": [
+          "Fusion Archive",
+          "Inventor 2025",
+          "IGES",
+          "SAT",
+          "SMT",
+          "STEP",
+          "DWG",
+          "DXF",
+          "STL",
+          "FBX",
+          "SketchUp",
+          "OBJ"
+        ],
+        "downloadRequiresEmailExport": true
+      },
+      "visibleFeatures": [
+        "central circular crown and screw stack",
+        "eight radial arms",
+        "outer circular pin-hole pads",
+        "single-cell monolithic upper/lower body fragments"
+      ],
+      "fragments": [
+        {
+          "id": 0,
+          "name": "RADs free cell 4mm tall 3.4mm hole body",
+          "zMin": 3.9999988079071045,
+          "zMax": 8.000000953674316
+        },
+        {
+          "id": 1,
+          "name": "cell lower body",
+          "zMin": 0.0,
+          "zMax": 4.0
+        },
+        {
+          "id": 2,
+          "name": "18-8 stainless screw",
+          "zMin": -9.999998092651367,
+          "zMax": 9.999998092651367
+        }
+      ],
+      "physicalInterpretation": "CAD-derived visual/dimensional reference. The reduced two-cell model does not replace segmented rigid-body contact simulation."
+    },
+    "controls": {
+      "alphaCommand": -0.35,
+      "zCommand": 0.35,
+      "leftPositionLocked": true,
+      "rightLocked": false,
+      "rightPositionLocked": false
+    },
+    "dimensions": {
+      "cellSize": 1.0,
+      "pinRadius": 0.18,
+      "holeRadius": 0.225,
+      "pinHoleClearance": 0.04500000000000001
+    },
+    "deadZones": {
+      "backlash": 0.1,
+      "clearance": 0.04500000000000001,
+      "alphaDeadZone": 0.12250000000000001,
+      "verticalDeadZone": 0.04500000000000001,
+      "effectiveBacklash": 0.14500000000000002
+    },
+    "targets": {
+      "leftAlpha": 1.0,
+      "rightAlpha": 0.7725,
+      "leftZ": 0.0,
+      "rightZ": 0.30499999999999994,
+      "restPitch": 0.88625
+    },
+    "cells": [
+      {
+        "id": "left",
+        "center": {
+          "x": 0.0,
+          "y": 0.0,
+          "z": 0.0
+        },
+        "alpha": 0.8502666234321212,
+        "theta": -0.48133635975151634,
+        "positionLocked": true,
+        "stateLocked": false
+      },
+      {
+        "id": "right",
+        "center": {
+          "x": 0.88625,
+          "y": 0.0,
+          "z": 0.06310076580111743
+        },
+        "alpha": 0.7833896086141819,
+        "theta": -5.1627273970072665,
+        "positionLocked": false,
+        "stateLocked": false
+      }
+    ],
+    "contact": {
+      "mode": "pin-hole-vertical-contact",
+      "distance": 0.8884935391687929,
+      "restPitch": 0.8168281160231516,
+      "axialBacklashGap": 0.14500000000000002,
+      "axialError": 0.07166542314564128,
+      "axialExcess": 0.0,
+      "verticalClearance": 0.04500000000000001,
+      "verticalShear": 0.06310076580111743,
+      "verticalExcess": 0.018100765801117413,
+      "leftFloorPenetration": 0.0,
+      "rightFloorPenetration": 0.0
+    },
+    "energy": {
+      "axialEnergy": 0.0,
+      "hingeEnergy": 0.02002745794946455,
+      "rightAlphaActuatorEnergy": 0.0032610483336768244,
+      "rightZActuatorEnergy": 1.3165928888851308,
+      "leftResidualEnergy": 0.044840168116836374,
+      "verticalContactEnergy": 0.0982913167760705,
+      "groundContactEnergy": 0.0,
+      "gravityPotential": 0.0015775191450279357,
+      "storedEnergy": 1.483012880061179,
+      "totalEnergy": 1.484590399206207
+    },
+    "constraints": {
+      "hardFixedDofs": {
+        "leftX": 0.0,
+        "leftZ": 0.0
+      },
+      "freeDofs": [
+        "leftAlpha",
+        "rightX",
+        "rightZ",
+        "rightAlpha"
+      ],
+      "leftFixtureError": 0.0,
+      "rightFixtureError": null,
+      "rightStateAlphaError": null,
+      "positionLocksHold": true,
+      "stateLocksHold": true,
+      "rightLockedVerticalMotionAllowed": false
+    },
+    "solver": {
+      "engine": "scipy.optimize.minimize",
+      "method": "L-BFGS-B",
+      "success": true,
+      "message": "CONVERGENCE: NORM_OF_PROJECTED_GRADIENT_<=_PGTOL",
+      "iterations": 9,
+      "tolerance": 1e-09,
+      "maxiter": 800,
+      "scipyAvailable": true
+    },
+    "claimLabels": {
+      "physics": "internal quasistatic energy solve with hard coordinate constraints",
+      "contact": "clearance penalty proxy, not collision-resolved CAD contact",
+      "accuracy": "requires external solver and bench measurement comparison before physical claims"
+    }
+  },
+  "connectors": [
+    {
+      "connector": "upper",
+      "leftSite": "ne",
+      "rightSite": "nw",
+      "leftPositionMm": {
+        "x": 16.597601240986226,
+        "y": 15.539021052675954,
+        "z": 0.0
+      },
+      "rightPositionMm": {
+        "x": 29.025332491947296,
+        "y": 16.149130197948733,
+        "z": 1.262015076966652
+      },
+      "slipMm": {
+        "x": 12.42773125096107,
+        "y": 0.6101091452727783,
+        "z": 1.262015076966652
+      },
+      "lateralSlipMm": 12.442698148523089,
+      "verticalSlipMm": 1.262015076966652,
+      "totalSlipMm": 12.506535062508362,
+      "lateralClearanceMm": 0.3400000000000001,
+      "verticalFreePlayMm": 0.3400000000000001,
+      "lateralExcessMm": 12.10269814852309,
+      "verticalExcessMm": 0.922015076966652,
+      "contactPenalty": 882.2522620542005,
+      "contactMode": "lateral+vertical-contact"
+    },
+    {
+      "connector": "middle",
+      "leftSite": "e",
+      "rightSite": "w",
+      "leftPositionMm": {
+        "x": 22.724023548279312,
+        "y": -0.748529229583924,
+        "z": 0.0
+      },
+      "rightPositionMm": {
+        "x": 21.90569711212627,
+        "y": 1.0391900951665078,
+        "z": 1.262015076966652
+      },
+      "slipMm": {
+        "x": -0.8183264361530433,
+        "y": 1.787719324750432,
+        "z": 1.262015076966652
+      },
+      "lateralSlipMm": 1.9661125451492043,
+      "verticalSlipMm": 1.262015076966652,
+      "totalSlipMm": 2.3362963413668707,
+      "lateralClearanceMm": 0.3400000000000001,
+      "verticalFreePlayMm": 0.3400000000000001,
+      "lateralExcessMm": 1.6261125451492042,
+      "verticalExcessMm": 0.922015076966652,
+      "contactPenalty": 19.26589926556502,
+      "contactMode": "lateral+vertical-contact"
+    },
+    {
+      "connector": "lower",
+      "leftSite": "se",
+      "rightSite": "sw",
+      "leftPositionMm": {
+        "x": 15.539021052675958,
+        "y": -16.597601240986222,
+        "z": 0.0
+      },
+      "rightPositionMm": {
+        "x": 27.555695765479037,
+        "y": -14.679493471480473,
+        "z": 1.262015076966652
+      },
+      "slipMm": {
+        "x": 12.016674712803079,
+        "y": 1.918107769505749,
+        "z": 1.262015076966652
+      },
+      "lateralSlipMm": 12.168796512751754,
+      "verticalSlipMm": 1.262015076966652,
+      "totalSlipMm": 12.2340627194424,
+      "lateralClearanceMm": 0.3400000000000001,
+      "verticalFreePlayMm": 0.3400000000000001,
+      "lateralExcessMm": 11.828796512751754,
+      "verticalExcessMm": 0.922015076966652,
+      "contactPenalty": 842.9230088491438,
+      "contactMode": "lateral+vertical-contact"
+    }
+  ],
+  "summary": {
+    "status": "connector-contact-internal-ready",
+    "connectorContactReady": true,
+    "connectorCount": 3,
+    "activeContactCount": 3,
+    "insideClearanceCount": 0,
+    "maxLateralSlipMm": 12.442698148523089,
+    "maxVerticalSlipMm": 1.262015076966652,
+    "maxLateralExcessMm": 12.10269814852309,
+    "maxVerticalExcessMm": 0.922015076966652,
+    "totalContactPenalty": 1744.4411701689094,
+    "solverSuccess": true,
+    "positionLocksHold": true,
+    "stateLocksHold": true,
+    "rightLockedVerticalMotionAllowed": false,
+    "requiresExternalEngineRun": true,
+    "requiresMeasuredData": true
+  },
+  "claimLabels": {
+    "connectorGeometry": "CAD-layout pin-hole site inventory with connector-pitch scaling",
+    "contact": "clearance-excess penalty over three connector pairs",
+    "physicalAccuracy": "internal diagnostic until segmented CAD contact or measured connector slips agree"
+  },
+  "limitations": [
+    "Connector sites are derived from the A360 envelope and preview topology, not exact BREP vertices.",
+    "Alpha changes scale connector radius with a normalized sqrt(alpha) law until CAD mechanism kinematics are measured.",
+    "Friction, crown compliance, screw preload, and pin/hole wall contact are not externally solved here."
+  ]
+}

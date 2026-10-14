@@ -1,0 +1,30 @@
+{
+  "schema": "rad-sim.hardware-profile.v1",
+  "name": "current-config-estimate",
+  "source": "normalized simulator controls",
+  "units": "mm",
+  "dimensionsMm": {
+    "sideLengthMm": 35.0,
+    "fabricationHoleToleranceMm": 0.1,
+    "backlashMm": 3.5,
+    "pinRadiusMm": 6.3,
+    "holeRadiusMm": 7.875,
+    "plateThicknessMm": null,
+    "jointStackHeightMm": null,
+    "bossRadiusMm": null
+  },
+  "derived": {
+    "pinHoleClearanceMm": 1.5750000000000002
+  },
+  "measuredFields": [
+    "pin_radius_mm",
+    "hole_radius_mm"
+  ],
+  "missingFields": [
+    "plate_thickness_mm",
+    "joint_stack_height_mm",
+    "boss_radius_mm"
+  ],
+  "coverageRatio": 0.4,
+  "notes": "Derived from current normalized grid values; verify against hardware."
+}

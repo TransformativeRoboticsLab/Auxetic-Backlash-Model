@@ -1,0 +1,591 @@
+{
+  "schema": "rad-sim.calibration-bench-notebook.v1",
+  "grid": {
+    "rows": 3,
+    "cols": 3,
+    "cellSize": 1.0,
+    "backlash": 0.1,
+    "couplingGain": 0.55,
+    "zCouplingGain": 0.32,
+    "pinRadius": 0.18,
+    "holeRadius": 0.225,
+    "pinHoleClearance": 0.04500000000000001
+  },
+  "protocol": {
+    "schema": "rad-sim.calibration-experiment-protocol.v1",
+    "hardwareProfile": "paper-reference",
+    "centerCell": {
+      "row": 1,
+      "col": 1
+    },
+    "stepCount": 7,
+    "repeatCountTotal": 21,
+    "notes": "Protocol defines repeatable simulator/bench measurements; it does not claim the current spring-hinge solver is calibrated."
+  },
+  "datasetPlan": {
+    "fit": {
+      "datasetId": "fit-run-001",
+      "role": "fit",
+      "suggestedFilename": "fit-run-001.json",
+      "sourceFileId": "fit-run-001.json",
+      "profileId": null,
+      "profileFrozenAt": null,
+      "provenanceSchema": "rad-sim.calibration-dataset-provenance.v1",
+      "purpose": "Estimate diagnostic response parameters and freeze a bounded model profile."
+    },
+    "holdout": {
+      "datasetId": "holdout-run-001",
+      "role": "holdout",
+      "suggestedFilename": "holdout-run-001.json",
+      "sourceFileId": "holdout-run-001.json",
+      "profileId": "calibration-profile-v1",
+      "profileFrozenAt": "set-after-fit-before-holdout",
+      "provenanceSchema": "rad-sim.calibration-dataset-provenance.v1",
+      "purpose": "Replay the frozen profile against data collected after the fit file is closed."
+    }
+  },
+  "instruments": [
+    {
+      "id": "calipers-or-micrometer",
+      "measures": [
+        "pin radius",
+        "hole radius",
+        "plate thickness",
+        "joint stack height"
+      ],
+      "claimLabel": "required geometry measurement"
+    },
+    {
+      "id": "motion-tracking-camera",
+      "measures": [
+        "cell center displacement",
+        "height delta",
+        "neighbor residual z"
+      ],
+      "claimLabel": "required response measurement"
+    },
+    {
+      "id": "force-gauge-or-load-cell",
+      "measures": [
+        "actuator force",
+        "contact/load proxy"
+      ],
+      "claimLabel": "required force measurement for contact calibration"
+    },
+    {
+      "id": "fixture-and-clamps",
+      "measures": [
+        "locked cell enforcement",
+        "fixed boundary repeatability"
+      ],
+      "claimLabel": "required boundary-condition control"
+    },
+    {
+      "id": "actuator-controller",
+      "measures": [
+        "commanded alpha",
+        "commanded z",
+        "command repeat timing"
+      ],
+      "claimLabel": "required command provenance"
+    },
+    {
+      "id": "scale-reference-marker",
+      "measures": [
+        "pixel-to-mm scale",
+        "coordinate registration"
+      ],
+      "claimLabel": "required unit-scale evidence"
+    }
+  ],
+  "measurementColumns": [
+    "datasetId",
+    "datasetRole",
+    "sourceFileId",
+    "collectedAt",
+    "operator",
+    "profileId",
+    "profileFrozenAt",
+    "alpha_delta_grid",
+    "height_delta_grid",
+    "center_displacement_grid",
+    "actuator_command",
+    "lock_state",
+    "pin_hole_slip_mm",
+    "actuator_force_n"
+  ],
+  "phases": [
+    {
+      "id": "setup",
+      "description": "Measure hardware profile fields and register the cell coordinate frame.",
+      "requiredEvidence": [
+        "hardware profile",
+        "scale marker",
+        "fixture notes"
+      ]
+    },
+    {
+      "id": "fit-collection",
+      "description": "Collect the fit dataset without using any holdout measurements.",
+      "requiredEvidence": [
+        "fit-run-001",
+        "datasetRole=fit"
+      ]
+    },
+    {
+      "id": "profile-freeze",
+      "description": "Generate and freeze a model profile before holdout collection starts.",
+      "requiredEvidence": [
+        "calibration-profile-v1",
+        "set-after-fit-before-holdout"
+      ]
+    },
+    {
+      "id": "holdout-collection",
+      "description": "Collect a separate holdout file after the model profile is frozen.",
+      "requiredEvidence": [
+        "holdout-run-001",
+        "datasetRole=holdout"
+      ]
+    },
+    {
+      "id": "validation",
+      "description": "Run residual validation and independent split checks before making physical claims.",
+      "requiredEvidence": [
+        "rad-sim.calibration-model-profile-holdout-validation.v1",
+        "rad-sim.calibration-train-holdout-split.v1"
+      ]
+    }
+  ],
+  "scenarios": [
+    {
+      "stepId": "single_alpha_contract",
+      "scope": "single",
+      "repeatCount": 3,
+      "commandCells": [
+        {
+          "row": 1,
+          "col": 1
+        }
+      ],
+      "commands": [
+        {
+          "row": 1,
+          "col": 1,
+          "alpha": -0.25,
+          "z": 0.0
+        }
+      ],
+      "lockedCells": [],
+      "observationCells": [
+        {
+          "row": 1,
+          "col": 1
+        }
+      ],
+      "measurementFields": [
+        "alpha_delta_grid",
+        "height_delta_grid",
+        "center_displacement_grid",
+        "actuator_command",
+        "lock_state",
+        "pin_hole_slip_mm",
+        "actuator_force_n"
+      ],
+      "datasetRoles": [
+        "fit",
+        "holdout"
+      ],
+      "purpose": "Measure the local rotating-square dilation response to contraction.",
+      "expectedResponse": "Primary alpha change at the commanded cell with backlash-gated neighbor influence.",
+      "claimLabel": "bench protocol step; no physical law claimed until measured"
+    },
+    {
+      "stepId": "single_alpha_expand",
+      "scope": "single",
+      "repeatCount": 3,
+      "commandCells": [
+        {
+          "row": 1,
+          "col": 1
+        }
+      ],
+      "commands": [
+        {
+          "row": 1,
+          "col": 1,
+          "alpha": 0.1875,
+          "z": 0.0
+        }
+      ],
+      "lockedCells": [],
+      "observationCells": [
+        {
+          "row": 1,
+          "col": 1
+        }
+      ],
+      "measurementFields": [
+        "alpha_delta_grid",
+        "height_delta_grid",
+        "center_displacement_grid",
+        "actuator_command",
+        "lock_state",
+        "pin_hole_slip_mm",
+        "actuator_force_n"
+      ],
+      "datasetRoles": [
+        "fit",
+        "holdout"
+      ],
+      "purpose": "Measure expansion-side travel and check for asymmetric backlash.",
+      "expectedResponse": "Positive alpha response at the commanded cell with smaller expansion command.",
+      "claimLabel": "bench protocol step; no physical law claimed until measured"
+    },
+    {
+      "stepId": "single_z_lift",
+      "scope": "single",
+      "repeatCount": 3,
+      "commandCells": [
+        {
+          "row": 1,
+          "col": 1
+        }
+      ],
+      "commands": [
+        {
+          "row": 1,
+          "col": 1,
+          "alpha": 0.0,
+          "z": 0.3
+        }
+      ],
+      "lockedCells": [],
+      "observationCells": [
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 1
+        }
+      ],
+      "measurementFields": [
+        "alpha_delta_grid",
+        "height_delta_grid",
+        "center_displacement_grid",
+        "actuator_command",
+        "lock_state",
+        "pin_hole_slip_mm",
+        "actuator_force_n"
+      ],
+      "datasetRoles": [
+        "fit",
+        "holdout"
+      ],
+      "purpose": "Measure direct vertical actuation and residual neighbor lift.",
+      "expectedResponse": "Commanded cell moves vertically; adjacent observation cell captures pin-hole residual coupling.",
+      "claimLabel": "bench protocol step; no physical law claimed until measured"
+    },
+    {
+      "stepId": "pair_z_residual",
+      "scope": "pair",
+      "repeatCount": 3,
+      "commandCells": [
+        {
+          "row": 1,
+          "col": 1
+        }
+      ],
+      "commands": [
+        {
+          "row": 1,
+          "col": 1,
+          "alpha": 0.0,
+          "z": 0.3
+        }
+      ],
+      "lockedCells": [],
+      "observationCells": [
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 1
+        }
+      ],
+      "measurementFields": [
+        "alpha_delta_grid",
+        "height_delta_grid",
+        "center_displacement_grid",
+        "actuator_command",
+        "lock_state",
+        "pin_hole_slip_mm",
+        "actuator_force_n"
+      ],
+      "datasetRoles": [
+        "fit",
+        "holdout"
+      ],
+      "purpose": "Quantify vertical die-off from one actuated cell into a neighboring cell.",
+      "expectedResponse": "Neighbor height response should decay with clearance, backlash, and graph distance.",
+      "claimLabel": "bench protocol step; no physical law claimed until measured"
+    },
+    {
+      "stepId": "pair_superposition",
+      "scope": "pair",
+      "repeatCount": 3,
+      "commandCells": [
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 1
+        }
+      ],
+      "commands": [
+        {
+          "row": 1,
+          "col": 1,
+          "alpha": -0.25,
+          "z": 0.15
+        },
+        {
+          "row": 0,
+          "col": 1,
+          "alpha": -0.25,
+          "z": 0.15
+        }
+      ],
+      "lockedCells": [],
+      "observationCells": [
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 1
+        }
+      ],
+      "measurementFields": [
+        "alpha_delta_grid",
+        "height_delta_grid",
+        "center_displacement_grid",
+        "actuator_command",
+        "lock_state",
+        "pin_hole_slip_mm",
+        "actuator_force_n"
+      ],
+      "datasetRoles": [
+        "fit",
+        "holdout"
+      ],
+      "purpose": "Measure whether adjacent cell commands add linearly or interact through backlash.",
+      "expectedResponse": "Any deviation from summed single-cell responses identifies a programmable-discontinuity interaction.",
+      "claimLabel": "bench protocol step; no physical law claimed until measured"
+    },
+    {
+      "stepId": "cluster_mixed_actuation",
+      "scope": "cluster",
+      "repeatCount": 3,
+      "commandCells": [
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 1
+        },
+        {
+          "row": 2,
+          "col": 1
+        }
+      ],
+      "commands": [
+        {
+          "row": 1,
+          "col": 1,
+          "alpha": 0.0,
+          "z": 0.3
+        },
+        {
+          "row": 0,
+          "col": 1,
+          "alpha": -0.25,
+          "z": 0.0
+        },
+        {
+          "row": 2,
+          "col": 1,
+          "alpha": 0.09375,
+          "z": -0.15
+        }
+      ],
+      "lockedCells": [],
+      "observationCells": [
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 1
+        },
+        {
+          "row": 2,
+          "col": 1
+        },
+        {
+          "row": 1,
+          "col": 0
+        },
+        {
+          "row": 1,
+          "col": 2
+        }
+      ],
+      "measurementFields": [
+        "alpha_delta_grid",
+        "height_delta_grid",
+        "center_displacement_grid",
+        "actuator_command",
+        "lock_state",
+        "pin_hole_slip_mm",
+        "actuator_force_n"
+      ],
+      "datasetRoles": [
+        "fit",
+        "holdout"
+      ],
+      "purpose": "Measure collective response of mixed horizontal and vertical actuation.",
+      "expectedResponse": "Cluster field should reveal multi-operator coupling, residual height spread, and reachable directions.",
+      "claimLabel": "bench protocol step; no physical law claimed until measured"
+    },
+    {
+      "stepId": "locked_cell_control",
+      "scope": "lock",
+      "repeatCount": 3,
+      "commandCells": [
+        {
+          "row": 1,
+          "col": 1
+        }
+      ],
+      "commands": [
+        {
+          "row": 1,
+          "col": 1,
+          "alpha": -0.25,
+          "z": 0.3
+        }
+      ],
+      "lockedCells": [
+        {
+          "row": 1,
+          "col": 1
+        }
+      ],
+      "observationCells": [
+        {
+          "row": 1,
+          "col": 1
+        },
+        {
+          "row": 0,
+          "col": 1
+        }
+      ],
+      "measurementFields": [
+        "alpha_delta_grid",
+        "height_delta_grid",
+        "center_displacement_grid",
+        "actuator_command",
+        "lock_state",
+        "pin_hole_slip_mm",
+        "actuator_force_n"
+      ],
+      "datasetRoles": [
+        "fit",
+        "holdout"
+      ],
+      "purpose": "Verify lock enforcement against commanded alpha and vertical motion.",
+      "expectedResponse": "Locked cell should remain fixed while any neighbor residual exposes compliance leakage.",
+      "claimLabel": "bench protocol step; no physical law claimed until measured"
+    }
+  ],
+  "outputs": [
+    {
+      "id": "protocol-json",
+      "schema": "rad-sim.calibration-experiment-protocol.v1",
+      "function": "export_calibration_experiment_protocol_json",
+      "browserAction": "Save Protocol"
+    },
+    {
+      "id": "fit-results-template-json",
+      "schema": "rad-sim.calibration-experiment-results.v1",
+      "function": "export_calibration_experiment_results_template_json",
+      "datasetRole": "fit",
+      "browserAction": "Save Results Template"
+    },
+    {
+      "id": "holdout-results-template-json",
+      "schema": "rad-sim.calibration-experiment-results.v1",
+      "function": "export_calibration_experiment_results_template_json",
+      "datasetRole": "holdout",
+      "browserAction": "Save Results Template"
+    },
+    {
+      "id": "model-profile-json",
+      "schema": "rad-sim.calibration-model-profile.v1",
+      "function": "export_calibration_model_profile_json",
+      "browserAction": "Save Model Profile"
+    },
+    {
+      "id": "holdout-validation-json",
+      "schema": "rad-sim.calibration-model-profile-holdout-validation.v1",
+      "function": "export_calibration_model_profile_holdout_validation_json",
+      "browserAction": "Save Holdout Check"
+    },
+    {
+      "id": "holdout-validation-csv",
+      "schema": "rad-sim.calibration-model-profile-holdout-validation.v1",
+      "function": "export_calibration_model_profile_holdout_validation_csv",
+      "browserAction": "Save Holdout CSV"
+    },
+    {
+      "id": "bench-notebook-csv",
+      "schema": "rad-sim.calibration-bench-notebook.v1",
+      "function": "export_calibration_bench_notebook_csv",
+      "browserAction": "Save Bench CSV"
+    }
+  ],
+  "passFailCriteria": {
+    "residualValidationPass": "fit and holdout residual scores do not increase after an applied profile update",
+    "independentValidationPass": "residual pass plus complete train/holdout provenance metadata",
+    "missingEvidence": "must be empty before claiming independent hardware validation",
+    "physicalClaimLimit": "passing this protocol supports calibration bookkeeping only; contact, friction, stiffness, and material laws still require model-specific validation"
+  },
+  "formalization": {
+    "targetId": "calibration_bench_protocol_coverage",
+    "leanStructure": "Mechanics.CalibrationBenchProtocolCoverageNat",
+    "leanPredicate": "calibrationBenchProtocolCoverageReadyNat",
+    "schema": "rad-sim.calibration-bench-notebook.v1"
+  },
+  "claimLabels": {
+    "notebook": "bench protocol artifact",
+    "scenarioRows": "experimentally unvalidated physical procedure until performed",
+    "formalCoverage": "Lean-proven finite coverage predicate, not physical accuracy"
+  },
+  "limitations": [
+    "The notebook enforces artifact coverage and provenance fields but cannot prove the lab actually collected independent files.",
+    "The protocol is normalized and must be mapped to measured hardware units before physical claims.",
+    "Rigid-body contact, friction, stiffness, gravity sag, and actuator-force laws remain uncalibrated."
+  ]
+}

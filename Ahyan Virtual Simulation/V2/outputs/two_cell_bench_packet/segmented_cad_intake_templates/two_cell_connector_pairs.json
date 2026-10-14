@@ -1,0 +1,39 @@
+{
+  "schema": "rad-sim.segmented-cad-two-cell-connector-pairs-template.v1",
+  "units": "mm",
+  "pairs": [
+    {
+      "name": "upper",
+      "leftSite": "ne",
+      "rightSite": "nw",
+      "axis": "x",
+      "leftBody": "left_upper_free_cell_body",
+      "rightBody": "right_upper_free_cell_body",
+      "measuredLeftOriginMm": "",
+      "measuredRightOriginMm": "",
+      "source": "layout-derived-placeholder"
+    },
+    {
+      "name": "middle",
+      "leftSite": "e",
+      "rightSite": "w",
+      "axis": "x",
+      "leftBody": "left_upper_free_cell_body",
+      "rightBody": "right_upper_free_cell_body",
+      "measuredLeftOriginMm": "",
+      "measuredRightOriginMm": "",
+      "source": "layout-derived-placeholder"
+    },
+    {
+      "name": "lower",
+      "leftSite": "se",
+      "rightSite": "sw",
+      "axis": "x",
+      "leftBody": "left_upper_free_cell_body",
+      "rightBody": "right_upper_free_cell_body",
+      "measuredLeftOriginMm": "",
+      "measuredRightOriginMm": "",
+      "source": "layout-derived-placeholder"
+    }
+  ]
+}

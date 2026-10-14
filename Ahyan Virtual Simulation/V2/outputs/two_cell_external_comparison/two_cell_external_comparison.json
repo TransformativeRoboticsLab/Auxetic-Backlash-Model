@@ -1,0 +1,220 @@
+{
+  "schema": "rad-sim.two-cell-external-comparison.v1",
+  "model": "two-cell-external-vs-quasistatic-comparison",
+  "tolerance": 1e-06,
+  "rows": [
+    {
+      "caseId": "free_contract_lift",
+      "bodyId": "left",
+      "bodyName": "left_cell",
+      "lockMode": "free",
+      "sourceEngine": "",
+      "expected": {
+        "externalX": 0.0,
+        "externalY": 0.0,
+        "externalZ": 0.0,
+        "externalAlpha": 0.8502666234321212,
+        "externalTheta": -0.48133635975151634
+      },
+      "observed": {},
+      "residual": {},
+      "positionError": null,
+      "withinTolerance": false,
+      "lockViolation": false
+    },
+    {
+      "caseId": "free_contract_lift",
+      "bodyId": "right",
+      "bodyName": "right_cell",
+      "lockMode": "free",
+      "sourceEngine": "",
+      "expected": {
+        "externalX": 0.88625,
+        "externalY": 0.0,
+        "externalZ": 0.06310076580111743,
+        "externalAlpha": 0.7833896086141819,
+        "externalTheta": -5.1627273970072665
+      },
+      "observed": {},
+      "residual": {},
+      "positionError": null,
+      "withinTolerance": false,
+      "lockViolation": false
+    },
+    {
+      "caseId": "free_expand_pushdown",
+      "bodyId": "left",
+      "bodyName": "left_cell",
+      "lockMode": "free",
+      "sourceEngine": "",
+      "expected": {
+        "externalX": 0.0,
+        "externalY": 0.0,
+        "externalZ": 0.0,
+        "externalAlpha": 1.1497333508155547,
+        "externalTheta": 20.48133455708883
+      },
+      "observed": {},
+      "residual": {},
+      "positionError": null,
+      "withinTolerance": false,
+      "lockViolation": false
+    },
+    {
+      "caseId": "free_expand_pushdown",
+      "bodyId": "right",
+      "bodyName": "right_cell",
+      "lockMode": "free",
+      "sourceEngine": "",
+      "expected": {
+        "externalX": 1.11375,
+        "externalY": 0.0,
+        "externalZ": -0.055240179862622904,
+        "externalAlpha": 1.2166102931648572,
+        "externalTheta": 25.16272052154001
+      },
+      "observed": {},
+      "residual": {},
+      "positionError": null,
+      "withinTolerance": false,
+      "lockViolation": false
+    },
+    {
+      "caseId": "right_state_locked",
+      "bodyId": "left",
+      "bodyName": "left_cell",
+      "lockMode": "right_state_locked",
+      "sourceEngine": "",
+      "expected": {
+        "externalX": 0.0,
+        "externalY": 0.0,
+        "externalZ": 0.0,
+        "externalAlpha": 0.9999999999051391,
+        "externalTheta": 9.999999993359737
+      },
+      "observed": {},
+      "residual": {},
+      "positionError": null,
+      "withinTolerance": false,
+      "lockViolation": false
+    },
+    {
+      "caseId": "right_state_locked",
+      "bodyId": "right",
+      "bodyName": "right_cell",
+      "lockMode": "right_state_locked",
+      "sourceEngine": "",
+      "expected": {
+        "externalX": 1.0,
+        "externalY": 0.0,
+        "externalZ": 0.06310077045541398,
+        "externalAlpha": 1.0,
+        "externalTheta": 10.0
+      },
+      "observed": {},
+      "residual": {},
+      "positionError": null,
+      "withinTolerance": false,
+      "lockViolation": false
+    },
+    {
+      "caseId": "right_position_locked",
+      "bodyId": "left",
+      "bodyName": "left_cell",
+      "lockMode": "right_position_locked",
+      "sourceEngine": "",
+      "expected": {
+        "externalX": 0.0,
+        "externalY": 0.0,
+        "externalZ": 0.0,
+        "externalAlpha": 0.8937248268824645,
+        "externalTheta": 2.5607378817725106
+      },
+      "observed": {},
+      "residual": {},
+      "positionError": null,
+      "withinTolerance": false,
+      "lockViolation": false
+    },
+    {
+      "caseId": "right_position_locked",
+      "bodyId": "right",
+      "bodyName": "right_cell",
+      "lockMode": "right_position_locked",
+      "sourceEngine": "",
+      "expected": {
+        "externalX": 1.0,
+        "externalY": 0.0,
+        "externalZ": 0.0,
+        "externalAlpha": 0.7964498290725552,
+        "externalTheta": -4.248511964921136
+      },
+      "observed": {},
+      "residual": {},
+      "positionError": null,
+      "withinTolerance": false,
+      "lockViolation": false
+    },
+    {
+      "caseId": "left_free_neighbor_residual",
+      "bodyId": "left",
+      "bodyName": "left_cell",
+      "lockMode": "left_free",
+      "sourceEngine": "",
+      "expected": {
+        "externalX": 0.0,
+        "externalY": 0.0,
+        "externalZ": 0.24367431258455183,
+        "externalAlpha": 0.8177989305560286,
+        "externalTheta": -2.7540748610779957
+      },
+      "observed": {},
+      "residual": {},
+      "positionError": null,
+      "withinTolerance": false,
+      "lockViolation": false
+    },
+    {
+      "caseId": "left_free_neighbor_residual",
+      "bodyId": "right",
+      "bodyName": "right_cell",
+      "lockMode": "left_free",
+      "sourceEngine": "",
+      "expected": {
+        "externalX": 0.838758960218128,
+        "externalY": 0.0,
+        "externalZ": 0.28977453513632984,
+        "externalAlpha": 0.7788432123633747,
+        "externalTheta": -5.480975134563771
+      },
+      "observed": {},
+      "residual": {},
+      "positionError": null,
+      "withinTolerance": false,
+      "lockViolation": false
+    }
+  ],
+  "summary": {
+    "status": "needs-two-cell-external-comparison-evidence",
+    "externalComparisonReady": false,
+    "rowCount": 10,
+    "observedScalarCount": 0,
+    "positionResultCount": 0,
+    "missingExternalResultCount": 10,
+    "lockViolationCount": 0,
+    "rmsScalarError": null,
+    "rmsPositionError": null,
+    "maxAbsScalarError": null,
+    "maxPositionError": null,
+    "withinTolerance": false,
+    "missingEvidence": [
+      "externalResultRows",
+      "observedExternalScalars"
+    ],
+    "missingEvidenceCount": 2
+  },
+  "claimLabels": {
+    "comparison": "external engine or bench coordinates compared to internal quasistatic solve",
+    "physicalAccuracy": "agreement diagnostic only; physical validity also needs real measured data"
+  }
+}
