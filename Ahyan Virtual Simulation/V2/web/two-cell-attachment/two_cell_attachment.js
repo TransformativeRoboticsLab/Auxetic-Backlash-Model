@@ -6,19 +6,19 @@
   const aTopInput = document.getElementById("aTopAngle");
   const actuationModeInput = document.getElementById("actuationMode");
   const animateInput = document.getElementById("animate");
-  const actuateSelectedCellButton = document.getElementById("actuateSelectedCell");
-  const resetContractedButton = document.getElementById("resetContracted");
-  const resetExpandedButton = document.getElementById("resetExpanded");
-  const resetBacklashMemoryButton = document.getElementById("resetBacklashMemory");
   const animationHalfPeriodSecondsInput = document.getElementById("animationHalfPeriodSeconds");
   const rowCountInput = document.getElementById("rowCount");
   const colCountInput = document.getElementById("colCount");
   const applyGridButton = document.getElementById("applyGrid");
   const showPinsInput = document.getElementById("showPins");
   const showCenterLinesInput = document.getElementById("showCenterLines");
-  const showContactStateInput = document.getElementById("showContactState");
   const pinRadiusRatioInput = document.getElementById("pinRadiusRatio");
-  const contactTestCommandInput = document.getElementById("contactTestCommand");
+  const plateThicknessInput = document.getElementById("plateThickness");
+  const lockSelectedXYButton = document.getElementById("lockSelectedXY");
+  const positionLockModeInput = document.getElementById("positionLockMode");
+  const unlockSelectedXYButton = document.getElementById("unlockSelectedXY");
+  const clearXYLocksButton = document.getElementById("clearXYLocks");
+  const multiSelectModeInput = document.getElementById("multiSelectMode");
   const aTopOut = document.getElementById("aTopOut");
   const residualMetric = document.getElementById("residualMetric");
   const pitchMetric = document.getElementById("pitchMetric");
@@ -44,20 +44,23 @@
   const latticeSizeMetric = document.getElementById("latticeSizeMetric");
   const cellCountMetric = document.getElementById("cellCountMetric");
   const selectedCellMetric = document.getElementById("selectedCellMetric");
-  const activeCellMetric = document.getElementById("activeCellMetric");
-  const backlashPathMetric = document.getElementById("backlashPathMetric");
-  const engagedLinksMetric = document.getElementById("engagedLinksMetric");
-  const floatingLinksMetric = document.getElementById("floatingLinksMetric");
-  const hysteresisMetric = document.getElementById("hysteresisMetric");
   const dieOffRadiusMetric = document.getElementById("dieOffRadiusMetric");
   const maxPropagatedMetric = document.getElementById("maxPropagatedMetric");
+  const selectedCellsMetric = document.getElementById("selectedCellsMetric");
+  const selectedLockMetric = document.getElementById("selectedLockMetric");
+  const activeLocksMetric = document.getElementById("activeLocksMetric");
+  const maxLiftMetric = document.getElementById("maxLiftMetric");
+  const maxTiltMetric = document.getElementById("maxTiltMetric");
+  const maxLockDriftMetric = document.getElementById("maxLockDriftMetric");
   const pinRadiusRatioOut = document.getElementById("pinRadiusRatioOut");
-  const contactTestCommandOut = document.getElementById("contactTestCommandOut");
   const holeRadiusMetric = document.getElementById("holeRadiusMetric");
   const pinRadiusMetric = document.getElementById("pinRadiusMetric");
+  const diametralBacklashMetric = document.getElementById("diametralBacklashMetric");
   const radialClearanceMetric = document.getElementById("radialClearanceMetric");
   const freeAngleMetric = document.getElementById("freeAngleMetric");
   const relativeBacklashMetric = document.getElementById("relativeBacklashMetric");
+  const exactTiltMetric = document.getElementById("exactTiltMetric");
+  const computedContactCommandMetric = document.getElementById("computedContactCommandMetric");
   const contactStateMetric = document.getElementById("contactStateMetric");
   const transmittedCommandMetric = document.getElementById("transmittedCommandMetric");
 
@@ -125,14 +128,20 @@
   let latestLatticeRadius = 180;
   let currentView = "iso";
   let lastMechanismUpdateKey = "";
+  let lastControlStateKey = "";
   let renderedPinRadius = null;
   let latestContactField = null;
   let latestRestSnapshot = null;
+  let latestBoundaryReport = null;
+  let latestPinFitReport = null;
   let contactMemory = null;
-  let contactMemorySerial = 0;
+  let freeTranslation = [0, 0, 0];
   let selectedDriveCell = { row: 0, col: 0 };
-  let activeDriveCell = { row: 0, col: 0 };
-  let selectionSyncOnly = false;
+  let lastActuationMode = actuationModeInput.value;
+  let selectedDriveCommandDirty = false;
+  const selectedCellKeys = new Set(["0,0"]);
+  const cellDriveCommands = new Map();
+  const xyLocks = new Map();
   const pointer = new THREE.Vector2();
   const raycaster = new THREE.Raycaster();
   const selectableMeshes = [];
@@ -147,14 +156,8 @@
     pin: new THREE.MeshStandardMaterial({ color: 0x1f2933, roughness: 0.36, metalness: 0.35 }),
     centerLine: new THREE.LineBasicMaterial({ color: 0x6b7480, transparent: true, opacity: 0.62 }),
     source: new THREE.LineBasicMaterial({ color: 0x22a36f, transparent: true, opacity: 0.95 }),
-    contactSource: new THREE.MeshStandardMaterial({ color: 0x22a36f, roughness: 0.48, metalness: 0.16 }),
-    contactPositive: new THREE.MeshStandardMaterial({ color: 0x2f73d8, roughness: 0.5, metalness: 0.12 }),
-    contactNegative: new THREE.MeshStandardMaterial({ color: 0xff0000, roughness: 0.5, metalness: 0.12 }),
-    contactFree: new THREE.MeshStandardMaterial({ color: 0x8f969f, roughness: 0.55, metalness: 0.1, transparent: true, opacity: 0.66 }),
-    pinGradient: Array.from({ length: 17 }, (_, index) => {
-      const color = new THREE.Color(0x2f73d8).lerp(new THREE.Color(0xff0000), index / 16);
-      return new THREE.MeshStandardMaterial({ color, roughness: 0.42, metalness: 0.22 });
-    }),
+    selectionSet: new THREE.LineBasicMaterial({ color: 0x4bb6ff, transparent: true, opacity: 0.9 }),
+    lock: new THREE.MeshStandardMaterial({ color: 0xd9273f, roughness: 0.44, metalness: 0.1 }),
   };
 
   const latticeRoot = new THREE.Group();
@@ -173,6 +176,10 @@
   guideRoot.add(latticeLine);
   const selectionRing = new THREE.LineLoop(new THREE.BufferGeometry(), materials.source);
   selectionRoot.add(selectionRing);
+  const selectionMarkerRoot = new THREE.Group();
+  selectionRoot.add(selectionMarkerRoot);
+  const lockMarkerRoot = new THREE.Group();
+  selectionRoot.add(lockMarkerRoot);
 
   function rotate2(vector, angle) {
     const c = Math.cos(angle);
@@ -198,16 +205,21 @@
     return `(${cleanZero(point.x).toFixed(1)}, ${cleanZero(point.y).toFixed(1)})`;
   }
 
-  function cellLabel(cell) {
-    return `r${cell.row + 1} c${cell.col + 1}`;
-  }
-
   function selectedCellLabel() {
-    return cellLabel(selectedDriveCell);
+    const active = `r${selectedDriveCell.row + 1} c${selectedDriveCell.col + 1}`;
+    return selectedCellKeys.size > 1 ? `${active} (+${selectedCellKeys.size - 1})` : active;
   }
 
-  function activeCellLabel() {
-    return cellLabel(activeDriveCell);
+  function selectedCellsLabel() {
+    const labels = [...selectedCellKeys]
+      .sort()
+      .map((key) => {
+        const [row, col] = key.split(",").map(Number);
+        return `r${row + 1} c${col + 1}`;
+      });
+    if (!labels.length) return selectedCellLabel();
+    if (labels.length <= 4) return labels.join(", ");
+    return `${labels.slice(0, 4).join(", ")} +${labels.length - 4}`;
   }
 
   function holeRadiusMm() {
@@ -215,6 +227,7 @@
   }
 
   function pinRadiusRatio() {
+    if (actuationModeInput.value === "uniform") return 1;
     const value = Number(pinRadiusRatioInput.value);
     return clamp(Number.isFinite(value) ? value : 0.72, Number(pinRadiusRatioInput.min), Number(pinRadiusRatioInput.max));
   }
@@ -223,12 +236,29 @@
     return holeRadiusMm() * pinRadiusRatio();
   }
 
+  function pinDiameterMm() {
+    return pinRadiusMm() * 2;
+  }
+
+  function holeDiameterMm() {
+    return holeRadiusMm() * 2;
+  }
+
+  function diametralBacklashMm() {
+    return Math.max(0, holeDiameterMm() - pinDiameterMm());
+  }
+
   function pinHoleClearanceMm() {
-    return Math.max(0, holeRadiusMm() - pinRadiusMm());
+    return diametralBacklashMm() * 0.5;
+  }
+
+  function plateThicknessMm() {
+    const value = Number(plateThicknessInput.value);
+    return clamp(Number.isFinite(value) ? value : CAD.bodyThicknessMm, Number(plateThicknessInput.min), Number(plateThicknessInput.max));
   }
 
   function normalizedBacklash() {
-    return clamp(pinHoleClearanceMm() / CAD.siteRadiusMm, 0, 1);
+    return clamp(diametralBacklashMm() / CAD.siteRadiusMm, 0, 1);
   }
 
   function researchAngularBacklashRad() {
@@ -244,70 +274,96 @@
     return Math.sign(commandDeg) * Math.max(0, Math.abs(commandDeg) - backlash);
   }
 
-  function playOperator(driverDeg, previousFollowerDeg, backlashDeg) {
-    return Math.max(driverDeg - backlashDeg, Math.min(driverDeg + backlashDeg, previousFollowerDeg));
+  function boundaryActuationScale() {
+    if (xyLocks.size < 2) return 1;
+    const isString = cellViews.length === 1 || cellViews[0]?.length === 1;
+    if (isString && [...xyLocks.values()].filter((lock) => lock.lockZ !== false).length < 2) return 1;
+    return exactPinTiltLimitRad() <= 1e-9 ? 0 : 1;
   }
 
-  function playTrace(commandsDeg, backlashDeg, initialFollowerDeg = 0) {
-    let follower = Number(initialFollowerDeg) || 0;
-    return commandsDeg.map((driver) => {
-      const previousFollower = follower;
-      follower = playOperator(driver, previousFollower, backlashDeg);
-      return {
-        driver,
-        follower,
-        delta: follower - previousFollower,
-        side: contactSide(driver, follower, backlashDeg),
-      };
+  function jammedLockDriveDeg(envelope) {
+    if (boundaryActuationScale() > 0) return null;
+    const drives = [...xyLocks.values()]
+      .map((lock) => Number(lock.targetDriveDeg))
+      .filter(Number.isFinite)
+      .sort((a, b) => a - b);
+    const fallback = Number.isFinite(Number(aTopInput.min)) ? Number(aTopInput.min) : A_TOP_FULL_MIN_DEG;
+    return clampDriveCommand(drives.length ? drives[Math.floor(drives.length * 0.5)] : fallback, envelope);
+  }
+
+  function exactPinTiltLimitRad() {
+    const d = pinDiameterMm();
+    const D = holeDiameterMm();
+    const t = plateThicknessMm();
+    if (d <= 0 || D <= 0 || t <= 0 || d > D) return 0;
+    const ratio = clamp(d / Math.sqrt(D * D + t * t), -1, 1);
+    return Math.max(0, Math.acos(ratio) - Math.atan(t / D));
+  }
+
+  function exactPinTiltLimitDeg() {
+    return radToDeg(exactPinTiltLimitRad());
+  }
+
+  function verticalRiseLimitForSpan(spanMm, phiRad = exactPinTiltLimitRad()) {
+    return Math.max(0, Math.tan(Math.max(0, phiRad)) * Math.max(0, spanMm));
+  }
+
+  function cellKey(row, col) {
+    return `${row},${col}`;
+  }
+
+  function lockForCell(row, col) {
+    return xyLocks.get(cellKey(row, col)) || null;
+  }
+
+  function clampDriveCommand(value, envelope) {
+    if (envelope && !envelopeContainsDrive(value, envelope)) return nearestFeasibleDrive(value, envelope);
+    return clamp(value, A_TOP_FULL_MIN_DEG, A_TOP_FULL_MAX_DEG);
+  }
+
+  function driveCommandForCell(row, col, envelope) {
+    const key = cellKey(row, col);
+    const stored = cellDriveCommands.has(key)
+      ? cellDriveCommands.get(key)
+      : latestContactField?.field?.[row]?.[col] ?? contactRestDriveDeg(envelope);
+    return clampDriveCommand(stored, envelope);
+  }
+
+  function setDriveCommandForCell(row, col, value, envelope) {
+    cellDriveCommands.set(cellKey(row, col), clampDriveCommand(value, envelope));
+  }
+
+  function selectedDriveCommand(envelope) {
+    return driveCommandForCell(selectedDriveCell.row, selectedDriveCell.col, envelope);
+  }
+
+  function seedContactCommandsFromUniformDrive(angleDeg, envelope) {
+    contactMemory = { restDrive: angleDeg, field: uniformDriveField(angleDeg), pins: [] };
+    cellDriveCommands.clear();
+    cellViews.forEach((rowViews) => {
+      rowViews.forEach((cell) => {
+        setDriveCommandForCell(cell.row, cell.col, angleDeg, envelope);
+      });
     });
   }
 
-  function backlashHysteresisDiagnostic(options = {}) {
-    const backlash = Math.max(0, Number(options.backlashDeg ?? researchAngularBacklashDeg()) || 0);
-    const amplitude = Math.max(Number(options.amplitudeDeg) || 0, backlash * 4, 6);
-    const steps = Math.max(8, Math.round(Number(options.steps) || 40));
-    const descending = [];
-    const ascending = [];
-    for (let index = 0; index <= steps; index += 1) {
-      descending.push((amplitude * (steps - 2 * index)) / steps);
-    }
-    for (let index = 0; index <= steps; index += 1) {
-      ascending.push((-amplitude * (steps - 2 * index)) / steps);
-    }
-    const downTrace = playTrace(descending, backlash, amplitude - backlash);
-    const upTrace = playTrace(ascending, backlash, downTrace[downTrace.length - 1]?.follower ?? -amplitude + backlash);
-    const targetDriver = 0;
-    const nearest = (trace) =>
-      trace.reduce((best, item) => (Math.abs(item.driver - targetDriver) < Math.abs(best.driver - targetDriver) ? item : best), trace[0]);
-    const downMid = nearest(downTrace);
-    const upMid = nearest(upTrace);
-    const loopGap = Math.abs((downMid?.follower || 0) - (upMid?.follower || 0));
-    return {
-      backlash,
-      amplitude,
-      loopGap,
-      downMid,
-      upMid,
-      hysteretic: loopGap > Math.max(1e-6, backlash * 0.5),
-      downTrace,
-      upTrace,
-    };
-  }
-
-  function contactSide(driverDeg, followerDeg, backlashDeg) {
-    const gap = driverDeg - followerDeg;
-    if (gap >= backlashDeg - 1e-6) return 1;
-    if (gap <= -backlashDeg + 1e-6) return -1;
-    return 0;
-  }
-
-  function resetContactMemory(reason = "reset") {
-    contactMemory = null;
-    contactMemorySerial += 1;
-    if (backlashPathMetric) backlashPathMetric.textContent = reason;
+  function selectedCells() {
+    const cells = [...selectedCellKeys].map((key) => {
+      const [row, col] = key.split(",").map(Number);
+      return cellAt(row, col);
+    });
+    const filtered = cells.filter(Boolean);
+    if (filtered.length) return filtered;
+    const active = cellAt(selectedDriveCell.row, selectedDriveCell.col);
+    return active ? [active] : [];
   }
 
   function contactRestDriveDeg(envelope) {
+    if (contactMemory) return contactMemory.restDrive;
+    if (cellDriveCommands.size) {
+      const commands = [...cellDriveCommands.values()].map((value) => clampDriveCommand(value, envelope)).sort((a, b) => a - b);
+      return commands[Math.floor(commands.length * 0.5)];
+    }
     return envelope ? envelope.max : A_TOP_FULL_MAX_DEG;
   }
 
@@ -320,114 +376,33 @@
     return cells;
   }
 
-  function connectionKey(rowA, colA, rowB, colB) {
-    const first = `${rowA},${colA}`;
-    const second = `${rowB},${colB}`;
-    return first < second ? `${first}|${second}` : `${second}|${first}`;
-  }
-
-  function propagatePlayField({ rows, cols, sourceRow, sourceCol, sourceDelta, previousDeltaField, previousConnectionField = {}, backlash }) {
-    const distance = Array.from({ length: rows }, () => Array.from({ length: cols }, () => Infinity));
-    const contactSideField = Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0));
-    const connectionSideField = {};
-    const deltaField = Array.from({ length: rows }, (_, row) =>
-      Array.from({ length: cols }, (_, col) => previousDeltaField[row]?.[col] || 0)
-    );
-    const connectionField = { ...previousConnectionField };
-    const queue = [[sourceRow, sourceCol, sourceDelta, 0]];
-
-    while (queue.length) {
-      const [row, col, delta, depth] = queue.shift();
-      if (row < 0 || row >= rows || col < 0 || col >= cols) continue;
-      if (Math.abs(delta - deltaField[row][col]) <= 1e-9 && depth >= distance[row][col]) continue;
-      deltaField[row][col] = delta;
-      distance[row][col] = Math.min(distance[row][col], depth);
-      neighborCells(row, col, rows, cols).forEach(([nextRow, nextCol]) => {
-        if (nextRow === sourceRow && nextCol === sourceCol) return;
-        const edgeKey = connectionKey(row, col, nextRow, nextCol);
-        const hasConnectionMemory = Object.prototype.hasOwnProperty.call(connectionField, edgeKey);
-        const previousFollower = hasConnectionMemory && Number.isFinite(connectionField[edgeKey]) ? connectionField[edgeKey] : deltaField[nextRow][nextCol];
-        const nextFollower = playOperator(delta, previousFollower, backlash);
-        const side = contactSide(delta, nextFollower, backlash);
-        if (hasConnectionMemory || Math.abs(nextFollower) > 1e-6 || side !== 0) {
-          connectionField[edgeKey] = nextFollower;
-        }
-        if (side !== 0) connectionSideField[edgeKey] = side;
-        contactSideField[nextRow][nextCol] = side;
-        if (Math.abs(nextFollower - previousFollower) > 1e-6 || (Math.abs(nextFollower) > 1e-6 && depth + 1 < distance[nextRow][nextCol])) {
-          queue.push([nextRow, nextCol, nextFollower, depth + 1]);
-        }
-      });
-    }
-
-    return { deltaField, distance, contactSideField, connectionField, connectionSideField };
-  }
-
-  function contactDriveField(requestedDeg, envelope) {
+  function contactDriveField(envelope) {
     const rows = cellViews.length;
     const cols = rows ? cellViews[0].length : 0;
     const restDrive = contactRestDriveDeg(envelope);
-    const backlash = researchAngularBacklashDeg();
-    const sourceRow = clampInt(activeDriveCell.row, 0, Math.max(0, rows - 1));
-    const sourceCol = clampInt(activeDriveCell.col, 0, Math.max(0, cols - 1));
-    const memoryKey = [
-      rows,
-      cols,
-      restDrive.toFixed(6),
-      backlash.toFixed(6),
-      envelope ? envelope.min.toFixed(6) : "none",
-      envelope ? envelope.max.toFixed(6) : "none",
-    ].join("|");
-    if (!contactMemory || contactMemory.key !== memoryKey) {
-      contactMemory = {
-        key: memoryKey,
-        serial: contactMemorySerial,
-        previousSourceDriveBySource: {},
-        deltaField: Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0)),
-        connectionField: {},
-      };
+    let field = Array.from({ length: rows }, () => Array.from({ length: cols }, () => restDrive));
+    const deltaField = Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0));
+    const distance = Array.from({ length: rows }, () => Array.from({ length: cols }, () => Infinity));
+    const sourceRow = clampInt(selectedDriveCell.row, 0, Math.max(0, rows - 1));
+    const sourceCol = clampInt(selectedDriveCell.col, 0, Math.max(0, cols - 1));
+    const lockScale = boundaryActuationScale();
+    if (lockScale <= 1e-9 && xyLocks.size >= 2) {
+      return { field, deltaField, distance, reach: 0, dieOffRadius: 0, maxAbs: 0, sourceRow, sourceCol, restDrive, constraintScale: 0 };
     }
-    const clampDrive = (value) => (envelope && !envelopeContainsDrive(value, envelope) ? nearestFeasibleDrive(value, envelope) : clamp(value, A_TOP_FULL_MIN_DEG, A_TOP_FULL_MAX_DEG));
-    const sourceDrive = clampDrive(requestedDeg);
-    const sourceDelta = sourceDrive - restDrive;
-    const sourceKey = `${sourceRow},${sourceCol}`;
-    const previousSourceDrive = Number.isFinite(contactMemory.previousSourceDriveBySource[sourceKey])
-      ? contactMemory.previousSourceDriveBySource[sourceKey]
-      : restDrive;
-    const sourceStep = sourceDrive - previousSourceDrive;
-    contactMemory.previousSourceDriveBySource[sourceKey] = sourceDrive;
-    const { deltaField, distance, contactSideField, connectionField, connectionSideField } = propagatePlayField({
-      rows,
-      cols,
-      sourceRow,
-      sourceCol,
-      sourceDelta,
-      previousDeltaField: contactMemory.deltaField,
-      previousConnectionField: contactMemory.connectionField,
-      backlash,
-    });
-    const field = deltaField.map((row) => row.map((delta) => clampDrive(restDrive + delta)));
-    for (let row = 0; row < rows; row += 1) {
-      for (let col = 0; col < cols; col += 1) {
-        deltaField[row][col] = field[row][col] - restDrive;
-      }
-    }
-    contactSideField[sourceRow][sourceCol] = Math.abs(sourceStep) > 1e-6 ? Math.sign(sourceStep) : 0;
-    contactMemory.deltaField = deltaField.map((row) => row.slice());
-    contactMemory.connectionField = { ...connectionField };
+    const previous = contactMemory?.field?.length === rows && contactMemory.field[0]?.length === cols
+      ? contactMemory.field : field;
+    const command = selectedDriveCommand(envelope);
+    field = Math.abs(command - previous[sourceRow][sourceCol]) < 1e-10
+      ? previous.map((row) => row.slice())
+      : window.RADBacklashState.advance(previous, sourceRow, sourceCol, command, researchAngularBacklashDeg());
+    field.forEach((row, r) => row.forEach((value, c) => {
+      deltaField[r][c] = value - restDrive;
+      distance[r][c] = Math.abs(r - sourceRow) + Math.abs(c - sourceCol);
+    }));
 
     let reach = 0;
     let dieOffRadius = 0;
     let maxAbs = 0;
-    let freeCells = 0;
-    let positiveContacts = 0;
-    let negativeContacts = 0;
-    let engagedLinks = 0;
-    let floatingLinks = 0;
-    Object.values(connectionField).forEach((value) => {
-      if (Math.abs(value) > 1e-6) engagedLinks += 1;
-      else floatingLinks += 1;
-    });
     field.forEach((row, rowIndex) => {
       row.forEach((value, colIndex) => {
         if (Math.abs(value - restDrive) > 1e-6) reach += 1;
@@ -435,29 +410,39 @@
           dieOffRadius = Math.max(dieOffRadius, distance[rowIndex][colIndex]);
         }
         maxAbs = Math.max(maxAbs, Math.abs(value - restDrive));
-        if (contactSideField[rowIndex][colIndex] > 0) positiveContacts += 1;
-        else if (contactSideField[rowIndex][colIndex] < 0) negativeContacts += 1;
-        else freeCells += 1;
+      });
+    });
+    return { field, deltaField, distance, reach, dieOffRadius, maxAbs, sourceRow, sourceCol, restDrive };
+  }
+
+  function scaledContactField(contactField, scale) {
+    if (!contactField) return null;
+    const clampedScale = clamp(scale, 0, 1);
+    const field = contactField.field.map((row) => row.map((value) => contactField.restDrive + (value - contactField.restDrive) * clampedScale));
+    const deltaField = contactField.deltaField.map((row) => row.map((value) => value * clampedScale));
+    let reach = 0;
+    let dieOffRadius = 0;
+    let maxAbs = 0;
+    field.forEach((row, rowIndex) => {
+      row.forEach((value, colIndex) => {
+        const delta = value - contactField.restDrive;
+        if (Math.abs(delta) > 1e-6) {
+          reach += 1;
+          if (Number.isFinite(contactField.distance[rowIndex][colIndex])) {
+            dieOffRadius = Math.max(dieOffRadius, contactField.distance[rowIndex][colIndex]);
+          }
+        }
+        maxAbs = Math.max(maxAbs, Math.abs(delta));
       });
     });
     return {
+      ...contactField,
       field,
       deltaField,
-      distance,
-      contactSideField,
-      connectionField,
-      connectionSideField,
       reach,
       dieOffRadius,
       maxAbs,
-      sourceRow,
-      sourceCol,
-      restDrive,
-      minDrive: envelope?.min ?? A_TOP_FULL_MIN_DEG,
-      sourceStep,
-      backlash,
-      memorySerial: contactMemory.serial,
-      pathSummary: { freeCells, positiveContacts, negativeContacts, engagedLinks, floatingLinks },
+      constraintScale: clampedScale,
     };
   }
 
@@ -989,31 +974,6 @@
       .join("; ");
   }
 
-  function currentDriveEnvelope() {
-    return cachedDriveEnvelope(degToRad(B_LOWER_REFERENCE_DEG), degToRad(B_TOP_REFERENCE_DEG));
-  }
-
-  function currentCellDriveDeg(row, col, envelope) {
-    const restDrive = contactRestDriveDeg(envelope);
-    const memoryDelta = contactMemory?.deltaField?.[row]?.[col];
-    const latestDelta = latestContactField?.deltaField?.[row]?.[col];
-    const delta = Number.isFinite(memoryDelta) ? memoryDelta : Number.isFinite(latestDelta) ? latestDelta : 0;
-    const drive = restDrive + delta;
-    if (envelope && !envelopeContainsDrive(drive, envelope)) return nearestFeasibleDrive(drive, envelope);
-    return clamp(drive, A_TOP_FULL_MIN_DEG, A_TOP_FULL_MAX_DEG);
-  }
-
-  function resetWholeLattice(target) {
-    selectionSyncOnly = false;
-    const envelope = currentDriveEnvelope();
-    const drive = target === "contracted" ? envelope?.min ?? A_TOP_FULL_MIN_DEG : envelope?.max ?? A_TOP_FULL_MAX_DEG;
-    animateInput.checked = false;
-    aTopInput.value = drive.toFixed(2);
-    resetContactMemory(`${target} reset`);
-    lastMechanismUpdateKey = "";
-    updateMechanism();
-  }
-
   function cylinderZ(radius, depth, material, segments = 48) {
     const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, depth, segments), material);
     mesh.rotation.x = Math.PI / 2;
@@ -1106,7 +1066,7 @@
   }
 
   function addPad(parent, x, y, material) {
-    const pad = annularDisk(CAD.padRadiusMm, holeRadiusMm(), CAD.bodyThicknessMm + 0.05, material, 44);
+    const pad = annularDisk(CAD.padRadiusMm, holeRadiusMm(), CAD.bodyThicknessMm, material, 44);
     pad.position.set(x, y, 0);
     parent.add(pad);
     addEdges(parent, pad);
@@ -1117,7 +1077,7 @@
     group.name = name;
     addArm(group, 0, material);
     addArm(group, Math.PI / 2, material);
-    const hub = annularDisk(CAD.hubRadiusMm, holeRadiusMm(), CAD.bodyThicknessMm + 0.08, material, 48);
+    const hub = annularDisk(CAD.hubRadiusMm, holeRadiusMm(), CAD.bodyThicknessMm, material, 48);
     group.add(hub);
     addEdges(group, hub);
     addPad(group, CAD.siteRadiusMm, 0, material);
@@ -1128,25 +1088,20 @@
   }
 
   function materialPairForCell() {
-    return { top: materials.upper, bottom: materials.lower };
+    return { top: materials.upper.clone(), bottom: materials.lower.clone() };
   }
 
-  function applyCrossMaterial(cross, material) {
-    cross.traverse((object) => {
-      if (object.isMesh) object.material = material;
-    });
+  function driveColor(angleDeg, envelope) {
+    const min = envelope ? envelope.min : A_TOP_FULL_MIN_DEG;
+    const max = envelope ? envelope.max : A_TOP_FULL_MAX_DEG;
+    const t = clamp((angleDeg - min) / Math.max(1e-6, max - min), 0, 1);
+    return new THREE.Color(0xe60018).lerp(new THREE.Color(0x1478ff), t);
   }
 
-  function contactMaterialForCell(cell, contactField) {
-    if (!contactField || showContactStateInput.checked !== true) return null;
-    const drive = contactField.field?.[cell.row]?.[cell.col] ?? contactField.restDrive;
-    return cellGradientMaterialForDrive(drive, contactField.restDrive, contactField.minDrive);
-  }
-
-  function applyCellContactMaterial(cell, contactField) {
-    const override = contactMaterialForCell(cell, contactField);
-    applyCrossMaterial(cell.bottom, override || cell.baseMaterials.bottom);
-    applyCrossMaterial(cell.top, override || cell.baseMaterials.top);
+  function applyCellColor(cell, angleDeg, envelope) {
+    const color = driveColor(angleDeg, envelope);
+    cell.topMaterial.color.copy(color);
+    cell.bottomMaterial.color.copy(color).multiplyScalar(0.72);
   }
 
   function cellName(row, col) {
@@ -1184,12 +1139,26 @@
       group,
       top,
       bottom,
-      baseMaterials: pair,
       centerPin,
+      topMaterial: pair.top,
+      bottomMaterial: pair.bottom,
+      lockMarker: null,
       center: new THREE.Vector2(),
+      z: 0,
+      tiltX: 0,
+      tiltY: 0,
       topRotation: 0,
       bottomRotation: 0,
     };
+  }
+
+  function createLockMarker() {
+    const geometry = new THREE.TorusGeometry(CAD.siteRadiusMm * 1.08, 0.85, 8, 64);
+    const marker = new THREE.Mesh(geometry, materials.lock);
+    marker.rotation.x = Math.PI / 2;
+    marker.visible = false;
+    lockMarkerRoot.add(marker);
+    return marker;
   }
 
   function removeChildren(group) {
@@ -1220,28 +1189,42 @@
   }
 
   function rebuildLattice() {
+    contactMemory = null;
+    freeTranslation = [0, 0, 0];
     const rows = clampInt(rowCountInput.value, Number(rowCountInput.min), Number(rowCountInput.max));
     const cols = clampInt(colCountInput.value, Number(colCountInput.min), Number(colCountInput.max));
     rowCountInput.value = String(rows);
     colCountInput.value = String(cols);
     resizeFloorGridForDimensions(rows, cols);
     lastMechanismUpdateKey = "";
-    resetContactMemory("lattice changed");
     removeChildren(latticeRoot);
     removeChildren(pinRoot);
+    removeChildren(lockMarkerRoot);
     cellViews = [];
     connections = [];
     connectionPinMeshes = [];
     selectableMeshes.length = 0;
     selectedDriveCell.row = Math.min(selectedDriveCell.row, rows - 1);
     selectedDriveCell.col = Math.min(selectedDriveCell.col, cols - 1);
-    activeDriveCell.row = Math.min(activeDriveCell.row, rows - 1);
-    activeDriveCell.col = Math.min(activeDriveCell.col, cols - 1);
+    [...selectedCellKeys].forEach((key) => {
+      const [row, col] = key.split(",").map(Number);
+      if (row >= rows || col >= cols) selectedCellKeys.delete(key);
+    });
+    selectedCellKeys.add(cellKey(selectedDriveCell.row, selectedDriveCell.col));
+    [...xyLocks.keys()].forEach((key) => {
+      const [row, col] = key.split(",").map(Number);
+      if (row >= rows || col >= cols) xyLocks.delete(key);
+    });
+    [...cellDriveCommands.keys()].forEach((key) => {
+      const [row, col] = key.split(",").map(Number);
+      if (row >= rows || col >= cols) cellDriveCommands.delete(key);
+    });
 
     for (let row = 0; row < rows; row += 1) {
       const rowViews = [];
       for (let col = 0; col < cols; col += 1) {
         const cell = createCell(row, col);
+        cell.lockMarker = createLockMarker();
         rowViews.push(cell);
         latticeRoot.add(cell.group);
       }
@@ -1272,6 +1255,20 @@
     return cell.center.clone().add(rotate2(SITE_VECTORS[site], rotation));
   }
 
+  function siteWorldZ(cell, layer, site) {
+    const rotation = layer === "top" ? cell.topRotation : cell.bottomRotation;
+    const offset = rotate2(SITE_VECTORS[site], rotation);
+    return (cell.z || 0) + (cell.tiltX || 0) * offset.y - (cell.tiltY || 0) * offset.x;
+  }
+
+  function cellNormal(cell) {
+    return new THREE.Vector3(0, 0, 1).applyEuler(new THREE.Euler(cell.tiltX || 0, cell.tiltY || 0, 0, "XYZ")).normalize();
+  }
+
+  function cellPlaneZAt(cell, point) {
+    return (cell.z || 0) + (cell.tiltX || 0) * (point.y - cell.center.y) - (cell.tiltY || 0) * (point.x - cell.center.x);
+  }
+
   function holeRefPoint(ref) {
     return siteWorld(ref.cell, ref.layer, ref.site);
   }
@@ -1298,8 +1295,8 @@
 
     if (from.parity === 0) {
       return [
-        [makeHoleRef(from, "top", "north"), makeHoleRef(to, "bottom", "west")],
-        [makeHoleRef(from, "bottom", "west"), makeHoleRef(to, "top", "west")],
+        [makeHoleRef(from, "top", "north"), makeHoleRef(to, "bottom", "east")],
+        [makeHoleRef(from, "bottom", "west"), makeHoleRef(to, "top", "east")],
       ];
     }
     return [
@@ -1312,22 +1309,12 @@
     return connectionPinPairs(connection).map(([first, second]) => holeRefPoint(first).add(holeRefPoint(second)).multiplyScalar(0.5));
   }
 
-  function connectionPinItems() {
-    const items = [];
-    connections.forEach((connection) => {
-      const edgeKey = connectionKey(connection.from.row, connection.from.col, connection.to.row, connection.to.col);
-      connectionPinPairs(connection).forEach(([first, second]) => {
-        items.push({
-          point: holeRefPoint(first).add(holeRefPoint(second)).multiplyScalar(0.5),
-          edgeKey,
-        });
-      });
-    });
-    return items;
-  }
-
   function explicitConnectionPinPoints() {
-    return connectionPinItems().map((item) => item.point);
+    const points = [];
+    connections.forEach((connection) => {
+      connectionPinPoints(connection).forEach((point) => points.push(point));
+    });
+    return points;
   }
 
   function explicitConnectionPinPairs() {
@@ -1401,16 +1388,12 @@
       .map((group) => group.point);
   }
 
-  function dedupePinItems(items) {
+  function dedupePinPoints(points) {
     const dedupeTolerance = CAD.nominalHoleDiameterMm * 0.28;
     const deduped = [];
-    items.forEach((item) => {
-      const point = item.point;
-      const existing = deduped.find((candidate) => candidate.point.distanceTo(point) <= dedupeTolerance);
-      if (existing) {
-        if (!existing.edgeKey && item.edgeKey) existing.edgeKey = item.edgeKey;
-      } else {
-        deduped.push({ point, edgeKey: item.edgeKey || null });
+    points.forEach((point) => {
+      if (!deduped.some((existing) => existing.distanceTo(point) <= dedupeTolerance)) {
+        deduped.push(point);
       }
     });
     return deduped;
@@ -1436,6 +1419,7 @@
     const restFirstPoint = snapshotHoleRefPoint(first, latestRestSnapshot);
     const restSecondPoint = snapshotHoleRefPoint(second, latestRestSnapshot);
     const restPinPoint = restFirstPoint.add(restSecondPoint).multiplyScalar(0.5);
+    if (xyLocks.size <= 1) restPinPoint.add(new THREE.Vector2(freeTranslation[0], freeTranslation[1]));
     const displacement = driverPoint.clone().sub(restPinPoint);
     const separation = displacement.length();
     const clearance = pinHoleClearanceMm();
@@ -1449,36 +1433,342 @@
     return explicitConnectionPinPairs().map(([first, second]) => contactPinPointForPair(first, second, contactField));
   }
 
-  function contactPinItems(contactField) {
-    const items = [];
-    connections.forEach((connection) => {
-      const edgeKey = connectionKey(connection.from.row, connection.from.col, connection.to.row, connection.to.col);
-      connectionPinPairs(connection).forEach(([first, second]) => {
-        items.push({
-          point: contactPinPointForPair(first, second, contactField),
-          edgeKey,
-        });
+  function clampPointToDisk(point, center, radius) {
+    if (radius <= 1e-9) return center.clone();
+    const offset = point.clone().sub(center);
+    const distance = offset.length();
+    if (distance <= radius || distance <= 1e-9) return point;
+    return center.clone().add(offset.multiplyScalar(radius / distance));
+  }
+
+  function feasiblePinCenter(firstPoint, secondPoint, targetPoint) {
+    const clearance = Math.max(0, holeRadiusMm() - pinRadiusMm());
+    const separation = firstPoint.distanceTo(secondPoint);
+    let point;
+    if (separation >= 2 * clearance || clearance < 1e-12) {
+      point = firstPoint.clone().add(secondPoint).multiplyScalar(0.5);
+    } else {
+      const candidates = [targetPoint.clone(), clampPointToDisk(targetPoint.clone(), firstPoint, clearance),
+        clampPointToDisk(targetPoint.clone(), secondPoint, clearance)]
+        .filter((p) => p.distanceTo(firstPoint) <= clearance + 1e-10 && p.distanceTo(secondPoint) <= clearance + 1e-10);
+      if (separation > 1e-12) {
+        const midpoint = firstPoint.clone().add(secondPoint).multiplyScalar(0.5);
+        const delta = secondPoint.clone().sub(firstPoint).multiplyScalar(1 / separation);
+        const normal = new THREE.Vector2(-delta.y, delta.x);
+        const height = Math.sqrt(Math.max(0, clearance * clearance - separation * separation / 4));
+        candidates.push(midpoint.clone().addScaledVector(normal, height), midpoint.clone().addScaledVector(normal, -height));
+      }
+      point = candidates.sort((a, b) => a.distanceToSquared(targetPoint) - b.distanceToSquared(targetPoint))[0];
+    }
+    const firstResidual = Math.max(0, point.distanceTo(firstPoint) - clearance);
+    const secondResidual = Math.max(0, point.distanceTo(secondPoint) - clearance);
+    return {
+      point,
+      radialResidual: Math.max(firstResidual, secondResidual),
+      centerSeparation: firstPoint.distanceTo(secondPoint),
+      clearance,
+    };
+  }
+
+  function connectionPinItems(contactField = null) {
+    return explicitConnectionPinPairs().map(([first, second], pinIndex) => {
+      const firstPoint = holeRefPoint(first);
+      const secondPoint = holeRefPoint(second);
+      const previousPin = contactField && contactMemory?.pins?.[pinIndex];
+      const savedPin = previousPin && xyLocks.size <= 1
+        ? previousPin.map((value, axis) => value + freeTranslation[axis] - (contactMemory.freeTranslation?.[axis] || 0))
+        : previousPin;
+      const targetPoint = savedPin ? new THREE.Vector2(savedPin[0], savedPin[1])
+        : contactField ? contactPinPointForPair(first, second, contactField) : firstPoint.clone().add(secondPoint).multiplyScalar(0.5);
+      const fit = feasiblePinCenter(firstPoint, secondPoint, targetPoint);
+      const bores = [first, second].map((ref) => {
+        const offset = rotate2(SITE_VECTORS[ref.site], ref.layer === "top" ? ref.cell.topRotation : ref.cell.bottomRotation);
+        const center = new THREE.Vector3(offset.x, offset.y, (ref.layer === "top" ? 1 : -1) * plateThicknessMm() * 0.5)
+          .applyQuaternion(ref.cell.group.quaternion).add(ref.cell.group.position);
+        return { center, normal: cellNormal(ref.cell) };
       });
+      const axis = bores[0].normal.clone().add(bores[1].normal);
+      if (axis.lengthSq() <= 1e-9) axis.set(0, 0, 1);
+      axis.normalize();
+      const midpoint = bores[0].center.clone().add(bores[1].center).multiplyScalar(0.5);
+      const planar = bores.every((bore) => bore.normal.z > 1 - 1e-12);
+      const origin = savedPin && !planar
+        ? new THREE.Vector3(...savedPin) : new THREE.Vector3(fit.point.x, fit.point.y, midpoint.z);
+      const thickness = plateThicknessMm();
+      // Maximize the actual elliptical section at both bore faces. The norm
+      // is convex through the thickness, so the two faces bound the full bore.
+      function boreFit(bore) {
+        const cosine = clamp(axis.dot(bore.normal), 1e-9, 1);
+        const tangent = Math.sqrt(Math.max(0, 1 - cosine * cosine)) / cosine;
+        const along = bore.center.clone().sub(origin).dot(bore.normal) / cosine;
+        const offset = origin.clone().addScaledVector(axis, along).sub(bore.center);
+        const u = axis.clone().addScaledVector(bore.normal, -cosine);
+        if (u.lengthSq() < 1e-20) {
+          u.crossVectors(bore.normal, Math.abs(bore.normal.x) < 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0));
+        }
+        u.normalize();
+        const v = new THREE.Vector3().crossVectors(bore.normal, u).normalize();
+        let excess = -Infinity, correction = new THREE.Vector3();
+        for (const face of [-1, 1]) {
+          const shift = axis.clone().multiplyScalar(face * thickness * 0.5 / cosine)
+            .addScaledVector(bore.normal, -face * thickness * 0.5).add(offset);
+          const extent = window.RADPinGeometry.ellipseExtent(shift.dot(u), shift.dot(v), pinRadiusMm() / cosine, pinRadiusMm());
+          if (extent.radius - holeRadiusMm() > excess) {
+            excess = extent.radius - holeRadiusMm();
+            correction = u.clone().multiplyScalar(extent.x).addScaledVector(v, extent.y).normalize().multiplyScalar(Math.max(0, excess));
+          }
+        }
+        return { offset, excess, correction, along, cosine, tangent };
+      }
+      for (let iteration = 0; iteration < 48; iteration += 1) {
+        const fits = bores.map(boreFit);
+        if (fits.every((fit) => fit.excess <= 1e-8)) break;
+        const correction = fits[0].correction.clone().add(fits[1].correction).multiplyScalar(0.5);
+        if (correction.lengthSq() < 1e-24) break;
+        origin.sub(correction);
+      }
+      // Keep the fixed-length pin centered axially without changing its line.
+      origin.addScaledVector(axis, midpoint.clone().sub(origin).dot(axis));
+      const fits = bores.map(boreFit);
+      const radialResidual = Math.max(0, ...fits.map((item) => item.offset.length() - pinHoleClearanceMm()));
+      const tiltResidual = Math.max(0, ...fits.map((item) => item.excess));
+      const axialResidual = Math.max(0, ...fits.map((item) => Math.abs(item.along) + thickness * 0.5 / item.cosine + pinRadiusMm() * item.tangent - CAD.bodyThicknessMm * 2.95 * 0.5));
+      return {
+        point: new THREE.Vector2(origin.x, origin.y),
+        z: origin.z,
+        axis,
+        radialResidual,
+        tiltResidual,
+        axialResidual,
+        centerSeparation: fit.centerSeparation,
+        clearance: fit.clearance,
+      };
     });
-    return items;
   }
 
-  function pinMaterialForContact(_edgeKey, _contactField) {
-    return materials.pin;
-  }
+  function constrainedLayoutSolve(baseCenters, pitch) {
+    const rows = baseCenters.length;
+    const cols = rows ? baseCenters[0].length : 0;
+    const centers = baseCenters.map((row) => row.map((point) => point.clone()));
+    const z = Array.from({ length: rows }, () => Array(cols).fill(0));
+    const tiltX = z.map((row) => row.slice());
+    const tiltY = z.map((row) => row.slice());
+    const locks = [...xyLocks.values()].filter((lock) => lock.row < rows && lock.col < cols);
+    const report = { activeLocks: locks.length, maxLift: 0, maxTiltDeg: 0, maxLockDrift: 0,
+      maxEdgeCompression: 0, maxAdmissibleEdgeRise: 0, backlashLimitedLift: false,
+      maxEdgeLengthError: 0, iterations: 0, constrained: locks.length > 0 };
+    if (locks.length < 2) return { centers, z, tiltX, tiltY, report };
 
-  function pinGradientMaterialForValue(value, scale) {
-    const span = Math.max(1e-6, Math.abs(scale) || 0);
-    const normalized = clamp(value / span, -1, 1);
-    const index = Math.round(((1 - normalized) / 2) * (materials.pinGradient.length - 1));
-    return materials.pinGradient[index];
-  }
+    const index = (row, col) => row * cols + col;
+    const reference = baseCenters.flatMap((row, r) => row.map((point, c) =>
+      (locks.length > 1 && latestRestSnapshot?.[r]?.[c]?.center) || point));
+    const fixed = new Map(locks.map((lock) => [index(lock.row, lock.col), lock]));
+    const positions = reference.map((point) => {
+      let dx = 0, dy = 0, dz = 0, weightSum = 0;
+      locks.forEach((lock) => {
+        const anchor = reference[index(lock.row, lock.col)];
+        const weight = 1 / Math.max(1, point.distanceToSquared(anchor));
+        dx += weight * (lock.targetX - anchor.x);
+        dy += weight * (lock.targetY - anchor.y);
+        dz += weight * lock.targetZ;
+        weightSum += weight;
+      });
+      return new THREE.Vector3(point.x + dx / weightSum, point.y + dy / weightSum, dz / weightSum);
+    });
+    fixed.forEach((lock, i) => positions[i].set(lock.targetX, lock.targetY, lock.targetZ));
+    const edges = connections.map(({ from, to }) => ({
+      a: index(from.row, from.col), b: index(to.row, to.col),
+      length: 0.5 * (pitch[from.row][from.col] + pitch[to.row][to.col]),
+    }));
+    const influence = positions.map((_, i) =>
+      Math.abs(latestContactField?.deltaField?.[Math.floor(i / cols)]?.[i % cols] || 0));
+    const maxInfluence = Math.max(1e-12, ...influence);
+    const support = new Set(influence.map((value, i) => value > 1e-9 ? i : -1).filter((i) => i >= 0));
+    // A transition ring allows a local arch to meet the unactuated straight tails.
+    const active = new Set(support);
+    const excitation = influence.slice();
+    edges.forEach(({ a, b }) => {
+      if (active.has(a)) support.add(b);
+      if (active.has(b)) support.add(a);
+      excitation[a] = Math.max(excitation[a], influence[b]);
+      excitation[b] = Math.max(excitation[b], influence[a]);
+    });
+    const isString = rows === 1 || cols === 1;
+    const hasFreeZLock = locks.some((lock) => lock.lockZ === false);
+    const rigidStringTilt = isString && locks.length >= 2 && exactPinTiltLimitRad() <= 1e-9
+      && locks.filter((lock) => lock.lockZ !== false).length < 2;
+    const canBend = locks.length >= 2 && (exactPinTiltLimitRad() > 1e-9 || rigidStringTilt);
+    const flatAnchors = locks.every((lock) => Math.abs(lock.targetZ) < 1e-9);
+    const seed = positions.map(() => 0);
+    edges.forEach(({ a, b, length }) => {
+      const distance = positions[a].distanceTo(positions[b]);
+      report.maxEdgeCompression = Math.max(report.maxEdgeCompression, length - distance);
+      const rise = Math.sqrt(Math.max(0, length * length - distance * distance));
+      seed[a] = Math.max(seed[a], rise * influence[a] / maxInfluence);
+      seed[b] = Math.max(seed[b], rise * influence[b] / maxInfluence);
+    });
+    const mobility = positions.map((point, i) => {
+      if (canBend && support.has(i) && (!fixed.has(i) || fixed.get(i).lockZ === false)) point.z += seed[i];
+      if (fixed.has(i)) return [0, 0, canBend && fixed.get(i).lockZ === false ? 4 : 0];
+      return [cols === 1 ? 0 : 0.25, rows === 1 ? 0 : 0.25,
+        canBend ? 4 : 0];
+    });
+    const globalString = canBend && isString;
+    if (rigidStringTilt) {
+      const anchors = [...fixed.keys()].sort((a, b) => a - b);
+      const pitches = pitch.flat();
+      const distances = [0];
+      for (let i = 1; i < positions.length; i += 1)
+        distances.push(distances[i - 1] + 0.5 * (pitches[i - 1] + pitches[i]));
+      const first = anchors[0], last = anchors.at(-1);
+      const start = positions[first].clone(), end = positions[last];
+      const span = distances[last] - distances[first];
+      const horizontal = new THREE.Vector3(end.x - start.x, end.y - start.y, 0);
+      const slope = Math.sqrt(Math.max(0, 1 - horizontal.lengthSq() / (span * span)));
+      const heightAnchor = anchors.find((i) => fixed.get(i).lockZ !== false) ?? first;
+      const height = fixed.get(heightAnchor).targetZ;
+      positions.forEach((point, i) => {
+        point.copy(start).addScaledVector(horizontal, (distances[i] - distances[first]) / span);
+        point.z = height + slope * (distances[i] - distances[heightAnchor]);
+      });
+    } else if (globalString) {
+      let feasibleBranch = true;
+      const allAnchors = [...fixed.keys()].sort((a, b) => a - b);
+      const anchors = allAnchors.filter((i) => fixed.get(i).lockZ !== false
+        || i === allAnchors[0] || i === allAnchors.at(-1));
+      const pitches = pitch.flat();
+      for (let span = 1; span < anchors.length; span += 1) {
+        const first = anchors[span - 1], last = anchors[span];
+        const start = positions[first], end = positions[last];
+        const axis = end.clone().sub(start);
+        const chord = axis.length();
+        if (chord < 1e-9) { feasibleBranch = false; continue; }
+        axis.divideScalar(chord);
+        const up = new THREE.Vector3(0, 0, 1).addScaledVector(axis, -axis.z).normalize();
+        const lengths = Array.from({ length: last - first }, (_, i) =>
+          0.5 * (pitches[first + i] + pitches[first + i + 1]));
+        const total = lengths.reduce((sum, length) => sum + length, 0);
+        // A circular polygon preserves each edge length, including unequal
+        // pitches. Curvature is global; dilation die-off does not fix cell Z.
+        const turn = (curvature) => lengths.reduce((sum, length) =>
+          sum + 2 * Math.asin(clamp(0.5 * curvature * length, 0, 1)), 0);
+        if (total <= chord + 1e-9) {
+          let distance = 0;
+          for (let i = first + 1; i < last; i += 1) {
+            distance += lengths[i - first - 1];
+            positions[i].copy(start).addScaledVector(axis, distance);
+          }
+          continue;
+        }
+        let low = 0, high = 2 / Math.max(...lengths);
+        for (let i = 0; i < 60; i += 1) {
+          const mid = 0.5 * (low + high);
+          if (turn(mid) < Math.PI) low = mid; else high = mid;
+        }
+        const spanAt = (curvature) => 2 * Math.sin(0.5 * turn(curvature)) / curvature;
+        // Reject geometry outside this continuous minor-arc branch rather than
+        // switching branches or inventing an extension of the mechanism.
+        if (spanAt(high) > chord || up.lengthSq() < 1e-12) {
+          if (hasFreeZLock && last === first + 1 && (fixed.get(first).lockZ === false || fixed.get(last).lockZ === false)) {
+            const rise = Math.sqrt(Math.max(0, total * total - chord * chord));
+            if (fixed.get(last).lockZ === false) end.z += rise; else start.z += rise;
+          } else feasibleBranch = false;
+          continue;
+        }
+        low = 0;
+        for (let i = 0; i < 60; i += 1) {
+          const mid = 0.5 * (low + high);
+          if (spanAt(mid) > chord) low = mid; else high = mid;
+        }
+        const curvature = 0.5 * (low + high);
+        const halfTurn = 0.5 * turn(curvature);
+        let angle = -halfTurn;
+        for (let i = first + 1; i < last; i += 1) {
+          angle += 2 * Math.asin(clamp(0.5 * curvature * lengths[i - first - 1], 0, 1));
+          positions[i].copy(start)
+            .addScaledVector(axis, (Math.sin(angle) + Math.sin(halfTurn)) / curvature)
+            .addScaledVector(up, (Math.cos(angle) - Math.cos(halfTurn)) / curvature);
+        }
+      }
+      // Free tails follow the tangent of the anchored span; they are not
+      // additional positional or orientation constraints at an internal lock.
+      const first = allAnchors[0], last = allAnchors.at(-1);
+      const before = positions[first + 1].clone().sub(positions[first]).normalize();
+      const after = positions[last].clone().sub(positions[last - 1]).normalize();
+      for (let i = first - 1; i >= 0; i -= 1)
+        positions[i].copy(positions[i + 1]).addScaledVector(before, -0.5 * (pitches[i] + pitches[i + 1]));
+      for (let i = last + 1; i < positions.length; i += 1)
+        positions[i].copy(positions[i - 1]).addScaledVector(after, 0.5 * (pitches[i - 1] + pitches[i]));
+      fixed.forEach((lock, i) => {
+        positions[i].x = lock.targetX;
+        positions[i].y = lock.targetY;
+        if (lock.lockZ !== false) positions[i].z = lock.targetZ;
+      });
+      report.maxEdgeLengthError = edges.reduce((error, edge) =>
+        Math.max(error, Math.abs(positions[edge.a].distanceTo(positions[edge.b]) - edge.length)), 0);
+      if (!feasibleBranch) report.maxEdgeLengthError = Infinity;
+    }
+    // Project the shared 3D edge constraints together, preserving XYZ anchors
+    // exactly. Sheets retain their existing branch; neither is a force equilibrium.
+    const corrections = positions.map(() => new THREE.Vector3());
+    const degree = positions.map(() => 0);
+    edges.forEach(({ a, b }) => { degree[a] += 1; degree[b] += 1; });
+    const relaxation = 1 / Math.max(1, ...degree);
+    for (let iteration = 0; !rigidStringTilt && (!globalString || hasFreeZLock) && iteration < 3200; iteration += 1) {
+      corrections.forEach((correction) => correction.set(0, 0, 0));
+      for (let offset = 0; offset < edges.length; offset += 1) {
+        const edge = edges[iteration % 2 ? edges.length - 1 - offset : offset];
+        const a = positions[edge.a], b = positions[edge.b];
+        const distance = a.distanceTo(b);
+        if (distance < 1e-12) continue;
+        const nx = (b.x - a.x) / distance, ny = (b.y - a.y) / distance, nz = (b.z - a.z) / distance;
+        const wa = mobility[edge.a], wb = mobility[edge.b];
+        const denominator = nx * nx * (wa[0] + wb[0]) + ny * ny * (wa[1] + wb[1]) + nz * nz * (wa[2] + wb[2]);
+        if (denominator < 1e-16) continue;
+        const correction = (distance - edge.length) / denominator;
+        corrections[edge.a].x += correction * wa[0] * nx;
+        corrections[edge.a].y += correction * wa[1] * ny;
+        corrections[edge.a].z += correction * wa[2] * nz;
+        corrections[edge.b].x -= correction * wb[0] * nx;
+        corrections[edge.b].y -= correction * wb[1] * ny;
+        corrections[edge.b].z -= correction * wb[2] * nz;
+      }
+      // Jacobi updates are independent of traversal order and grid orientation.
+      positions.forEach((point, i) => point.addScaledVector(corrections[i], relaxation));
+      report.maxEdgeLengthError = edges.reduce((error, edge) =>
+        Math.max(error, Math.abs(positions[edge.a].distanceTo(positions[edge.b]) - edge.length)), 0);
+      report.iterations = iteration + 1;
+      if (report.maxEdgeLengthError < 1e-6) break;
+    }
 
-  function cellGradientMaterialForDrive(driveDeg, expandedDriveDeg, contractedDriveDeg) {
-    const span = Math.max(1e-6, Math.abs(expandedDriveDeg - contractedDriveDeg));
-    const contraction = clamp((expandedDriveDeg - driveDeg) / span, 0, 1);
-    const index = Math.round(contraction * (materials.pinGradient.length - 1));
-    return materials.pinGradient[index];
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        const i = index(row, col), point = positions[i];
+        centers[row][col].set(point.x, point.y);
+        z[row][col] = point.z;
+        const tangentX = cols > 1
+          ? positions[index(row, Math.min(cols - 1, col + 1))].clone().sub(positions[index(row, Math.max(0, col - 1))])
+          : new THREE.Vector3(1, 0, 0);
+        const tangentY = rows > 1
+          ? positions[index(Math.min(rows - 1, row + 1), col)].clone().sub(positions[index(Math.max(0, row - 1), col)])
+          : new THREE.Vector3(0, 1, 0);
+        const normal = new THREE.Vector3().crossVectors(tangentX, tangentY).normalize();
+        if (normal.lengthSq() < 1e-12) normal.set(0, 0, 1);
+        if (normal.z < 0) normal.negate();
+        tiltX[row][col] = Math.atan2(-normal.y, normal.z);
+        tiltY[row][col] = Math.asin(clamp(normal.x, -1, 1));
+        report.maxLift = Math.max(report.maxLift, point.z);
+        report.maxTiltDeg = Math.max(report.maxTiltDeg, radToDeg(Math.acos(clamp(normal.z, -1, 1))));
+      }
+    }
+    fixed.forEach((lock, i) => {
+      report.maxLockDrift = Math.max(report.maxLockDrift,
+        Math.hypot(positions[i].x - lock.targetX, positions[i].y - lock.targetY,
+          lock.lockZ === false ? 0 : positions[i].z - lock.targetZ));
+    });
+    report.maxEdgeLengthError = Math.max(report.maxEdgeLengthError, report.maxLockDrift,
+      ...edges.map((edge) => Math.abs(positions[edge.a].distanceTo(positions[edge.b]) - edge.length)));
+    return { centers, z, tiltX, tiltY, report };
   }
 
   function buildCenterLineGeometry() {
@@ -1488,11 +1778,11 @@
         const cell = cellViews[row][col];
         if (col + 1 < cellViews[row].length) {
           const next = cellViews[row][col + 1];
-          points.push(new THREE.Vector3(cell.center.x, cell.center.y, 0.3), new THREE.Vector3(next.center.x, next.center.y, 0.3));
+          points.push(new THREE.Vector3(cell.center.x, cell.center.y, cell.z + 0.3), new THREE.Vector3(next.center.x, next.center.y, next.z + 0.3));
         }
         if (row + 1 < cellViews.length) {
           const next = cellViews[row + 1][col];
-          points.push(new THREE.Vector3(cell.center.x, cell.center.y, 0.3), new THREE.Vector3(next.center.x, next.center.y, 0.3));
+          points.push(new THREE.Vector3(cell.center.x, cell.center.y, cell.z + 0.3), new THREE.Vector3(next.center.x, next.center.y, next.z + 0.3));
         }
       }
     }
@@ -1503,45 +1793,70 @@
   function updateConnectionPins() {
     const visible = showPinsInput.checked;
     const contactMode = actuationModeInput.value === "contact" && latestContactField;
-    const connectionItems = contactMode ? contactPinItems(latestContactField) : connectionPinItems();
-    const coincidentItems = overlappingHolePinPoints().map((point) => ({ point, edgeKey: null }));
-    const pinItems = visible ? dedupePinItems([...connectionItems, ...coincidentItems]) : [];
+    const pinItems = connectionPinItems(contactMode ? latestContactField : null);
     ensureConnectionPinMeshCount(pinItems.length);
     updatePinGeometry();
+    let visibleCount = 0;
+    let maxRadialResidual = 0;
+    let maxTiltResidual = 0;
+    let maxAxialResidual = 0;
+    const pinAxisLocal = new THREE.Vector3(0, 1, 0);
+    maxAxialResidual = Math.max(0, plateThicknessMm() - CAD.bodyThicknessMm * 2.55 * 0.5);
     connectionPinMeshes.forEach((pin, index) => {
       const item = pinItems[index];
-      const point = item?.point;
-      pin.visible = Boolean(visible && point);
-      pin.material = item ? pinMaterialForContact(item.edgeKey, latestContactField) : materials.pin;
-      if (point) pin.position.set(point.x, point.y, 0);
+      pin.visible = Boolean(visible && item);
+      if (item) {
+        visibleCount += 1;
+        maxRadialResidual = Math.max(maxRadialResidual, item.radialResidual || 0);
+        maxTiltResidual = Math.max(maxTiltResidual, item.tiltResidual || 0);
+        maxAxialResidual = Math.max(maxAxialResidual, item.axialResidual || 0);
+        pin.position.set(item.point.x, item.point.y, item.z);
+        pin.quaternion.setFromUnitVectors(pinAxisLocal, item.axis || new THREE.Vector3(0, 0, 1));
+      }
     });
+    latestPinFitReport = {
+      expectedPins: explicitConnectionPinPairs().length,
+      visiblePins: visible ? visibleCount : 0,
+      maxRadialResidual,
+      maxTiltResidual,
+      maxAxialResidual,
+      clear: maxRadialResidual <= BODY_EPSILON_MM && maxTiltResidual <= BODY_EPSILON_MM && maxAxialResidual <= BODY_EPSILON_MM && (latestBoundaryReport?.maxEdgeLengthError || 0) <= BODY_EPSILON_MM,
+    };
   }
 
-  function updateContactReadout() {
+  function updateContactReadout(contactField = latestContactField) {
     const ratio = pinRadiusRatio();
     const holeRadius = holeRadiusMm();
     const pinRadius = pinRadiusMm();
+    const diametral = diametralBacklashMm();
     const clearance = pinHoleClearanceMm();
     const normalized = normalizedBacklash();
     const backlash = researchAngularBacklashDeg();
-    const command = Number(contactTestCommandInput.value) || 0;
+    const command =
+      contactField && actuationModeInput.value === "contact"
+        ? contactField.deltaField?.[contactField.sourceRow]?.[contactField.sourceCol] || 0
+        : 0;
     const transmitted = Math.sign(command) * Math.max(0, Math.abs(command) - backlash);
     const floating = Math.abs(command) <= backlash + 1e-9;
 
     pinRadiusRatioInput.value = ratio.toFixed(2);
     pinRadiusRatioOut.textContent = ratio.toFixed(2);
-    contactTestCommandOut.textContent = `${command.toFixed(1)} deg`;
+    plateThicknessInput.value = plateThicknessMm().toFixed(2);
     holeRadiusMetric.textContent = `${holeRadius.toFixed(3)} mm`;
     pinRadiusMetric.textContent = `${pinRadius.toFixed(3)} mm`;
+    diametralBacklashMetric.textContent = `${diametral.toFixed(3)} mm`;
     radialClearanceMetric.textContent = `${clearance.toFixed(3)} mm`;
     freeAngleMetric.textContent = `${backlash.toFixed(2)} deg`;
     relativeBacklashMetric.textContent = normalized.toFixed(4);
-    contactStateMetric.textContent = floating ? "floating in clearance" : "contact engaged";
+    exactTiltMetric.textContent = `${exactPinTiltLimitDeg().toFixed(2)} deg`;
+    computedContactCommandMetric.textContent = `${command.toFixed(1)} deg`;
+    contactStateMetric.textContent = contactField && actuationModeInput.value === "contact" ? (floating ? "floating in clearance" : "contact engaged") : "uniform mode";
     transmittedCommandMetric.textContent = `${transmitted.toFixed(1)} deg`;
   }
 
   function updateSelectionMarker() {
     const cell = cellAt(selectedDriveCell.row, selectedDriveCell.col);
+    removeChildren(selectionMarkerRoot);
     if (!cell) {
       selectionRing.visible = false;
       return;
@@ -1554,8 +1869,47 @@
     }
     selectionRing.geometry.dispose();
     selectionRing.geometry = new THREE.BufferGeometry().setFromPoints(points);
-    selectionRing.position.set(cell.center.x, cell.center.y, CAD.bodyThicknessMm * 1.9);
+    selectionRing.position.set(cell.center.x, cell.center.y, (cell.z || 0) + CAD.bodyThicknessMm * 1.9);
     selectionRing.visible = true;
+    const activeKey = cellKey(selectedDriveCell.row, selectedDriveCell.col);
+    selectedCellKeys.forEach((key) => {
+      if (key === activeKey) return;
+      const [row, col] = key.split(",").map(Number);
+      const selectedCell = cellAt(row, col);
+      if (!selectedCell) return;
+      const marker = new THREE.LineLoop(new THREE.BufferGeometry().setFromPoints(points), materials.selectionSet);
+      marker.position.set(selectedCell.center.x, selectedCell.center.y, (selectedCell.z || 0) + CAD.bodyThicknessMm * 1.8);
+      selectionMarkerRoot.add(marker);
+    });
+  }
+
+  function updateLockMarkers() {
+    cellViews.forEach((row) => {
+      row.forEach((cell) => {
+        const lock = lockForCell(cell.row, cell.col);
+        if (!cell.lockMarker) return;
+        cell.lockMarker.visible = Boolean(lock);
+        if (lock) cell.lockMarker.position.set(lock.targetX, lock.targetY,
+          (lock.lockZ === false ? cell.z : lock.targetZ || 0) + CAD.bodyThicknessMm * 2.25);
+      });
+    });
+  }
+
+  function updateBoundaryReadout(report = latestBoundaryReport) {
+    const selectedLock = lockForCell(selectedDriveCell.row, selectedDriveCell.col);
+    const lockedSelectedCount = selectedCells().filter((cell) => lockForCell(cell.row, cell.col)).length;
+    selectedCellsMetric.textContent = selectedCellsLabel();
+    selectedLockMetric.textContent = selectedLock
+      ? selectedLock.lockZ === false
+        ? `XY @ (${selectedLock.targetX.toFixed(1)}, ${selectedLock.targetY.toFixed(1)}); Z free`
+        : `XYZ @ (${selectedLock.targetX.toFixed(1)}, ${selectedLock.targetY.toFixed(1)}, ${selectedLock.targetZ.toFixed(2)})`
+      : selectedCellKeys.size > 1
+      ? `${lockedSelectedCount}/${selectedCellKeys.size} selected locked`
+      : "free";
+    activeLocksMetric.textContent = String(xyLocks.size);
+    maxLiftMetric.textContent = `${(report?.maxLift || 0).toFixed(3)} mm`;
+    maxTiltMetric.textContent = `${(report?.maxTiltDeg || 0).toFixed(2)} deg`;
+    maxLockDriftMetric.textContent = `${(report?.maxLockDrift || 0).toFixed(3)} mm`;
   }
 
   function addAxisLine(points, color) {
@@ -1615,9 +1969,9 @@
   }
 
   function framedCameraRadius() {
-    const aspect = Math.max(0.45, camera.aspect || 1);
-    const aspectPenalty = aspect < 1 ? 1 / aspect : 1;
-    return Math.max(180, latestLatticeRadius * (1.18 + aspectPenalty * 0.32) + 80);
+    const verticalHalfFov = degToRad(camera.fov) * 0.5;
+    const horizontalHalfFov = Math.atan(Math.tan(verticalHalfFov) * Math.max(0.01, camera.aspect || 1));
+    return Math.max(180, latestLatticeRadius * 1.08 / Math.sin(Math.min(verticalHalfFov, horizontalHalfFov)));
   }
 
   function minCameraRadius() {
@@ -1675,7 +2029,8 @@
     if (Math.abs(requestedDeg - effectiveDeg) > 0.25) {
       return `${requestedDeg.toFixed(0)} -> ${effectiveDeg.toFixed(0)} deg`;
     }
-    return `${effectiveDeg.toFixed(0)} deg`;
+    const travel = Number(aTopInput.max) - Number(aTopInput.min);
+    return `${effectiveDeg.toFixed(travel < 0.01 ? 6 : 3)} deg`;
   }
 
   function updateCollisionReadout(solution) {
@@ -1697,6 +2052,20 @@
     effectiveBTopMetric.textContent = `${radToDeg(solution.pose.bTopRad).toFixed(1)} deg`;
     effectiveCLowerMetric.textContent = `${radToDeg(solution.pose.cLowerRad).toFixed(1)} deg`;
     effectiveCTopMetric.textContent = `${radToDeg(solution.pose.cTopWorldRad - solution.pose.cLowerRad).toFixed(1)} deg`;
+  }
+
+  function centerPitchCoordinates(xRows, yCols) {
+    // Center every strand separately: choosing its first node as a reference
+    // otherwise introduces a spurious shear when the same sheet is rotated.
+    const rows = xRows.length, cols = xRows[0].length;
+    for (let row = 0; row < rows; row += 1) {
+      const mean = xRows[row].reduce((sum, x) => sum + x, 0) / cols;
+      for (let col = 0; col < cols; col += 1) xRows[row][col] -= mean;
+    }
+    for (let col = 0; col < cols; col += 1) {
+      const mean = yCols.reduce((sum, row) => sum + row[col], 0) / rows;
+      for (let row = 0; row < rows; row += 1) yCols[row][col] -= mean;
+    }
   }
 
   function buildLatticeSnapshot(driveField = null, requestedBLower = degToRad(B_LOWER_REFERENCE_DEG), requestedBTop = degToRad(B_TOP_REFERENCE_DEG)) {
@@ -1729,6 +2098,7 @@
       }
     }
 
+    centerPitchCoordinates(xRows, yCols);
     let meanX = 0;
     let meanY = 0;
     for (let row = 0; row < rows; row += 1) {
@@ -1840,7 +2210,7 @@
     };
   }
 
-  function updateLatticeFromPose(pose, displayFrame, driveField = null, requestedBLower = degToRad(B_LOWER_REFERENCE_DEG), requestedBTop = degToRad(B_TOP_REFERENCE_DEG), contactField = null) {
+  function updateLatticeFromPose(pose, displayFrame, driveField = null, requestedBLower = degToRad(B_LOWER_REFERENCE_DEG), requestedBTop = degToRad(B_TOP_REFERENCE_DEG)) {
     const rows = cellViews.length;
     const cols = rows ? cellViews[0].length : 0;
     const local = Array.from({ length: rows }, () => Array.from({ length: cols }, () => ({ pose, frame: displayFrame })));
@@ -1871,6 +2241,7 @@
       }
     }
 
+    centerPitchCoordinates(xRows, yCols);
     let meanX = 0;
     let meanY = 0;
     for (let row = 0; row < rows; row += 1) {
@@ -1882,6 +2253,15 @@
     meanX /= Math.max(1, rows * cols);
     meanY /= Math.max(1, rows * cols);
 
+    const baseCenters = Array.from({ length: rows }, () => Array.from({ length: cols }, () => new THREE.Vector2()));
+    for (let row = 0; row < rows; row += 1) {
+      for (let col = 0; col < cols; col += 1) {
+        baseCenters[row][col].set(xRows[row][col] - meanX, yCols[row][col] - meanY);
+      }
+    }
+    const constrained = constrainedLayoutSolve(baseCenters, pitch);
+    latestBoundaryReport = constrained.report;
+
     let maxRadius = CAD.siteRadiusMm * 2;
     const centerSum = new THREE.Vector2(0, 0);
     let centerCount = 0;
@@ -1889,44 +2269,257 @@
     for (let row = 0; row < rows; row += 1) {
       for (let col = 0; col < cols; col += 1) {
         const cell = cellViews[row][col];
-        const center = new THREE.Vector2(xRows[row][col] - meanX, yCols[row][col] - meanY);
+        const center = constrained.centers[row][col];
+        const z = constrained.z[row][col];
         const evenCell = cell.parity === 0;
         const localPose = local[row][col].pose;
         const localFrame = local[row][col].frame;
+        const commandDeg = driveField ? driveField[row][col] : radToDeg(localPose.aTopRad);
         const bottomRotation = (evenCell ? 0 : localPose.bLowerRad) + localFrame.rotation;
         const topRotation = (evenCell ? localPose.aTopRad : localPose.bTopWorldRad) + localFrame.rotation;
+        applyCellColor(cell, commandDeg, cachedDriveEnvelope(requestedBLower, requestedBTop));
         cell.center.copy(center);
+        cell.z = z;
+        cell.tiltX = constrained.tiltX[row][col];
+        cell.tiltY = constrained.tiltY[row][col];
         cell.bottomRotation = bottomRotation;
         cell.topRotation = topRotation;
-        cell.group.position.set(center.x, center.y, 0);
+        cell.group.position.set(center.x, center.y, z);
+        const normal = new THREE.Vector3(Math.sin(cell.tiltY),
+          -Math.sin(cell.tiltX) * Math.cos(cell.tiltY), Math.cos(cell.tiltX) * Math.cos(cell.tiltY));
+        cell.group.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), normal);
         cell.bottom.rotation.z = bottomRotation;
         cell.top.rotation.z = topRotation;
-        applyCellContactMaterial(cell, contactField);
-        maxRadius = Math.max(maxRadius, center.length() + CAD.cellWidthMm);
+        cell.bottom.scale.z = cell.top.scale.z = plateThicknessMm() / CAD.bodyThicknessMm;
+        cell.bottom.position.z = -plateThicknessMm() * 0.5;
+        cell.top.position.z = plateThicknessMm() * 0.5;
+        maxRadius = Math.max(maxRadius, Math.hypot(center.length(), z) + CAD.cellWidthMm);
         centerSum.add(center);
         centerCount += 1;
       }
     }
 
-    latestLatticeRadius = maxRadius;
+    if (driveField && xyLocks.size <= 1) {
+      const envelope = cachedDriveEnvelope(requestedBLower, requestedBTop);
+      const previousCenters = contactMemory?.freeCenters;
+      const previousBase = contactMemory?.freeBaseCenters;
+      if (pinHoleClearanceMm() > 0 && previousCenters?.length === rows * cols && previousBase?.length === rows * cols) {
+        cellViews.flat().forEach((cell, index) => {
+          cell.center.x += previousCenters[index][0] - previousBase[index][0];
+          cell.center.y += previousCenters[index][1] - previousBase[index][1];
+        });
+      }
+      const bodies = new Map(cellViews.flat().map((cell, index) => {
+        const angle = degToRad(driveField[cell.row][cell.col]);
+        const epsilon = 1e-4;
+        const next = solveNonPenetratingPose(angle + epsilon, requestedBLower, requestedBTop).pose;
+        const frame = displayFrameForPose(next);
+        const top = (cell.parity === 0 ? next.aTopRad : next.bTopWorldRad) + frame.rotation;
+        const bottom = (cell.parity === 0 ? 0 : next.bLowerRad) + frame.rotation;
+        return [cell, { angle, initial: angle, center: cell.center,
+          yaw: contactMemory?.freeYaw?.[index] || 0, top: cell.topRotation, bottom: cell.bottomRotation,
+          topSlope: angleDelta(top, cell.topRotation) / epsilon,
+          bottomSlope: angleDelta(bottom, cell.bottomRotation) / epsilon,
+          weight: cell.row === selectedDriveCell.row && cell.col === selectedDriveCell.col ? 0 : 1 / CAD.siteRadiusMm ** 2 }];
+      }));
+      const pairs = explicitConnectionPinPairs().map(([first, second]) => {
+        const a = bodies.get(first.cell), b = bodies.get(second.cell);
+        const sa = a[first.layer + "Slope"], sb = b[second.layer + "Slope"];
+        const va = SITE_VECTORS[first.site], vb = SITE_VECTORS[second.site];
+        return { a, b, sa, sb,
+          baseA: Math.atan2(va.y, va.x) + a[first.layer] - sa * a.initial,
+          baseB: Math.atan2(vb.y, vb.x) + b[second.layer] - sb * b.initial };
+      });
+      const clearance = 2 * pinHoleClearanceMm();
+      // Free sheets must close every pin pair together, rather than independently
+      // laying out rows and columns and treating their mismatch as an actuator stop.
+      for (let iteration = 0; iteration < 4000; iteration += 1) {
+        let residual = 0;
+        for (const { a, b, sa, sb, baseA, baseB } of pairs) {
+          const ta = baseA + sa * a.angle + a.yaw, tb = baseB + sb * b.angle + b.yaw;
+          const ax = CAD.siteRadiusMm * Math.cos(ta), ay = CAD.siteRadiusMm * Math.sin(ta);
+          const bx = CAD.siteRadiusMm * Math.cos(tb), by = CAD.siteRadiusMm * Math.sin(tb);
+          const dx = b.center.x + bx - a.center.x - ax, dy = b.center.y + by - a.center.y - ay;
+          const distance = Math.hypot(dx, dy);
+          const excess = Math.max(0, distance - clearance);
+          residual = Math.max(residual, excess);
+          if (excess <= 1e-8) continue;
+          const nx = dx / distance, ny = dy / distance;
+          const ya = nx * ay - ny * ax, yb = -nx * by + ny * bx;
+          const ga = ya * sa, gb = yb * sb;
+          const step = 1.5 * excess / (2 + a.weight * (ga * ga + ya * ya) + b.weight * (gb * gb + yb * yb));
+          a.center.x += nx * step; a.center.y += ny * step;
+          b.center.x -= nx * step; b.center.y -= ny * step;
+          a.angle = clamp(a.angle - step * a.weight * ga, degToRad(envelope.min), degToRad(envelope.max));
+          b.angle = clamp(b.angle - step * b.weight * gb, degToRad(envelope.min), degToRad(envelope.max));
+          a.yaw -= step * a.weight * ya;
+          b.yaw -= step * b.weight * yb;
+        }
+        if (residual < 1e-5) break;
+      }
+      const fitsPairs = () => pairs.every(({ a, b, sa, sb, baseA, baseB }) => {
+        const ta = baseA + sa * a.angle + a.yaw, tb = baseB + sb * b.angle + b.yaw;
+        return Math.hypot(b.center.x - a.center.x + CAD.siteRadiusMm * (Math.cos(tb) - Math.cos(ta)),
+          b.center.y - a.center.y + CAD.siteRadiusMm * (Math.sin(tb) - Math.sin(ta))) <= clearance + 1e-5;
+      });
+      if (!fitsPairs()) {
+        // Numerical recovery changes passive coordinates, never the commanded
+        // angle. Uniform motion is a known feasible point for an unlocked sheet.
+        const driver = bodies.get(cellAt(selectedDriveCell.row, selectedDriveCell.col));
+        const uniform = buildLatticeSnapshot(uniformDriveField(radToDeg(driver.angle)), requestedBLower, requestedBTop);
+        const targets = [...bodies.entries()].map(([cell, body]) => ({ body,
+          center: body.center.clone(), angle: body.angle, yaw: body.yaw,
+          uniformCenter: rotate2(uniform[cell.row][cell.col].center, driver.yaw) }));
+        const angle = driver.angle, yaw = driver.yaw;
+        const mix = (amount) => targets.forEach((target) => {
+          target.body.center.copy(target.uniformCenter).lerp(target.center, amount);
+          target.body.angle = angle + (target.angle - angle) * amount;
+          target.body.yaw = yaw + (target.yaw - yaw) * amount;
+        });
+        let accepted = 0, rejected = 1;
+        for (let iteration = 0; iteration < 32; iteration += 1) {
+          const trial = (accepted + rejected) * 0.5;
+          mix(trial);
+          if (fitsPairs()) accepted = trial;
+          else rejected = trial;
+        }
+        mix(accepted);
+      }
+      bodies.forEach((body, cell) => {
+        driveField[cell.row][cell.col] = radToDeg(body.angle);
+        cell.topRotation = body.top + body.topSlope * (body.angle - body.initial) + body.yaw;
+        cell.bottomRotation = body.bottom + body.bottomSlope * (body.angle - body.initial) + body.yaw;
+        cell.top.rotation.z = cell.topRotation;
+        cell.bottom.rotation.z = cell.bottomRotation;
+        cell.group.position.set(cell.center.x, cell.center.y, 0);
+        maxRadius = Math.max(maxRadius, cell.center.length() + CAD.cellWidthMm);
+        applyCellColor(cell, driveField[cell.row][cell.col], envelope);
+      });
+      if (latestContactField?.field === driveField) {
+        const field = latestContactField;
+        field.freeYaw = [...bodies.values()].map((body) => body.yaw);
+        field.freeBaseCenters = buildLatticeSnapshot(driveField, requestedBLower, requestedBTop)
+          .flat().map((entry) => entry.center.toArray());
+        field.maxAbs = field.reach = field.dieOffRadius = 0;
+        driveField.forEach((row, r) => row.forEach((value, c) => {
+          const delta = value - field.restDrive;
+          field.deltaField[r][c] = delta;
+          field.maxAbs = Math.max(field.maxAbs, Math.abs(delta));
+          if (Math.abs(delta) > 1e-6) {
+            field.reach += 1;
+            field.dieOffRadius = Math.max(field.dieOffRadius, field.distance[r][c]);
+          }
+        }));
+      }
+    }
+    if (xyLocks.size <= 1) {
+      // A single center anchor changes the world frame, not the internal mechanism.
+      if (latestContactField?.field === driveField) {
+        latestContactField.freeCenters = cellViews.flat().map((cell) => cell.center.toArray());
+      }
+      const lock = [...xyLocks.values()][0];
+      if (lock) {
+        const anchor = cellAt(lock.row, lock.col);
+        freeTranslation = [lock.targetX - anchor.center.x, lock.targetY - anchor.center.y,
+          lock.lockZ ? lock.targetZ - anchor.z : freeTranslation[2]];
+      }
+      cellViews.flat().forEach((cell) => {
+        cell.center.x += freeTranslation[0];
+        cell.center.y += freeTranslation[1];
+        cell.z += freeTranslation[2];
+        cell.group.position.set(cell.center.x, cell.center.y, cell.z);
+      });
+      if (latestContactField?.field === driveField) latestContactField.freeTranslation = freeTranslation.slice();
+      constrained.report.maxLift = Math.max(...cellViews.flat().map((cell) => Math.abs(cell.z)));
+    }
+    centerSum.set(0, 0);
+    cellViews.flat().forEach((cell) => centerSum.add(cell.center));
+    latestLatticeRadius = Math.max(...cellViews.flat().map((cell) => cell.center.length() + CAD.cellWidthMm));
     const systemCenter = centerCount ? centerSum.multiplyScalar(1 / centerCount) : new THREE.Vector2(0, 0);
     buildCenterLineGeometry();
     latticeLine.visible = showCenterLinesInput.checked;
     updateConnectionPins();
     updateSelectionMarker();
+    updateLockMarkers();
     return {
       stepX: new THREE.Vector2(pitch[0]?.[0] || 0, 0),
       stepY: new THREE.Vector2(0, pitch[0]?.[0] || 0),
       systemCenter,
+      boundaryReport: constrained.report,
     };
   }
 
+  let lockedDriveRangeCache = null;
+
+  function lockedDriveRange(envelope, requestedBLower, requestedBTop) {
+    const selectedKey = cellKey(selectedDriveCell.row, selectedDriveCell.col);
+    const key = JSON.stringify([rowCountInput.value, colCountInput.value, pinRadiusRatio(), plateThicknessMm(),
+      [...xyLocks.entries()], selectedKey, [...cellDriveCommands.entries()].filter(([key]) => key !== selectedKey), contactMemory, envelope]);
+    if (lockedDriveRangeCache?.key === key) return lockedDriveRangeCache.range;
+    const savedCommand = cellDriveCommands.get(selectedKey);
+    const hadCommand = cellDriveCommands.has(selectedKey);
+    const rest = contactRestDriveDeg(envelope);
+    let anchor = selectedDriveCommand(envelope);
+    const fits = (angle) => {
+      setDriveCommandForCell(selectedDriveCell.row, selectedDriveCell.col, angle, envelope);
+      const field = contactDriveField(envelope);
+      latestContactField = field;
+      latestRestSnapshot = buildLatticeSnapshot(uniformDriveField(field.restDrive), requestedBLower, requestedBTop);
+      const { pose } = solveNonPenetratingPose(degToRad(angle), requestedBLower, requestedBTop);
+      updateLatticeFromPose(pose, displayFrameForPose(pose), field.field, requestedBLower, requestedBTop);
+      return latestPinFitReport.clear;
+    };
+    try {
+      if (!fits(anchor)) anchor = rest;
+      let range = { min: anchor, max: anchor };
+      if (fits(anchor)) {
+        const bound = (target) => {
+          let accepted = anchor;
+          const direction = Math.sign(target - anchor);
+          while (Math.abs(target - accepted) > 1e-8) {
+            const trial = accepted + direction * Math.min(1, Math.abs(target - accepted));
+            if (fits(trial)) { accepted = trial; continue; }
+            let rejected = trial;
+            for (let iteration = 0; iteration < 16; iteration += 1) {
+              const mid = (accepted + rejected) * 0.5;
+              if (fits(mid)) accepted = mid;
+              else rejected = mid;
+            }
+            break;
+          }
+          return accepted;
+        };
+        const min = bound(envelope.min);
+        const max = bound(envelope.max);
+        if (max >= min) range = { min, max };
+      }
+      lockedDriveRangeCache = { key, range };
+      return range;
+    } finally {
+      if (hadCommand) cellDriveCommands.set(selectedKey, savedCommand);
+      else cellDriveCommands.delete(selectedKey);
+      // Trial poses must never be left on screen by the unchanged-state fast path.
+      lastMechanismUpdateKey = "";
+      // Trial poses are overwritten by the real update before the next render.
+      lastMechanismUpdateKey = "";
+    }
+  }
+
+  function controlStateKey() {
+    return JSON.stringify([aTopInput.value, actuationModeInput.value, rowCountInput.value, colCountInput.value,
+      pinRadiusRatioInput.value, plateThicknessInput.value, showPinsInput.checked, showCenterLinesInput.checked,
+      selectedDriveCell, [...selectedCellKeys], [...xyLocks.entries()], [...cellDriveCommands.entries()]]);
+  }
+
   function updateMechanism(timeMs = 0) {
-    if (selectionSyncOnly) return;
+    if (!animateInput.checked && !selectedDriveCommandDirty && lastMechanismUpdateKey && controlStateKey() === lastControlStateKey) return;
+    const contactMode = actuationModeInput.value === "contact";
+    pinRadiusRatioInput.disabled = !contactMode;
+    if (!contactMode) pinRadiusRatioInput.value = "1";
     const requestedBLower = degToRad(B_LOWER_REFERENCE_DEG);
     const requestedBTop = degToRad(B_TOP_REFERENCE_DEG);
     const driveEnvelope = cachedDriveEnvelope(requestedBLower, requestedBTop);
-    const contactMode = actuationModeInput.value === "contact";
+    aTopInput.step = contactMode ? "any" : "0.1";
 
     if (driveEnvelope) {
       aTopInput.min = String(driveEnvelope.min);
@@ -1935,6 +2528,14 @@
       aTopInput.min = String(A_TOP_FULL_MIN_DEG);
       aTopInput.max = String(A_TOP_FULL_MAX_DEG);
     }
+
+    const jammedDriveDeg = jammedLockDriveDeg(driveEnvelope);
+    const jammed = jammedDriveDeg !== null;
+    aTopInput.disabled = jammed;
+    animateInput.disabled = jammed;
+    animationHalfPeriodSecondsInput.disabled = jammed;
+    aTopInput.title = jammed ? "Jammed: position locks and zero pin clearance allow 0 degrees of movement." : "";
+    if (jammed) animateInput.checked = false;
 
     let requestedATopDeg = Number(aTopInput.value);
     if (animateInput.checked && driveEnvelope) {
@@ -1951,27 +2552,61 @@
       aTopInput.value = aTopDeg.toFixed(0);
       clamped = true;
     }
+    if (jammedDriveDeg !== null) {
+      aTopDeg = jammedDriveDeg;
+      aTopInput.value = aTopDeg.toFixed(2);
+      clamped = true;
+    }
+    const enteringContactMode = contactMode && lastActuationMode !== "contact";
+    if (enteringContactMode) {
+      seedContactCommandsFromUniformDrive(aTopDeg, driveEnvelope);
+    }
+    const range = contactMode && xyLocks.size > 1 && !jammed && driveEnvelope
+      ? lockedDriveRange(driveEnvelope, requestedBLower, requestedBTop) : null;
+    if (range) {
+      aTopInput.step = "any";
+      aTopInput.min = String(range.min);
+      aTopInput.max = String(range.max);
+      if (animateInput.checked) {
+        requestedATopDeg = mildlyEasedPingPong(timeMs, range.min, range.max, Number(animationHalfPeriodSecondsInput.value) || 2.5, ANIMATION_EASE_BLEND);
+      }
+      aTopDeg = clamp(requestedATopDeg, range.min, range.max);
+      clamped = clamped || Math.abs(aTopDeg - requestedATopDeg) > 1e-9;
+      aTopInput.value = String(aTopDeg);
+      aTopInput.disabled = animateInput.disabled = animationHalfPeriodSecondsInput.disabled = range.max - range.min < 1e-9;
+      aTopInput.title = aTopInput.disabled
+        ? "No feasible motion found on the current geometric branch. Check locks and pin clearance."
+        : "Admissible range on the current geometric branch, checked against pin-hole clearance.";
+      if (aTopInput.disabled) animateInput.checked = false;
+    }
+    if (contactMode && (selectedDriveCommandDirty || animateInput.checked || (range && clamped))) {
+      setDriveCommandForCell(selectedDriveCell.row, selectedDriveCell.col, aTopDeg, driveEnvelope);
+    }
+    selectedDriveCommandDirty = false;
+    lastActuationMode = actuationModeInput.value;
 
     const mechanismUpdateKey = [
-      aTopDeg.toFixed(2),
+      aTopDeg.toFixed(6),
       rowCountInput.value,
       colCountInput.value,
       actuationModeInput.value,
-      activeDriveCell.row,
-      activeDriveCell.col,
+      selectedDriveCell.row,
+      selectedDriveCell.col,
+      JSON.stringify([...selectedCellKeys].sort()),
       showPinsInput.checked ? 1 : 0,
       showCenterLinesInput.checked ? 1 : 0,
-      showContactStateInput.checked ? 1 : 0,
       pinRadiusRatioInput.value,
-      contactTestCommandInput.value,
+      plateThicknessInput.value,
+      JSON.stringify([...xyLocks.entries()]),
+      JSON.stringify([...cellDriveCommands.entries()]),
       driveEnvelope ? driveEnvelope.min : "none",
       driveEnvelope ? driveEnvelope.max : "none",
     ].join("|");
     if (mechanismUpdateKey === lastMechanismUpdateKey) return;
     lastMechanismUpdateKey = mechanismUpdateKey;
 
-    allowedDriveMetric.textContent = formatDriveRanges(driveEnvelope);
-    driveClampMetric.textContent = clamped ? `${requestedATopDeg.toFixed(0)} -> ${aTopDeg.toFixed(0)} deg` : driveEnvelope ? "none" : "no feasible range";
+    allowedDriveMetric.textContent = jammed ? "0 deg travel (jammed)" : range ? `${range.min.toFixed(3)} to ${range.max.toFixed(3)} deg (geometry / clearance)` : formatDriveRanges(driveEnvelope);
+    driveClampMetric.textContent = jammed ? "position locks / zero clearance" : clamped ? `${requestedATopDeg.toFixed(0)} -> ${aTopDeg.toFixed(0)} deg` : driveEnvelope ? "none" : "no feasible range";
 
     let solution = solveNonPenetratingPose(degToRad(aTopDeg), requestedBLower, requestedBTop);
     if (clamped && solution.status === "clear") {
@@ -1980,10 +2615,34 @@
 
     const pose = solution.pose;
     const displayFrame = displayFrameForPose(pose);
-    const contactField = contactMode ? contactDriveField(aTopDeg, driveEnvelope) : null;
+    let contactField = contactMode ? contactDriveField(driveEnvelope) : null;
     latestContactField = contactField;
     latestRestSnapshot = contactField ? buildLatticeSnapshot(uniformDriveField(contactField.restDrive), requestedBLower, requestedBTop) : null;
-    const lattice = updateLatticeFromPose(pose, displayFrame, contactField?.field || null, requestedBLower, requestedBTop, contactField);
+    let lattice = updateLatticeFromPose(pose, displayFrame, contactField?.field || null, requestedBLower, requestedBTop);
+    if (contactField && latestPinFitReport && !latestPinFitReport.clear) {
+      let low = 0;
+      let high = 1;
+      let best = scaledContactField(contactField, 0);
+      latestContactField = best;
+      lattice = updateLatticeFromPose(pose, displayFrame, best.field, requestedBLower, requestedBTop);
+      for (let iteration = 0; iteration < 10; iteration += 1) {
+        const mid = (low + high) * 0.5;
+        const candidate = scaledContactField(contactField, mid);
+        latestContactField = candidate;
+        const candidateLattice = updateLatticeFromPose(pose, displayFrame, candidate.field, requestedBLower, requestedBTop);
+        if (latestPinFitReport?.clear) {
+          low = mid;
+          best = candidate;
+          lattice = candidateLattice;
+        } else {
+          high = mid;
+        }
+      }
+      contactField = best;
+      latestContactField = contactField;
+      lattice = updateLatticeFromPose(pose, displayFrame, contactField.field, requestedBLower, requestedBTop);
+      driveClampMetric.textContent = "pin-hole clearance limit";
+    }
     const latticeReport = latticeCollisionReportFromRenderedCells();
     const combinedReport = mergeCollisionReports(solution.report, latticeReport);
     const displayedSolution = {
@@ -2002,7 +2661,8 @@
     const bTopAttachWorld = displayFrame.mapPoint(pose.bTopAttachWorld);
     const residuals = pinResiduals(pose);
 
-    aTopOut.textContent = angleLabel(requestedATopDeg, pose.aTopRad);
+    const effectiveDriveDeg = contactField ? contactField.field[selectedDriveCell.row][selectedDriveCell.col] : radToDeg(pose.aTopRad);
+    aTopOut.textContent = angleLabel(requestedATopDeg, degToRad(effectiveDriveDeg));
     residualMetric.textContent = `${aAttachWorld.distanceTo(bAttachWorld).toFixed(3)} mm`;
     pitchMetric.textContent = `${lattice.stepX.length().toFixed(1)} mm`;
     aCenterMetric.textContent = aCell ? formatPair(aCell.center) : "n/a";
@@ -2016,23 +2676,23 @@
     bcSecondResidualMetric.textContent = `${residuals.bcSecond.toFixed(3)} mm`;
     bcPitchMetric.textContent = `${displayC.clone().sub(displayB).length().toFixed(1)} mm`;
     selectedCellMetric.textContent = selectedCellLabel();
-    activeCellMetric.textContent = activeCellLabel();
-    if (contactField) {
-      const summary = contactField.pathSummary;
-      backlashPathMetric.textContent = `play ${contactField.memorySerial}: +${summary.positiveContacts} / -${summary.negativeContacts} / free ${summary.freeCells}`;
-      engagedLinksMetric.textContent = `${summary.engagedLinks}`;
-      floatingLinksMetric.textContent = `${summary.floatingLinks}`;
-    } else {
-      backlashPathMetric.textContent = "uniform baseline";
-      engagedLinksMetric.textContent = "n/a";
-      floatingLinksMetric.textContent = "n/a";
-    }
-    const hysteresis = backlashHysteresisDiagnostic();
-    hysteresisMetric.textContent = `${hysteresis.loopGap.toFixed(2)} deg loop gap`;
     dieOffRadiusMetric.textContent = contactField ? `${contactField.dieOffRadius} steps (${contactField.reach}/${cellViews.length * (cellViews[0]?.length || 0)} cells)` : "uniform";
     maxPropagatedMetric.textContent = contactField ? `${contactField.maxAbs.toFixed(1)} deg` : `${Math.abs(aTopDeg).toFixed(1)} deg`;
     updateCollisionReadout(displayedSolution);
-    updateContactReadout();
+    document.getElementById("pinFitMetric").textContent = latestPinFitReport?.clear ? "within tolerance" : "invalid configuration";
+    document.getElementById("bodyThicknessMetric").textContent = `${plateThicknessMm().toFixed(2)} mm each`;
+    updateContactReadout(contactField);
+    if (contactField && latestPinFitReport?.clear) {
+      contactMemory = { restDrive: contactField.restDrive, field: contactField.field.map((row) => row.slice()),
+        freeCenters: xyLocks.size <= 1 ? contactField.freeCenters : null,
+        freeTranslation: contactField.freeTranslation,
+        freeBaseCenters: contactField.freeBaseCenters,
+        freeYaw: contactField.freeYaw,
+        pins: connectionPinMeshes.map((pin) => pin.position.toArray()) };
+      contactField.field.forEach((row, r) => row.forEach((value, c) => cellDriveCommands.set(cellKey(r, c), value)));
+    }
+    lastControlStateKey = controlStateKey();
+    updateBoundaryReadout(lattice.boundaryReport || latestBoundaryReport);
   }
 
   function continuitySnapshot() {
@@ -2063,7 +2723,9 @@
       mode: actuationModeInput.value,
       ratio: pinRadiusRatioInput.value,
       selected: { ...selectedDriveCell },
-      active: { ...activeDriveCell },
+      selectedKeys: [...selectedCellKeys],
+      commands: [...cellDriveCommands.entries()],
+      memory: contactMemory, translation: freeTranslation.slice(),
     };
     const failures = [];
 
@@ -2075,7 +2737,9 @@
         rowCountInput.value = String(rows);
         colCountInput.value = String(cols);
         selectedDriveCell = { row: 0, col: 0 };
-        activeDriveCell = { row: 0, col: 0 };
+        selectedCellKeys.clear();
+        selectedCellKeys.add("0,0");
+        cellDriveCommands.clear();
         rebuildLattice();
         actuationModeInput.value = "contact";
         ratios.forEach((ratio) => {
@@ -2087,7 +2751,6 @@
           ["descending", "ascending"].forEach((direction) => {
             let previous = null;
             const drives = [];
-            resetContactMemory(`scan ${direction}`);
             if (direction === "descending") {
               for (let drive = maxDrive; drive >= minDrive - 1e-9; drive -= stepDeg) drives.push(Math.max(minDrive, drive));
             } else {
@@ -2095,6 +2758,7 @@
             }
             drives.forEach((drive) => {
               aTopInput.value = String(drive);
+              selectedDriveCommandDirty = true;
               lastMechanismUpdateKey = "";
               updateMechanism();
               const current = continuitySnapshot();
@@ -2122,12 +2786,16 @@
       rowCountInput.value = saved.rows;
       colCountInput.value = saved.cols;
       selectedDriveCell = saved.selected;
-      activeDriveCell = saved.active;
+      selectedCellKeys.clear();
+      saved.selectedKeys.forEach((key) => selectedCellKeys.add(key));
+      cellDriveCommands.clear();
+      saved.commands.forEach(([key, value]) => cellDriveCommands.set(key, value));
       rebuildLattice();
+      contactMemory = saved.memory;
+      freeTranslation = saved.translation;
       actuationModeInput.value = saved.mode;
       pinRadiusRatioInput.value = saved.ratio;
       aTopInput.value = saved.drive;
-      resetContactMemory("scan restored");
       lastMechanismUpdateKey = "";
       updateMechanism();
     }
@@ -2139,34 +2807,371 @@
     };
   }
 
+  function scanContinuityScenario(options = {}) {
+    const rows = clampInt(options.rows ?? 1, Number(rowCountInput.min), Number(rowCountInput.max));
+    const cols = clampInt(options.cols ?? 15, Number(colCountInput.min), Number(colCountInput.max));
+    const sourceRow = clampInt(options.sourceRow ?? 0, 0, Math.max(0, rows - 1));
+    const sourceCol = clampInt(options.sourceCol ?? 0, 0, Math.max(0, cols - 1));
+    const ratio = clamp(Number(options.ratio ?? pinRadiusRatio()), Number(pinRadiusRatioInput.min), Number(pinRadiusRatioInput.max));
+    const stepDeg = Math.max(0.1, Number(options.stepDeg) || 0.5);
+    const directions = options.direction ? [options.direction] : ["descending", "ascending"];
+    const maxCenterJumpMm = Number(options.maxCenterJumpMm) || MAX_DRIVE_STEP_CENTER_JUMP_MM;
+    const maxRotationJumpDeg = Number(options.maxRotationJumpDeg) || MAX_DRIVE_STEP_ROTATION_JUMP_DEG;
+    const saved = {
+      rows: rowCountInput.value,
+      cols: colCountInput.value,
+      drive: aTopInput.value,
+      mode: actuationModeInput.value,
+      ratio: pinRadiusRatioInput.value,
+      selected: { ...selectedDriveCell },
+      selectedKeys: [...selectedCellKeys],
+      commands: [...cellDriveCommands.entries()],
+      memory: contactMemory, translation: freeTranslation.slice(),
+    };
+    const failures = [];
+
+    try {
+      rowCountInput.value = String(rows);
+      colCountInput.value = String(cols);
+      selectedDriveCell = { row: sourceRow, col: sourceCol };
+      selectedCellKeys.clear();
+      selectedCellKeys.add(cellKey(sourceRow, sourceCol));
+      cellDriveCommands.clear();
+      rebuildLattice();
+      actuationModeInput.value = "contact";
+      pinRadiusRatioInput.value = String(ratio);
+      lastActuationMode = "uniform";
+      lastMechanismUpdateKey = "";
+      updateMechanism();
+      const minDrive = Number(aTopInput.min);
+      const maxDrive = Number(aTopInput.max);
+
+      directions.forEach((direction) => {
+        let previous = null;
+        const drives = [];
+        if (direction === "descending") {
+          for (let drive = maxDrive; drive >= minDrive - 1e-9; drive -= stepDeg) drives.push(Math.max(minDrive, drive));
+        } else {
+          for (let drive = minDrive; drive <= maxDrive + 1e-9; drive += stepDeg) drives.push(Math.min(maxDrive, drive));
+        }
+        drives.forEach((drive) => {
+          aTopInput.value = String(drive);
+          selectedDriveCommandDirty = true;
+          lastMechanismUpdateKey = "";
+          updateMechanism();
+          const current = continuitySnapshot();
+          if (previous) {
+            const jump = maxSnapshotJump(previous.snapshot, current);
+            if (jump.centerJump > maxCenterJumpMm || jump.rotationJumpDeg > maxRotationJumpDeg) {
+              failures.push({
+                direction,
+                fromDrive: previous.drive,
+                toDrive: drive,
+                centerJump: Number(jump.centerJump.toFixed(3)),
+                rotationJumpDeg: Number(jump.rotationJumpDeg.toFixed(3)),
+              });
+            }
+          }
+          previous = { drive, snapshot: current };
+        });
+      });
+    } finally {
+      rowCountInput.value = saved.rows;
+      colCountInput.value = saved.cols;
+      selectedDriveCell = saved.selected;
+      selectedCellKeys.clear();
+      saved.selectedKeys.forEach((key) => selectedCellKeys.add(key));
+      cellDriveCommands.clear();
+      saved.commands.forEach(([key, value]) => cellDriveCommands.set(key, value));
+      rebuildLattice();
+      contactMemory = saved.memory;
+      freeTranslation = saved.translation;
+      actuationModeInput.value = saved.mode;
+      pinRadiusRatioInput.value = saved.ratio;
+      aTopInput.value = saved.drive;
+      lastActuationMode = saved.mode;
+      lastMechanismUpdateKey = "";
+      updateMechanism();
+    }
+
+    return {
+      ok: failures.length === 0,
+      failures,
+      checked: { rows, cols, sourceRow, sourceCol, ratio, stepDeg, directions, maxCenterJumpMm, maxRotationJumpDeg },
+    };
+  }
+
+  function scanContinuityScenarios(scenarios = []) {
+    const results = scenarios.map((scenario) => ({
+      name: scenario.name || `${scenario.rows}x${scenario.cols}`,
+      ...scanContinuityScenario(scenario),
+    }));
+    return {
+      ok: results.every((result) => result.ok),
+      results,
+      failures: results.flatMap((result) => result.failures.map((failure) => ({ scenario: result.name, ...failure }))),
+    };
+  }
+
+  function lockedStringBacklashScenario(options = {}) {
+    const ratio = clamp(Number(options.ratio ?? 1), Number(pinRadiusRatioInput.min), Number(pinRadiusRatioInput.max));
+    const saved = {
+      rows: rowCountInput.value,
+      cols: colCountInput.value,
+      drive: aTopInput.value,
+      mode: actuationModeInput.value,
+      ratio: pinRadiusRatioInput.value,
+      selected: { ...selectedDriveCell },
+      selectedKeys: [...selectedCellKeys],
+      commands: [...cellDriveCommands.entries()],
+      memory: contactMemory, translation: freeTranslation.slice(),
+      locks: [...xyLocks.entries()],
+      lastMode: lastActuationMode,
+      showPins: showPinsInput.checked,
+    };
+
+    try {
+      const count = clampInt(options.count ?? 10, 1, 30);
+      const rows = clampInt(options.rows ?? (options.vertical ? count : 1), 1, 30);
+      const cols = clampInt(options.cols ?? (options.vertical ? 1 : count), 1, 30);
+      rowCountInput.value = String(rows);
+      colCountInput.value = String(cols);
+      showPinsInput.checked = options.showPins !== false;
+      pinRadiusRatioInput.value = String(ratio);
+      selectedDriveCell = { row: options.sourceRow ?? Math.floor(rows / 2), col: options.sourceCol ?? Math.floor(cols / 2) };
+      selectedCellKeys.clear();
+      selectedCellKeys.add(cellKey(selectedDriveCell.row, selectedDriveCell.col));
+      cellDriveCommands.clear();
+      xyLocks.clear();
+      rebuildLattice();
+      actuationModeInput.value = "uniform";
+      lastActuationMode = "uniform";
+      lastMechanismUpdateKey = "";
+      updateMechanism();
+      aTopInput.value = aTopInput.min;
+      lastMechanismUpdateKey = "";
+      updateMechanism();
+
+      const lockSites = options.locks || (rows > 1 && cols > 1
+        ? [[0, 0], [0, cols - 1], [rows - 1, 0], [rows - 1, cols - 1]]
+        : [[0, 0], [rows - 1, cols - 1]]);
+      lockSites.map(([row, col]) => cellAt(row, col)).forEach((cell) => {
+        xyLocks.set(cellKey(cell.row, cell.col), {
+          row: cell.row,
+          col: cell.col,
+          targetX: cell.center.x + (options.lockOffset?.[0] || 0),
+          targetY: cell.center.y + (options.lockOffset?.[1] || 0),
+          targetZ: (cell.z || 0) + (options.lockOffset?.[2] || 0),
+          targetDriveDeg: Number(aTopInput.value),
+          lockXY: true,
+          lockZ: options.lockModes?.[cellKey(cell.row, cell.col)] !== "xy" && options.lockMode !== "xy",
+        });
+      });
+
+      let uniformEffectiveDriveDeltaDeg = null;
+      if (exactPinTiltLimitRad() <= 1e-9) {
+        actuationModeInput.value = "uniform";
+        aTopInput.value = aTopInput.max;
+        lastMechanismUpdateKey = "";
+        updateMechanism();
+        uniformEffectiveDriveDeltaDeg = Math.abs(Number(aTopInput.value) - Number(aTopInput.min));
+      }
+
+      actuationModeInput.value = "contact";
+      pinRadiusRatioInput.value = String(ratio);
+      aTopInput.value = aTopInput.min;
+      lastActuationMode = "uniform";
+      lastMechanismUpdateKey = "";
+      updateMechanism();
+      const samples = [];
+      for (const fraction of options.driveOffsets || options.driveFractions || [1]) {
+        aTopInput.value = String(Number(aTopInput.min) + (options.driveOffsets ? fraction : fraction * (Number(aTopInput.max) - Number(aTopInput.min))));
+        selectedDriveCommandDirty = true;
+        lastMechanismUpdateKey = "";
+        updateMechanism();
+        if (options.driveFractions || options.driveOffsets) samples.push({
+          fraction,
+          pinFit: { ...latestPinFitReport },
+          maxLift: latestBoundaryReport.maxLift,
+          maxLockDrift: latestBoundaryReport.maxLockDrift,
+          maxEdgeLengthError: latestBoundaryReport.maxEdgeLengthError,
+          slider: { min: Number(aTopInput.min), max: Number(aTopInput.max), value: Number(aTopInput.value) },
+          effectiveDrive: latestContactField.field[selectedDriveCell.row][selectedDriveCell.col],
+          cells: cellViews.flat().map((cell) => ({ row: cell.row, col: cell.col,
+            center: [cell.center.x, cell.center.y, cell.z], normal: cellNormal(cell).toArray(),
+            delta: latestContactField.deltaField[cell.row][cell.col],
+            lock: lockForCell(cell.row, cell.col) || null })),
+          pins: explicitConnectionPinPairs().map((pair, index) => {
+            const pin = connectionPinMeshes[index];
+            return {
+              origin: pin.position.toArray(),
+              axis: new THREE.Vector3(0, 1, 0).applyQuaternion(pin.quaternion).toArray(),
+              radius: pinRadiusMm(),
+              halfLength: pin.geometry.parameters.height * 0.5,
+              holes: pair.map((ref) => {
+                const site = SITE_VECTORS[ref.site];
+                ref.cell.group.updateMatrixWorld(true);
+                const layer = ref.layer === "top" ? ref.cell.top : ref.cell.bottom;
+                return {
+                  center: layer.localToWorld(new THREE.Vector3(site.x, site.y, 0)).toArray(),
+                  normal: cellNormal(ref.cell).toArray(),
+                  radius: holeRadiusMm(),
+                  thickness: plateThicknessMm(),
+                };
+              }),
+            };
+          }),
+        });
+      }
+
+      return {
+        ratio,
+        rows,
+        cols,
+        diametralBacklashMm: diametralBacklashMm(),
+        exactTiltDeg: exactPinTiltLimitDeg(),
+        boundaryActuationScale: boundaryActuationScale(),
+        maxLift: latestBoundaryReport?.maxLift || 0,
+        maxTiltDeg: latestBoundaryReport?.maxTiltDeg || 0,
+        maxAdmissibleEdgeRise: latestBoundaryReport?.maxAdmissibleEdgeRise || 0,
+        backlashLimitedLift: Boolean(latestBoundaryReport?.backlashLimitedLift),
+        maxEffectiveDriveDeg: latestContactField?.maxAbs || 0,
+        contactConstraintScale: latestContactField?.constraintScale ?? 1,
+        uniformEffectiveDriveDeltaDeg,
+        driveDisabled: aTopInput.disabled,
+        animationDisabled: animateInput.disabled,
+        slider: { min: Number(aTopInput.min), max: Number(aTopInput.max), value: Number(aTopInput.value) },
+        pinFit: { ...(latestPinFitReport || {}) },
+        samples,
+      };
+    } finally {
+      rowCountInput.value = saved.rows;
+      colCountInput.value = saved.cols;
+      selectedDriveCell = saved.selected;
+      selectedCellKeys.clear();
+      saved.selectedKeys.forEach((key) => selectedCellKeys.add(key));
+      cellDriveCommands.clear();
+      saved.commands.forEach(([key, value]) => cellDriveCommands.set(key, value));
+      xyLocks.clear();
+      saved.locks.forEach(([key, value]) => xyLocks.set(key, value));
+      rebuildLattice();
+      contactMemory = saved.memory;
+      freeTranslation = saved.translation;
+      actuationModeInput.value = saved.mode;
+      pinRadiusRatioInput.value = saved.ratio;
+      aTopInput.value = saved.drive;
+      lastActuationMode = saved.lastMode;
+      showPinsInput.checked = saved.showPins;
+      lastMechanismUpdateKey = "";
+      updateMechanism();
+    }
+  }
+
+  function pinFitSnapshot(options = {}) {
+    const rows = clampInt(options.rows ?? rowCountInput.value, Number(rowCountInput.min), Number(rowCountInput.max));
+    const cols = clampInt(options.cols ?? colCountInput.value, Number(colCountInput.min), Number(colCountInput.max));
+    const ratio = clamp(Number(options.ratio ?? pinRadiusRatio()), Number(pinRadiusRatioInput.min), Number(pinRadiusRatioInput.max));
+    const drive = options.drive;
+    const saved = {
+      rows: rowCountInput.value,
+      cols: colCountInput.value,
+      drive: aTopInput.value,
+      mode: actuationModeInput.value,
+      ratio: pinRadiusRatioInput.value,
+      selected: { ...selectedDriveCell },
+      selectedKeys: [...selectedCellKeys],
+      commands: [...cellDriveCommands.entries()],
+      locks: [...xyLocks.entries()],
+      memory: contactMemory, translation: freeTranslation.slice(),
+      lastMode: lastActuationMode,
+    };
+    try {
+      rowCountInput.value = String(rows);
+      colCountInput.value = String(cols);
+      pinRadiusRatioInput.value = String(ratio);
+      rebuildLattice();
+      if (drive !== undefined) aTopInput.value = String(drive);
+      lastMechanismUpdateKey = "";
+      updateMechanism();
+      return {
+        rows,
+        cols,
+        ratio: pinRadiusRatio(),
+        ...(latestPinFitReport || {}),
+      };
+    } finally {
+      rowCountInput.value = saved.rows;
+      colCountInput.value = saved.cols;
+      pinRadiusRatioInput.value = saved.ratio;
+      aTopInput.value = saved.drive;
+      actuationModeInput.value = saved.mode;
+      selectedDriveCell = saved.selected;
+      selectedCellKeys.clear();
+      saved.selectedKeys.forEach((key) => selectedCellKeys.add(key));
+      cellDriveCommands.clear();
+      saved.commands.forEach(([key, value]) => cellDriveCommands.set(key, value));
+      xyLocks.clear();
+      saved.locks.forEach(([key, value]) => xyLocks.set(key, value));
+      rebuildLattice();
+      contactMemory = saved.memory;
+      freeTranslation = saved.translation;
+      lastActuationMode = saved.lastMode;
+      lastMechanismUpdateKey = "";
+      updateMechanism();
+    }
+  }
+
   window.RADAttachmentDiagnostics = {
-    backlashHysteresisDiagnostic,
-    propagatePlayField,
-    playTrace,
+    currentState() {
+      const rect = renderer.domElement.getBoundingClientRect();
+      return {
+        selected: { ...selectedDriveCell },
+        field: contactMemory?.field.map((row) => row.slice()) || null,
+        pinFit: { ...latestPinFitReport },
+        pins: connectionPinMeshes.map((pin) => pin.position.toArray()),
+        cells: cellViews.flat().map((cell) => {
+          const projected = cell.group.position.clone().project(camera);
+          return { row: cell.row, col: cell.col, center: cell.group.position.toArray(),
+            normal: cellNormal(cell).toArray(), thickness: cell.top.scale.z * CAD.bodyThicknessMm,
+            topZ: cell.top.position.z, lock: lockForCell(cell.row, cell.col) || null,
+            screen: [rect.left + (projected.x + 1) * rect.width / 2, rect.top + (1 - projected.y) * rect.height / 2] };
+        }),
+      };
+    },
     scanStringContinuity,
+    scanContinuityScenario,
+    scanContinuityScenarios,
+    lockedStringBacklashScenario,
+    pinFitSnapshot,
   };
 
-  function actuateSelectedCell({ update = true } = {}) {
-    selectionSyncOnly = false;
-    const envelope = currentDriveEnvelope();
-    const row = clampInt(selectedDriveCell.row, 0, Math.max(0, cellViews.length - 1));
-    const col = clampInt(selectedDriveCell.col, 0, Math.max(0, (cellViews[0]?.length || 1) - 1));
-    const drive = currentCellDriveDeg(row, col, envelope);
-    activeDriveCell = { row, col };
-    actuationModeInput.value = "contact";
-    aTopInput.value = drive.toFixed(2);
-    aTopOut.textContent = `${drive.toFixed(0)} deg`;
-    activeCellMetric.textContent = activeCellLabel();
-    const sourceKey = `${row},${col}`;
-    if (contactMemory?.previousSourceDriveBySource) {
-      contactMemory.previousSourceDriveBySource[sourceKey] = drive;
-    }
-    if (backlashPathMetric) backlashPathMetric.textContent = update ? `actuated ${activeCellLabel()}` : `editing ${activeCellLabel()}`;
-    if (!update) {
-      animateInput.checked = false;
-      selectionSyncOnly = true;
-      return;
-    }
+  function lockSelectedCellXY() {
+    selectedCells().forEach((cell) => {
+      xyLocks.set(cellKey(cell.row, cell.col), {
+        row: cell.row,
+        col: cell.col,
+        targetX: cell.center.x,
+        targetY: cell.center.y,
+        targetZ: cell.z || 0,
+        targetDriveDeg: Number(aTopInput.value),
+        lockXY: true,
+        lockZ: positionLockModeInput.value !== "xy",
+      });
+    });
+    lastMechanismUpdateKey = "";
+    updateMechanism();
+  }
+
+  function unlockSelectedCellXY() {
+    selectedCells().forEach((cell) => {
+      xyLocks.delete(cellKey(cell.row, cell.col));
+    });
+    lastMechanismUpdateKey = "";
+    updateMechanism();
+  }
+
+  function clearXYLocks() {
+    xyLocks.clear();
     lastMechanismUpdateKey = "";
     updateMechanism();
   }
@@ -2196,13 +3201,34 @@
     raycaster.setFromCamera(pointer, camera);
     const hit = raycaster.intersectObjects(selectableMeshes, false)[0];
     if (!hit || hit.object.userData.cellSelectable !== true) return;
+    const row = hit.object.userData.cellRow;
+    const col = hit.object.userData.cellCol;
+    const key = cellKey(row, col);
     selectedDriveCell = {
-      row: hit.object.userData.cellRow,
-      col: hit.object.userData.cellCol,
+      row,
+      col,
     };
-    selectedCellMetric.textContent = selectedCellLabel();
+    if (multiSelectModeInput.checked || event.ctrlKey || event.metaKey || event.shiftKey) {
+      if (selectedCellKeys.has(key) && selectedCellKeys.size > 1) {
+        selectedCellKeys.delete(key);
+      } else {
+        selectedCellKeys.add(key);
+      }
+      if (!selectedCellKeys.size) selectedCellKeys.add(key);
+    } else {
+      selectedCellKeys.clear();
+      selectedCellKeys.add(key);
+    }
+    if (actuationModeInput.value === "contact") {
+      const envelope = cachedDriveEnvelope(degToRad(B_LOWER_REFERENCE_DEG), degToRad(B_TOP_REFERENCE_DEG));
+      aTopInput.min = String(envelope?.min ?? A_TOP_FULL_MIN_DEG);
+      aTopInput.max = String(envelope?.max ?? A_TOP_FULL_MAX_DEG);
+      aTopInput.value = String(selectedDriveCommand(envelope));
+    }
+    lastMechanismUpdateKey = "";
     updateSelectionMarker();
-    actuateSelectedCell({ update: false });
+    selectedCellMetric.textContent = selectedCellLabel();
+    updateBoundaryReadout();
   }
 
   renderer.domElement.addEventListener("pointerdown", (event) => {
@@ -2265,18 +3291,9 @@
   });
   document.getElementById("fitView").addEventListener("click", fitCurrentView);
   document.getElementById("resetView").addEventListener("click", () => setView("iso"));
-  actuateSelectedCellButton.addEventListener("click", actuateSelectedCell);
-  resetContractedButton.addEventListener("click", () => resetWholeLattice("contracted"));
-  resetExpandedButton.addEventListener("click", () => resetWholeLattice("expanded"));
-  resetBacklashMemoryButton.addEventListener("click", () => {
-    selectionSyncOnly = false;
-    resetContactMemory("manual reset");
-    lastMechanismUpdateKey = "";
-    updateMechanism();
-  });
-  actuationModeInput.addEventListener("change", () => resetContactMemory("mode changed"));
-  pinRadiusRatioInput.addEventListener("input", () => resetContactMemory("backlash changed"));
-  pinRadiusRatioInput.addEventListener("change", () => resetContactMemory("backlash changed"));
+  lockSelectedXYButton.addEventListener("click", lockSelectedCellXY);
+  unlockSelectedXYButton.addEventListener("click", unlockSelectedCellXY);
+  clearXYLocksButton.addEventListener("click", clearXYLocks);
   [
     aTopInput,
     actuationModeInput,
@@ -2284,30 +3301,28 @@
     animationHalfPeriodSecondsInput,
     showPinsInput,
     showCenterLinesInput,
-    showContactStateInput,
     pinRadiusRatioInput,
-    contactTestCommandInput,
+    plateThicknessInput,
+    multiSelectModeInput,
   ].forEach((input) => {
     input.addEventListener("input", () => {
-      selectionSyncOnly = false;
+      if (input === aTopInput) selectedDriveCommandDirty = true;
       lastMechanismUpdateKey = "";
       updateMechanism();
     });
     input.addEventListener("change", () => {
-      selectionSyncOnly = false;
+      if (input === aTopInput) selectedDriveCommandDirty = true;
       lastMechanismUpdateKey = "";
       updateMechanism();
     });
   });
   applyGridButton.addEventListener("click", () => {
-    selectionSyncOnly = false;
     rebuildLattice();
     updateMechanism();
     setView(currentView);
   });
   [rowCountInput, colCountInput].forEach((input) => {
     input.addEventListener("change", () => {
-      selectionSyncOnly = false;
       rebuildLattice();
       updateMechanism();
       setView(currentView);

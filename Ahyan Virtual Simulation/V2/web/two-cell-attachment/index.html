@@ -13,12 +13,8 @@
         <header class="topbar">
           <div>
             <h1>Pin-Hole RAD Attachment Lattice</h1>
-            <p>CAD-like repeating cells with a no-backlash baseline and clearance-based single-cell contact propagation.</p>
+            <p>Uncalibrated kinematic model</p>
           </div>
-          <nav>
-            <a href="../one-cell-rotation/index.html">One cell</a>
-            <a href="../index.html">Lattice</a>
-          </nav>
         </header>
         <div id="threeMount" class="three-mount" aria-label="3D configurable lattice view"></div>
         <div class="viewbar" role="group" aria-label="View controls">
@@ -46,23 +42,12 @@
             </select>
           </label>
           <label class="toggle"><input id="animate" type="checkbox" /> Animate drive</label>
-          <button id="actuateSelectedCell" type="button">Actuate selected cell</button>
-          <div class="button-row">
-            <button id="resetContracted" type="button">Fully contracted</button>
-            <button id="resetExpanded" type="button">Fully expanded</button>
-          </div>
-          <button id="resetBacklashMemory" type="button">Reset backlash memory</button>
           <label>
             Seconds from one extrema to the next
             <input id="animationHalfPeriodSeconds" type="number" min="0.25" max="30" step="0.25" value="2.5" />
           </label>
           <dl>
             <div><dt>selected actuator</dt><dd id="selectedCellMetric">r1 c1</dd></div>
-            <div><dt>active actuator</dt><dd id="activeCellMetric">r1 c1</dd></div>
-            <div><dt>backlash path</dt><dd id="backlashPathMetric">memory reset</dd></div>
-            <div><dt>engaged links</dt><dd id="engagedLinksMetric">0</dd></div>
-            <div><dt>floating memory</dt><dd id="floatingLinksMetric">0</dd></div>
-            <div><dt>hysteresis check</dt><dd id="hysteresisMetric">not sampled</dd></div>
             <div><dt>die off radius</dt><dd id="dieOffRadiusMetric">uniform</dd></div>
             <div><dt>max propagated command</dt><dd id="maxPropagatedMetric">64.0 deg</dd></div>
           </dl>
@@ -83,16 +68,34 @@
           <button id="applyGrid" type="button">Apply lattice size</button>
           <label class="toggle"><input id="showPins" type="checkbox" checked /> Show connection pins</label>
           <label class="toggle"><input id="showCenterLines" type="checkbox" checked /> Show center grid</label>
-          <label class="toggle"><input id="showContactState" type="checkbox" checked /> Show cell contact colors</label>
-          <div class="contact-legend" aria-label="Contact state legend">
-            <span><i class="legend-swatch legend-source"></i> driven</span>
-            <span><i class="legend-swatch legend-positive"></i> + contact</span>
-            <span><i class="legend-swatch legend-negative"></i> - contact</span>
-            <span><i class="legend-swatch legend-free"></i> floating</span>
-          </div>
           <dl>
             <div><dt>active lattice</dt><dd id="latticeSizeMetric">1 x 3</dd></div>
             <div><dt>cell count</dt><dd id="cellCountMetric">3</dd></div>
+          </dl>
+        </section>
+
+        <section>
+          <h2>Boundary Constraints</h2>
+          <label class="toggle"><input id="multiSelectMode" type="checkbox" /> Multi-select cells</label>
+          <label>
+            Position lock axes
+            <select id="positionLockMode">
+              <option value="xyz">XYZ fixed</option>
+              <option value="xy">XY fixed, Z free</option>
+            </select>
+          </label>
+          <div class="button-row">
+            <button id="lockSelectedXY" type="button">Lock selected position</button>
+            <button id="unlockSelectedXY" type="button">Unlock selected position</button>
+          </div>
+          <button id="clearXYLocks" type="button">Clear all locks</button>
+          <dl>
+            <div><dt>selected cells</dt><dd id="selectedCellsMetric">r1 c1</dd></div>
+            <div><dt>selected lock</dt><dd id="selectedLockMetric">free</dd></div>
+            <div><dt>active locks</dt><dd id="activeLocksMetric">0</dd></div>
+            <div><dt>max Z above origin</dt><dd id="maxLiftMetric">0.000 mm</dd></div>
+            <div><dt>max tilt</dt><dd id="maxTiltMetric">0.00 deg</dd></div>
+            <div><dt>max lock drift</dt><dd id="maxLockDriftMetric">0.000 mm</dd></div>
           </dl>
         </section>
 
@@ -103,15 +106,18 @@
             <input id="pinRadiusRatio" type="range" min="0.35" max="1" step="0.01" value="0.72" />
           </label>
           <label>
-            Relative contact command <output id="contactTestCommandOut">0.0 deg</output>
-            <input id="contactTestCommand" type="range" min="-20" max="20" step="0.1" value="0" />
+            Plate thickness
+            <input id="plateThickness" type="number" min="0.05" max="20" step="0.05" value="4.0" />
           </label>
           <dl>
             <div><dt>hole radius</dt><dd id="holeRadiusMetric">1.700 mm</dd></div>
             <div><dt>pin radius</dt><dd id="pinRadiusMetric">1.224 mm</dd></div>
+            <div><dt>diametral backlash</dt><dd id="diametralBacklashMetric">0.952 mm</dd></div>
             <div><dt>radial clearance</dt><dd id="radialClearanceMetric">0.476 mm</dd></div>
             <div><dt>angular dead-zone Delta phi</dt><dd id="freeAngleMetric">1.23 deg</dd></div>
             <div><dt>normalized backlash b/L</dt><dd id="relativeBacklashMetric">0.022</dd></div>
+            <div><dt>exact max tilt</dt><dd id="exactTiltMetric">0.00 deg</dd></div>
+            <div><dt>computed relative command</dt><dd id="computedContactCommandMetric">0.0 deg</dd></div>
             <div><dt>contact state</dt><dd id="contactStateMetric">floating</dd></div>
             <div><dt>transmitted command</dt><dd id="transmittedCommandMetric">0.0 deg</dd></div>
           </dl>
@@ -129,7 +135,8 @@
         <section>
           <h2>Material Restriction</h2>
           <dl>
-            <div><dt>guard</dt><dd id="collisionState" class="status-ok">clear</dd></div>
+            <div><dt>planar body check</dt><dd id="collisionState" class="status-ok">clear</dd></div>
+            <div><dt>3D bore containment</dt><dd id="pinFitMetric">checking</dd></div>
             <div><dt>allowed uniform drive</dt><dd id="allowedDriveMetric">checking</dd></div>
             <div><dt>drive clamp</dt><dd id="driveClampMetric">none</dd></div>
             <div><dt>max penetration</dt><dd id="penetrationMetric">0.000 mm</dd></div>
@@ -146,13 +153,13 @@
           <dl>
             <div><dt>cell envelope</dt><dd>55.6 mm</dd></div>
             <div><dt>nominal hole</dt><dd>3.4 mm</dd></div>
-            <div><dt>body thickness</dt><dd>4.0 mm each</dd></div>
+            <div><dt>body thickness</dt><dd id="bodyThicknessMetric">4.0 mm each</dd></div>
             <div><dt>cell interface gap</dt><dd>0.0 mm</dd></div>
           </dl>
         </section>
 
         <p class="note">
-          Contact propagation uses the RAD model b_norm = b/L and Delta phi = asin(b/L), then applies a path-dependent play operator so reverse motion crosses clearance before neighboring cells follow.
+          Contact propagation uses b = D - d, b_norm = b/L, Delta phi = asin(b/L), exact pin tilt from d + t sin(phi) = D cos(phi), and XY locks that force Z/tilt only when planar spacing becomes incompatible.
         </p>
       </aside>
 
@@ -170,6 +177,8 @@
     </main>
 
     <script src="../vendor/three.min.js"></script>
-    <script src="./two_cell_attachment.js?v=expanded-blue-gradient-1"></script>
+    <script src="./pin_geometry.js"></script>
+    <script src="./backlash_state.js"></script>
+    <script src="./two_cell_attachment.js?v=audit-repair-20261014"></script>
   </body>
 </html>
